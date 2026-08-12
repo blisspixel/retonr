@@ -79,11 +79,11 @@ impl<'a> GroundedRewriteService<'a> {
             return Ok(with_trace(transaction, None));
         };
         let protection = ProtectionPlan::build(&unit.text, &options.protected_terms)?;
+        let (masked_source, protected_values) = protection.into_parts();
         let strategy_request = GroundedRequest {
             unit_id: unit.id.clone(),
-            masked_source: protection.masked_source,
-            sentinels: protection
-                .values
+            masked_source,
+            sentinels: protected_values
                 .into_iter()
                 .map(|value| GroundedSentinel {
                     token: value.token,

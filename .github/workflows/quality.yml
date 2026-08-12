@@ -81,7 +81,9 @@ jobs:
           components: clippy,rustfmt
 
       - name: Install nextest
+        id: nextest
         if: steps.rust_workspace.outputs.exists == 'true'
+        continue-on-error: true
         uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026
         with:
           tool: cargo-nextest@0.9.143
@@ -98,9 +100,17 @@ jobs:
         if: steps.rust_workspace.outputs.exists == 'true'
         run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 
-      - name: Run tests
-        if: steps.rust_workspace.outputs.exists == 'true'
+      - name: Run tests with nextest
+        if: >-
+          steps.rust_workspace.outputs.exists == 'true' &&
+          steps.nextest.outcome == 'success'
         run: cargo nextest run --locked --workspace --all-features
+
+      - name: Run tests with Cargo fallback
+        if: >-
+          steps.rust_workspace.outputs.exists == 'true' &&
+          steps.nextest.outcome != 'success'
+        run: cargo test --locked --workspace --all-features
 
       - name: Run documentation tests
         if: steps.rust_workspace.outputs.exists == 'true'

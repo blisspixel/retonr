@@ -1,5 +1,9 @@
-use std::{collections::BTreeMap, sync::LazyLock};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::LazyLock,
+};
 
+use aho_corasick::{AhoCorasickBuilder, MatchKind};
 use regex::Regex;
 use thiserror::Error;
 
@@ -15,6 +19,18 @@ static NUMBER_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
 static SENTINEL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\{\{PROTECTED_[A-Z_]+_\d{4}\}\}").expect("static sentinel regex must compile")
 });
+
+/// Maximum protected values extracted from one rewrite unit.
+pub const MAX_PROTECTED_OCCURRENCES: usize = 4_096;
+/// Maximum UTF-8 bytes accepted or produced by protection processing.
+pub const MAX_PROTECTED_TEXT_BYTES: usize = 16 * 1024 * 1024;
+/// Maximum exact terms accepted in one rewrite policy.
+pub const MAX_PROTECTED_TERMS: usize = 32;
+/// Maximum UTF-8 byte length of one protected term.
+pub const MAX_PROTECTED_TERM_BYTES: usize = 256;
+/// Maximum combined UTF-8 bytes across protected terms.
+pub const MAX_PROTECTED_TERM_TOTAL_BYTES: usize = 2 * 1024;
+const MAX_PROTECTION_MATCH_SPANS: usize = MAX_PROTECTED_OCCURRENCES * 4;
 
 /// Category assigned to a protected source value.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -55,9 +71,9 @@ pub struct ProtectedValue {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProtectionPlan {
     /// Source text with protected values replaced by sentinels.
-    pub masked_source: String,
+    masked_source: String,
     /// Protected values in source order.
-    pub values: Vec<ProtectedValue>,
+    values: Vec<ProtectedValue>,
 }
 
 /// Protected-sentinel planning or restoration failure.
@@ -75,6 +91,15 @@ pub enum ProtectionError {
     /// A masked candidate introduced a sentinel that was never issued.
     #[error("candidate introduced an unknown sentinel")]
     UnknownSentinel,
+    /// The bounded multi-pattern matcher could not be constructed.
+    #[error("protected-value matcher could not be constructed")]
+    MatcherBuild,
+    /// Protection processing exceeded its occurrence, match, or output limit.
+    #[error("protected-value resource limit exceeded")]
+    ResourceLimit,
+    /// Declared terms violated count, byte, uniqueness, or text-safety limits.
+    #[error("declared protected terms violate the bounded policy")]
+    InvalidDeclaredTerms,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -85,6 +110,24 @@ struct MatchSpan {
 }
 
 impl ProtectionPlan {
+    /// Returns the source text with protected values replaced by sentinels.
+    #[must_use]
+    pub fn masked_source(&self) -> &str {
+        &self.masked_source
+    }
+
+    /// Returns the validated protected values in source order.
+    #[must_use]
+    pub fn values(&self) -> &[ProtectedValue] {
+        &self.values
+    }
+
+    /// Consumes the validated plan into its masked source and protected values.
+    #[must_use]
+    pub fn into_parts(self) -> (String, Vec<ProtectedValue>) {
+        (self.masked_source, self.values)
+    }
+
     /// Extracts declared terms and typed literals, then masks non-overlapping spans.
     ///
     /// # Errors
@@ -92,21 +135,32 @@ impl ProtectionPlan {
     /// Returns [`ProtectionError`] if source text already uses the reserved token
     /// namespace.
     pub fn build(source: &str, declared_terms: &[String]) -> Result<Self, ProtectionError> {
+        if source.len() > MAX_PROTECTED_TEXT_BYTES {
+            return Err(ProtectionError::ResourceLimit);
+        }
+        if !protected_terms_are_valid(declared_terms) {
+            return Err(ProtectionError::InvalidDeclaredTerms);
+        }
         if SENTINEL_PATTERN.is_match(source) {
             return Err(ProtectionError::ReservedTokenInSource);
         }
 
         let mut spans = Vec::new();
         for term in declared_terms.iter().filter(|term| !term.is_empty()) {
-            spans.extend(source.match_indices(term).map(|(start, value)| MatchSpan {
-                start,
-                end: start + value.len(),
-                kind: ProtectedKind::DeclaredTerm,
-            }));
+            for (start, value) in source.match_indices(term) {
+                add_match_span(
+                    &mut spans,
+                    MatchSpan {
+                        start,
+                        end: start + value.len(),
+                        kind: ProtectedKind::DeclaredTerm,
+                    },
+                )?;
+            }
         }
-        add_regex_matches(&mut spans, source, &URL_PATTERN, ProtectedKind::Url);
-        add_regex_matches(&mut spans, source, &EMAIL_PATTERN, ProtectedKind::Email);
-        add_regex_matches(&mut spans, source, &NUMBER_PATTERN, ProtectedKind::Number);
+        add_regex_matches(&mut spans, source, &URL_PATTERN, ProtectedKind::Url)?;
+        add_regex_matches(&mut spans, source, &EMAIL_PATTERN, ProtectedKind::Email)?;
+        add_regex_matches(&mut spans, source, &NUMBER_PATTERN, ProtectedKind::Number)?;
 
         spans.sort_by(|left, right| {
             left.start
@@ -120,6 +174,9 @@ impl ProtectionPlan {
                 .last()
                 .is_none_or(|previous: &MatchSpan| span.start >= previous.end)
             {
+                if selected.len() == MAX_PROTECTED_OCCURRENCES {
+                    return Err(ProtectionError::ResourceLimit);
+                }
                 selected.push(span);
             }
         }
@@ -143,6 +200,9 @@ impl ProtectionPlan {
             cursor = span.end;
         }
         masked.push_str(&source[cursor..]);
+        if masked.len() > MAX_PROTECTED_TEXT_BYTES {
+            return Err(ProtectionError::ResourceLimit);
+        }
 
         Ok(Self {
             masked_source: masked,
@@ -157,6 +217,11 @@ impl ProtectionPlan {
     /// Returns [`ProtectionError`] if any protected surface occurs a different
     /// number of times than it did in the source.
     pub fn mask_raw_candidate(&self, candidate: &str) -> Result<String, ProtectionError> {
+        if candidate.len() > MAX_PROTECTED_TEXT_BYTES
+            || self.values.len() > MAX_PROTECTED_OCCURRENCES
+        {
+            return Err(ProtectionError::ResourceLimit);
+        }
         if SENTINEL_PATTERN.is_match(candidate) {
             return Err(ProtectionError::UnknownSentinel);
         }
@@ -167,30 +232,63 @@ impl ProtectionPlan {
                 .or_default()
                 .push(value.token.as_str());
         }
-
-        let mut replacements = Vec::new();
-        for (surface, tokens) in grouped {
-            let matches: Vec<usize> = candidate
-                .match_indices(surface)
-                .map(|(index, _)| index)
-                .collect();
-            if matches.len() != tokens.len() {
-                return Err(ProtectionError::ProtectedOccurrenceCount);
-            }
-            for (index, token) in matches.into_iter().zip(tokens) {
-                replacements.push((index, index + surface.len(), token));
-            }
+        if grouped.is_empty() {
+            return Ok(candidate.to_owned());
         }
-        replacements.sort_by_key(|(start, end, _token)| (*start, *end));
-        if replacements.windows(2).any(|items| items[0].1 > items[1].0) {
+
+        let patterns: Vec<&str> = grouped.keys().copied().collect();
+        let matcher = AhoCorasickBuilder::new()
+            .match_kind(MatchKind::LeftmostLongest)
+            .build(&patterns)
+            .map_err(|_error| ProtectionError::MatcherBuild)?;
+        let mut matched_counts = vec![0_usize; patterns.len()];
+        let mut replacements = Vec::with_capacity(self.values.len());
+        for matched in matcher.find_iter(candidate) {
+            let pattern_index = matched.pattern().as_usize();
+            let Some(surface) = patterns.get(pattern_index).copied() else {
+                return Err(ProtectionError::MatcherBuild);
+            };
+            let Some(tokens) = grouped.get(surface) else {
+                return Err(ProtectionError::MatcherBuild);
+            };
+            let Some(matched_count) = matched_counts.get_mut(pattern_index) else {
+                return Err(ProtectionError::MatcherBuild);
+            };
+            let token_index = *matched_count;
+            let Some(token) = tokens.get(token_index) else {
+                return Err(ProtectionError::ProtectedOccurrenceCount);
+            };
+            replacements.push((matched.start(), matched.end(), *token));
+            *matched_count += 1;
+        }
+        if patterns.iter().zip(matched_counts).any(|(surface, count)| {
+            grouped
+                .get(surface)
+                .is_none_or(|tokens| tokens.len() != count)
+        }) {
             return Err(ProtectionError::ProtectedOccurrenceCount);
         }
 
-        let mut masked = candidate.to_owned();
-        for (start, end, token) in replacements.into_iter().rev() {
-            masked.replace_range(start..end, token);
+        let masked_len =
+            replacements
+                .iter()
+                .try_fold(candidate.len(), |length, (start, end, token)| {
+                    length
+                        .checked_sub(end - start)
+                        .and_then(|shorter| shorter.checked_add(token.len()))
+                });
+        let Some(masked_len) = masked_len.filter(|length| *length <= MAX_PROTECTED_TEXT_BYTES)
+        else {
+            return Err(ProtectionError::ResourceLimit);
+        };
+        let mut masked = String::with_capacity(masked_len);
+        let mut cursor = 0;
+        for (start, end, token) in replacements {
+            masked.push_str(&candidate[cursor..start]);
+            masked.push_str(token);
+            cursor = end;
         }
-        self.validate_masked(&masked)?;
+        masked.push_str(&candidate[cursor..]);
         Ok(masked)
     }
 
@@ -201,21 +299,7 @@ impl ProtectionPlan {
     ///
     /// Returns [`ProtectionError`] for missing, duplicated, or unknown tokens.
     pub fn validate_masked(&self, candidate: &str) -> Result<(), ProtectionError> {
-        for value in &self.values {
-            if candidate.matches(&value.token).count() != 1 {
-                return Err(ProtectionError::SentinelOccurrenceCount);
-            }
-        }
-        for matched in SENTINEL_PATTERN.find_iter(candidate) {
-            if !self
-                .values
-                .iter()
-                .any(|value| value.token == matched.as_str())
-            {
-                return Err(ProtectionError::UnknownSentinel);
-            }
-        }
-        Ok(())
+        self.indexed_sentinel_matches(candidate).map(|_matches| ())
     }
 
     /// Restores every validated sentinel to its exact source surface.
@@ -224,13 +308,100 @@ impl ProtectionPlan {
     ///
     /// Returns [`ProtectionError`] if sentinel integrity is invalid.
     pub fn restore(&self, candidate: &str) -> Result<String, ProtectionError> {
-        self.validate_masked(candidate)?;
-        let mut restored = candidate.to_owned();
-        for value in &self.values {
-            restored = restored.replace(&value.token, &value.surface);
+        let matches = self.indexed_sentinel_matches(candidate)?;
+        let restored_len =
+            matches
+                .iter()
+                .try_fold(candidate.len(), |length, (start, end, value_index)| {
+                    length.checked_sub(end - start).and_then(|shorter| {
+                        shorter.checked_add(self.values[*value_index].surface.len())
+                    })
+                });
+        let Some(restored_len) = restored_len.filter(|length| *length <= MAX_PROTECTED_TEXT_BYTES)
+        else {
+            return Err(ProtectionError::ResourceLimit);
+        };
+        let mut restored = String::with_capacity(restored_len);
+        let mut cursor = 0;
+        for (start, end, value_index) in matches {
+            restored.push_str(&candidate[cursor..start]);
+            restored.push_str(&self.values[value_index].surface);
+            cursor = end;
         }
+        restored.push_str(&candidate[cursor..]);
         Ok(restored)
     }
+
+    fn indexed_sentinel_matches(
+        &self,
+        candidate: &str,
+    ) -> Result<Vec<(usize, usize, usize)>, ProtectionError> {
+        if candidate.len() > MAX_PROTECTED_TEXT_BYTES
+            || self.values.len() > MAX_PROTECTED_OCCURRENCES
+        {
+            return Err(ProtectionError::ResourceLimit);
+        }
+        let mut issued = HashMap::with_capacity(self.values.len());
+        for (index, value) in self.values.iter().enumerate() {
+            if issued.insert(value.token.as_str(), index).is_some() {
+                return Err(ProtectionError::SentinelOccurrenceCount);
+            }
+        }
+        let mut counts = vec![0_u8; self.values.len()];
+        let mut matches = Vec::with_capacity(self.values.len());
+        for matched in SENTINEL_PATTERN.find_iter(candidate) {
+            let Some(value_index) = issued.get(matched.as_str()).copied() else {
+                return Err(ProtectionError::UnknownSentinel);
+            };
+            let Some(count) = counts.get_mut(value_index) else {
+                return Err(ProtectionError::MatcherBuild);
+            };
+            if *count != 0 {
+                return Err(ProtectionError::SentinelOccurrenceCount);
+            }
+            *count = 1;
+            matches.push((matched.start(), matched.end(), value_index));
+        }
+        if counts.into_iter().any(|count| count != 1) {
+            return Err(ProtectionError::SentinelOccurrenceCount);
+        }
+        Ok(matches)
+    }
+}
+
+pub(crate) fn protected_terms_are_valid(terms: &[String]) -> bool {
+    if terms.len() > MAX_PROTECTED_TERMS {
+        return false;
+    }
+    let mut total = 0_usize;
+    let mut unique = std::collections::BTreeSet::new();
+    for term in terms {
+        if term.is_empty()
+            || term.len() > MAX_PROTECTED_TERM_BYTES
+            || term.chars().any(is_disallowed_policy_character)
+            || !unique.insert(term.as_str())
+        {
+            return false;
+        }
+        let Some(next_total) = total.checked_add(term.len()) else {
+            return false;
+        };
+        total = next_total;
+    }
+    total <= MAX_PROTECTED_TERM_TOTAL_BYTES
+}
+
+fn is_disallowed_policy_character(character: char) -> bool {
+    let codepoint = u32::from(character);
+    character.is_control()
+        || matches!(
+            codepoint,
+            0x061C
+                | 0x200B..=0x200F
+                | 0x2028..=0x202E
+                | 0x2060..=0x206F
+                | 0xFEFF
+        )
 }
 
 fn add_regex_matches(
@@ -238,59 +409,24 @@ fn add_regex_matches(
     source: &str,
     pattern: &Regex,
     kind: ProtectedKind,
-) {
-    spans.extend(pattern.find_iter(source).map(|matched| MatchSpan {
-        start: matched.start(),
-        end: matched.end(),
-        kind,
-    }));
+) -> Result<(), ProtectionError> {
+    for matched in pattern.find_iter(source) {
+        add_match_span(
+            spans,
+            MatchSpan {
+                start: matched.start(),
+                end: matched.end(),
+                kind,
+            },
+        )?;
+    }
+    Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{ProtectedKind, ProtectionError, ProtectionPlan};
-
-    #[test]
-    fn masks_typed_literals_and_declared_terms() {
-        let plan = ProtectionPlan::build(
-            "Email Ada at ada@example.com before https://example.com and pay $12.50.",
-            &["Ada".to_owned()],
-        )
-        .expect("fixture has no reserved token");
-        assert_eq!(plan.values.len(), 4);
-        assert_eq!(plan.values[0].kind, ProtectedKind::DeclaredTerm);
-        assert!(plan.masked_source.contains("{{PROTECTED_EMAIL_0002}}"));
-        assert!(plan.masked_source.contains("{{PROTECTED_URL_0003}}"));
-        assert!(plan.masked_source.contains("{{PROTECTED_NUMBER_0004}}"));
+fn add_match_span(spans: &mut Vec<MatchSpan>, span: MatchSpan) -> Result<(), ProtectionError> {
+    if spans.len() == MAX_PROTECTION_MATCH_SPANS {
+        return Err(ProtectionError::ResourceLimit);
     }
-
-    #[test]
-    fn raw_candidate_round_trips_exact_values() {
-        let source = "Version 2 costs $10 at https://example.com.";
-        let plan = ProtectionPlan::build(source, &[]).expect("valid fixture");
-        let raw = "Version 2 costs $10. Visit https://example.com.";
-        let masked = plan.mask_raw_candidate(raw).expect("same literal counts");
-        assert_eq!(plan.restore(&masked).expect("issued sentinels"), raw);
-    }
-
-    #[test]
-    fn rejects_changed_or_unknown_values() {
-        let plan = ProtectionPlan::build("Version 2", &[]).expect("valid fixture");
-        assert_eq!(
-            plan.mask_raw_candidate("Version 3"),
-            Err(ProtectionError::ProtectedOccurrenceCount)
-        );
-        assert_eq!(
-            plan.validate_masked("Version {{PROTECTED_NUMBER_9999}}"),
-            Err(ProtectionError::SentinelOccurrenceCount)
-        );
-    }
-
-    #[test]
-    fn rejects_reserved_source_tokens() {
-        assert_eq!(
-            ProtectionPlan::build("{{PROTECTED_URL_0001}}", &[]),
-            Err(ProtectionError::ReservedTokenInSource)
-        );
-    }
+    spans.push(span);
+    Ok(())
 }

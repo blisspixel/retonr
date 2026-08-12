@@ -9,6 +9,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+aho-corasick.workspace = true
 regex.workspace = true
 rewrite-types = { path = "../types", version = "0.1.0" }
 thiserror.workspace = true

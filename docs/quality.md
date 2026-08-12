@@ -131,6 +131,12 @@ cargo deny check
 cargo audit
 ```
 
+The operating-system matrix uses the pinned nextest runner when its verified release
+artifact is available. If that external download fails, the job records the installer
+failure and runs the same locked workspace and feature set with `cargo test`. Test
+execution is not skipped because a test-runner distribution endpoint is temporarily
+unavailable.
+
 Every dependency-resolving Cargo command uses the committed lockfile. A stale
 `Cargo.lock` fails instead of being rewritten on a runner. `RUSTDOCFLAGS=-D warnings`
 applies to documentation builds. Functional and release

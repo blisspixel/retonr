@@ -5,6 +5,7 @@ use rewrite_types::{
 };
 use thiserror::Error;
 
+use crate::protection::protected_terms_are_valid;
 use crate::selection::compare_candidates;
 use crate::{
     CancellationToken, CandidateGenerator, GenerationError, GenerationRequest, ProtectionError,
@@ -21,13 +22,6 @@ const SEMANTIC_GATE: &str = "semantic_fidelity";
 pub const MAX_GENERATED_CANDIDATES: usize = 16;
 /// Maximum generated candidate text size for one rewrite unit.
 pub const MAX_GENERATED_TEXT_BYTES: usize = 16 * 1024 * 1024;
-/// Maximum exact terms accepted in one rewrite policy.
-pub const MAX_PROTECTED_TERMS: usize = 32;
-/// Maximum UTF-8 byte length of one protected term.
-pub const MAX_PROTECTED_TERM_BYTES: usize = 256;
-/// Maximum combined UTF-8 bytes across protected terms.
-pub const MAX_PROTECTED_TERM_TOTAL_BYTES: usize = 2 * 1024;
-
 /// Adapter-owned structural validation applied to restored candidate text.
 pub trait StructureValidator: Send + Sync {
     /// Returns redacted evidence describing whether the candidate preserves the
@@ -159,8 +153,8 @@ impl<'a> RewriteEngine<'a> {
             };
             let request = GenerationRequest {
                 unit_id: unit.id.clone(),
-                masked_source: protection.masked_source.clone(),
-                protected_values: protection.values.clone(),
+                masked_source: protection.masked_source().to_owned(),
+                protected_values: protection.values().to_vec(),
                 mode: options.mode,
             };
             let candidates = match self.generator.generate(&request, cancellation) {
@@ -397,6 +391,9 @@ fn protection_failure(gate_id: &str, error: &ProtectionError) -> GateResult {
         ProtectionError::ProtectedOccurrenceCount => "protected_occurrence_count",
         ProtectionError::SentinelOccurrenceCount => "sentinel_occurrence_count",
         ProtectionError::UnknownSentinel => "unknown_sentinel",
+        ProtectionError::MatcherBuild => "matcher_build",
+        ProtectionError::ResourceLimit => "protection_resource_limit",
+        ProtectionError::InvalidDeclaredTerms => "invalid_declared_terms",
     };
     GateResult {
         gate_id: gate_id.to_owned(),
@@ -416,7 +413,10 @@ const fn protection_reason(error: &ProtectionError) -> ReasonCode {
         ProtectionError::ProtectedOccurrenceCount => ReasonCode::ProtectedValueChanged,
         ProtectionError::ReservedTokenInSource
         | ProtectionError::SentinelOccurrenceCount
-        | ProtectionError::UnknownSentinel => ReasonCode::SentinelIntegrity,
+        | ProtectionError::UnknownSentinel
+        | ProtectionError::MatcherBuild
+        | ProtectionError::ResourceLimit
+        | ProtectionError::InvalidDeclaredTerms => ReasonCode::SentinelIntegrity,
     }
 }
 
@@ -466,41 +466,6 @@ fn candidate_rank_is_valid(rank: CandidateRank) -> bool {
     [rank.style, rank.channel, rank.fluency]
         .into_iter()
         .all(|score| score.is_finite() && (0.0..=1.0).contains(&score))
-}
-
-fn protected_terms_are_valid(terms: &[String]) -> bool {
-    if terms.len() > MAX_PROTECTED_TERMS {
-        return false;
-    }
-    let mut total = 0_usize;
-    let mut unique = std::collections::BTreeSet::new();
-    for term in terms {
-        if term.is_empty()
-            || term.len() > MAX_PROTECTED_TERM_BYTES
-            || term.chars().any(is_disallowed_policy_character)
-            || !unique.insert(term.as_str())
-        {
-            return false;
-        }
-        let Some(next_total) = total.checked_add(term.len()) else {
-            return false;
-        };
-        total = next_total;
-    }
-    total <= MAX_PROTECTED_TERM_TOTAL_BYTES
-}
-
-fn is_disallowed_policy_character(character: char) -> bool {
-    let codepoint = u32::from(character);
-    character.is_control()
-        || matches!(
-            codepoint,
-            0x061C
-                | 0x200B..=0x200F
-                | 0x2028..=0x202E
-                | 0x2060..=0x206F
-                | 0xFEFF
-        )
 }
 
 const fn preferred_reason(current: Option<ReasonCode>, candidate: ReasonCode) -> ReasonCode {

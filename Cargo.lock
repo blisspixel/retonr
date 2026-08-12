@@ -1066,6 +1066,7 @@ dependencies = [
 name = "rewrite-engine"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "proptest",
  "regex",
  "rewrite-types",

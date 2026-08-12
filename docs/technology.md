@@ -113,9 +113,10 @@ Qwen3-Embedding-0.6B is the initial embedding candidate. The canonical
 `embedding_space_id` covers the exact artifact, runtime, dimensions, input
 instruction, preprocessing, normalization, truncation, byte and token limits,
 distance, quantization, and serialization identity. Requests set `truncate: false`.
-Any field change invalidates the corresponding vectors. The adapter checks the
-complete artifact and runtime identity before and after each batch, discards the batch
-on drift, and requires requalification and reindexing.
+Any field change invalidates every affected vector. The adapter checks the complete
+artifact and runtime identity before and after each batch, discards the complete batch
+on drift, invalidates the active `embedding_space_id` qualification, and requires
+explicit requalification and reindexing.
 
 ### llama.cpp
 

@@ -275,6 +275,13 @@ The original surface value is restored, then the entire validation cascade runs.
 Restoring a value is not semantic repair. If relationships changed or mapping is
 ambiguous, the candidate fails.
 
+Protection processing is a bounded trust boundary. One rewrite unit accepts at most
+4,096 protected occurrences and 16 MiB before or after masking. Candidate match
+selection is streaming and leftmost-longest. Masking, sentinel validation, and
+restoration use single forward passes so dense valid input cannot amplify into
+quadratic replacement or validation work. Limit exhaustion fails closed before
+generation.
+
 ## Validation cascade
 
 1. Output schema and encoding validity
