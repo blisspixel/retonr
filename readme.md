@@ -1,52 +1,52 @@
 # Retonr
 
-Local-first, fidelity-gated re-expression of machine-generated and rough drafts in
-your own writing style.
+Local-first, fidelity-gated re-expression of generated and rough drafts in your own
+writing style.
 
-Retonr takes text that may still carry an upstream model's characteristic phrasing,
-token-selection signals, or embedded document artifacts and reconstructs eligible
-prose through a local model. It learns from writing the user owns or is authorized
-to use, compiles that evidence into an inspectable style profile, and moves the
-draft toward the user's voice while protecting facts, structure, formatting, and
-declared constraints. If a candidate cannot pass the configured validation policy,
-Retonr returns the original.
+Retonr reconstructs eligible prose with a local model instead of carrying upstream
+wording forward unchanged. It uses authorized writing evidence and explicit rules to
+move a draft toward your voice, then rejects candidates that do not preserve the
+facts, protected content, structure, and formatting it can verify.
 
-The product is designed to operate offline after required models are installed.
-Its provider-neutral output path minimizes supported source-form signals and
-metadata carried forward into the new artifact. It cannot delete upstream service
-logs, prove human authorship, or guarantee that a classifier or watermark detector
-will not recognize a source. It is not a generic humanizer, a detector-evasion
-service, or a writing coach.
+It can reduce supported source-wording signals and document artifacts that remain in
+a copied or generated draft. It cannot erase provider logs, prove human authorship,
+or guarantee the result of a watermark detector or classifier.
 
-## Status
+## How it works
 
-Early implementation is active. The first model-free vertical slice now includes
-a Rust workspace, versioned domain contracts, UTF-8 plain-text parsing and
-reassembly, typed protected values, strict candidate gates, independent semantic
-assessment, deterministic selection, document-atomic abstention, redacted rewrite
-records, a candidate-check CLI, and a synthetic positive and hard-negative
-evaluation suite.
+```mermaid
+flowchart LR
+    Input["Text or supported document"] --> Parse["Parse and protect"]
+    Evidence["Authorized writing evidence"] --> Profile["Versioned style profile"]
+    Rules["Declared preferences"] --> Profile
+    Parse --> Plan["Risk-aware rewrite plan"]
+    Profile --> Plan
+    Plan --> Generate["Qualified local generation"]
+    Generate --> Validate["Common fidelity and format gates"]
+    Validate --> Decision{"Eligible candidate?"}
+    Decision -->|Yes| Output["Verified reassembly and rewrite record"]
+    Decision -->|No| Original["Exact original or unchanged unit"]
+```
 
-The next internal layer is also implemented but is not a qualified user-facing
-rewrite command yet. It separates immutable artifact identity, qualification, and
-activation; defines a backend-neutral bounded inference port and deterministic fake;
-uses a loopback-only native Ollama adapter with digest-drift checks; and routes a
-proposal-only grounded strategy through the same common engine. Real artifact
-qualification, broader semantic calibration, durable artifact storage, and the
-complete CLI workflow remain open.
+Generation proposes. The engine validates, selects, or abstains. Style quality never
+compensates for a fidelity failure.
 
-The current literal strategy accepts mechanical punctuation changes only when the
-alphanumeric token sequence is unchanged. It intentionally abstains on open-domain
-rewriting because semantic equivalence has not yet been qualified. Core interfaces
-remain provisional until a pinned real model path passes the cross-platform
-qualification and evaluation gates.
+## Current status
 
-`Retonr` is the selected public project identity. The name and namespace decision
-is recorded in [ADR 0006](docs/decisions/0006-retonr-public-identity.md). Preliminary
-conflict screening supports publication of the source repository, but it is not a
-legal opinion or a substitute for formal review before packaged product releases.
+Retonr is an early implementation, not a finished writing application. The current
+model-free slice includes versioned Rust contracts, plain-text parsing and
+reassembly, protected values, deterministic candidate gates, semantic assessment,
+lexicographic selection, document-atomic abstention, redacted records, a
+candidate-check CLI, and positive and hard-negative evaluation fixtures.
 
-## Run the current slice
+![Retonr CLI help and a successful candidate check](docs/screenshots/cli-check-windows.png)
+
+The image is a reproducible rendering of verbatim output from the current
+release-optimized Windows build. It shows only implemented behavior. Capture details
+and the exact commands are recorded in the
+[screenshot metadata](docs/screenshots/cli-check-windows.md).
+
+Run the current slice from the repository:
 
 ```console
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --format text
@@ -54,165 +54,88 @@ cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
-model. The second runs the checked-in positive and hard-negative fidelity suite. Both
-surfaces omit raw document text. The check command also supports repeated
-`--protect` values and `--fail-on-abstain` for automation.
+model. The second runs the checked-in fidelity suite. The planned rewrite, profile,
+model-management, service, and desktop workflows are not yet implemented.
 
-Implemented behavior is intentionally narrower than the planned CLI below.
+## Product surfaces
 
-## Product contract
+The completed product is planned around one application service:
 
-- The user owns the profile and its evidence.
-- Declared rules outrank inferred tendencies.
-- Exact literals, protected spans, and supported document structure pass strict
-  deterministic checks.
-- Semantic risk is assessed with calibrated, versioned evaluators. It is not
-  described as a formal proof of equivalence.
-- Every generative strategy passes the same validation cascade.
-- Hard failures or disallowed uncertainty cause abstention.
-- Document-atomic mode returns the original byte-for-byte when any required unit
-  fails.
-- Profile learning is explicit, provenance-aware, reversible, and never trained
-  on raw candidates.
-- Supported source-form signals and document metadata are inspected and handled by
-  explicit policy instead of being silently copied into a rewritten artifact.
-- Source-form reduction is reported as a bounded technical result, never as proof
-  of privacy, human authorship, or universal provenance removal.
-- Core rewriting remains local. Networked backends require explicit opt-in.
+- A scriptable CLI with files, multiline standard input, explicit plain-text
+  clipboard operations, structured output, diff, dry-run, and stable exit categories
+- A cross-platform Tauri desktop application with accessible rewrite, profile,
+  model, and local voice workflows
+- A versioned, authenticated, loopback-only JSON API
+- MCP over standard input and qualified Streamable HTTP for local agents
+- Thin Agent Skills packages over the same API or MCP contract
+- A narrow offline adapter for completed text-only assistant responses
 
-## Intended users
+The compatibility adapter is not a transparent LLM proxy. It does not rewrite
+streams, tool calls, structured outputs, or multimodal events, and it never makes an
+upstream model request.
 
-The initial audience is privacy-sensitive technical and professional writers who
-use generated or rough drafts but do not want upstream model phrasing and supported
-source artifacts to remain the final form of their work. They want a locally
-reconstructed draft that sounds like them without silently changing claims, names,
-quantities, links, code, or document structure.
+Windows, macOS, and Linux are first-class release targets. Ollama is the first local
+runtime adapter; a pinned llama.cpp sidecar is planned as a portable CPU and
+accelerator fallback. Models are recommended and qualified by exact artifact,
+runtime, language, mode, format, and measured hardware class rather than by a
+mutable model name.
 
-The initial supported language will be English. Additional languages must pass
-their own evaluation and model-qualification gates before they are advertised.
+## Installation direction
 
-## Architecture at a glance
+Published builds will provide one PowerShell bootstrap command for Windows and one
+POSIX shell bootstrap command for macOS and Linux. The installers will use signed,
+checksummed release artifacts, default to a per-user no-admin location, support exact
+version and inspect-first paths, and avoid silently installing runtimes or models.
 
-```text
-Authorized style evidence
-          |
-          v
-   Profile compiler -----> Immutable style profile
-                                  |
-Input -> Document adapter -> Rewrite units and adapter state
-                                  |
-                                  v
-                    Risk analysis and planning
-                                  |
-                                  v
-                    Candidate generation strategy
-                                  |
-                                  v
-                         Common validation cascade
-                                  |
-                                  v
-                       Lexicographic candidate choice
-                                  |
-                     +------------+------------+
-                     |                         |
-                   pass                      abstain
-                     |                         |
-                     v                         v
-              Verified reassembly       Original input
-                     |
-                     v
-              Output and rewrite record
-```
+The commands are intentionally not advertised as live until those release assets
+and clean-install tests exist. See [Installation and distribution](docs/distribution.md)
+for the planned contract.
 
-Generation proposes candidates. The engine accepts, rejects, or abstains through
-explicit policy.
+## Language and format scope
 
-## Planned interfaces
+Language support and format support qualify independently. The 1.0 plan requires
+English, at least one additional Latin-script language, and at least one
+non-Latin-script language. Exact launch languages must earn support through separate
+fidelity, style, resource, Unicode, and mixed-language evaluation.
 
-- A scriptable CLI with stdin, structured output, diff, dry-run, traces,
-  completion, and stable exit codes
-- A first-party local JSON API with versioned schemas
-- MCP over standard input and Streamable HTTP, including the current metadata and
-  discovery lifecycle plus named-client compatibility where qualified
-- Thin Agent Skills `SKILL.md` packages that call the stable MCP or API surface
-- A cross-platform Tauri desktop application
-- Local voice-assisted style interviews with editable transcripts and a complete
-  non-voice path
-- A narrowly documented offline compatibility adapter for completed, supported
-  text-only response payloads
-
-Windows, macOS, and Linux are supported product targets from the first executable
-milestone, not a later porting exercise.
-
-## Planned CLI shape
-
-```console
-retonr profile create personal
-retonr profile ingest samples/ --profile personal
-retonr profile interview --profile personal
-retonr rewrite draft.md --profile personal --mode balanced --diff
-retonr check draft.md --profile personal --format json
-retonr model qualify qwen3.5:9b
-```
-
-Command names and schemas remain provisional until the first CLI contract is
-validated with real workflows.
-
-## Screenshots
-
-The README will contain real screenshots captured from passing release builds:
-
-1. The first complete CLI vertical slice will add rewrite, abstention, diff, and
-   trace screenshots.
-2. The desktop beta will add onboarding, rewrite review, profile editing, model
-   management, and accessible diff screenshots.
-3. The voice release candidate will add the local voice interview and editable
-   transcript screenshots.
-4. Release screenshots will be recaptured on supported platforms when platform
-   behavior differs.
-
-Screenshots will not be mocked in a way that suggests unfinished functionality is
-already available. Capture and accessibility requirements are defined in
-[the screenshot policy](docs/screenshots/README.md).
+Plain text preserves newline and final-newline state. Markdown uses verified source
+splicing so bytes outside approved prose ranges remain unchanged. DOCX support is a
+bounded declared subset and abstains on ambiguous formatting or unsupported package
+features. Clipboard input is plain text until a separately qualified rich-text
+adapter exists.
 
 ## Documentation
 
-- [Current implementation state](docs/current-state.md)
-- [Product definition](docs/product.md)
-- [Architecture](docs/architecture.md)
-- [Product and interface design](docs/design.md)
-- [Technology stack](docs/technology.md)
-- [Evaluation strategy](docs/evaluation.md)
-- [Security and privacy](docs/security.md)
-- [Engineering quality](docs/quality.md)
-- [Versioned roadmap](docs/roadmap.md)
-- [Phase execution plans](docs/planning/README.md)
-- [Next-phase research ledger](docs/research/2026-08-11-next-phases.md)
-- [Naming status](docs/naming.md)
-- [Architecture decisions](docs/decisions/README.md)
-- [Proposed evaluation data policy](docs/governance/data-policy.md)
-- [Proposed user research protocol](docs/governance/user-research.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security reporting](SECURITY.md)
+| Area | Document |
+| --- | --- |
+| Product thesis and limits | [Product definition](docs/product.md) |
+| Implemented behavior | [Current state](docs/current-state.md) |
+| Components and data flow | [Architecture](docs/architecture.md) |
+| CLI, desktop, voice, and interaction | [Product and interface design](docs/design.md) |
+| Multiline, clipboard, API, MCP, and compatibility | [Input and integration surfaces](docs/interfaces.md) |
+| Language and document preservation | [Language and format preservation](docs/language-and-format.md) |
+| Runtime discovery and model evaluation | [Model and runtime support](docs/model-support.md) |
+| Installers, signatures, updates, and targets | [Installation and distribution](docs/distribution.md) |
+| Stack decisions | [Technology](docs/technology.md) |
+| Evaluation and qualification | [Evaluation](docs/evaluation.md) |
+| Security and privacy | [Security](docs/security.md) |
+| Testing and quality gates | [Engineering quality](docs/quality.md) |
+| Version order through 1.0 | [Roadmap](docs/roadmap.md) |
+| Detailed phase execution | [Phase plans](docs/planning/README.md) |
 
-## What makes the project defensible
+The complete planning index, decision records, research ledger, governance drafts,
+and review evidence are in [docs](docs/README.md).
 
-Personal voice imitation alone is already available in commercial and local-first
-products. The project must earn its place through the combined system:
+## Product boundary
 
-- Explicit, editable, versioned constraints
-- Conservative fact and structure validation
-- Honest abstention with machine-readable reasons
-- Format-aware TXT, Markdown, and bounded DOCX support
-- Private local operation and user-owned evidence
-- Auditable CLI, API, MCP, and rewrite records
-- Evaluation against simple prompting and retrieval baselines
-
-If the compiled-profile approach does not outperform those baselines without a
-material fidelity regression, the added complexity is not justified.
+Retonr is not a generic humanizer, a detector-evasion service, or a substitute for
+human review in high-stakes work. It learns only from writing the user owns or is
+authorized to use. Core rewriting remains local and offline after explicit model
+installation. Unsupported content, failed validation, or disallowed uncertainty
+causes a typed abstention instead of a best-effort rewrite.
 
 ## License
 
-The source is licensed under [Apache-2.0](LICENSE). Model artifacts require separate
-manifest, provenance, and license review before activation or distribution. Formal
-name review remains required before packaged product distribution.
+Source code is licensed under [Apache-2.0](LICENSE). Model and native runtime
+artifacts require separate source, license, identity, and qualification records
+before activation or distribution.
