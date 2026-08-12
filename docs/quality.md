@@ -137,6 +137,11 @@ failure and runs the same locked workspace and feature set with `cargo test`. Te
 execution is not skipped because a test-runner distribution endpoint is temporarily
 unavailable.
 
+Fuzz smoke jobs follow the same fail-safe distribution policy. They use the pinned
+cargo-fuzz release artifact when available and install the same pinned version from
+its locked crate source if the release endpoint fails. Both sanitizer smoke targets
+remain mandatory after either installation path.
+
 Every dependency-resolving Cargo command uses the committed lockfile. A stale
 `Cargo.lock` fails instead of being rewritten on a runner. `RUSTDOCFLAGS=-D warnings`
 applies to documentation builds. Functional and release

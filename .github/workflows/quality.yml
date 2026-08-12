@@ -174,9 +174,17 @@ jobs:
           toolchain: nightly-2026-08-01
 
       - name: Install fuzz tooling
+        id: fuzz_tooling
+        continue-on-error: true
         uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026
         with:
           tool: cargo-fuzz@0.13.2
+
+      - name: Install fuzz tooling from source fallback
+        if: steps.fuzz_tooling.outcome != 'success'
+        run: >-
+          cargo +nightly install cargo-fuzz
+          --version 0.13.2 --locked
 
       - name: Validate fuzz lockfile
         run: >-
