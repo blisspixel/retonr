@@ -26,7 +26,7 @@ directly. Model files receive the same license and provenance review as code.
 | Markdown | pulldown-cmark 0.13.x with source offsets | Chosen for spike |
 | DOCX | zip 8.x plus quick-xml 0.41.x | Planned bounded adapter |
 | Local generation | Ollama native API | Chosen first backend |
-| Second generation backend | Pinned llama-server sidecar over HTTP | Deferred |
+| Portable generation backend | Pinned llama-server sidecar over HTTP | Planned and independently qualified |
 | MCP | Official `rmcp` 3.1.x | Planned |
 | Desktop shell | Tauri 2.11.x | Planned |
 | Desktop frontend | TypeScript, React, React Aria, Vite | Recommended pending UX spike |
@@ -120,10 +120,23 @@ explicit requalification and reindexing.
 
 ### llama.cpp
 
-The second backend should initially use a pinned `llama-server` sidecar over HTTP.
-This limits exposure to a changing native API and keeps unsafe FFI out of the core.
-Only the supported common schema subset is used, and all generated JSON is validated
-again in Rust.
+The portable backend uses a pinned `llama-server` sidecar over HTTP. This limits
+exposure to a changing native API and keeps unsafe FFI out of the core. Only the
+supported common schema subset is used, and all generated JSON is validated again in
+Rust.
+
+The sidecar starts offline with an exact verified model path, loopback binding, and
+explicit context, output, sampling, KV-cache, device, and offload settings. Automatic
+fitting and remote artifact shortcuts are disabled. Startup checks health, effective
+properties, tokenization, context, chat template, and schema capabilities. Truncated
+output, effective-setting drift, or device fallback discards the batch.
+
+CPU, Metal, CUDA, HIP, Vulkan, and hybrid builds receive separate manifests and
+qualification records. A shared GGUF does not make their decisions equivalent.
+Where licensing permits redistribution, the project controls conversion and
+quantization with pinned tools, complete digests, and Q4 comparison against Q8 or a
+higher-precision reference. The complete selection and fallback contract is in
+[Model and runtime support](model-support.md).
 
 ## Persistence and retrieval
 
@@ -191,6 +204,8 @@ at the 0.9 freeze. Version 1.0 binds to loopback only and includes:
 - Request and response JSON schemas
 - RFC 9457 transport problems and separate successful domain outcomes
 - Cancellation and deadlines
+- Opaque principal-scoped operation creation, status lookup, and cancellation for
+  long work
 - Body, token, candidate, concurrency, and time limits
 - Conditional writes and client operation IDs for mutation requests
 - Explicit profile-read and profile-write authorization
@@ -222,7 +237,8 @@ The MCP surface remains small:
 - Check content and constraints
 - Read profile metadata
 - Apply explicit profile changes
-- Run typed or voice-assisted acquisition through explicit handles
+- Run typed acquisition through explicit handles and accept only user-confirmed
+  transcript text from a separate local voice interface
 
 Agent skill packages use the stable `SKILL.md` format as thin clients. They include
 stable frontmatter, instructions, schemas, examples, explanatory authority
@@ -245,7 +261,9 @@ calls, structured output, reasoning, refusal events, citations, images, audio,
 logprobs, and unsupported event types make an otherwise valid payload unsupported.
 Malformed or oversized input returns no payload and a typed error. Unsupported valid
 input, rewrite abstention, and final verification failure return the exact original
-bytes with distinct machine status. They are never silently or partially rewritten.
+bytes with distinct machine status. Final verification failure is an abstention with
+a stable compatibility reason. Operational failure returns no transformed payload.
+Responses are never silently or partially rewritten.
 
 The adapter uses byte-range JSON string splicing and verifies non-target byte
 identity against a pinned upstream schema. Original upstream IDs, usage, and
@@ -333,11 +351,12 @@ Audio defaults:
 
 Initial executable targets:
 
-- Windows x86_64
+- Windows x86_64 and Arm64
 - macOS universal application with qualified aarch64 and x86_64 slices
-- Linux x86_64
+- Linux x86_64 and Arm64 with a declared glibc floor
 
-Additional architectures can graduate through the same test and packaging gates.
+Musl and additional architectures can graduate through the same test and packaging
+gates.
 
 Update signatures establish artifact provenance and integrity, not semantic
 permission safety. Release qualification retains a reviewed diff of Tauri
@@ -350,6 +369,13 @@ macOS packages are signed and notarized. Linux ships only formats that pass inst
 upgrade, removal, and desktop-integration tests on declared distributions. Every
 Linux format has verifiable signed artifacts or signed repository metadata and a
 clean-install verification test.
+
+CLI bootstrap scripts are first-party wrappers around verified release artifacts.
+They install per user without elevation, verify a signed manifest plus artifact
+identity before execution, stage side by side, smoke-test offline, and switch
+atomically. The `dist` project may generate archives and workflow input after review,
+but its stock installers and experimental updater are not the release authority. See
+[Installation and distribution](distribution.md).
 
 All code uses platform path and process APIs. No feature relies on shell-string
 construction, `/tmp`, Unix-only signals, case-sensitive paths, or UTF-8 filesystem
@@ -377,7 +403,7 @@ paths.
 | Visual and ARIA regression | Playwright in controlled per-platform environments |
 | Dependency and license policy | cargo-deny |
 | Vulnerability audit | cargo-audit |
-| Release packaging | cargo-dist for CLI where qualified, Tauri bundler for desktop |
+| Release packaging | `dist` for reviewed CLI artifact generation, first-party verified bootstrap wrappers, Tauri bundler for desktop |
 
 ## Primary references
 
@@ -391,6 +417,8 @@ paths.
 - [Qwen3.5-9B](https://huggingface.co/Qwen/Qwen3.5-9B)
 - [Qwen3 Embedding](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)
 - [llama.cpp server](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
+- [llama.cpp build backends](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
+- [dist release tooling](https://github.com/axodotdev/cargo-dist)
 - [pulldown-cmark source offsets](https://docs.rs/pulldown-cmark/latest/pulldown_cmark/struct.Parser.html)
 - [MCP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/index)
 - [Official Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)

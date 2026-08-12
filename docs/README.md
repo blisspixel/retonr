@@ -9,6 +9,10 @@ These documents define the product direction and constrain implementation.
 | [Naming](naming.md) | Public identity, namespace evidence, and remaining release gates |
 | [Architecture](architecture.md) | Component boundaries, data flow, contracts, and failure semantics |
 | [Design](design.md) | CLI, desktop, voice, API, MCP, and screenshot experience |
+| [Input and integration surfaces](interfaces.md) | Multiline input, clipboard, local API, MCP, skills, and compatibility boundaries |
+| [Language and format preservation](language-and-format.md) | Multilingual qualification and preservation contracts by input surface |
+| [Model and runtime support](model-support.md) | Hardware discovery, runtime selection, model evaluation, and fallback rules |
+| [Installation and distribution](distribution.md) | Bootstrap installers, artifact verification, release targets, updates, and removal |
 | [Technology](technology.md) | Current recommended stack and deferred decisions |
 | [Evaluation](evaluation.md) | Baselines, corpora, metrics, statistical reporting, and release gates |
 | [Security](security.md) | Assets, trust boundaries, threats, privacy, and provenance handling |

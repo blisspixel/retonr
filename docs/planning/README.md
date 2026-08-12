@@ -29,17 +29,17 @@ evidence, not a substitute for architecture decision records.
 
 ## Dependency order
 
-```text
-Finish missing 0.1 evidence
-  -> 0.2 local model and complete plain-text CLI
-  -> 0.3 profile evidence and profile workflows
-  -> 0.4 bounded Markdown
-  -> 0.5 calibration and strategy hardening
-  -> 0.6 API, MCP, and skills
-  -> 0.7 bounded DOCX
-  -> 0.8 desktop beta
-  -> 0.9 local voice and contract freeze
-  -> 1.0 release qualification
+```mermaid
+flowchart LR
+    V01["Finish missing 0.1 evidence"] --> V02["0.2 local model and plain-text CLI"]
+    V02 --> V03["0.3 profile evidence and CLI workflows"]
+    V03 --> V04["0.4 bounded Markdown"]
+    V04 --> V05["0.5 calibration and strategy hardening"]
+    V05 --> V06["0.6 API, MCP, and skills"]
+    V06 --> V07["0.7 bounded DOCX"]
+    V07 --> V08["0.8 desktop beta"]
+    V08 --> V09["0.9 local voice and contract freeze"]
+    V09 --> V10["1.0 release qualification"]
 ```
 
 This is a risk order, not a statement that every implementation task must be

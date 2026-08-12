@@ -83,8 +83,10 @@ convergence. Continuous integration uses its own clean runner database.
 - Rewrite records use unkeyed SHA-256 identity digests. These are not anonymization
   and can permit dictionary attacks on short predictable text. Stable local traces
   require an installation-keyed digest decision.
-- Screenshots remain gated on the complete release-build behaviors defined by the
-  screenshot policy.
+- The README includes one reproducible rendering of verbatim output from the current
+  release-optimized candidate-check binary. Model-backed rewrite, abstention, diff,
+  trace, desktop, and voice screenshots remain gated on their complete release-build
+  behaviors under the screenshot policy.
 - Evaluation data and user-research policies are proposed, not approved. No
   non-synthetic collection is authorized.
 
@@ -110,7 +112,9 @@ is:
    raw-output policy before exposing grounded rewriting in the CLI.
 8. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-9. Capture real CLI screenshots only after the 0.2 exit gate passes.
+9. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+   after the 0.2 exit gate passes. The current candidate-check rendering is limited
+   to already implemented model-free behavior.
 
 Later work follows the dependency order in the
 [phase execution plan index](planning/README.md).

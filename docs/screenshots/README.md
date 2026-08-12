@@ -7,6 +7,11 @@ not present planned functionality as implemented.
 
 ## Required captures
 
+### Current candidate-check slice
+
+- Help and one successful candidate validation
+- Clear nearby wording that the command does not invoke a model
+
 ### CLI vertical slice
 
 - Successful rewrite with a readable diff
@@ -37,10 +42,14 @@ not present planned functionality as implemented.
 - Provide useful alt text and a nearby textual explanation.
 - Keep text readable at the rendered README size.
 - Recapture an image when the documented behavior or layout changes.
+- A deterministic terminal rendering may be used when it contains verbatim output
+  from the recorded binary and fixture. Its metadata must distinguish added prompt
+  lines or presentation chrome from program output and retain the render source.
 
 ## File naming
 
 ```text
+cli-check-<platform>.png
 cli-rewrite-<platform>.png
 cli-abstain-<platform>.png
 cli-trace-<platform>.png

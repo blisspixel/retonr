@@ -19,6 +19,8 @@ optimized for detector scores, source classification, or watermark disruption.
 6. How do model, quantization, hardware, document type, channel, and mode affect the
    result?
 7. Are latency, memory, load time, disk use, and energy acceptable for local use?
+8. Which languages and mixed-language patterns meet the same published fidelity
+   floor without being hidden inside an aggregate score?
 
 ## Baselines
 
@@ -251,6 +253,46 @@ invalidates the affected qualification record.
 The same process qualifies an independent semantic evaluator. Generator and evaluator
 errors can be correlated, so using one model for both requires explicit evidence.
 
+### Runtime, backend, and quantization comparison
+
+A device capability probe does not grant support. Each CPU, Metal, CUDA, HIP,
+Vulkan, or hybrid execution class is compared through the same product cases. The
+report records effective context, memory, offload, driver, runtime build, and all
+settings that can change behavior.
+
+Lower-precision artifacts receive a predeclared non-inferiority comparison against
+Q8 or a higher-precision reference. Cross-runtime and cross-backend differential
+tests report changes in critical accept or abstain decisions, fidelity failures,
+structured-output validity, latency, and memory. Any critical divergence requires
+full independent qualification or a narrower support claim.
+
+### Multilingual and mixed-language qualification
+
+Version 1.0 requires English, at least one additional Latin-script language, and at
+least one non-Latin-script language to pass independently. Exact languages are
+selected after authorized data and fluent human review are available. Each supported
+language has native-authored or professionally curated cases for entities, roles,
+quantities, dates, negation, modality, conditions, attribution, quotation,
+coreference, formality, agreement, punctuation, Unicode, and prompt injection.
+
+Mixed-language suites cover intra-sentence and inter-sentence switches, quotations,
+technical terms, product names, code, URLs, identifiers, and left-to-right plus
+right-to-left transitions where advertised. The system may not translate or move a
+language boundary without an explicit transformation request. Ambiguous language is
+user-declared or causes abstention.
+
+Reports stratify every release measure by language, script, locale, mixed-language
+pattern, model, mode, and format. Pooled results cannot qualify a weak stratum.
+Machine-translated English cases may support diagnostics but cannot replace fluent
+human fidelity and preference review.
+
+Automatic language detection and routing receive calibrated per-language and
+per-script error, misrouting, uncertainty, and abstention bounds set before the
+locked run. Every qualified mixed-language pair or set must either pass its locked
+cases or deterministically abstain with exact original output. It may not translate,
+move a language boundary, or emit a partial result when that pair or set is not
+qualified.
+
 ## Document release gates
 
 ### Plain text
@@ -322,6 +364,7 @@ provenance removal.
 Every public release includes:
 
 - Supported model artifact matrix
+- Supported language, script, locale, mixed-language, runtime, backend, and hardware matrix
 - Supported format capability matrix
 - Selective-risk report
 - Style comparison with baselines

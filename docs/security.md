@@ -28,18 +28,19 @@ present.
 
 ## Trust boundaries
 
-```text
-Untrusted document ------> Parser and adapter
-Untrusted corpus --------> Profile ingestion
-Document and evidence ---> Model prompt boundary
-Model output ------------> Schema and validation boundary
-Local model service -----> Runtime identity and response boundary
-Local client ------------> API or MCP authority boundary
-Desktop frontend --------> Tauri command and capability boundary
-Downloaded artifact -----> Model and update verification
-Filesystem path ---------> Read, write, and replacement boundary
-Imported profile --------> Migration and ownership boundary
-Microphone audio --------> Local speech boundary
+```mermaid
+flowchart LR
+    Document["Untrusted document"] --> Parser["Parser and adapter boundary"]
+    Corpus["Untrusted corpus"] --> Ingest["Profile ingestion boundary"]
+    Prompt["Document and evidence"] --> Model["Model prompt boundary"]
+    Output["Model output"] --> Validation["Schema and validation boundary"]
+    Runtime["Local model service"] --> Identity["Runtime identity and response boundary"]
+    Client["Local client"] --> Authority["API or MCP authority boundary"]
+    Frontend["Desktop frontend"] --> Commands["Tauri command and capability boundary"]
+    Artifact["Downloaded artifact"] --> Verification["Model and update verification"]
+    Path["Filesystem path"] --> FileOps["Read, write, and replacement boundary"]
+    Import["Imported profile"] --> Migration["Migration and ownership boundary"]
+    Audio["Microphone audio"] --> Speech["Local speech boundary"]
 ```
 
 Document text and profile samples are data, not instructions. The generation model
@@ -97,6 +98,25 @@ Controls:
 - Keep diagnostics structurally separate from rewritten data.
 - Test CSI, OSC 8 hyperlinks, OSC 52 clipboard operations, title changes, carriage
   return overwrites, C1 controls, and bidi isolates.
+
+### Clipboard authority and rich content
+
+Clipboard access is user initiated and limited to plain text. The desktop grants
+separate read-text and write-text authority only to the rewrite workbench window.
+The CLI requests clipboard access only through an explicit mutually exclusive flag.
+
+Required controls:
+
+- Never poll the clipboard, read it at startup, monitor history, or treat clipboard
+  content as profile evidence.
+- Never render or convert clipboard HTML or RTF under a preservation claim.
+- Prefer an available plain representation and visibly state that rich formatting
+  was not imported. Reject rich-only, image, and file-list content without mutation.
+- Write only a complete validated plain-text result.
+- Bound size and neutralize terminal, bidirectional, NUL, and control content through
+  the same input and presentation policies.
+- Denial, unavailable clipboard, and headless use return typed outcomes and leave the
+  editor and operating-system clipboard unchanged.
 
 ### Malicious DOCX and ZIP input
 

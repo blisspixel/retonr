@@ -24,23 +24,17 @@ Style quality cannot compensate for a fidelity failure.
 
 ## System context
 
-```text
-                           +----------------------+
-Authorized writing ------>| Profile compilation  |
-Declared preferences ---->| and evidence store   |
-                           +----------+-----------+
-                                      |
-                                      v
-User or integration ---> Application service <--- Local model runtime
-        |                             |
-        |                             v
-        |                    Rewrite transaction
-        |                             |
-        v                             v
- CLI / Desktop / API / MCP      Document adapters
-                                      |
-                                      v
-                            Output and rewrite record
+```mermaid
+flowchart LR
+    Writing["Authorized writing"] --> Profiles["Profile compilation and evidence store"]
+    Preferences["Declared preferences"] --> Profiles
+    User["User or integration"] --> Interfaces["CLI, desktop, API, or MCP"]
+    Interfaces --> Service["Application service"]
+    Profiles --> Service
+    Runtime["Qualified local model runtime"] --> Service
+    Service --> Transaction["Rewrite transaction"]
+    Transaction --> Adapters["Document adapters"]
+    Adapters --> Result["Output and rewrite record"]
 ```
 
 Every entry point calls the same application service. CLI, desktop, HTTP, MCP, and
@@ -51,42 +45,51 @@ logic.
 
 Dependencies point inward toward domain types and policies.
 
-```text
-retonr-cli     rewrite-api       rewrite-mcp       rewrite-desktop
-    \             |              |                /
-     +------------+--------------+---------------+
-                              |
-                         rewrite-app
-                              |
-       +----------------------+----------------------+
-       |                      |                      |
-rewrite-engine       rewrite-grounded        rewrite-profile
-       |                      |                      |
-       |             rewrite-inference       rewrite-store
-       |                      |                      |
-       +----------------------+----------------------+
-                              |
-                        rewrite-types
-
-Infrastructure implementations:
-  rewrite-ollama
-  rewrite-text-adapter
-  rewrite-markdown-adapter
-  rewrite-docx-adapter
-  later: rewrite-inference-llamacpp
-
-Inward-facing contract layers:
-  rewrite-model -> rewrite-types
-  rewrite-inference -> rewrite-model, rewrite-types
-
-Infrastructure inference adapters depend on rewrite-inference. Contract layers never
-depend on Ollama, HTTP, a model store, or a platform runtime.
-
-Development-only consumers:
-  rewrite-eval
-  fuzz targets
-  compatibility suites
+```mermaid
+flowchart TD
+    subgraph Entry["Entry points"]
+        CLI["retonr-cli"]
+        API["rewrite-api"]
+        MCP["rewrite-mcp"]
+        Desktop["rewrite-desktop"]
+    end
+    CLI --> App["rewrite-app"]
+    API --> App
+    MCP --> App
+    Desktop --> App
+    App --> Engine["rewrite-engine"]
+    App --> Grounded["rewrite-grounded"]
+    App --> Profile["rewrite-profile"]
+    Grounded --> Inference["rewrite-inference"]
+    Profile --> Store["rewrite-store"]
+    Engine --> Types["rewrite-types"]
+    Inference --> Model["rewrite-model"]
+    Model --> Types
+    Inference --> Types
+    subgraph Infrastructure["Infrastructure adapters"]
+        Ollama["rewrite-ollama"]
+        Llama["planned llama.cpp sidecar adapter"]
+        Text["rewrite-text-adapter"]
+        Markdown["rewrite-markdown-adapter"]
+        Docx["rewrite-docx-adapter"]
+    end
+    Ollama --> Inference
+    Llama --> Inference
+    Text --> App
+    Markdown --> App
+    Docx --> App
+    subgraph Development["Development-only consumers"]
+        Eval["rewrite-eval"]
+        Fuzz["fuzz targets"]
+        Compat["compatibility suites"]
+    end
+    Eval --> App
+    Fuzz --> Engine
+    Compat --> App
 ```
+
+Infrastructure inference adapters depend on `rewrite-inference`. Contract layers
+never depend on Ollama, HTTP, a model store, or a platform runtime.
 
 The exact crate split may be consolidated during the first slice if a boundary has
 no independent behavior. The dependency rules remain even if two modules initially
@@ -98,21 +101,26 @@ for mutable backend, artifact, prompt, tokenizer, or parameter provenance.
 
 ## Rewrite transaction
 
-```text
-1. Probe and parse input
-2. Identify eligible rewrite units and protected fragments
-3. Load an immutable profile version
-4. Derive risk features, typed invariants, and document obligations
-5. Build an immutable transformation plan
-6. Select a candidate generation strategy
-7. Retrieve provenance-backed style evidence
-8. Generate complete candidates
-9. Run the common validation cascade
-10. Select among eligible candidates lexicographically
-11. Apply only accepted edits through the owning adapter
-12. Reparse and verify the completed document
-13. Commit the result atomically or return the original
-14. Emit a versioned rewrite record
+```mermaid
+flowchart TD
+    Probe["1. Probe and parse input"] --> Units["2. Find eligible units and protected fragments"]
+    Units --> Profile["3. Load immutable profile version"]
+    Profile --> Analyze["4. Derive risk, invariants, claims, and obligations"]
+    Analyze --> Plan["5. Build immutable transformation plan"]
+    Plan --> Route["6. Select allowed generation strategy"]
+    Route --> Retrieve["7. Retrieve provenance-backed style evidence"]
+    Retrieve --> Generate["8. Generate complete candidates"]
+    Generate --> Validate["9. Run common validation cascade"]
+    Validate --> Eligible{"Eligible candidates?"}
+    Eligible -->|Yes| Select["10. Select lexicographically"]
+    Select --> Apply["11. Apply accepted edits through owning adapter"]
+    Apply --> Verify["12. Reparse and verify completed document"]
+    Verify --> Verified{"Verification passes?"}
+    Verified -->|Yes| Commit["13. Commit atomically"]
+    Eligible -->|No| Original["13. Return original according to atomicity"]
+    Verified -->|No| Original
+    Commit --> Record["14. Emit versioned rewrite record"]
+    Original --> Record
 ```
 
 The selected generation strategy can increase validation requirements. It cannot
@@ -197,6 +205,19 @@ Neither is derived only from mutable prose.
 
 Every adapter declares a capability matrix. Unsupported features are not silently
 treated as supported.
+
+Input acquisition has three distinct contracts. File input supplies bounded original
+bytes and an explicit or probed media type to a qualified adapter; only this path may
+claim byte and document-format preservation. Typed and clipboard input creates a
+logical plain-text document and preserves user-visible line and whitespace intent,
+but not rich clipboard representations or source bytes. API and MCP input supplies
+inline bounded text or a separately staged bounded document; it never grants an
+arbitrary local filesystem path.
+
+Each rewrite unit carries a user-declared or detected BCP 47 language, detection
+confidence, script and direction observations, and the exact qualified language
+policy. Low-confidence or unsupported units remain unchanged or cause abstention
+according to atomicity. Cross-language profile transfer is off by default.
 
 ## Adapter contract
 
@@ -569,6 +590,11 @@ capability discovery, successful domain outcomes, RFC 9457 transport errors,
 cancellation, conditional mutation semantics, explicit authority, and loopback-only
 binding for 1.0.
 
+Synchronous requests return no content until complete validation and reassembly.
+Long work uses principal-scoped operation resources with authenticated polling and
+cancellation. Optional progress contains bounded phase and sequence metadata only,
+never candidates or unvalidated output fragments.
+
 MCP implements standard input first, then POST-only Streamable HTTP. MCP 2026-07-28
 has no initialize exchange or protocol session. Requests carry required protocol
 version and client capabilities plus optional `clientInfo` in request metadata, and
@@ -577,6 +603,10 @@ handles that are scoped, expiring, revocable, principal-bound, and tamper-resist
 MCP handlers reconstruct state from explicit identifiers rather than hidden protocol
 sessions. Older protocol support is limited to named clients with conformance
 fixtures.
+
+Baseline MCP rewrite and check tools accept complete bounded plain text and supported
+Markdown and return one schema-validated structured result. They accept no arbitrary
+paths, clipboard authority, raw audio, DOCX base64, or partial candidate streaming.
 
 Streamable HTTP uses a documented custom loopback bearer profile rather than standard
 MCP OAuth authorization. Its server-side scopes, challenge, rotation, and revocation
@@ -596,6 +626,7 @@ rewriting. The adapter makes no upstream request and stores no upstream credenti
 It does not rewrite tool calls, structured JSON, reasoning, refusals, citations, or
 other event types. It uses byte-range JSON string splicing, verifies non-target bytes,
 and returns local status and provenance through an explicit sidecar or envelope. A
+final verification failure is an abstention that returns exact original bytes. A
 true outbound reverse proxy or remote generation backend is a separate post-1.0
 feature with its own network and credential design.
 

@@ -12,25 +12,17 @@
 
 ## Core workflow
 
-```text
-Choose profile
-    |
-Provide text or document
-    |
-Select channel, refinement, and atomicity
-    |
-Review detected protected content and unsupported features
-    |
-Generate and validate candidates
-    |
-  +--------------------+
-  |                    |
-pass                abstain
-  |                    |
-Review diff       See exact reasons
-  |                    |
-Accept, copy,     Keep original or
-or save safely    adjust constraints
+```mermaid
+flowchart TD
+    Profile["Choose profile"] --> Input["Provide text or supported document"]
+    Input --> Policy["Select channel, mode, language, and atomicity"]
+    Policy --> Review["Review protected content and unsupported features"]
+    Review --> Validate["Generate and validate complete candidates"]
+    Validate --> Decision{"Eligible candidate?"}
+    Decision -->|Yes| Diff["Review accessible diff"]
+    Diff --> Save["Accept, copy plain text, export, or save safely"]
+    Decision -->|No| Reasons["See exact abstention reasons"]
+    Reasons --> Original["Keep original or adjust constraints"]
 ```
 
 The default workflow does not overwrite source files. In-place replacement is an
@@ -122,10 +114,12 @@ retonr rewrite [path|-] --profile <name>
 retonr check <path|-> --profile <name>
 
 retonr model list
+retonr model recommend --language auto --mode balanced --format text
 retonr model inspect <model>
 retonr model download <model>
 retonr model verify <model>
 retonr model qualify <model>
+retonr model eval <model> --suite device
 retonr model import <path>
 retonr model activate <model>
 retonr model deactivate <model>
@@ -194,6 +188,13 @@ overwrites an ambiguous target.
 - Help includes examples and links to local documentation.
 - Shell completion and manual pages ship with releases.
 
+`rewrite -` reads multiline standard input to end of file without trimming. Path,
+standard-input, direct-text, and explicit clipboard sources are mutually exclusive.
+An interactive paste buffer treats bracketed paste as data and requires an explicit
+submit action. `--clipboard` reads plain text only after user action, and
+`--copy-output` writes only a completely validated result. Neither operation polls
+clipboard history or turns pasted text into profile evidence.
+
 An abstention can still produce a valid original document. Machine callers inspect
 the structured `status`. `--fail-on-abstain` converts it to a dedicated nonzero exit
 status for pipelines that require a rewrite.
@@ -231,6 +232,14 @@ Every nonzero category has a stable machine-readable error code in JSON mode.
 - Validation result grouped by exact, structural, semantic, and style evidence
 - Clear rewritten, unchanged, abstained, and failed states
 - Copy, export, safe replace, undo, and trace export
+- Multiline plain-text paste that retains blank lines, tabs, and final-newline intent
+- Explicit plain-text clipboard read and write permissions scoped to this window
+
+Rich HTML or RTF clipboard data is never rendered. When a plain representation is
+available, the workbench labels it as plain-text import. Document formatting is kept
+through Save or Export using the owning Markdown or DOCX adapter, not through Copy.
+Editing after a completed rewrite invalidates its displayed validation result until
+the document is checked again.
 
 ### Profile lab
 
@@ -348,6 +357,9 @@ POST /v0/profiles/{id}/versions
 POST /v0/learning
 POST /v0/learning/{id}/responses
 DELETE /v0/learning/{id}
+POST /v0/operations
+GET  /v0/operations/{id}
+DELETE /v0/operations/{id}
 ```
 
 Mutation endpoints use conditional writes and client operation IDs. Long-running work
@@ -357,6 +369,14 @@ domain outcomes; malformed, authorization, resource, and operational failures us
 redacted RFC 9457 problems. Cancelled is a successful domain outcome only when a live
 request or later operation lookup can return it. A disconnected client receives no
 later body. Failed never uses a successful HTTP envelope.
+
+Synchronous calls return only a complete validated outcome. Longer work returns an
+opaque principal-scoped operation ID, supports authenticated polling and explicit
+cancellation, and exposes only bounded phase and progress metadata before the final
+result. Candidate tokens, output fragments, prompts, and trace content are never
+streamed. API and MCP callers cannot supply an arbitrary local filesystem path.
+Inline JSON strings have logical text semantics; structured documents use a separate
+bounded byte-transfer or staged-document contract before `/v1` freezes.
 
 ## MCP design
 
@@ -371,6 +391,12 @@ learning_start
 learning_continue
 learning_cancel
 ```
+
+Baseline MCP tools accept complete bounded TXT and supported Markdown content and
+return one schema-validated structured result. They do not accept arbitrary paths,
+clipboard authority, raw audio, DOCX base64, or partial candidate streaming. Voice
+capture remains a CLI and desktop responsibility; MCP may submit only user-confirmed
+transcript text to the typed interview contract.
 
 Names remain provisional until schemas are tested with clients. Learning handles are
 explicit because protocol sessions are not application state. MCP 2026-07-28 has no

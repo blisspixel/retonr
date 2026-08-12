@@ -113,6 +113,8 @@ until the naming, licensing, and applicable clearance gates are complete.
 - Pinned artifact identification and model manifest
 - Headless model list, inspect, explicit download, offline import, verify, qualify,
   activate, deactivate, and remove lifecycle
+- Local hardware and runtime probe plus deterministic `model recommend` and bounded
+  `model eval --suite device` workflows
 - One `Grounded` generation strategy
 - Typed invariant and claim extraction
 - Protected sentinel generation and restoration
@@ -120,6 +122,8 @@ until the naming, licensing, and applicable clearance gates are complete.
 - Full shared validation cascade
 - Plain-text CLI with stdin, file input, text output, JSON output, diff, dry-run, trace,
   cancellation, and `--fail-on-abstain`
+- Multiline standard input read to end of file without trimming, with exact newline
+  and final-newline fixture coverage
 - Safe interactive rendering for ANSI, OSC, C0, C1, carriage-return, hyperlink,
   clipboard, and bidi-control fixtures
 - Exact raw output limited to non-terminal streams, files, or the double opt-in
@@ -127,6 +131,8 @@ until the naming, licensing, and applicable clearance gates are complete.
 - Stable diagnostic categories and provisional machine schema
 - Local-only mode and automated no-network test
 - Qualification report for 4B, 9B, and larger candidate tiers where available
+- Predeclared quantization non-inferiority evidence against Q8 or a higher-precision
+  reference for every lower-precision artifact called qualified
 - Real CLI screenshots for rewrite, abstention, and trace inspection
 
 ### Exit gate
@@ -231,6 +237,13 @@ until the naming, licensing, and applicable clearance gates are complete.
 - Confidence intervals by risk category
 - Scheduled fuzz and mutation testing
 - Performance and memory benchmarks on declared hardware tiers
+- Pinned llama.cpp sidecar with independently qualified CPU, Metal, CUDA, HIP,
+  Vulkan, and hybrid execution classes where advertised
+- Controlled artifact conversion and quantization evidence plus Q4 non-inferiority
+  comparison against Q8 or a higher-precision reference
+- Cross-runtime and cross-backend differential suites
+- Independent multilingual and mixed-language calibration strata for the proposed
+  1.0 language matrix
 - Cancellation and resource-limit stress tests
 - Profile privacy and encryption decision completed
 
@@ -240,6 +253,11 @@ until the naming, licensing, and applicable clearance gates are complete.
   locked evaluation run.
 - No strategy bypasses the shared cascade.
 - Adding a strategy improves coverage or style without weakening the risk bound.
+- At least one exact controlled artifact passes both Ollama and the pinned llama.cpp
+  sidecar qualification, and every execution class advertised at this milestone has
+  independent passing evidence.
+- Cross-runtime and cross-backend differential suites pass or narrow the support
+  matrix explicitly.
 - Mutation testing demonstrates meaningful assertions in critical logic.
 - Encryption claims match implemented and tested behavior.
 - All four refinement passes complete.
@@ -257,6 +275,8 @@ until the naming, licensing, and applicable clearance gates are complete.
 - Shared versioned wire DTOs and conformance fixtures across every interface
 - Capability discovery, RFC 9457 transport errors, domain outcome envelopes,
   deadlines, cancellation, mutation operation IDs, and resource limits
+- Principal-scoped long-operation creation, authenticated polling, and cancellation
+  with no unvalidated candidate or output streaming
 - Separate rewrite, profile-read, profile-write, and administration authority
 - MCP over standard input
 - MCP over Streamable HTTP
@@ -271,7 +291,8 @@ until the naming, licensing, and applicable clearance gates are complete.
 - Narrow non-streaming text-only compatibility adapter that accepts completed
   response payloads and makes no outbound request
 - Exact compatibility outcome mapping: no payload for malformed or oversized input,
-  original bytes for unsupported, abstained, or verification-failed valid input
+  original bytes for unsupported or abstained valid input, and verification failure
+  mapped to a stable abstention reason
 - Loopback-only service binding, authentication, Host and Origin checks, and redaction
 - API and MCP documentation with complete local examples
 
@@ -330,6 +351,8 @@ until the naming, licensing, and applicable clearance gates are complete.
 - Onboarding and explicit local or network state
 - Model manager with license, digest, size, hardware, import, qualification, and removal
 - Rewrite workbench with accessible side-by-side and linear diffs
+- User-initiated multiline plain-text clipboard paste and copy with workbench-only
+  least-privileged capabilities and no rich-format preservation claim
 - Rewritten, unchanged, abstained, unsupported, and failed states
 - Profile lab with evidence, rules, confidence, channels, conflicts, versions, and
   deletion
@@ -413,6 +436,10 @@ the first prototype runs.
   export, import, restore, and deletion
 - Typed and local voice-assisted style interviews
 - Qualified local generation and embedding models
+- Hardware-aware model recommendation and user-runnable comparison without silent
+  runtime, model, quantization, context, language, or execution-class downgrade
+- Qualified rewriting for English, at least one additional Latin-script language,
+  and at least one non-Latin-script language, plus declared mixed-language behavior
 - Fidelity-gated TXT and supported Markdown rewriting
 - Bounded, explicitly qualified DOCX rewriting
 - Deterministic validation, calibrated semantic assessment, lexicographic ranking,
@@ -424,9 +451,12 @@ the first prototype runs.
   named-client compatibility
 - Tested agent skill packages
 - Text-only compatibility adapter conformant to its published pinned subset
-- Signed Windows distribution, signed and notarized universal macOS distribution
-  with qualified aarch64 and x86_64 slices, and verifiable signed Linux artifacts or
-  repository metadata for every supported package
+- Signed Windows x86-64 and Arm64 CLI distributions, signed and notarized macOS
+  distributions with qualified aarch64 and x86_64 slices, and verifiable signed
+  Linux x86-64 and Arm64 artifacts with a declared glibc floor
+- One-line PowerShell and POSIX shell bootstrap installers that fail closed while
+  verifying every downloaded payload, plus an end-to-end verified inspect-first path,
+  exact-version, no-admin, interrupted-update, rollback, and uninstall behavior
 - Offline operation after explicit model installation or offline import
 - Real CLI and desktop screenshots from passing builds
 
@@ -434,7 +464,11 @@ the first prototype runs.
 
 - Locked evaluation meets the published fidelity, coverage, style, and resource
   thresholds.
-- All advertised models and formats have exact qualification reports.
+- All advertised models, runtimes, execution classes, languages, mixed-language
+  patterns, formats, and hardware classes have exact qualification reports.
+- Automatic language detection meets predeclared per-language misrouting and
+  abstention bounds, and every advertised mixed-language set either passes locked
+  qualification or returns the exact original without translation or boundary drift.
 - CLI, desktop, API, MCP, and skills agree on shared conformance fixtures.
 - Every supported platform passes clean install, update, migration, platform-specific
   rollback or recovery, cancellation, and removal testing.
@@ -456,12 +490,13 @@ the first prototype runs.
 
 - Broader WordprocessingML features
 - PDF extraction and rewrite without perfect round trip
-- Additional languages after independent qualification
+- Additional languages beyond the minimum qualified 1.0 set
 - Browser extension
 - Mobile applications
 - Team profile collaboration and synchronization
 - Optional remote backends
 - Broader upstream API event compatibility
+- Outbound provider gateway and semantic response streaming
 - Custom per-user model training if baseline evaluation proves it worthwhile
 - Voice dictation outside the style-interview workflow
 - Voice cloning

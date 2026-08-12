@@ -175,7 +175,14 @@ Before building the broad product surface:
 Version 1.0 includes polished CLI and desktop applications, TXT and declared
 Markdown support, a bounded DOCX subset, local profiles, typed and voice-assisted
 interviews, MCP, agent skill packages, a stable local API, a documented text-only
-compatibility adapter, cross-platform installers, and published evaluation results.
+compatibility adapter, cross-platform installers, published model and hardware
+recommendations, and qualified rewriting for English, at least one additional
+Latin-script language, and at least one non-Latin-script language.
+
+Language and format support are independent claims. Mixed-language or unsupported
+units are preserved or cause abstention according to the selected atomicity policy.
+Formatted file preservation belongs to the owning document adapter. Plain-text
+clipboard and inline API content do not carry a rich-format preservation claim.
 
 Version 1.0 does not promise:
 
