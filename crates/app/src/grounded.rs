@@ -1,7 +1,8 @@
 use std::time::Instant;
 
 use rewrite_engine::{
-    PreparedCandidateGenerator, ProtectedKind, ProtectionPlan, validate_rewrite_options,
+    PreparedCandidateGenerator, ProtectedKind, ProtectionError, ProtectionPlan,
+    validate_rewrite_options,
 };
 use rewrite_grounded::{
     GroundedError, GroundedRequest, GroundedSentinel, GroundedSentinelKind, GroundedStrategy,
@@ -78,7 +79,18 @@ impl<'a> GroundedRewriteService<'a> {
                 run_plain_text_transaction(&parsed, &generator, &options, cancellation)?;
             return Ok(with_trace(transaction, None));
         };
-        let protection = ProtectionPlan::build(&unit.text, &options.protected_terms)?;
+        let protection = match ProtectionPlan::build(&unit.text, &options.protected_terms) {
+            Ok(protection) => protection,
+            Err(
+                ProtectionError::ReservedTokenInSource | ProtectionError::AmbiguousSurfaceMapping,
+            ) => {
+                let generator = PreparedCandidateGenerator::new(Vec::new());
+                let transaction =
+                    run_plain_text_transaction(&parsed, &generator, &options, cancellation)?;
+                return Ok(with_trace(transaction, None));
+            }
+            Err(error) => return Err(error.into()),
+        };
         let (masked_source, protected_values) = protection.into_parts();
         let strategy_request = GroundedRequest {
             unit_id: unit.id.clone(),

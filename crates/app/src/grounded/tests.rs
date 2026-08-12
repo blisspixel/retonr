@@ -141,3 +141,22 @@ fn backend_cancellation_becomes_safe_cancelled_abstention() {
     assert_eq!(result.output, b"Version 2 works.");
     assert!(result.trace.is_none());
 }
+
+#[test]
+fn ambiguous_source_mapping_abstains_without_backend_work() {
+    let (strategy, fake) = fixtures("unused");
+    let service = GroundedRewriteService::new(strategy, &fake);
+    let request = GroundedRewriteRequest {
+        source: b"ada@example.com $12.ada@example.com $150".to_vec(),
+        protected_terms: Vec::new(),
+        mode: RewriteMode::Literal,
+        style_context: String::new(),
+    };
+    let result = block_ready(service.rewrite(request, &CancellationToken::new(), None))
+        .expect("source ambiguity is a successful abstention");
+    assert_eq!(result.record.status, RewriteStatus::Abstained);
+    assert_eq!(result.record.reason, Some(ReasonCode::SentinelIntegrity));
+    assert_eq!(result.output, b"ada@example.com $12.ada@example.com $150");
+    assert!(result.trace.is_none());
+    assert!(fake.requests().expect("request log").is_empty());
+}

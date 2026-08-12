@@ -143,7 +143,10 @@ impl<'a> RewriteEngine<'a> {
 
             let protection = match ProtectionPlan::build(&unit.text, &options.protected_terms) {
                 Ok(protection) => protection,
-                Err(ProtectionError::ReservedTokenInSource) => {
+                Err(
+                    ProtectionError::ReservedTokenInSource
+                    | ProtectionError::AmbiguousSurfaceMapping,
+                ) => {
                     return Ok(EngineOutcome::abstained(
                         ReasonCode::SentinelIntegrity,
                         assessments,

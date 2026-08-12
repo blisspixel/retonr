@@ -48,6 +48,26 @@ fn rejects_changed_protected_number() {
 }
 
 #[test]
+fn ambiguous_source_mapping_is_a_safe_abstention() {
+    let engine = RewriteEngine::new(&EmptyGenerator, &LiteralSemanticEvaluator, &PassStructure);
+    let source = "ada@example.com $12.ada@example.com $150";
+    let outcome = engine
+        .run(
+            &document(source),
+            &literal_options(),
+            &CancellationToken::new(),
+        )
+        .expect("source ambiguity is a policy outcome");
+    assert_eq!(outcome.status, RewriteStatus::Abstained);
+    assert_eq!(
+        outcome.reason,
+        Some(rewrite_types::ReasonCode::SentinelIntegrity)
+    );
+    assert!(outcome.edits.is_empty());
+    assert!(outcome.assessments.is_empty());
+}
+
+#[test]
 fn rejects_lexical_or_structural_change() {
     let lexical = ProvidedCandidateGenerator::new(vec!["Hello there".to_owned()]);
     let lexical_engine = RewriteEngine::new(&lexical, &LiteralSemanticEvaluator, &PassStructure);
