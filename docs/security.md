@@ -1,0 +1,385 @@
+# Security and privacy
+
+## Security objective
+
+Protect the user's writing corpus, profile, documents, credentials, local services,
+and profile-mutation authority while processing untrusted documents and untrusted
+model output.
+
+Local-first reduces disclosure to third-party services. It does not protect against
+malware, insecure backups, shared-device access, compromised dependencies, or other
+authorized local processes.
+
+## Primary assets
+
+- Corpus text and metadata
+- Inferred style features and immutable profile versions
+- Declared rules and protected terms
+- Input and output documents
+- Rewrite records and retrieved evidence IDs
+- Model artifacts and model licenses
+- API, MCP, and profile-mutation credentials
+- Encryption and content-identifier keys
+- Update and release signing keys
+
+A style profile can identify a person and can reveal sensitive topics, relationships,
+organizations, habits, and vocabulary. It is sensitive even when raw samples are not
+present.
+
+## Trust boundaries
+
+```text
+Untrusted document ------> Parser and adapter
+Untrusted corpus --------> Profile ingestion
+Document and evidence ---> Model prompt boundary
+Model output ------------> Schema and validation boundary
+Local model service -----> Runtime identity and response boundary
+Local client ------------> API or MCP authority boundary
+Desktop frontend --------> Tauri command and capability boundary
+Downloaded artifact -----> Model and update verification
+Filesystem path ---------> Read, write, and replacement boundary
+Imported profile --------> Migration and ownership boundary
+Microphone audio --------> Local speech boundary
+```
+
+Document text and profile samples are data, not instructions. The generation model
+has no tools, network, filesystem, credential, or profile-mutation authority.
+
+## Threats and required controls
+
+### Prompt injection in documents or samples
+
+Risks:
+
+- A document instructs the model to ignore constraints.
+- Retrieved evidence asks the model to reveal other samples.
+- A candidate injects Markdown, URLs, or structured content.
+
+Controls:
+
+- Delimit content and instructions through structured requests.
+- Use the smallest relevant evidence set.
+- Redact or mask sensitive strings where possible.
+- Give the model no external authority.
+- Treat output as untrusted and pass it through every parser and gate.
+- Reject novel entities, quantities, links, and executable constructs.
+- Never learn automatically from model output.
+
+### Malicious Markdown
+
+Risks include raw HTML, executable links, parser differentials, bidi controls, and
+syntax introduced by rewritten punctuation.
+
+Controls:
+
+- Keep raw HTML, link destinations, code, autolinks, and unsupported constructs
+  byte-identical.
+- Escape for the exact inline context.
+- Reparse after edits.
+- Compare structure and non-target bytes.
+- Render imported and generated content as text in the desktop application.
+- Detect Unicode control and bidi characters and report them without silently
+  normalizing legitimate source content.
+
+### Terminal escape injection
+
+Risks include ANSI CSI styling, OSC hyperlinks, terminal-title changes, clipboard
+sequences, C0 and C1 controls, misleading carriage returns, and bidirectional text in
+interactive diffs or diagnostics.
+
+Controls:
+
+- Reject candidate-introduced control characters that are not required source data.
+- Preserve and flag protected source controls without executing them.
+- Escape untrusted content in interactive diffs, previews, errors, and traces.
+- Emit exact raw content only to a non-terminal stream, a file, or an explicit raw
+  terminal mode with a double opt-in and warning.
+- Keep diagnostics structurally separate from rewritten data.
+- Test CSI, OSC 8 hyperlinks, OSC 52 clipboard operations, title changes, carriage
+  return overwrites, C1 controls, and bidi isolates.
+
+### Malicious DOCX and ZIP input
+
+Risks include ZIP bombs, path traversal, XML entity expansion, external
+relationships, macros, embedded objects, fields, and signature invalidation.
+
+Controls:
+
+- Parse package entries in memory or through bounded streams without extracting
+  paths.
+- Bound file size, entry count, per-entry size, total expansion, compression ratio,
+  XML depth, processing time, and memory.
+- Disable DTD and external entities.
+- Never resolve external relationships.
+- Reject `.docm`, encrypted files, signed documents, and unsupported active features.
+- Preserve unknown parts opaquely.
+- Verify relationships, content types, XML, and untouched-part hashes.
+
+### Profile poisoning and feedback collapse
+
+Risks:
+
+- Generated text becomes evidence and progressively replaces the user's style.
+- A single imported document dominates the profile.
+- Malicious imported profiles alter protected terms or service configuration.
+
+Controls:
+
+- Require ownership or authorization confirmation.
+- Keep immutable evidence provenance.
+- Never ingest raw candidates.
+- Treat acceptance as a preference signal only.
+- Require explicit confirmation for derivative user-edited output.
+- Cap contribution per document, session, and topic.
+- Keep configuration, credentials, and executable settings outside portable profiles.
+- Validate and migrate imported profiles in a restricted schema.
+- Preview changes before activating a new profile version.
+- Treat embedding output as untrusted, disable truncation, and validate dimensions,
+  finite values, normalization, model identity, and profile isolation.
+- Recheck embedding identity before and after every batch, discard drifted batches,
+  and require requalification and reindexing.
+- Distinguish retrieval-ineligible evidence from profile-influence exclusion,
+  consent revocation, and deletion. The first invalidates retrieval snapshots only;
+  the latter three invalidate their complete permitted derivation closure across
+  observations, vectors, retrieval, and compiled views.
+- Isolate retrieval by profile, consent, channel, and authorization before scoring.
+- Test rare phrase, unique n-gram, entity, quantity, canary, and cross-profile
+  extraction behavior.
+
+### Local API and MCP exposure
+
+Risks:
+
+- Another local site or process invokes rewriting or reads a profile.
+- A service is accidentally bound to a network interface.
+- A learning handle is guessed or replayed.
+
+Controls:
+
+- Bind to loopback only for 1.0 and reject non-loopback configuration before socket
+  creation.
+- Require high-entropy local authentication, Host and Origin validation, and narrow
+  CORS policy for HTTP.
+- Require authentication for health and capability routes and disclose no model,
+  profile, path, build, scope, or configuration data before authentication.
+- Separate rewrite, profile-read, profile-write, and administrative authority.
+- Use opaque, scoped, expiring, revocable, principal-bound, tamper-resistant learning
+  handles. A handle is not authentication.
+- Bound body size, concurrency, tokens, candidates, time, and retries.
+- Bound frames, queues, writers, server-sent-event consumers, and response bytes.
+- Set every authenticated HTTP success and error response to
+  `Cache-Control: no-store`.
+- Keep tokens out of URLs and process arguments, store them with operating-system
+  protection and restrictive permissions, redact logs and crash reports, and support
+  rotation, revocation, and deletion.
+- Do not log prompts, content, profiles, or credentials by default.
+
+MCP Streamable HTTP uses a documented custom loopback bearer profile for 1.0 rather
+than standard MCP OAuth authorization. Standard authorization conformance is
+explicitly excluded. Every named HTTP client must inject the token. Missing or
+invalid credentials return 401 with a bearer challenge; insufficient scope returns
+403. Standard input remains the preferred integration when token injection is not
+available.
+
+The 1.0 response-compatibility adapter is offline and makes no upstream requests. A
+future outbound proxy or remote backend requires a separate threat-model update,
+host allowlist, credential-redaction policy, and explicit network consent.
+
+### Filesystem writes
+
+Risks include symlink attacks, overwrite ambiguity, locked files, partial writes, and
+cross-device rename behavior.
+
+Controls:
+
+- Output to standard output or a new path by default.
+- Resolve and inspect exact targets before in-place work.
+- Create the temporary file in the destination directory.
+- Flush and use a platform-tested replacement operation.
+- Preserve permissions intentionally.
+- Reject ambiguous symlink and case-collision situations.
+- Provide a recoverable backup policy.
+- Test Windows file locks and replacement behavior explicitly.
+
+### Model and update supply chain
+
+Controls:
+
+- Never pull a model implicitly during rewrite.
+- Require explicit installation or offline import.
+- Record source URL, upstream revision, artifact digest, size, quantization,
+  tokenizer, prompt, output schema, license, runtime, and supported languages.
+- Verify checksums before activation.
+- Treat runtime model listings, templates, license text, and capabilities as untrusted
+  discovery data rather than qualification evidence.
+- Accept loopback model endpoints only in the first adapter, disable system proxies
+  and redirects, and recheck selected artifact identity before and after generation.
+- Invalidate qualification on artifact, runtime, template, tokenizer, parameter,
+  evaluator, calibration, or locked-suite change.
+- Pin code dependencies and continuous-integration tools.
+- Run vulnerability and license policy checks.
+- Sign release artifacts and publish checksums and attestations.
+- Separate local and cloud model choices in configuration and traces.
+
+### Desktop authority and updates
+
+Controls:
+
+- Explicitly list enabled Tauri capabilities and register every custom command.
+- Use least-privileged per-window capabilities and application-level scope checks.
+- Test every privileged command with allowed and denied identities, resources, and
+  window labels.
+- Expose no broad shell, process, HTTP, opener, or filesystem plugin.
+- Bundle local assets, enforce strict content security policy, and allow no remote
+  frame, inline script, eval, or untrusted HTML rendering.
+- Route external links through a narrow Rust allowlist and user confirmation.
+- Use operation IDs and monotonic event sequences to reject stale UI events.
+- Keep update checks explicit and Rust-owned.
+- Back up update signing keys offline and document rotation, loss, revocation, and
+  recovery.
+- Verify every update signature and reject downgrade by default.
+
+### Voice privacy
+
+Controls:
+
+- Request microphone permission just in time.
+- Show an unambiguous recording indicator.
+- Use push-to-talk by default.
+- Process locally.
+- Remove audio from application-controlled buffers and storage immediately after
+  transcription by default.
+- Require explicit opt-in and retention controls for saved audio.
+- Require the user to edit or confirm the transcript before it can become evidence.
+- Keep audio callbacks on preallocated bounded buffers with no allocation, blocking,
+  logging, file I/O, IPC, or inference.
+- Send no PCM through WebView IPC.
+- Review runtime, model, voice, and phonemizer licenses independently.
+- Keep a complete typed path.
+- Do not use voice identity, speaker recognition, or voice cloning for 1.0.
+- Do not implement always-listening capture, wake words, or simultaneous microphone
+  and speech output for 1.0.
+
+## Impersonation and misuse
+
+The project is intended for a user's own authorized style. Risks include targeted
+impersonation, phishing, spam, academic misconduct, harassment, and unauthorized
+profile sharing.
+
+Product controls:
+
+- No bundled public-figure or third-party profiles
+- Ownership and authorization confirmation during ingestion
+- Clear profile export warnings
+- Separate authority for profile mutation
+- Local API concurrency and rate limits
+- Auditable evidence provenance and rewrite records
+- User-visible change review for consequential content
+- Documentation that does not position the product as a detector-evasion service
+
+An open-source license cannot prevent every misuse. The design should avoid making
+abusive presets, silent bulk impersonation, or exposed network services the default.
+
+## Data lifecycle
+
+The user can:
+
+- Inspect all evidence and derived features
+- Exclude evidence from retrieval or all profile influence
+- Create and compare immutable versions
+- Export a portable profile with a clear sensitivity warning
+- Delete evidence, embeddings, profile versions, traces, audio, and cached artifacts
+- Verify removal from application-controlled active storage through a local report
+
+Backups and exported profiles are outside automatic deletion. The interface explains
+that limitation. SQLite freelists, write-ahead logs, temporary files, application
+backups, crash dumps, swap, operating-system caches, and storage-device recovery are
+part of the storage decision and test plan. Cryptographic erasure is used where
+selected encryption permits it. No interface claims guaranteed physical erasure
+outside application-controlled storage.
+
+Default rewrite records avoid raw text. Plain hashes of short content can be guessed,
+so equality identifiers should use a local keyed construction or remain disabled.
+
+## Encryption
+
+Encryption at rest is a required design decision, not an unchecked claim. The spike
+must address:
+
+- Windows credential storage
+- macOS Keychain
+- Linux secret services and headless systems
+- Passphrase fallback and recovery
+- Key rotation
+- Backup and export encryption
+- Database migrations
+- Crash safety
+- What metadata remains visible
+
+No release should claim encrypted profiles until the full matrix is implemented and
+tested.
+
+## Provenance handling
+
+Rerendering changes content and can invalidate or remove an existing provenance
+binding. The system should:
+
+1. Detect supported incoming credentials before normalization.
+2. Record their type and validation status without copying sensitive content into
+   default traces.
+3. Warn when the requested transformation invalidates the binding.
+4. Preserve a source reference as an ingredient or local rewrite-record relationship
+   where the applicable standard supports it.
+5. Optionally create a derived-output credential only through a separately reviewed
+   signing design.
+6. Never claim that source provenance survived merely because visible text looks
+   similar.
+
+Source-form decorrelation research stays outside live ranking and product promises.
+
+## Regulatory review
+
+The EU AI Act Article 50 transparency obligations took effect in August 2026.
+Provider obligations, standard-editing exceptions, deployer obligations, and human
+editorial responsibility differ. Product modes may transform content to different
+degrees.
+
+Before public release, qualified counsel should assess:
+
+- Whether the project or a distributor is a provider for each distribution model
+- Which modes fall within an editing exception
+- Required machine-readable marking behavior
+- Public-interest text disclosure workflows
+- Treatment of imported and derived provenance
+- Open-source distribution and model-provider responsibilities
+- Privacy obligations for style profiles and corpora
+
+The software and documentation do not provide legal advice or promise compliance
+before that review.
+
+## Security testing
+
+- Threat model review at every version gate
+- Dependency, advisory, and license scans on every pull request
+- Fuzzing for every parser and deserializer
+- Resource-exhaustion fixtures
+- Authorization matrix tests
+- Origin and loopback binding tests
+- Redaction tests for logs and errors
+- Profile import and migration tests
+- Atomic-write and symlink tests on all platforms
+- Desktop CSP and capability review
+- Voice permission and retention tests
+- Signed-package and update verification tests
+
+A public security policy and private disclosure path are required before the first
+public beta.
+
+## References
+
+- [EU AI Act](https://eur-lex.europa.eu/eli/reg/2024/1689/oj?locale=en)
+- [European Commission Article 50 guidance](https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act)
+- [NIST synthetic content report](https://www.nist.gov/publications/reducing-risks-posed-synthetic-content-overview-technical-approaches-digital-content)
+- [C2PA 2.4](https://spec.c2pa.org/specifications/specifications/2.4/specs/C2PA_Specification.html)
+- [Tauri capabilities](https://v2.tauri.app/security/capabilities/)
+- [Tauri content security policy](https://v2.tauri.app/security/csp/)

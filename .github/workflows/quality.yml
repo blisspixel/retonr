@@ -1,0 +1,231 @@
+name: quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-policy:
+    name: repository policy (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Check repository policy
+        shell: pwsh
+        run: ./scripts/check-repository.ps1
+
+  markdown:
+    name: markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install documentation tools
+        run: npm ci --ignore-scripts
+
+      - name: Lint Markdown
+        run: npm run lint:markdown
+
+  rust:
+    name: rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Detect Rust workspace
+        id: rust_workspace
+        shell: pwsh
+        run: |
+          if (Test-Path -LiteralPath Cargo.toml) {
+            "exists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Install Rust
+        if: steps.rust_workspace.outputs.exists == 'true'
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+          components: clippy,rustfmt
+
+      - name: Install nextest
+        if: steps.rust_workspace.outputs.exists == 'true'
+        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026
+        with:
+          tool: cargo-nextest@0.9.143
+
+      - name: Check formatting
+        if: steps.rust_workspace.outputs.exists == 'true'
+        run: cargo fmt --check
+
+      - name: Check all targets and features
+        if: steps.rust_workspace.outputs.exists == 'true'
+        run: cargo check --locked --workspace --all-targets --all-features
+
+      - name: Lint all targets and features
+        if: steps.rust_workspace.outputs.exists == 'true'
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        if: steps.rust_workspace.outputs.exists == 'true'
+        run: cargo nextest run --locked --workspace --all-features
+
+      - name: Run documentation tests
+        if: steps.rust_workspace.outputs.exists == 'true'
+        run: cargo test --locked --workspace --all-features --doc
+
+      - name: Build documentation
+        if: steps.rust_workspace.outputs.exists == 'true'
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --locked --workspace --all-features --no-deps
+
+      - name: Build release artifacts
+        if: steps.rust_workspace.outputs.exists == 'true'
+        run: cargo build --locked --workspace --all-features --release
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Detect Rust workspace
+        id: rust_workspace
+        shell: pwsh
+        run: |
+          if (Test-Path -LiteralPath Cargo.toml) {
+            "exists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Install Rust
+        if: steps.rust_workspace.outputs.exists == 'true'
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+
+      - name: Install coverage tooling
+        if: steps.rust_workspace.outputs.exists == 'true'
+        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026
+        with:
+          tool: cargo-llvm-cov@0.8.7
+
+      - name: Enforce coverage floor
+        if: steps.rust_workspace.outputs.exists == 'true'
+        run: >-
+          cargo llvm-cov --locked --workspace --all-features
+          --fail-under-lines 80
+
+  fuzz-smoke:
+    name: fuzz target smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install nightly Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: nightly-2026-08-01
+
+      - name: Install fuzz tooling
+        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026
+        with:
+          tool: cargo-fuzz@0.13.2
+
+      - name: Validate fuzz lockfile
+        run: >-
+          cargo metadata --manifest-path fuzz/Cargo.toml
+          --locked --format-version 1
+
+      - name: Build fuzz targets
+        run: cargo +nightly fuzz build
+
+      - name: Smoke test protection round trips
+        run: >-
+          cargo +nightly fuzz run protection_roundtrip --
+          -max_total_time=15
+
+      - name: Smoke test text adapter identity
+        run: >-
+          cargo +nightly fuzz run text_adapter_identity --
+          -max_total_time=15
+
+  supply-chain:
+    name: supply chain
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Detect Rust lockfile and policy
+        id: rust_policy
+        shell: pwsh
+        run: |
+          if ((Test-Path -LiteralPath Cargo.lock) -and
+              (Test-Path -LiteralPath deny.toml)) {
+            "exists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Install Rust
+        if: steps.rust_policy.outputs.exists == 'true'
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+
+      - name: Install dependency policy tool
+        if: steps.rust_policy.outputs.exists == 'true'
+        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026
+        with:
+          tool: cargo-deny@0.20.2
+
+      - name: Install advisory audit tool
+        if: steps.rust_policy.outputs.exists == 'true'
+        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026
+        with:
+          tool: cargo-audit@0.22.2
+
+      - name: Check dependency and license policy
+        if: steps.rust_policy.outputs.exists == 'true'
+        run: cargo deny check
+
+      - name: Check RustSec advisories
+        if: steps.rust_policy.outputs.exists == 'true'
+        run: cargo audit

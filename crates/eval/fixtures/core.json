@@ -1,0 +1,206 @@
+{
+  "schema_version": 2,
+  "cases": [
+    {
+      "id": "literal-punctuation",
+      "category": "positive_literal",
+      "source": "Hello world",
+      "candidate": "Hello, world!",
+      "reference_judgment": "acceptable",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_output": "candidate"
+    },
+    {
+      "id": "literal-crlf",
+      "category": "positive_literal",
+      "source": "First line\r\nSecond line\r\n",
+      "candidate": "First line.\r\nSecond line.\r\n",
+      "reference_judgment": "acceptable",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_output": "candidate"
+    },
+    {
+      "id": "literal-unicode",
+      "category": "positive_literal",
+      "source": "Café déjà vu",
+      "candidate": "Café, déjà vu.",
+      "reference_judgment": "acceptable",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_output": "candidate"
+    },
+    {
+      "id": "same-content",
+      "category": "identity",
+      "source": "No change",
+      "candidate": "No change",
+      "reference_judgment": "identity",
+      "expected_status": "unchanged_no_eligible_content",
+      "expected_reason": null,
+      "expected_output": "source"
+    },
+    {
+      "id": "empty-source",
+      "category": "identity",
+      "source": "",
+      "candidate": "ignored",
+      "reference_judgment": "not_applicable",
+      "expected_status": "unchanged_no_eligible_content",
+      "expected_reason": null,
+      "expected_output": "source"
+    },
+    {
+      "id": "number-change",
+      "category": "protected_value_negative",
+      "source": "Version 2 costs $10.",
+      "candidate": "Version 3 costs $10.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "protected_value_changed",
+      "expected_output": "source"
+    },
+    {
+      "id": "url-change",
+      "category": "protected_value_negative",
+      "source": "Visit https://example.com now.",
+      "candidate": "Visit https://example.org now.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "protected_value_changed",
+      "expected_output": "source"
+    },
+    {
+      "id": "declared-term-removal",
+      "category": "protected_value_negative",
+      "source": "Project Atlas is ready.",
+      "candidate": "The project is ready.",
+      "protected_terms": ["Project Atlas"],
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "protected_value_changed",
+      "expected_output": "source"
+    },
+    {
+      "id": "lexical-substitution",
+      "category": "semantic_hard_negative",
+      "source": "The service is available.",
+      "candidate": "The service is unavailable.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    },
+    {
+      "id": "negation-introduced",
+      "category": "semantic_hard_negative",
+      "source": "The backup completed.",
+      "candidate": "The backup did not complete.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    },
+    {
+      "id": "modality-strengthened",
+      "category": "semantic_hard_negative",
+      "source": "The update may improve startup.",
+      "candidate": "The update will improve startup.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    },
+    {
+      "id": "roles-reversed",
+      "category": "semantic_hard_negative",
+      "source": "Alice sent Bob the report.",
+      "candidate": "Bob sent Alice the report.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    },
+    {
+      "id": "newline-removed",
+      "category": "structure_negative",
+      "source": "First line\nSecond line\n",
+      "candidate": "First line Second line\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "structure_changed",
+      "expected_output": "source"
+    },
+    {
+      "id": "terminal-control-introduced",
+      "category": "unsafe_text_negative",
+      "source": "Build completed.",
+      "candidate": "Build\u001b completed.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "reserved-sentinel-source",
+      "category": "sentinel_negative",
+      "source": "Literal {{PROTECTED_URL_0001}} text",
+      "candidate": "Literal {{PROTECTED_URL_0001}} text.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "sentinel_integrity",
+      "expected_output": "source"
+    },
+    {
+      "id": "paraphrase-start-begin",
+      "category": "positive_paraphrase",
+      "source": "The meeting starts at noon.",
+      "candidate": "The meeting begins at noon.",
+      "reference_judgment": "acceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    },
+    {
+      "id": "paraphrase-finished-completed",
+      "category": "positive_paraphrase",
+      "source": "The build finished successfully.",
+      "candidate": "The build completed successfully.",
+      "reference_judgment": "acceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    },
+    {
+      "id": "paraphrase-close-shut",
+      "category": "positive_paraphrase",
+      "source": "Please close the door.",
+      "candidate": "Please shut the door.",
+      "reference_judgment": "acceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    },
+    {
+      "id": "paraphrase-purchased-bought",
+      "category": "positive_paraphrase",
+      "source": "She purchased the laptop.",
+      "candidate": "She bought the laptop.",
+      "reference_judgment": "acceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    },
+    {
+      "id": "paraphrase-residence-home",
+      "category": "positive_paraphrase",
+      "source": "They returned to their residence.",
+      "candidate": "They returned to their home.",
+      "reference_judgment": "acceptable",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_output": "source"
+    }
+  ]
+}

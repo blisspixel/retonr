@@ -1,0 +1,43 @@
+[package]
+name = "rewrite-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+rust-version = "1.97.1"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.10"
+rewrite-engine = { path = "../crates/engine", version = "0.1.0" }
+rewrite-text-adapter = { path = "../crates/text-adapter", version = "0.1.0" }
+
+[[bin]]
+name = "protection_roundtrip"
+path = "fuzz_targets/protection_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "text_adapter_identity"
+path = "fuzz_targets/text_adapter_identity.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
+resolver = "3"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"

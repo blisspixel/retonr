@@ -1,0 +1,27 @@
+[package]
+name = "retonr-cli"
+description = "Command-line interface for local fidelity-gated draft re-expression"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "retonr"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+rewrite-app = { path = "../app", version = "0.1.0" }
+rewrite-types = { path = "../types", version = "0.1.0" }
+serde_json.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true
