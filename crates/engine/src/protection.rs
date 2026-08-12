@@ -100,6 +100,9 @@ pub enum ProtectionError {
     /// Declared terms violated count, byte, uniqueness, or text-safety limits.
     #[error("declared protected terms violate the bounded policy")]
     InvalidDeclaredTerms,
+    /// Selected protected surfaces cannot map uniquely to their source occurrences.
+    #[error("protected source surfaces have an ambiguous occurrence mapping")]
+    AmbiguousSurfaceMapping,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -204,10 +207,17 @@ impl ProtectionPlan {
             return Err(ProtectionError::ResourceLimit);
         }
 
-        Ok(Self {
+        let plan = Self {
             masked_source: masked,
             values,
-        })
+        };
+        match plan.mask_raw_candidate(source) {
+            Ok(remasked) if remasked == plan.masked_source => Ok(plan),
+            Ok(_) | Err(ProtectionError::ProtectedOccurrenceCount) => {
+                Err(ProtectionError::AmbiguousSurfaceMapping)
+            }
+            Err(error) => Err(error),
+        }
     }
 
     /// Converts restored candidate text to the issued sentinel representation.

@@ -394,6 +394,7 @@ fn protection_failure(gate_id: &str, error: &ProtectionError) -> GateResult {
         ProtectionError::MatcherBuild => "matcher_build",
         ProtectionError::ResourceLimit => "protection_resource_limit",
         ProtectionError::InvalidDeclaredTerms => "invalid_declared_terms",
+        ProtectionError::AmbiguousSurfaceMapping => "ambiguous_surface_mapping",
     };
     GateResult {
         gate_id: gate_id.to_owned(),
@@ -416,7 +417,8 @@ const fn protection_reason(error: &ProtectionError) -> ReasonCode {
         | ProtectionError::UnknownSentinel
         | ProtectionError::MatcherBuild
         | ProtectionError::ResourceLimit
-        | ProtectionError::InvalidDeclaredTerms => ReasonCode::SentinelIntegrity,
+        | ProtectionError::InvalidDeclaredTerms
+        | ProtectionError::AmbiguousSurfaceMapping => ReasonCode::SentinelIntegrity,
     }
 }
 

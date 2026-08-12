@@ -40,6 +40,15 @@ fn raw_candidate_ignores_shorter_values_nested_in_protected_surfaces() {
 }
 
 #[test]
+fn fuzz_regression_rejects_ambiguous_overlapping_extracted_surfaces() {
+    let source = "\x12n4\0\0\0ada@exalpme.con a\x19out.comada@\x08g $12.ada@exalpme.con a\x19out.comada@\x08g $150.\n";
+    assert_eq!(
+        ProtectionPlan::build(source, &[]),
+        Err(ProtectionError::AmbiguousSurfaceMapping)
+    );
+}
+
+#[test]
 fn duplicate_standalone_and_nested_values_round_trip() {
     let source = "Version 2 costs $12.50, while version 2 also costs $12.50.";
     let plan = ProtectionPlan::build(source, &[]).expect("valid fixture");
