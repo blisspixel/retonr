@@ -174,16 +174,22 @@ jobs:
           --locked --format-version 1
 
       - name: Build fuzz targets
-        run: cargo +nightly fuzz build
+        run: >-
+          cargo +nightly fuzz build
+          --target x86_64-unknown-linux-gnu
 
       - name: Smoke test protection round trips
         run: >-
-          cargo +nightly fuzz run protection_roundtrip --
+          cargo +nightly fuzz run
+          --target x86_64-unknown-linux-gnu
+          protection_roundtrip --
           -max_total_time=15
 
       - name: Smoke test text adapter identity
         run: >-
-          cargo +nightly fuzz run text_adapter_identity --
+          cargo +nightly fuzz run
+          --target x86_64-unknown-linux-gnu
+          text_adapter_identity --
           -max_total_time=15
 
   supply-chain:
