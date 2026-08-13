@@ -104,7 +104,7 @@ jobs:
         if: >-
           steps.rust_workspace.outputs.exists == 'true' &&
           steps.nextest.outcome == 'success'
-        run: cargo nextest run --locked --workspace --all-features
+        run: cargo nextest run --locked --workspace --all-features --no-fail-fast
 
       - name: Run tests with Cargo fallback
         if: >-
