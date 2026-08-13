@@ -196,6 +196,7 @@ impl VerifiedManagedArtifact {
         if current != fingerprint || !current.has_single_link() {
             return Err(ArtifactInventoryError::ConcurrentModification);
         }
+        #[cfg(windows)]
         drop(current);
         artifacts.remove_held_managed_file(name, file, fingerprint, maximum_entries)
     }

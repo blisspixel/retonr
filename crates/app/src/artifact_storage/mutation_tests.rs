@@ -1,5 +1,6 @@
 use std::{ffi::OsString, fs, io};
 
+#[cfg(windows)]
 use rewrite_types::CancellationToken;
 use tempfile::tempdir;
 

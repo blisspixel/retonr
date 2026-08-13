@@ -259,8 +259,10 @@ impl PinnedDirectory {
         if reopened.fingerprint != expected {
             return Err(ArtifactInventoryError::ConcurrentModification);
         }
+        #[cfg(windows)]
         drop(current);
         drop(reopened);
+        #[cfg(windows)]
         drop(expected);
         remove_verified_file(self, name, held)?;
         if self
