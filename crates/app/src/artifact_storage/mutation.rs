@@ -290,6 +290,7 @@ impl PinnedDirectory {
             .ok_or(ArtifactInventoryError::ConcurrentModification)?;
         let same_identity = current.fingerprint.same_identity(&expected);
         drop(current);
+        #[cfg(windows)]
         drop(expected);
         if !same_identity {
             return Err(ArtifactInventoryError::ConcurrentModification);
@@ -399,8 +400,7 @@ fn create_directory(parent: &File, name: &OsStr) -> Result<(), ArtifactInventory
     use rustix::fs::Mode;
 
     match rustix::fs::mkdirat(parent, name, Mode::RUSR | Mode::WUSR | Mode::XUSR) {
-        Ok(()) => Ok(()),
-        Err(rustix::io::Errno::EXIST) => Ok(()),
+        Ok(()) | Err(rustix::io::Errno::EXIST) => Ok(()),
         Err(error) => Err(map_initial_error(io::Error::from(error))),
     }
 }
