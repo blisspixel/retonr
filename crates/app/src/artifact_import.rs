@@ -11,10 +11,15 @@ use sha2::{Digest as _, Sha256};
 use tempfile::{Builder as TemporaryFileBuilder, NamedTempFile};
 
 mod contract;
+mod platform;
 
 pub use contract::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
     ArtifactImportStage, OfflineArtifactImportRequest,
+};
+use platform::{
+    is_indirect, open_lock_file, open_readonly_no_follow, set_private_directory_permissions,
+    sync_directory,
 };
 
 const COPY_BUFFER_BYTES: usize = 1024 * 1024;
@@ -454,104 +459,6 @@ fn recover_staging(staging: &Path) -> Result<(), ArtifactImportError> {
         fs::remove_file(entry.path()).map_err(ArtifactImportError::StorageIo)?;
     }
     sync_directory(staging)
-}
-
-#[cfg(unix)]
-fn set_private_directory_permissions(path: &Path) -> Result<(), ArtifactImportError> {
-    use std::os::unix::fs::PermissionsExt as _;
-
-    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
-        .map_err(ArtifactImportError::StorageIo)
-}
-
-#[cfg(windows)]
-fn set_private_directory_permissions(path: &Path) -> Result<(), ArtifactImportError> {
-    let metadata = fs::symlink_metadata(path).map_err(ArtifactImportError::StorageIo)?;
-    if metadata.is_dir() && !is_indirect(&metadata) {
-        Ok(())
-    } else {
-        Err(ArtifactImportError::UnsafeStorageLayout)
-    }
-}
-
-fn sync_directory(path: &Path) -> Result<(), ArtifactImportError> {
-    let metadata = fs::symlink_metadata(path).map_err(ArtifactImportError::StorageIo)?;
-    if !metadata.is_dir() || is_indirect(&metadata) {
-        return Err(ArtifactImportError::UnsafeStorageLayout);
-    }
-    #[cfg(unix)]
-    File::open(path)
-        .and_then(|directory| directory.sync_all())
-        .map_err(ArtifactImportError::StorageIo)?;
-    Ok(())
-}
-
-#[cfg(unix)]
-fn open_readonly_no_follow(path: &Path) -> io::Result<File> {
-    use rustix::fs::{Mode, OFlags};
-
-    rustix::fs::open(
-        path,
-        OFlags::RDONLY | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-        Mode::empty(),
-    )
-    .map(File::from)
-    .map_err(io::Error::from)
-}
-
-#[cfg(windows)]
-fn open_readonly_no_follow(path: &Path) -> io::Result<File> {
-    use std::os::windows::fs::OpenOptionsExt as _;
-
-    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
-    fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
-        .open(path)
-}
-
-#[cfg(unix)]
-fn open_lock_file(path: &Path) -> io::Result<File> {
-    use rustix::fs::{Mode, OFlags};
-
-    rustix::fs::open(
-        path,
-        OFlags::RDWR | OFlags::CREATE | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-        Mode::RUSR | Mode::WUSR,
-    )
-    .map(File::from)
-    .map_err(io::Error::from)
-}
-
-#[cfg(windows)]
-fn open_lock_file(path: &Path) -> io::Result<File> {
-    use std::os::windows::fs::OpenOptionsExt as _;
-
-    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
-    fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
-        .open(path)
-}
-
-fn is_indirect(metadata: &Metadata) -> bool {
-    if metadata.file_type().is_symlink() {
-        return true;
-    }
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt as _;
-
-        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
-        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
-    }
-    #[cfg(unix)]
-    {
-        false
-    }
 }
 
 #[cfg(test)]
