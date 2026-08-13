@@ -55,12 +55,15 @@ defect. Phase exit language about critical defects refers to this policy.
 
 ### Language and toolchain
 
-- Rust 1.97.1 is pinned for the initial implementation.
+- Rust 1.97.1 is the exact repository and release pin at this review. Toolchain
+  updates target the newest patched stable release through a focused reviewed change.
 - Edition 2024 and Cargo resolver 3 are used.
 - The lockfile is committed.
 - Warnings are denied in continuous integration.
 - Stable Rust is the product toolchain. Nightly is limited to isolated fuzzing or
   diagnostics jobs.
+- Moving stable and beta jobs may warn about future incompatibility but never publish
+  artifacts or rewrite release inputs.
 
 ### Error handling
 
@@ -97,11 +100,43 @@ noncomment lines per production Rust file. Clippy's `too_many_lines` lint enforc
 default maximum of 100 lines per function. An exception requires a checked-in
 rationale with an owner and a plan to prevent further growth.
 
-When the desktop frontend is introduced, the repository policy script enforces 350
-nonblank, noncomment lines per production TypeScript file and 200 per production TSX
-component. Tests, fixtures, and generated contracts are excluded and reviewed through
-their own gates. Exceptions use the same checked-in rationale process. Frontend
-feature logic is split by workflow and state ownership, not by arbitrary line ranges.
+When native desktop presentation code is introduced, it follows the same Rust module
+limits. Declarative native UI files receive a reviewed size and complexity policy in
+the toolkit decision. Tests, fixtures, and generated contracts are excluded and
+reviewed through their own gates. Presentation logic is split by workflow and state
+ownership, not by arbitrary line ranges.
+
+## Dependency discipline
+
+- Add a dependency only when it owns a necessary capability and is materially safer,
+  more portable, or more maintainable than a small local implementation.
+- Prefer current stable or generally available releases. Preview dependencies are
+  isolated experiments or explicit version-pinned compatibility requirements.
+- Pin exact shipping dependencies through the lockfile and exact external tool,
+  protocol, schema, runtime, and model manifests.
+- Review transitive size, unsafe code, native libraries, build scripts, procedural
+  macros, licenses, advisories, source, maintainer health, platform cost, and removal
+  path.
+- Remove unused, duplicate, superseded, test-only, and diagnostic-only dependencies
+  from shipping feature graphs.
+- Validate the exact shipping feature set separately from `--all-features`.
+  All-features is an exhaustive conditional-code check and cannot define a release
+  binary when it enables test support or experimental capabilities.
+- Update dependencies in focused changes with compatibility and qualification diffs.
+  Floating latest tags and automatic major upgrades are prohibited release inputs.
+
+## Branch and release hygiene
+
+- Main remains releasable and its required continuous integration stays green.
+- Feature and repair branches are focused, short-lived, and deleted after merge.
+- Long-running integration, platform, dependency, and release branches are avoided.
+- Conflict resolution is followed by every affected gate, never by assuming the
+  pre-conflict result still applies.
+- Each completed milestone is tagged and released from main with exact packages,
+  checksums, support matrix, migrations, changelog, known limitations, and CI
+  evidence before the next milestone expands the product.
+- Incomplete work remains absent, disabled, or explicitly experimental in release
+  artifacts.
 
 Review guidance is stricter than the hard limit:
 
@@ -130,6 +165,11 @@ cargo doc --locked --workspace --all-features --no-deps
 cargo deny check
 cargo audit
 ```
+
+The all-features commands above validate conditional code. Continuous integration
+also builds, tests, documents, audits, and exercises each exact shipping feature
+manifest and the default and no-default configurations that the workspace claims to
+support. Release artifacts are built only from the shipping manifest.
 
 The operating-system matrix uses the pinned nextest runner when its verified release
 artifact is available. If that external download fails, the job records the installer
@@ -166,31 +206,23 @@ fixtures exist.
 Once production Rust code exists, continuous integration is never considered green
 without the coverage job.
 
-Once desktop code exists, continuous integration also runs frontend formatting,
-strict type checking, linting, unit and component tests, accessibility checks,
-coverage, production build, dependency audit, and checked-in generated-contract
-verification. Signed-binary desktop tests remain target-platform release jobs where
-credentials or native packaging prevent ordinary pull-request execution.
-
-Frontend coverage uses pinned Vitest and `@vitest/coverage-v8`. A general checked-in
-configuration enforces the 80 percent line and branch floor. A second reviewed config
-selects authorization presentation, IPC adapters, state reducers, transcript
-confirmation, evidence admission, and cancellation modules and enforces 90 percent
-branch coverage. Generated DTOs, third-party code, fixtures, and platform bootstrap
-are excluded only through a reviewed list. Both reports are retained as CI artifacts.
+Once native desktop code exists, continuous integration adds native UI formatting,
+component and presentation-state tests, accessibility checks, visual fixtures,
+production builds, dependency audits, and checked-in generated-contract verification.
+Signed-binary desktop tests remain target-platform release jobs where credentials or
+native packaging prevent ordinary pull-request execution.
 
 ## Coverage policy
 
 - Repository line coverage floor: 80 percent
-- Frontend line and branch coverage floor once introduced: 80 percent
+- Native desktop Rust remains inside the repository 80 percent line floor
 - Deterministic validation and edit application target: at least 90 percent
 - Adapter parse, apply, and verify logic target: at least 90 percent
-- Rust authorization, IPC adapters, transcript confirmation, evidence admission,
-  audio lifecycle, and cancellation target: at least 90 percent line coverage plus
-  region trend review, explicit decision-table fixtures, and mutation testing
-- Frontend authorization presentation, IPC adapters, state reducers, transcript
-  confirmation, evidence admission, and cancellation target: at least 90 percent
-  branch coverage
+- Rust authorization, desktop operation adapters, evidence admission, document
+  commit, update, and cancellation target: at least 90 percent line coverage plus
+  trend review, explicit decision-table fixtures, and mutation testing
+- Native presentation reducers and critical workflow state target at least 90 percent
+  branch coverage when the selected toolkit provides a qualified report path
 - Security-sensitive parser and authorization decisions: every branch represented by
   a test or a documented unreachable invariant
 - Generated bindings, third-party fixtures, and platform bootstrap code may be
@@ -282,8 +314,8 @@ Required test cases include:
 - Interrupted atomic replacement
 - Missing model runtime and unreachable local service
 - Cancellation during database, HTTP, model, and child-process work
-- Tauri behavior on WebView2, WKWebView, and WebKitGTK
-- Microphone permission, denial, device loss, and audio cancellation
+- Native UI behavior across declared window, renderer, graphics, accessibility,
+  input-method, scale, theme, and package combinations
 
 Release packaging is built and smoke-tested on the operating system it targets.
 
@@ -312,7 +344,7 @@ Version 1.0 targets WCAG 2.2 AA and passes:
 - Accessible diff alternatives
 - Permission, offline, and network-state clarity
 - Loading, cancellation, empty, unsupported, abstained, and error states
-- Cross-webview functional and visual checks
+- Cross-platform native functional and visual checks
 
 The interface uses a deliberate token system for color, type, spacing, motion, and
 focus. It avoids generic component accumulation and keeps domain terminology
@@ -320,16 +352,15 @@ consistent with the CLI and API.
 
 Desktop release evidence also requires:
 
-- An explicit Tauri command manifest and capability allowlist
-- Negative authorization tests for every privileged command
-- Strict content security policy and no remote frontend assets
+- A native Rust toolkit with no embedded browser or hosted frontend dependency
+- An explicit presentation-to-application command manifest and authority allowlist
+- Negative authorization tests for every privileged operation
+- No remote presentation assets or ordinary-operation local web server
 - Operation-ID and event-sequence tests for stale or late updates
-- Browser-mode tests with mocked Tauri commands
-- Instrumented WebdriverIO tests in a dedicated non-release feature, with required
-  Tauri test plugins absent from the release dependency graph, capabilities, bundle,
-  listeners, and permissions
-- Black-box tests of the unmodified signed binary on WebView2, WKWebView, and
-  WebKitGTK; macOS uses an external XCTest, accessibility, or equivalent harness
+- Component and presentation-state tests with deterministic application fakes
+- Instrumented native tests in a dedicated non-release feature, with test hooks
+  absent from the shipping feature graph and binary
+- Black-box tests of the unmodified signed binary through a platform-native harness
   selected and qualified by the desktop decision record
 - Controlled per-platform visual baselines with human review
 - Manual Narrator, VoiceOver, and Orca workflows

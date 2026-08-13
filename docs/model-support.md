@@ -10,11 +10,46 @@ A familiar model name, mutable tag, benchmark rank, or successful load is not a
 qualification. If no installed combination meets the requested contract, Retonr
 keeps the original and explains the smallest viable next step.
 
+## Draft source and reconstruction runtime
+
+The source of a draft and the model used to reconstruct it are independent. A user
+may bring text produced by a closed assistant, an open model, an intern, a template,
+or their own rough notes. Retonr does not need to contact that source again and does
+not inherit its provider's runtime policy as product authority.
+
+The default recommendation catalog favors qualified open-weight artifacts running
+under user-controlled local runtimes. A closed remote service may remain useful to a
+user as an upstream idea or draft source, but it is never required for core Retonr
+operation and is never a silent reconstruction fallback.
+
+Recommendations are made by capability rather than one universal leaderboard:
+
+- Conservative prose reconstruction
+- Personal-style adherence
+- Editorial-lint reduction after fidelity acceptance
+- Long-document planning and bounded unit rewriting
+- Exact supported languages and mixed-language sets
+- Structured-output reliability
+- Semantic evaluation, kept independent where correlated errors require it
+- Code-adjacent and technical prose behavior
+- Context, memory, latency, and execution class on the user's device
+
+Within a required capability envelope, selection is lexicographic: critical fidelity
+first, accepted-set semantic risk second, useful transformation coverage third,
+editorial quality and owner preference next, then resource cost. A larger model or
+stronger general benchmark score cannot compensate for a failed product gate.
+
 ## Runtime strategy
 
-The first adapter uses an existing local Ollama service because it provides a clear
-development and power-user path. Retonr does not install, start, stop, or reconfigure
-Ollama implicitly.
+The first two qualification targets are deliberately different:
+
+1. An existing user-managed Ollama service through its native API.
+2. A Retonr-managed, pinned `llama-server` sidecar using an exact local GGUF
+   artifact.
+
+Together they prove that the inference port supports both an attached runtime and a
+fully controlled process. Retonr does not install, start, stop, update, or reconfigure
+an external Ollama service implicitly.
 
 A pinned `llama-server` sidecar is the planned portable fallback. It provides a
 controlled CPU path and can graduate separately on Apple Metal, NVIDIA CUDA, AMD
@@ -39,6 +74,22 @@ The portable path is not a bundle-everything strategy. Each release contains onl
 the native runtime variants that passed its platform and accelerator matrix. Unsafe
 native code and backend-specific libraries remain outside the domain and validation
 crates.
+
+Generic OpenAI-compatible support is a transport dialect, not a runtime identity.
+A familiar request and response shape does not establish the server build, artifact
+bytes, tokenizer, template, effective parameters, execution class, logging policy,
+or output policy. An endpoint remains experimental until a named identity and
+acquisition driver can establish those facts.
+
+LM Studio, vLLM, and MLX LM are later candidates with different platform and trust
+boundaries. Their presence in discovery does not imply qualification. The exact
+matrix and primary-source analysis are recorded in
+[Provider-neutral, user-controlled model runtimes](research/2026-08-12-provider-neutral-runtimes.md).
+
+Use `open source` only when the applicable license supports that description. Use
+`open weight` for weights with source-available or field-of-use-restricted terms.
+Runtime, model, tokenizer, conversion tool, accelerator, and redistribution licenses
+remain separate decisions.
 
 ## Artifact production
 
@@ -171,6 +222,56 @@ may fill both only when correlated-error testing supports that decision.
   unavailable.
 - Preserve the original on out-of-memory, timeout, cancellation, device loss, model
   crash, malformed output, or failed validation.
+
+## Context and long documents
+
+A runtime's advertised context size is a capacity input, not a long-document support
+claim. Retonr records the artifact-declared context, observed effective runtime
+context, qualified context envelope, and conservative per-request source budget as
+separate values.
+
+The source budget reserves space for templates, instructions, output, protected
+facts, format state, document guidance, and a safety margin using the exact qualified
+tokenizer. Runtime truncation, context shifting, automatic summarization, or overflow
+recovery cannot silently change admitted source.
+
+Large inputs use the hierarchical pipeline in
+[Non-destructive document and folder transactions](document-transactions.md). The
+model receives exact target units, bounded read-only context, and cited global
+guidance. Beginning, middle, end, boundary, repeated-term, and cross-reference
+fixtures qualify usable context at multiple lengths. A full-document one-shot prompt
+may be a benchmark but is never an implicit fallback.
+
+## Output-policy and source-marking boundary
+
+- Retonr never enables a known statistical watermark, watermark generation setting,
+  output signature processor, or opaque postprocessor in a qualified path.
+- Qualification inventories configured samplers, logits processors, templates,
+  system prompts, adapters, renderers, parsers, and postprocessors.
+- A required undisclosed output watermark makes a runtime or model ineligible for
+  the generation role.
+- Review and controlled tests support a bounded claim about the configured stack.
+  They cannot prove that model weights contain no learnable statistical signature or
+  predict every future detector.
+- Detector and source-signal observations remain research diagnostics. They do not
+  rank live candidates, weaken fidelity, or establish human authorship.
+
+The accurate release statement is that a qualified Retonr stack does not
+intentionally add a known provider watermark in its reviewed runtime, configuration,
+or postprocessing path. The project does not use the universal label
+`watermark-free`.
+
+Artifact, runtime, carrier, detector, and derivative evidence follows the separate
+[provenance and marking contract](provenance.md). A negative local runtime review
+cannot inspect a remote provider's logs, secret keys, undisclosed serving stack, or
+future detector.
+
+The exact audit uses cumulative evidence levels from declared through independently
+reproduced. Only a fully identified controlled local path with outbound denial,
+resolved extension points, boundary captures, differential fixtures, and a
+reproducible bundle can receive `no_known_intentional_marker_enabled`. An opaque
+semantic or response component prevents that status. See
+[Local watermark assurance for user-controlled runtimes](research/2026-08-12-local-watermark-assurance.md).
 
 ## Multilingual qualification
 

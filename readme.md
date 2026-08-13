@@ -3,14 +3,40 @@
 Local-first, fidelity-gated re-expression of generated and rough drafts in your own
 writing style.
 
+Less remote exposure. Less editorial slop. More of your style. More control over
+the final expression.
+
 Retonr reconstructs eligible prose with a local model instead of carrying upstream
 wording forward unchanged. It uses authorized writing evidence and explicit rules to
 move a draft toward your voice, then rejects candidates that do not preserve the
 facts, protected content, structure, and formatting it can verify.
 
+It treats generated, delegated, and rough text as drafts. The product applies the
+same kind of bounded editorial refinement a person might apply to an intern's draft,
+authorized notes, or an existing report, but does so consistently across larger
+inputs. The user remains the final editor.
+
+Model providers are tools in that process, not permanent governors or presumptive
+authors of the finished expression. Retonr is built to help a person turn authorized
+source material into work they understand, direct, and are prepared to stand behind.
+It does not convert copied material into owned material or decide legal authorship.
+
 It can reduce supported source-wording signals and document artifacts that remain in
 a copied or generated draft. It cannot erase provider logs, prove human authorship,
 or guarantee the result of a watermark detector or classifier.
+
+## Opinionated by design
+
+Retonr is biased toward privacy, freedom of expression, creative agency, and user
+control. It rejects provider paternalism as a product default: mandatory remote
+inspection, hidden output shaping, content telemetry, provider branding, or the
+premise that using a model grants its operator continuing editorial authority over
+downstream expression.
+
+This is a product position, not a claim that source rights, contracts, disclosure
+duties, or applicable law disappear. Retonr states what it changes, preserves the
+source, keeps uncertain claims bounded, and leaves the final editorial decision with
+the user.
 
 ## How it works
 
@@ -38,6 +64,9 @@ model-free slice includes versioned Rust contracts, plain-text parsing and
 reassembly, protected values, deterministic candidate gates, semantic assessment,
 lexicographic selection, document-atomic abstention, redacted records, a
 candidate-check CLI, and positive and hard-negative evaluation fixtures.
+The evaluation tool also validates an initial synthetic editorial-quality corpus
+with named findings and clean controls. No editorial-lint rule has product authority
+yet.
 
 ![Retonr CLI help and a successful candidate check](docs/screenshots/cli-check-windows.png)
 
@@ -51,34 +80,40 @@ Run the current slice from the repository:
 ```console
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --format text
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
+cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
-model. The second runs the checked-in fidelity suite. The planned rewrite, profile,
-model-management, service, and desktop workflows are not yet implemented.
+model. The second runs the checked-in fidelity suite. The third validates the
+synthetic editorial-quality corpus and emits only a content-free summary. The
+planned lint engine, rewrite, profile, model-management, service, and desktop
+workflows are not yet implemented.
 
 ## Product surfaces
 
 The completed product is planned around one application service:
 
 - A scriptable CLI with files, multiline standard input, explicit plain-text
-  clipboard operations, structured output, diff, dry-run, and stable exit categories
-- A cross-platform Tauri desktop application with accessible rewrite, profile,
-  model, and local voice workflows
-- A versioned, authenticated, loopback-only JSON API
-- MCP over standard input and qualified Streamable HTTP for local agents
-- Thin Agent Skills packages over the same API or MCP contract
+  clipboard operations, non-destructive folder transactions, structured output,
+  diff, dry-run, recovery, change reports, and stable exit categories
+- MCP over standard input, thin Agent Skills, and a portable Agent Plugin package
+  for local agents
+- A versioned, authenticated, loopback-only JSON API and qualified MCP Streamable
+  HTTP for consumers that cannot launch a local subprocess
+- A cross-platform native Rust desktop application, built after the CLI and agent
+  contracts without an embedded browser or hosted web application
 - A narrow offline adapter for completed text-only assistant responses
 
 The compatibility adapter is not a transparent LLM proxy. It does not rewrite
 streams, tool calls, structured outputs, or multimodal events, and it never makes an
 upstream model request.
 
-Windows, macOS, and Linux are first-class release targets. Ollama is the first local
-runtime adapter; a pinned llama.cpp sidecar is planned as a portable CPU and
-accelerator fallback. Models are recommended and qualified by exact artifact,
-runtime, language, mode, format, and measured hardware class rather than by a
-mutable model name.
+Windows, macOS, and Linux are first-class release targets. The first qualification
+targets are a user-managed Ollama service and a pinned llama.cpp sidecar. LM Studio,
+vLLM, MLX LM, and compatible local endpoints remain named candidates until their
+runtime-specific identity and policy evidence passes. Models are recommended and
+qualified by exact artifact set, runtime, language, mode, format, output policy, and
+measured hardware class rather than by a mutable model name or API shape.
 
 ## Installation direction
 
@@ -104,16 +139,28 @@ bounded declared subset and abstains on ambiguous formatting or unsupported pack
 features. Clipboard input is plain text until a separately qualified rich-text
 adapter exists.
 
+Long documents use a hierarchical transaction: model-free inventory, bounded
+document guidance, small eligible-unit proposals, region consistency checks,
+format-owned reassembly, and complete verification. File and folder inputs write to
+a separate destination by default and produce a machine-readable change report.
+Spreadsheet prose-cell rewriting is planned after 1.0; formulas and workbook
+structure remain protected.
+
 ## Documentation
 
 | Area | Document |
 | --- | --- |
 | Product thesis and limits | [Product definition](docs/product.md) |
+| Permanent product boundaries | [Product and engineering invariants](docs/invariants.md) |
+| Editorial control and responsibility | [Editorial sovereignty](docs/governance/editorial-sovereignty.md) |
 | Implemented behavior | [Current state](docs/current-state.md) |
 | Components and data flow | [Architecture](docs/architecture.md) |
-| CLI, desktop, voice, and interaction | [Product and interface design](docs/design.md) |
+| CLI, native desktop, and interaction | [Product and interface design](docs/design.md) |
 | Multiline, clipboard, API, MCP, and compatibility | [Input and integration surfaces](docs/interfaces.md) |
 | Language and document preservation | [Language and format preservation](docs/language-and-format.md) |
+| Large files and folder transactions | [Document transactions](docs/document-transactions.md) |
+| Clarifying questions and evolving preferences | [Guided editorial brief](docs/editorial-brief.md) |
+| Evaluation corpora | [Editorial-quality and watermark research corpora](docs/evaluation-corpora.md) |
 | Runtime discovery and model evaluation | [Model and runtime support](docs/model-support.md) |
 | Installers, signatures, updates, and targets | [Installation and distribution](docs/distribution.md) |
 | Stack decisions | [Technology](docs/technology.md) |
@@ -128,11 +175,12 @@ and review evidence are in [docs](docs/README.md).
 
 ## Product boundary
 
-Retonr is not a generic humanizer, a detector-evasion service, or a substitute for
-human review in high-stakes work. It learns only from writing the user owns or is
-authorized to use. Core rewriting remains local and offline after explicit model
-installation. Unsupported content, failed validation, or disallowed uncertainty
-causes a typed abstention instead of a best-effort rewrite.
+Retonr is not a detector-score optimizer, authorship certificate, compliance oracle,
+or substitute for human review in high-stakes work. It learns only from writing the
+user owns or is authorized to use. Core rewriting remains local and offline after
+explicit model installation. It adds no first-party output watermark, mandatory
+provider attribution, or content telemetry. Unsupported content, failed validation,
+or disallowed uncertainty causes a typed abstention instead of a best-effort rewrite.
 
 ## License
 

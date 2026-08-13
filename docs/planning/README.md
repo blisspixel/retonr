@@ -18,10 +18,10 @@ the verification evidence.
 | [0.3 profile and CLI alpha](0.3-profile-cli.md) | Build an inspectable, reversible style profile and prove it beats simpler baselines |
 | [0.4 Markdown](0.4-markdown.md) | Add a deliberately bounded source-splice Markdown adapter |
 | [0.5 calibration and hardening](0.5-calibration.md) | Calibrate semantic risk, add strategies safely, and qualify partial atomicity |
-| [0.6 API, MCP, and skills](0.6-integrations.md) | Expose one application service through secure, conformant local interfaces |
+| [0.6 agent tool, MCP, and Agent Plugins](0.6-integrations.md) | Package the stable CLI and application service for portable local agent use |
 | [0.7 DOCX](0.7-docx.md) | Support a narrow WordprocessingML subset without broad preservation claims |
-| [0.8 desktop](0.8-desktop.md) | Deliver an accessible, secure cross-platform desktop beta |
-| [0.9 voice and release candidate](0.9-voice-release.md) | Add local voice acquisition, freeze contracts, and produce a qualified release candidate |
+| [0.8 native desktop](0.8-desktop.md) | Deliver an accessible installed Rust application without an embedded browser |
+| [0.9 release qualification](0.9-release-qualification.md) | Freeze contracts and qualify signed cross-platform release artifacts |
 
 The [dated research ledger](../research/2026-08-11-next-phases.md) records the
 external specifications and ecosystem assumptions behind these plans. It is
@@ -35,10 +35,10 @@ flowchart LR
     V02 --> V03["0.3 profile evidence and CLI workflows"]
     V03 --> V04["0.4 bounded Markdown"]
     V04 --> V05["0.5 calibration and strategy hardening"]
-    V05 --> V06["0.6 API, MCP, and skills"]
+    V05 --> V06["0.6 agent tool and portable plugins"]
     V06 --> V07["0.7 bounded DOCX"]
-    V07 --> V08["0.8 desktop beta"]
-    V08 --> V09["0.9 local voice and contract freeze"]
+    V07 --> V08["0.8 native desktop"]
+    V08 --> V09["0.9 contract freeze and release qualification"]
     V09 --> V10["1.0 release qualification"]
 ```
 
@@ -63,6 +63,27 @@ Every phase follows the same control loop:
 
 An implementation may be useful before its phase closes. It remains experimental
 and receives no stable compatibility or preservation claim until the gate passes.
+
+## Branch and milestone release discipline
+
+- Keep main releasable and require its complete continuous-integration policy to
+  pass before and after merge.
+- Use focused, short-lived branches. Split parallel research or implementation only
+  where ownership is independent, then integrate promptly behind tested boundaries.
+- Avoid long-running release, integration, dependency-update, or platform branches.
+- Rebase or update focused work from current main before final review and rerun all
+  affected gates after conflict resolution.
+- Tag each completed 0.x milestone from main only after its phase evidence, version,
+  changelog, migrations, support matrix, checksums, packages, and known limitations
+  are complete.
+- Start the next phase from that clean released baseline. Do not accumulate several
+  nominal milestones into one unreviewable release.
+- Keep unfinished capabilities compile-time absent, disabled, or explicitly
+  experimental in release artifacts.
+
+The latest stable or generally available tool is the preferred upgrade target, not
+an automatic input. Each upgrade is a focused reviewed change that runs the full
+affected compatibility, platform, supply-chain, and qualification matrix.
 
 ## Work-package definition
 
@@ -132,8 +153,8 @@ The following tracks run through every phase:
   higher critical-path targets, and no oversized catch-all modules.
 - Cross-platform behavior: Windows, macOS, and Linux are implementation targets,
   not a final porting task.
-- Accessibility: CLI output remains usable without decoration, and desktop and
-  voice workflows keep complete keyboard and non-voice paths.
+- Accessibility: CLI output remains usable without decoration, and native desktop
+  workflows keep complete keyboard and assistive-technology paths.
 - Supply chain: code, models, installers, and update artifacts have explicit source,
   license, checksum, and supported-version records.
 - Documentation: planned, experimental, qualified, and supported behavior remain
@@ -154,6 +175,12 @@ The technology baseline is reviewed again when any of these triggers occurs:
 
 Revalidation updates the dated research ledger and, when the recommendation changes,
 the affected decision record and execution plan.
+
+The permanent watch domains, evidence states, issue workflow, automation boundary,
+and release gate are defined in
+[External change watch and revalidation](../external-change-watch.md). Every
+milestone entry and release freeze records a new cutoff instead of inheriting an
+undated assumption.
 
 ## Stop conditions
 

@@ -21,6 +21,10 @@ optimized for detector scores, source classification, or watermark disruption.
 7. Are latency, memory, load time, disk use, and energy acceptable for local use?
 8. Which languages and mixed-language patterns meet the same published fidelity
    floor without being hidden inside an aggregate score?
+9. Do document-specific clarification questions improve main-point, audience, and
+   owner-preference outcomes enough to justify their interruption cost?
+10. Does a time-aware preference representation improve prediction over an explicit
+    append-only ledger without weakening explainability, revocation, or deletion?
 
 ## Baselines
 
@@ -358,6 +362,63 @@ research suite to understand the effects of rerendering. These diagnostics:
 
 A lower source-classification score is not proof of human authorship, privacy, or
 provenance removal.
+
+The watermark research suite freezes the complete detector procedure, including
+normalization, tokenizer, repeated-event policy, eligibility, windows, keys,
+payloads, aggregation, thresholds, abstention, and runtime. It calibrates that
+complete procedure, controls every searched dimension, reports exact bounds for rare
+false positives, and keeps provider production keys outside the study. The full
+preregistration and noninterference contract is in
+[Text watermark evaluation protocol](research/2026-08-12-watermark-evaluation-protocol.md).
+
+## Editorial-lint evaluation
+
+Editorial lint is evaluated as an explainable quality system, separately from
+source classification and watermark research. Its findings may participate in the
+live quality loop only after all hard fidelity gates pass.
+
+The versioned corpus and the known-watermark research lane are defined in
+[Editorial-quality and watermark research corpora](evaluation-corpora.md). The
+checked-in development corpus is synthetic. Licensed public, participant, and locked
+data remain gated by their own manifests and governance decisions.
+
+For each rule, report:
+
+- Exact rule and policy version, language, channel, format, and profile scope
+- Positive fixtures, protected-context exclusions, and adversarial near-matches
+- Precision and recall where a complete labeled set is meaningful
+- False positives in human-written, quoted, technical, and accessibility content
+- User acceptance, rejection, and manual revision of proposed fixes
+- Source findings resolved, retained, introduced, suppressed, and uncertain
+- Fidelity, style preference, document-level repetition, latency, and abstention
+
+Compare a transparent user-editable rule baseline with any learned rule. A learned
+rule ships only if it improves a predeclared quality outcome without a material
+fidelity or false-positive regression. The report names reduced findings and never
+converts them into a probability of human or machine authorship.
+
+## Editorial brief and temporal preference evaluation
+
+Compare no clarification, fixed generic questions, adaptive document-derived
+questions, and a full user-authored brief. The adaptive system must improve over the
+strongest simpler condition without a material fidelity, usability, privacy, or
+resource regression.
+
+Report:
+
+- Main-point, audience, stance, requested-action, and protected-commitment adherence
+- Blind owner preference and edit distance to the owner's final revision
+- Questions asked, answered, skipped, revised, or marked irrelevant
+- Answer time, interruption burden, abandonment, and marginal value per question
+- Incorrect assumptions and incorrect promotion of situational answers to the profile
+- Deterministic active-profile reconstruction at historical timestamps and contexts
+- Supersession, conflict, revocation, deletion, and transitive invalidation behavior
+
+The baseline is an explicit append-only preference ledger with time, context,
+provenance, confidence, consent, supersession, conflict, and derivation edges. A graph
+database, temporal embedding, or learned Temporal Knowledge Graph is justified only
+by predeclared incremental value over that baseline. Recommendation or link-prediction
+results from unrelated datasets are not product evidence.
 
 ## Release report
 

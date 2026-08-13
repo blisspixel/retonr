@@ -583,12 +583,16 @@ contract.
 
 ## Services and integrations
 
-The first-party local API is the automation boundary. During `0.x`, `/v0` is explicitly
-preview and can change with release notes and migrations. The 0.9 compatibility gate
-promotes the reviewed contract to `/v1` for 1.0. It has versioned wire schemas,
-capability discovery, successful domain outcomes, RFC 9457 transport errors,
-cancellation, conditional mutation semantics, explicit authority, and loopback-only
-binding for 1.0.
+The application service is the automation boundary. The stable CLI machine contract
+is its first external adapter, followed by MCP standard input, Agent Skills, and a
+portable Agent Plugin package. Local HTTP follows only for consumers that cannot
+launch a subprocess.
+
+During `0.x`, the local API `/v0` surface is explicitly preview and can change with
+release notes and migrations. The 0.9 compatibility gate promotes the reviewed
+contract to `/v1` for 1.0. It has versioned wire schemas, capability discovery,
+successful domain outcomes, RFC 9457 transport errors, cancellation, conditional
+mutation semantics, explicit authority, and loopback-only binding for 1.0.
 
 Synchronous requests return no content until complete validation and reassembly.
 Long work uses principal-scoped operation resources with authenticated polling and
@@ -613,12 +617,19 @@ MCP OAuth authorization. Its server-side scopes, challenge, rotation, and revoca
 behavior are explicit, and standard input remains preferred when a named client
 cannot inject the token.
 
-Agent skill packages use the stable `SKILL.md` format and contain instructions,
-schemas, examples, and explanatory authority requirements only. They call MCP or the
-current first-party API and never contain a second rewrite implementation. Server
+Agent Skills use the filesystem `SKILL.md` format and contain instructions, schemas,
+examples, and explanatory authority requirements only. A routine Agent Plugins
+1.0.0 working-draft package combines one routine skill with root `plugin.json` and
+`mcp.json` metadata for the standard-input server. It never contains a second rewrite
+implementation, credentials, profiles, models, or user data.
+
+Agent Plugins defines portable packaging, not distribution, signatures, updates,
+permissions, or sandboxing. The release layer owns those concerns and validates
+package-root containment across symlinks, junctions, reparse points, commands,
+working directories, references, and assets without executing package code. Server
 authorization remains authoritative, and experimental `allowed-tools` metadata is
-not trusted for security. Skills over MCP remains an isolated experiment until its
-working-group proposal is stable and qualified.
+not trusted for security. Skills over MCP remains isolated until its proposal is
+stable and qualified.
 
 The 1.0 compatibility adapter is an offline local post-processor. A caller submits a
 completed, supported response payload and receives the same supported shape after
@@ -630,18 +641,18 @@ final verification failure is an abstention that returns exact original bytes. A
 true outbound reverse proxy or remote generation backend is a separate post-1.0
 feature with its own network and credential design.
 
-Desktop presentation has no independent product authority. Static Tauri capabilities
-expose only the minimum command surface for a labeled window. Sensitive commands also
-require an opaque, expiring application grant bound to the exact window session,
-resource, operation, and action. Route state is never an authorization input.
+Desktop presentation has no independent product authority. It is an installed native
+Rust application with no embedded browser, HTML or JavaScript frontend, hosted
+application, or ordinary-operation local HTTP dependency. The toolkit is selected
+only after comparable cross-platform accessibility, text, visual, packaging,
+licensing, and maintenance spikes.
 
-Long-running desktop work uses a two-step delivery contract. Rust creates a suspended
-window-owned operation and returns its initial snapshot. The frontend subscribes with
-a per-invocation Tauri channel; Rust validates ownership, acknowledges the installed
-channel, and only then starts work. Targeted events have contiguous monotonic sequence
-numbers. A gap requires an authoritative snapshot query. Window close or reload
-revokes ownership and cancels desktop-owned work, while durable staging is resumed
-only through a new explicit command. Global broadcasts never carry privileged state.
+Long-running desktop work uses typed commands and bounded sequenced state. Each
+operation has an opaque ID, owner, deadline, resource budget, and contiguous
+monotonic sequence. A gap requires an authoritative snapshot query. Window close
+requests cancellation, while durable staging is resumed only through a new explicit
+command. The presentation never receives model tokens, prompts, profile evidence, or
+arbitrary executable markup.
 
 ## Cross-platform constraints
 
@@ -665,9 +676,9 @@ only through a new explicit command. Global broadcasts never carry privileged st
 - Model manifest, artifact drift, and qualification invalidation policy
 - Initial supported Markdown extension set
 - DOCX validation and office-compatibility tooling
-- Desktop frontend framework and accessible component system
-- Tauri command, capability, updater, and operation-state contracts
-- Local speech runtime and distributable model licenses
+- Native Rust desktop toolkit, renderer, accessible component system, packaging,
+  updater, and operation-state contracts
+- Post-1.0 local speech runtime and distributable model licenses
 - Exact API compatibility subset
 - Local API authentication, MCP custom bearer profile, and compatibility-adapter
   status side channel
@@ -683,6 +694,7 @@ on it.
 - [WordprocessingML document structure](https://learn.microsoft.com/en-us/office/open-xml/word/structure-of-a-wordprocessingml-document)
 - [MCP 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28)
 - [Agent Skills specification](https://agentskills.io/specification)
+- [Agent Plugins specification](https://agent-plugins.org/specification)
 - [Style transfer evaluation](https://aclanthology.org/N19-1049/)
 - [Negation and sentence representations](https://aclanthology.org/2022.blackboxnlp-1.20/)
 - [Factual consistency methods](https://aclanthology.org/2022.naacl-main.287/)

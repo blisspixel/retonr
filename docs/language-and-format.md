@@ -67,6 +67,7 @@ profile owners must be fluent in the language they assess.
 | TXT file | Preserve source bytes outside accepted text edits and return the complete original on document-atomic abstention |
 | Markdown | Rewrite only eligible source ranges, preserve all other bytes, reparse output, and compare a versioned structural fingerprint |
 | DOCX | Patch only the declared WordprocessingML subset, verify package topology and untouched parts, and abstain on ambiguous formatting or unsupported features |
+| XLSX | Post-1.0 only: rewrite declared prose cells while protecting formulas, types, references, names, validation, styles, charts, macros, and workbook structure |
 | API or MCP | Require an explicit media type and encoding; return capabilities, unsupported features, and preservation evidence in the outcome |
 
 No path flattens a structured document into plain text and then claims formatting was
@@ -127,3 +128,36 @@ the original bytes. Unit and region atomicity are allowed only after independenc
 completed-document checks pass.
 
 The full interface behavior is defined in [Input and integration surfaces](interfaces.md).
+
+## Long documents and folders
+
+Format support composes with the
+[non-destructive document transaction](document-transactions.md). Each adapter owns
+stable units and protected state while the application owns source-linked document
+guidance, bounded context, unit and region validation, staging, atomicity, recovery,
+and reporting.
+
+A directory is a manifest of independent documents, not a new format. Discovery
+freezes canonical paths, source digests, capabilities, bounds, destinations,
+collisions, and link policy before model work. One file cannot expand authority to an
+adjacent path.
+
+Page counts are reported only from the same named, versioned, qualified renderer,
+fonts, locale, operating system, and page settings. Retonr can enforce a configured
+drift bound in that environment but cannot promise universal pagination across
+applications and machines.
+
+## Post-1.0 SpreadsheetML
+
+Spreadsheet rewriting begins with an opt-in declared subset of prose cells. It never
+edits formula text as prose. Formula elements, cached-value policy, cell types,
+references, defined names, tables, validation, conditional formatting, charts,
+macros, external links, styles, calculation settings, sheets, and workbook structure
+remain protected.
+
+Shared strings require special handling because several cells can reference one
+string entry. A selected cell rewrite must create or reuse an isolated replacement
+without changing unselected cells. Qualification requires formula and structure
+fingerprints, shared-string reference checks, package verification, recalculation
+policy, and reopen fixtures. A generic XML substitution cannot make an XLSX support
+claim.

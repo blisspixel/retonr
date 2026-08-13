@@ -5,12 +5,19 @@ These documents define the product direction and constrain implementation.
 | Document | Purpose |
 | --- | --- |
 | [Product](product.md) | Users, jobs, positioning, hypotheses, scope, and success criteria |
+| [Product and engineering invariants](invariants.md) | Permanent product, execution, interface, and quality boundaries |
+| [Editorial sovereignty](governance/editorial-sovereignty.md) | Viewpoint neutrality, user responsibility, and project legal boundary |
+| [Provenance and derivative handling](provenance.md) | Inspection, preservation, sanitation, signatures, markings, and reports |
 | [Current state](current-state.md) | Implemented behavior, verification evidence, limitations, and next operations |
 | [Naming](naming.md) | Public identity, namespace evidence, and remaining release gates |
 | [Architecture](architecture.md) | Component boundaries, data flow, contracts, and failure semantics |
-| [Design](design.md) | CLI, desktop, voice, API, MCP, and screenshot experience |
+| [Design](design.md) | CLI, native desktop, editorial brief, API, MCP, and screenshot experience |
 | [Input and integration surfaces](interfaces.md) | Multiline input, clipboard, local API, MCP, skills, and compatibility boundaries |
 | [Language and format preservation](language-and-format.md) | Multilingual qualification and preservation contracts by input surface |
+| [Document transactions](document-transactions.md) | Non-destructive files, folders, large-document passes, staging, and change reports |
+| [Guided editorial brief](editorial-brief.md) | Document-specific clarification and time-aware preference evolution |
+| [Editorial lint](editorial-lint.md) | Explainable anti-slop findings, quality-loop boundaries, and reporting |
+| [Evaluation corpora](evaluation-corpora.md) | Separate synthetic editorial-quality fixtures from known-watermark research fixtures |
 | [Model and runtime support](model-support.md) | Hardware discovery, runtime selection, model evaluation, and fallback rules |
 | [Installation and distribution](distribution.md) | Bootstrap installers, artifact verification, release targets, updates, and removal |
 | [Technology](technology.md) | Current recommended stack and deferred decisions |
@@ -19,7 +26,20 @@ These documents define the product direction and constrain implementation.
 | [Quality](quality.md) | Rust, testing, coverage, accessibility, CI, and refinement standards |
 | [Roadmap](roadmap.md) | Dependency-ordered version plan through 1.0 |
 | [Phase execution plans](planning/README.md) | Detailed work packages, decisions, tests, and handoff gates for 0.2 through 1.0 |
-| [Next-phase research ledger](research/2026-08-11-next-phases.md) | Dated primary-source assumptions behind model, integration, desktop, and voice planning |
+| [Superseded next-phase research ledger](research/2026-08-11-next-phases.md) | Historical August 11 assumptions retained for decision provenance |
+| [Research integrity and synthesis contract](research/README.md) | Evidence labels, reproducibility rules, and paper-style publication threshold |
+| [External change watch](external-change-watch.md) | Recurring provider, research, standards, runtime, protocol, and toolchain revalidation |
+| [Watermark and editorial re-expression report](research/2026-08-12-editorial-reexpression-report.md) | Paper-style synthesis of provenance, quality, assurance, evaluation, limitations, and research agenda |
+| [Text watermarking literature map](research/2026-08-12-watermark-literature-map.md) | Systematic primary-source map, evidence labels, benchmark incompatibilities, open gaps, and citation audit |
+| [Rust engineering research](research/2026-08-12-rust-engineering.md) | Current Rust, testing, unsafe, compatibility, and release evidence standards |
+| [Agent integration research](research/2026-08-12-agent-integrations.md) | Agent Plugins, Agent Skills, MCP, conformance, and packaging gates |
+| [Open Knowledge Format research](research/2026-08-12-open-knowledge-format.md) | OKF v0.2 knowledge bundles, trust, portability, attestation, and Retonr boundaries |
+| [Provider-neutral runtime research](research/2026-08-12-provider-neutral-runtimes.md) | Local runtime matrix, artifact identity, output policy, and long-input qualification |
+| [Local watermark assurance](research/2026-08-12-local-watermark-assurance.md) | Intentional insertion points, exact-stack evidence levels, bounded claims, and requalification |
+| [Text watermark science](research/2026-08-12-text-watermark-science.md) | Mechanisms, detectors, attacks, trade-offs, limits, and product implications |
+| [Watermark evaluation protocol](research/2026-08-12-watermark-evaluation-protocol.md) | Preregistered calibration, power, attacks, quality, isolation, and reproducibility |
+| [Provider marking practices](research/2026-08-12-provider-marking-practices.md) | Dated Anthropic, Google, OpenAI, Microsoft, Meta, Mistral, Cohere, and AWS evidence |
+| [Provenance policy research](research/2026-08-12-provenance-policy.md) | C2PA, document carriers, current policy, preservation, and derivative handling |
 | [Decision records](decisions/README.md) | Durable technical and product decisions |
 | [Evaluation data policy](governance/data-policy.md) | Proposed authorization, retention, revocation, and deletion rules |
 | [User research protocol](governance/user-research.md) | Proposed research, consent, annotation, and adjudication workflow |

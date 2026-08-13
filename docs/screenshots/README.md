@@ -25,9 +25,10 @@ not present planned functionality as implemented.
 - Profile evidence and rule editor
 - Model manager
 
-### Voice release candidate
+### Document transactions
 
-- Local voice interview with editable transcript
+- File or folder transaction report with exact change and preservation evidence
+- Guided editorial brief with one document-specific clarification
 
 ## Capture requirements
 
@@ -55,7 +56,8 @@ cli-abstain-<platform>.png
 cli-trace-<platform>.png
 desktop-workbench-<platform>.png
 desktop-profile-<platform>.png
-desktop-voice-interview-<platform>.png
+desktop-transaction-report-<platform>.png
+desktop-editorial-brief-<platform>.png
 ```
 
 Use `windows`, `macos`, or `linux` for the platform segment. A platform-neutral image

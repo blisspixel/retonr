@@ -2,10 +2,11 @@
 
 ## One application contract
 
-CLI, desktop, local API, MCP, agent skills, and compatibility adapters call the same
-application service. They share document adapters, qualification checks, profile
-authority, rewrite outcomes, reason codes, resource limits, cancellation, and rewrite
-records. No interface owns an alternative rewrite implementation.
+CLI, desktop, local API, MCP, Agent Skills, Agent Plugins, and compatibility adapters
+call the same application service. They share document adapters, qualification
+checks, profile authority, rewrite outcomes, reason codes, resource limits,
+cancellation, and rewrite records. No interface owns an alternative rewrite
+implementation.
 
 ```mermaid
 flowchart LR
@@ -14,6 +15,8 @@ flowchart LR
     API["Local JSON API"] --> Service
     MCP["MCP server"] --> Service
     Skills["Agent skills"] --> MCP
+    Plugin["Agent Plugin package"] --> Skills
+    Plugin --> MCP
     Compat["Completed-response adapter"] --> Service
     Service --> Engine["Rewrite and validation engine"]
     Service --> Profiles["Profile and artifact services"]
@@ -64,10 +67,42 @@ Text output and diagnostics remain separate. Structured JSON is versioned and st
 for its declared range. Raw untrusted text is not rendered to a terminal unless the
 safe rendering policy or documented double opt-in applies.
 
+Directory input is a manifest transaction, not an implicit recursive mutation. A
+dry run records canonical source identities, relative paths, formats, capabilities,
+bounds, links, ignores, destination mapping, collisions, and atomicity before model
+work. Output uses a separate root by default and cannot recursively include itself.
+
+Long documents use source-linked high-level guidance and bounded unit requests.
+Generated summaries never replace original source as the fidelity reference.
+Document and folder reports are computed from source and output artifacts under
+[the document transaction contract](document-transactions.md).
+
+## Agent and MCP use
+
+`retonr mcp serve --transport stdio` is the first agent path. The routine surface
+provides only bounded rewrite and check tools. It accepts no arbitrary paths,
+clipboard authority, profile mutation, model lifecycle, or administration. Complete
+DOCX bytes join only after the byte-transfer and format contracts qualify.
+
+One thin filesystem Agent Skill and the standard-input MCP entry ship in a pinned
+Agent Plugins 1.0.0 working-draft package. The package contains root `plugin.json`,
+`skills/`, and `mcp.json`; it contains no credentials, user data, model data,
+absolute user paths, scripts, or duplicate product logic.
+
+Format conformance does not establish installation trust, signatures, updates,
+sandboxing, permissions, executable compatibility, or named-client behavior. Those
+are separately versioned and tested. Routine installation never grants profile or
+administration authority.
+
+MCP returns one checked structured result with schema version, domain status, stable
+reason, complete output where applicable, digests, and rewrite-record reference.
+Candidate tokens and unvalidated fragments are never streamed.
+
 ## Local JSON API
 
-`retonr serve` starts an authenticated loopback-only service. Its first-party
-resources are the preferred automation boundary:
+`retonr serve` starts an authenticated loopback-only service after the CLI and MCP
+standard-input contracts are proven. Its resources serve consumers that cannot
+launch a local subprocess:
 
 ```text
 GET  /v0/capabilities
@@ -103,24 +138,13 @@ principal-scoped operation ID, authenticated status polling, and explicit
 cancellation. Optional progress contains bounded phase, sequence, and completion
 metadata only. Candidate tokens and unvalidated output fragments are never streamed.
 
-## MCP and agent use
+## Optional HTTP agent transport
 
-`retonr mcp serve --transport stdio` is the default agent path. Qualified Streamable
-HTTP uses the same loopback service and explicit local authority. The narrow tool set
-provides rewrite, check, profile reads, explicit profile updates, and scoped learning
-handles.
-
-Agent skills are thin `SKILL.md` packages over the stable MCP or API contract. They
-contain no validation, profile, or rewriting logic. Every mutating operation requires
-server-enforced authority and an explicit handle; a prompt or skill instruction is
-not an authorization control.
-
-Baseline MCP tools accept complete bounded plain text and supported Markdown. They
-return one checked structured result with schema version, domain status, stable
-reason, complete output where applicable, digests, and rewrite-record reference.
-They do not accept arbitrary paths, clipboard authority, raw audio, DOCX base64, or
-partial candidate streaming. Voice capture remains local to CLI and desktop; MCP may
-submit only a user-confirmed transcript to the typed interview contract.
+Qualified Streamable HTTP follows the explicit local service and standard-input MCP.
+It uses the same loopback authority and application contract. A separately installed
+privileged package may later expose profile operations through server-enforced scopes
+and explicit handles. Prompt text, skill instructions, package metadata, and client
+UI never authorize mutation.
 
 ## Compatibility adapter and gateway boundary
 
@@ -155,9 +179,9 @@ security, and compatibility decision.
 
 ## Conformance
 
-One fixture corpus runs through CLI, API, MCP, skills, desktop commands, and the
-compatibility adapter. For the same request and authorities, every surface must agree
-on outcome, reason codes, output bytes, protected values, profile version, model and
-validator identities, and redacted rewrite record.
+One fixture corpus runs through CLI, API, MCP, skills, Agent Plugin launch, desktop
+commands, and the compatibility adapter. For the same request and authorities, every
+surface must agree on outcome, reason codes, output bytes, protected values, profile
+version, model and validator identities, and redacted rewrite record.
 
 Interface-specific presentation may differ. Product decisions may not.

@@ -9,11 +9,18 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 mod baseline;
+mod editorial_corpus;
 
 pub use baseline::{
     BASELINE_SCHEMA_VERSION, BaselineCaseError, BaselineCaseResult, BaselineDefinition,
     BaselineError, BaselineInferencePolicy, BaselineKind, BaselineReport, BaselineStatusCounts,
     run_baseline,
+};
+pub use editorial_corpus::{
+    EDITORIAL_CORPUS_SCHEMA_VERSION, EditorialCase, EditorialCaseKind, EditorialCorpus,
+    EditorialCorpusError, EditorialCorpusOrigin, EditorialCorpusSummary,
+    EditorialFindingExpectation, MAX_EDITORIAL_CASES, MAX_EDITORIAL_CORPUS_BYTES,
+    parse_editorial_corpus,
 };
 
 /// Current evaluation-suite contract version.

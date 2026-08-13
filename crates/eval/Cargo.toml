@@ -1,6 +1,6 @@
 [package]
 name = "rewrite-eval"
-description = "Deterministic fidelity evaluation harness"
+description = "Deterministic fidelity and editorial evaluation harness"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

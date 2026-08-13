@@ -142,7 +142,8 @@ project name are `dist`. Generated workflows are reviewed as source, pinned, and
 tested in clean virtual machines. Version 0.32.0 is a research baseline, not an
 automatic selection. Its stock installers and experimental updater do not satisfy
 this contract without audited wrappers and negative verification tests. Desktop
-packaging remains owned by the Tauri pipeline.
+packaging remains owned by the native toolkit and platform decision selected in the
+0.8 gate.
 
 Release evidence includes:
 
@@ -182,4 +183,5 @@ choice. The complete selection contract is in [Model and runtime support](model-
 - [Sigstore Cosign verification](https://docs.sigstore.dev/cosign/verifying/verify/)
 - [dist project and documentation](https://github.com/axodotdev/cargo-dist)
 - [GitHub immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
-- [Tauri distribution documentation](https://v2.tauri.app/distribute/)
+- [Windows application packaging](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/)
+- [Apple code signing](https://developer.apple.com/support/code-signing/)

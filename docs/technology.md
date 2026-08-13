@@ -2,435 +2,369 @@
 
 ## Decision policy
 
-This baseline reflects the ecosystem reviewed on August 11, 2026. Exact versions are
-pinned in lockfiles when implementation begins. A version in this document is a
-reviewed starting point, not permission for unattended upgrades.
+This baseline reflects primary-source review through August 12, 2026. Exact versions
+are pinned in lockfiles, manifests, and release inputs. A version in this document is
+a reviewed starting point, not permission for an unattended upgrade.
 
-Every dependency must have a clear owner, maintenance signal, compatible license,
-cross-platform evidence, and a smaller cost than implementing the required behavior
-directly. Model files receive the same license and provenance review as code.
+Shipping code prefers the newest stable or generally available release that passes
+the complete affected matrix. Alpha, beta, release-candidate, nightly, and
+working-draft inputs are allowed only for isolated research or an explicit pinned
+compatibility requirement. `Latest` never means a floating tag.
 
-## Recommended baseline
+Every dependency owns one necessary capability. Admission considers source,
+maintenance, license, advisories, unsafe code, native libraries, build scripts,
+procedural macros, transitive size, platform cost, offline behavior, and removal
+path. A popular package or compatible API shape is not enough.
+
+## Current baseline
 
 | Layer | Choice | Status |
 | --- | --- | --- |
-| Language | Rust 1.97.1, edition 2024, resolver 3 | Chosen for prototype |
+| Language | Rust 1.97.1, edition 2024, resolver 3 | Exact current pin |
 | Async runtime | Tokio 1.53.x | Chosen |
-| Serialization | Serde, serde_json, schemars | Chosen |
-| Errors | thiserror in libraries, anyhow at binary boundaries only | Chosen |
+| Serialization | Serde, serde_json, schemars | Chosen by contract need |
+| Errors | thiserror in libraries, anyhow at binary boundaries | Chosen |
 | CLI | clap 4.6.x | Chosen |
-| HTTP client | reqwest 0.13.x | Chosen |
-| Local API | axum 0.8.x, tower 0.5.x, tower-http 0.7.x | Planned after CLI |
-| Logging | tracing and tracing-subscriber | Chosen |
-| Persistence | rusqlite 0.40.x with bundled SQLite | Chosen for prototype |
-| Markdown | pulldown-cmark 0.13.x with source offsets | Chosen for spike |
+| HTTP client | reqwest 0.13.x | Chosen for bounded loopback adapters |
+| Logging | tracing and tracing-subscriber | Chosen with content redaction |
+| Persistence | rusqlite 0.40.x with bundled SQLite | Planned profile store |
+| Markdown | pulldown-cmark 0.13.x with source offsets | Planned bounded adapter |
 | DOCX | zip 8.x plus quick-xml 0.41.x | Planned bounded adapter |
-| Local generation | Ollama native API | Chosen first backend |
-| Portable generation backend | Pinned llama-server sidecar over HTTP | Planned and independently qualified |
-| MCP | Official `rmcp` 3.1.x | Planned |
-| Desktop shell | Tauri 2.11.x | Planned |
-| Desktop frontend | TypeScript, React, React Aria, Vite | Recommended pending UX spike |
-| Audio capture | CPAL 0.17.x behind a feature | Planned for voice milestone |
-| Speech inference | Backend trait with sherpa-onnx and whisper.cpp evaluated | Decision gate |
-| Tests | proptest, insta, assert_cmd, wiremock, tempfile | Chosen by need |
+| First attached runtime | Ollama native API | Implemented candidate |
+| Portable runtime | Pinned `llama-server` sidecar | Second qualification target |
+| Local API | axum 0.8.x, tower 0.5.x, tower-http 0.7.x | After stdio agents |
+| MCP | Official `rmcp` 3.1.2 candidate | Planned exact pin and revalidation |
+| Agent package | Agent Plugins 1.0.0 schemas | Working-draft compatibility target |
+| Knowledge exchange | Open Knowledge Format 0.2 | Experimental import and export target |
+| Desktop | Native Rust toolkit selected by cross-platform spike | Decision gate |
+| Tests | proptest, insta, assert_cmd, wiremock, tempfile | Added only by need |
 
-The desktop frontend recommendation favors a mature accessibility and testing
-ecosystem. Business rules remain in Rust. The webview layer owns presentation and
-calls narrow Tauri commands over versioned types. A Rust-only frontend can be
-reconsidered if it meets the same accessibility, testability, and cross-webview bar.
+Versions are rechecked at implementation and release gates. A newer stable patch is
+preferred only after it passes compatibility, supply-chain, platform, and product
+qualification. The exact Rust release and broader engineering baseline are recorded
+in [Rust engineering and release research](research/2026-08-12-rust-engineering.md).
 
 ## Rust workspace
 
 The workspace uses a committed `rust-toolchain.toml`, `Cargo.lock`, edition 2024,
-resolver 3, and a shared dependency table. Rust 1.97.1 is selected because it is the
-current patched stable release at planning time.
+resolver 3, shared dependency declarations, warnings denied, and strict workspace
+lints. Rust 1.97.1 is both the repository pin and current support floor until an
+explicit older minimum is adopted and tested separately.
 
-Library crates use typed errors and avoid process exit, logging policy, and global
-configuration. Application binaries translate stable application errors into CLI,
-HTTP, MCP, or desktop presentation.
+All-features validation and shipping builds are different jobs. A shipping feature
+manifest excludes test support, fuzz hooks, instrumented presentation hooks, and
+experimental adapters. Default, no-default, shipping, and all-feature configurations
+receive explicit coverage.
 
-Pure domain crates use `#![forbid(unsafe_code)]`. Native FFI for audio or inference is
-isolated in dedicated infrastructure crates with a documented safety boundary.
+Domain and application crates forbid unsafe code. A native or FFI dependency is
+preferred behind a process boundary. Any unavoidable first-party unsafe code requires
+an architecture decision and one quarantined adapter crate with a safe bounded
+facade, safety arguments, Miri where applicable, sanitizers on supported targets,
+fuzzing, and native platform tests.
+
+Release builds use stable Rust. Date-pinned nightly exists only for isolated Miri,
+fuzz, sanitizer, or diagnostic lanes. Moving stable and beta jobs are non-publishing
+canaries.
 
 ## Local inference
 
+### Adapter architecture
+
+The core uses small inference and embedding ports. Each runtime implementation has
+three separate responsibilities:
+
+1. A transport dialect sends and decodes bounded messages.
+2. An identity driver establishes the runtime, artifact set, template, tokenizer,
+   effective parameters, output policy, and execution class.
+3. An acquisition driver describes explicit download, offline import, runtime import,
+   or attachment to user-managed state.
+
+An OpenAI-compatible transport can be reused without treating every compatible
+server as the same runtime. Unknown identity, hidden defaults, silent fallback, or an
+undisclosed output postprocessor prevents qualification.
+
 ### Ollama
 
-Use the native Ollama API instead of assuming its compatibility API is complete.
-
-Discovery precedence:
-
-1. Explicit command option
-2. Product-specific environment variable
-3. Validated `OLLAMA_HOST` compatibility input
-4. `http://127.0.0.1:11434`
-
-The product-specific setting is authoritative. Ollama primarily documents
-`OLLAMA_HOST` as a server bind setting, so the client treats it as compatibility
-input rather than an unquestioned endpoint.
-
-The first adapter accepts loopback endpoints only, disables system proxies and
-redirects, probes `/api/version`, enumerates `/api/tags`, and inspects the selected
-artifact through `/api/show`. It checks the selected digest before and after
-generation and discards results if identity drifts. Its reqwest build has no TLS
-feature because this adapter rejects HTTPS and can contact only IP-literal loopback.
-Future HTTPS artifact acquisition uses a separate reviewed client. Version,
-capability, identity, and local-policy failures are actionable typed errors. Version
-1.0 does not automatically start, install, pull, or manage the Ollama process.
-
-Structured output constrains response syntax, not factuality. Every result is parsed,
-bounded, validated, and treated as untrusted input.
-
-Qualified generation uses `stream: false`, `think: false`, an explicit JSON schema,
-and explicit context, output-token, sampling, seed, and empty stop settings. Ollama has no
-documented exact native preflight token-count endpoint for the recorded tokenizer.
-Until the product owns a matching tokenizer, qualification establishes conservative
-per-artifact byte and context envelopes and long inputs abstain before generation.
-
-Model tags are mutable. Qualification and rewrite records identify the artifact
-digest, quantization, tokenizer, backend version, prompt-template digest, context
-limit, parameters, and seed. Seeded generation is not described as bitwise portable
-across hardware or backend versions.
-
-### Model candidates
-
-Qwen3.5-9B is a real Apache-2.0 candidate and a reasonable quality tier. It is not
-declared the universal default until the project benchmark runs on representative
-hardware. The Q4_K_M artifact is approximately 6.6 GB before runtime overhead.
-
-The qualification matrix should include:
-
-- A smaller 4B-class laptop tier
-- Qwen3.5-9B as the balanced candidate
-- At least one larger quality tier
-- Exact quantizations for every advertised tier
-- Realistic context caps such as 8K, 16K, and 32K
-
-Thinking output is disabled or discarded for normal rewriting. Hidden reasoning is
-never stored in traces.
-
-Qwen3-Embedding-0.6B is the initial embedding candidate. The canonical
-`embedding_space_id` covers the exact artifact, runtime, dimensions, input
-instruction, preprocessing, normalization, truncation, byte and token limits,
-distance, quantization, and serialization identity. Requests set `truncate: false`.
-Any field change invalidates every affected vector. The adapter checks the complete
-artifact and runtime identity before and after each batch, discards the complete batch
-on drift, invalidates the active `embedding_space_id` qualification, and requires
-explicit requalification and reindexing.
-
-### llama.cpp
-
-The portable backend uses a pinned `llama-server` sidecar over HTTP. This limits
-exposure to a changing native API and keeps unsafe FFI out of the core. Only the
-supported common schema subset is used, and all generated JSON is validated again in
-Rust.
-
-The sidecar starts offline with an exact verified model path, loopback binding, and
-explicit context, output, sampling, KV-cache, device, and offload settings. Automatic
-fitting and remote artifact shortcuts are disabled. Startup checks health, effective
-properties, tokenization, context, chat template, and schema capabilities. Truncated
-output, effective-setting drift, or device fallback discards the batch.
-
-CPU, Metal, CUDA, HIP, Vulkan, and hybrid builds receive separate manifests and
-qualification records. A shared GGUF does not make their decisions equivalent.
-Where licensing permits redistribution, the project controls conversion and
-quantization with pinned tools, complete digests, and Q4 comparison against Q8 or a
-higher-precision reference. The complete selection and fallback contract is in
-[Model and runtime support](model-support.md).
-
-## Persistence and retrieval
-
-SQLite stores schema migrations, immutable profile versions, evidence metadata,
-declared rules, preference signals, model manifests, installed-artifact state,
-append-only qualification and invalidation records, activation decisions, active
-role pointers, and selected rewrite metadata.
-
-Required settings and patterns:
-
-- Foreign keys enabled
-- Write-ahead logging where supported
-- Busy timeout
-- Forward-only migrations with pre-migration backup and verified restore rollback
-  tests
-- One controlled writer
-- Blocking database work kept off async executors
-- Atomic profile version creation
-- Atomic artifact activation that binds an installed digest to a currently valid
-  qualification, appends the activation decision, and updates one role pointer
-- Startup and recovery revalidation of every active artifact binding
-- Complete export and deletion
-
-The expected personal corpus does not need a vector database. Store versioned `f32`
-vectors as blobs, filter by profile and channel, and score cosine similarity in Rust.
-Use FTS5 for lexical retrieval. `sqlite-vec` remains an optional experiment because
-its Rust integration is pre-1.0 and outside normal semantic-version guarantees.
-
-Sensitive text encryption requires a separate decision. The design must cover both
-desktop keychains and headless CLI environments, backup and recovery, migration,
-lost keys, and Linux installations without a secret-service daemon.
-
-## Markdown
-
-`pulldown-cmark::Parser::into_offset_iter()` provides source ranges, but those ranges
-do not form a lossless mutable syntax tree. The implementation uses them only to
-identify a deliberately small set of non-overlapping eligible spans.
-
-The adapter preserves LF or CRLF, byte order mark state, final newline state, and all
-bytes outside approved edits. It reparses output and compares a structural
-fingerprint. CommonMark plus each enabled extension is versioned as an adapter
-capability.
-
-## DOCX
-
-No general Rust DOCX library is assumed to provide lossless package preservation.
-The adapter works directly with the OPC ZIP package using stable `zip` and
-`quick-xml`.
-
-Untouched package parts retain identical decompressed bytes. Supported XML changes
-are narrow and verified. The adapter never extracts package paths to the filesystem,
-loads external entities, follows external relationships, or accepts unbounded ZIP or
-XML input.
-
-Compatibility qualification includes schema checks, package-part hashes, reopen
-tests, and fixtures for the exact supported WordprocessingML matrix.
-
-## First-party API
-
-The planned local API uses axum and tower. It starts with an explicitly preview `/v0`
-surface during development and promotes the compatibility-tested contract to `/v1`
-at the 0.9 freeze. Version 1.0 binds to loopback only and includes:
-
-- Capability and version discovery
-- Request and response JSON schemas
-- RFC 9457 transport problems and separate successful domain outcomes
-- Cancellation and deadlines
-- Opaque principal-scoped operation creation, status lookup, and cancellation for
-  long work
-- Body, token, candidate, concurrency, and time limits
-- Conditional writes and client operation IDs for mutation requests
-- Explicit profile-read and profile-write authorization
-- High-entropy local authentication plus Host and Origin validation
-- `Cache-Control: no-store` on every authenticated success and error response
-- Redacted logs and no content logging by default
-
-The desktop application calls the application service in process. It does not start
-a second HTTP server for ordinary use.
-
-## MCP and agent skills
-
-Use the official Rust SDK and target MCP 2026-07-28. Modern requests carry required
-protocol version and client capabilities plus optional `clientInfo` in request
-metadata. The server implements `server/discover`; there is no initialize exchange or
-protocol session. Implement standard input first, then POST-only Streamable HTTP.
-Support an older revision only for a named client with complete compatibility
-fixtures.
-
-Streamable HTTP uses a documented custom loopback bearer profile for 1.0 rather than
-standard MCP OAuth authorization. It returns a bearer challenge for missing or
-invalid credentials, enforces server-side scopes, and is excluded from standard
-authorization conformance. Standard input is preferred for clients that cannot
-inject the token.
-
-The MCP surface remains small:
-
-- Rewrite content
-- Check content and constraints
-- Read profile metadata
-- Apply explicit profile changes
-- Run typed acquisition through explicit handles and accept only user-confirmed
-  transcript text from a separate local voice interface
-
-Agent skill packages use the stable `SKILL.md` format as thin clients. They include
-stable frontmatter, instructions, schemas, examples, explanatory authority
-requirements, offline behavior, and a compatible protocol or API range, and pass
-reference validation and smoke tests against the release binary. Real authority is
-enforced by the server. Experimental `allowed-tools` metadata is never a security
-control. The packages contain no profile or rewrite logic. Skills over MCP remains an
-experimental working-group proposal and is not a 1.0 dependency.
-
-## Compatibility proxy
-
-The product first exposes its own API. Version 1.0 compatibility with an upstream
-response schema is an offline local post-processing adapter with a published
-conformance matrix. It accepts a completed response payload from the caller. It does
-not contact an upstream service, store upstream credentials, or act as a generation
-backend.
-
-The first supported mode is non-streaming, text-only final assistant content. Tool
-calls, structured output, reasoning, refusal events, citations, images, audio,
-logprobs, and unsupported event types make an otherwise valid payload unsupported.
-Malformed or oversized input returns no payload and a typed error. Unsupported valid
-input, rewrite abstention, and final verification failure return the exact original
-bytes with distinct machine status. Final verification failure is an abstention with
-a stable compatibility reason. Operational failure returns no transformed payload.
-Responses are never silently or partially rewritten.
-
-The adapter uses byte-range JSON string splicing and verifies non-target byte
-identity against a pinned upstream schema. Original upstream IDs, usage, and
-fingerprints remain original-response metadata. A separate approved sidecar or
-envelope carries the local rewrite status and record.
-
-Streaming input is not supported by the 1.0 adapter. A future outbound reverse proxy
-would have to buffer a complete candidate until validation succeeds and could not
-claim to preserve upstream token boundaries, timing, logprobs, usage accounting, IDs,
-or fingerprints.
-
-## Desktop
-
-Tauri 2.11.x provides the Rust application shell and platform packaging. Its webview
-differs by platform: WebView2 on Windows, WKWebView on macOS, and WebKitGTK on Linux.
-Functional and visual tests therefore run on all three systems.
-
-Security defaults:
-
-- Explicit enabled capabilities and custom-command manifest
-- Least-privileged capabilities per window label
-- Opaque, expiring application authority grants bound to the exact window session,
-  resource, operation, and action for sensitive work
-- Application-level scope checks and negative authorization tests; frontend routes
-  are never authorization inputs
-- Narrow filesystem and dialog scopes
-- Strict content security policy
-- No broad shell, process, HTTP, opener, or filesystem plugin
-- No remote frame, script, style, font, image, inline script, or eval
-- Imported and generated prose rendered as text, never untrusted HTML
-- Just-in-time permissions with clear purpose
-
-The frontend uses semantic HTML, accessible primitives, a small design-token system,
-and no business logic that is unavailable to the CLI or API. A long-running command
-creates a suspended, window-owned operation, then installs a per-invocation Tauri
-channel before work begins. Targeted events use contiguous monotonic sequences. A
-sequence gap triggers an authoritative snapshot query; close or reload revokes
-ownership and cancels the desktop-owned operation. Global privileged event broadcasts
-are not used.
-
-## Local voice
-
-Voice is optional at runtime but required as a working 1.0 acquisition interface.
-The typed interview remains complete and equivalent.
-
-```rust
-trait AudioCapture { /* device discovery and PCM stream */ }
-trait Transcriber { /* local speech to editable text */ }
-trait Speaker { /* optional local spoken prompts */ }
-```
-
-CPAL is the capture candidate. Whisper.cpp and sherpa-onnx are evaluated for local
-speech recognition, with sherpa-onnx also evaluated for local speech output and voice
-activity detection. The decision depends on accuracy, hallucination behavior, CPU
-latency, memory, binary distribution, accessibility, and runtime, model, voice, and
-phonemizer licenses across all target platforms.
-
-The 1.0 voice gate requires local speech input and local spoken prompts or responses
-using an audited runtime and voice model. Model installation is explicit, resumable,
-checksummed, removable, and supports offline import. Each model has a manifest with
-source, license, size, checksum, and declared language metadata. A separate
-qualification record owns tested runtime, platforms, languages, accuracy, latency,
-and resource results.
-
-Piper is not selected casually because the current runtime is GPL-3 and individual
-voice licenses vary. Other speech models receive the same artifact-level review.
-
-Audio defaults:
-
-- Push-to-talk
-- Visible microphone state
-- Explicit input-device selection
-- Local processing
-- Transcript preview and correction before ingestion
-- Raw audio removed immediately from application-controlled buffers and storage after
-  transcription unless the user opts in
-- Captions and full keyboard operation
-- No PCM transfer through WebView IPC
-- Preallocated bounded callback buffers with no allocation, blocking, logging, file
-  I/O, IPC, or inference in the callback
-- No always-listening, wake-word, simultaneous capture and speech output, speaker
-  identity, or voice cloning in 1.0
-
-## Cross-platform delivery
-
-Initial executable targets:
-
-- Windows x86_64 and Arm64
-- macOS universal application with qualified aarch64 and x86_64 slices
-- Linux x86_64 and Arm64 with a declared glibc floor
-
-Musl and additional architectures can graduate through the same test and packaging
-gates.
-
-Update signatures establish artifact provenance and integrity, not semantic
-permission safety. Release qualification retains a reviewed diff of Tauri
-capabilities, custom commands, native permissions, network destinations, filesystem
-scopes, and application authority rules. Any broader network, privacy, or
-external-system policy is disclosed and requires explicit consent before enablement.
-
-Build installers on their target operating system. Windows packages are signed.
-macOS packages are signed and notarized. Linux ships only formats that pass install,
-upgrade, removal, and desktop-integration tests on declared distributions. Every
-Linux format has verifiable signed artifacts or signed repository metadata and a
-clean-install verification test.
-
-CLI bootstrap scripts are first-party wrappers around verified release artifacts.
-They install per user without elevation, verify a signed manifest plus artifact
-identity before execution, stage side by side, smoke-test offline, and switch
-atomically. The `dist` project may generate archives and workflow input after review,
-but its stock installers and experimental updater are not the release authority. See
-[Installation and distribution](distribution.md).
-
-All code uses platform path and process APIs. No feature relies on shell-string
-construction, `/tmp`, Unix-only signals, case-sensitive paths, or UTF-8 filesystem
-paths.
-
-## Tooling
-
-| Concern | Tooling |
+Use the native Ollama API because it exposes version, inventory, model details, and
+running state that the compatibility surface does not establish.
+
+The adapter accepts only validated IP-literal loopback endpoints, disables proxies
+and redirects, bounds every response, and checks identity before and after
+generation. It never starts, installs, updates, pulls, or reconfigures Ollama as a
+side effect of rewriting.
+
+Qualification still requires stronger effective identity than a mutable tag or
+reported version. It binds the source artifact set, Ollama inventory digest, complete
+effective model-description digest, runtime package identity where available,
+running context, residency, and CPU, GPU, or hybrid execution class.
+
+### Pinned llama.cpp sidecar
+
+The portable path launches one exact verified `llama-server` executable and one exact
+GGUF artifact on IP-literal loopback in offline mode. Retonr owns arguments,
+environment, health, context, tokenizer checks, output limits, process lifetime,
+cancellation, and redacted logs.
+
+No Hub shortcut, router, model directory, autoload, automatic fitting, remote media,
+plugin, or mutable slot state is used in a qualified launch. CPU, Metal, CUDA, HIP,
+Vulkan, and hybrid builds qualify independently.
+
+The process boundary preserves the safe Rust core and is preferred to in-process FFI
+unless measurements prove a product need that justifies a separate safety decision.
+
+### Later runtime candidates
+
+LM Studio, vLLM, MLX LM, and generic compatible endpoints are candidates, not 1.0
+defaults. Each requires a named driver and exact platform, license, identity,
+offline, setting, output-policy, resource, and cancellation evidence.
+
+- LM Studio is an external proprietary application with native discovery but mutable
+  runtime selection and no documented content digest sufficient by itself.
+- vLLM is primarily a Linux workstation or controlled server path and supports
+  dynamic behavior that must be disabled for qualification.
+- MLX LM is primarily an Apple silicon experiment whose server documentation does
+  not yet establish the required production identity and security contract.
+- A generic compatible endpoint is transport-only and remains experimental without a
+  runtime-specific identity driver.
+
+The complete matrix is in
+[Provider-neutral, user-controlled model runtimes](research/2026-08-12-provider-neutral-runtimes.md).
+
+### Output policy
+
+Retonr never enables a known statistical watermark, watermark generation setting,
+output-signature processor, or opaque postprocessor in a qualified path. It
+inventories every configured sampler, logits processor, adapter, template, system
+prompt, renderer, parser, and postprocessor.
+
+A runtime that requires an undisclosed watermark is ineligible for generation.
+Review and controlled tests support only a bounded claim about the configured stack.
+They cannot prove that weights contain no learnable statistical signal or predict
+every future detector. Detector observations never rank live candidates or weaken
+fidelity.
+
+## Artifacts and offline operation
+
+One file digest is insufficient for sharded or composed models. A canonical
+artifact-set manifest records every required relative path, length, digest, immutable
+origin revision, weight, index, tokenizer, configuration, template, adapter, license,
+conversion input, tool, and output.
+
+Offline import inspects without execution, rejects escaping links and special files,
+copies bytes into private staging, hashes every member, reviews licenses, proves
+network-denied load, and atomically activates only after qualification. Hard links,
+symbolic links, mutable tags, plugin code, pickle weights, and unreviewed remote code
+are not active artifact identity.
+
+Rewriting never downloads a missing runtime, model, tokenizer, template, adapter, or
+plugin. Drift before or after a generation batch discards every candidate and
+invalidates activation.
+
+## Long documents and context
+
+Artifact-declared context, observed runtime context, qualified context envelope, and
+per-request source budget are separate values. Advertised capacity does not establish
+position fidelity, memory safety, cancellation, or consistency.
+
+The exact tokenizer calculates a conservative request budget after reserving space
+for instructions, schemas, output, protected facts, document guidance, neighboring
+context, and safety margin. Silent truncation, context shifting, summarization, or
+automatic overflow recovery is prohibited.
+
+Long files use model-free inventory, a source-linked document map, bounded unit
+requests, unit validation, region consistency, adapter-owned reassembly, full
+document verification, staging, and an exact report. The complete contract is in
+[Non-destructive document and folder transactions](document-transactions.md).
+
+## Persistence
+
+SQLite stores profiles, evidence metadata, rules, versions, feedback, migrations,
+artifact records, and redacted rewrite records. Domain types do not expose SQL rows.
+Migrations are forward-tested from every supported version with pre-migration backup,
+interruption, corruption, and verified recovery fixtures.
+
+Content-derived embeddings live in a qualified embedding space identified by exact
+artifact set, runtime, tokenizer, preprocessing, instruction, normalization,
+dimensions, distance, truncation policy, and serialization. Any identity change
+invalidates affected indexes.
+
+## Markdown and DOCX
+
+Markdown uses source offsets only as anchors. The adapter owns eligible UTF-8 ranges,
+context escaping, structural fingerprints, protected constructs, reverse-order
+splicing, output reparse, and non-target byte identity.
+
+DOCX is handled directly as a bounded OPC package through ZIP and XML adapters. No
+library is assumed to provide lossless preservation. The adapter owns eligible runs,
+relationships, content types, XML bounds, untouched-part verification, reopen tests,
+and qualified renderer evidence.
+
+Spreadsheet support is post-1.0. It requires a separate SpreadsheetML adapter because
+formulas, cell types, shared strings, names, references, validation, charts, macros,
+and calculation state cannot be protected by generic XML replacement.
+
+Every fixed preservation defect adds a minimized regression fixture.
+
+## CLI and file transactions
+
+The CLI is the reference product surface. It separates data on standard output from
+diagnostics on standard error, never prompts in non-interactive mode, uses versioned
+machine schemas and stable exit categories, neutralizes hostile terminal content,
+and provides explicit dry-run, diff, report, cancellation, and recovery behavior.
+
+File and directory discovery is model-free. A reviewed manifest freezes source
+digests, paths, formats, capabilities, bounds, destinations, collisions, links,
+atomicity, and exclusions. Outputs go to a separate destination by default. A staged
+commit rechecks source identity and cannot delete a source tree.
+
+## MCP, Agent Skills, and Agent Plugins
+
+The agent order is:
+
+1. Stable CLI machine contract
+2. MCP 2026-07-28 over standard input
+3. Thin filesystem Agent Skill
+4. Agent Plugins 1.0.0 routine package
+5. Named-client compatibility
+6. Authenticated local API
+7. MCP Streamable HTTP
+
+The current MCP target uses self-contained requests with required per-request version
+and capabilities metadata, deterministic `server/discover`, recognized result types,
+and no protocol session. Connection identity never establishes a user, profile,
+conversation, or operation.
+
+Agent Plugins 1.0.0 is a Working Draft. Retonr pins its `plugin.json` and `mcp.json`
+schemas and package semantics by exact digest. The routine package contains only a
+routine skill and a standard-input MCP server entry. A separate privileged package
+is considered only after profile scopes stabilize.
+
+Agent Plugins specifies packaging, not signatures, distribution, updates,
+permissions, or sandboxing. Retonr's release layer owns those controls. Package
+validation resolves symlinks, junctions, reparse points, commands, working
+directories, and component paths without executing code or accessing the network.
+
+Skills over MCP remains an in-review optional extension and is not a 1.0 dependency.
+The exact standards and gates are in
+[Agent integration research](research/2026-08-12-agent-integrations.md).
+
+## Portable knowledge exchange
+
+Open Knowledge Format 0.2 is the current experimental target for agent- and
+human-readable knowledge bundles. It can export research claims, support matrices,
+style-policy explanations, document briefs, and redacted preference views as
+Markdown with YAML frontmatter and links.
+
+OKF does not replace SQLite, canonical JSON schemas, MCP, Agent Plugins, consent,
+authorization, or transaction records. Its trust tiers are advisory and its
+Attested Computation contract does not define packaging, sandboxing, permissions,
+or a complete runtime protocol. Retonr pins an exact 0.2 revision for a compatibility
+spike, preserves unknown fields, imports no authority, and executes no referenced
+resource. See [Open Knowledge Format and Retonr](research/2026-08-12-open-knowledge-format.md).
+
+## First-party loopback API
+
+The API follows the standard-input agent path. It starts only through an explicit
+command and binds to an actual loopback address. It uses versioned schemas, high
+entropy local authentication, scopes, Host and Origin checks, no-store responses,
+deadlines, cancellation, resource limits, redacted logs, and principal-scoped
+operations.
+
+The native desktop calls the application service in process and does not start a
+local server for ordinary use.
+
+MCP Streamable HTTP is added only after the local service and standard-input MCP pass.
+It implements the exact modern transport and rejects legacy or session behavior not
+supported by the pinned revision.
+
+## Completed-response compatibility
+
+The compatibility adapter accepts a bounded completed response payload and performs
+no outbound request. It is not a transparent proxy or model backend.
+
+Only pinned ordinary-text paths are eligible. Tool calls, structured outputs,
+reasoning, refusals, citations, annotations, signatures, images, audio, and
+unsupported events return the exact original as unsupported. Malformed or oversized
+input returns no payload. Abstention and verification failure return the exact
+original with distinct machine status.
+
+Byte-range JSON string splicing preserves non-target bytes. A separate local record
+states original and rewritten digests, target schema, eligible paths, adapter,
+validator, and result. Retained upstream IDs, usage, and fingerprints remain labeled
+as properties of the original response.
+
+## Native desktop
+
+The desktop is an installed native Rust application built after CLI and agent
+contracts. It does not embed a browser, use an HTML or JavaScript frontend, render a
+hosted application, or require loopback HTTP for ordinary operation.
+
+The toolkit remains a decision gate. Comparable Slint, Iced, egui, or other maintained
+native Rust spikes must prove the actual Retonr workflows across Windows, macOS, and
+Linux. Selection requires:
+
+- International multiline text and diff performance
+- Complete keyboard and screen-reader semantics
+- Input methods, bidirectional text, high contrast, scale, and reduced motion
+- Native menus, dialogs, shortcuts, drag and drop, clipboard, and platform packaging
+- Deterministic component, presentation-state, visual, and black-box testing
+- Acceptable native dependencies, unsafe boundary, license, maintenance, startup,
+  memory, graphics, and update behavior
+
+Presentation sends typed commands to the application service and receives bounded
+sequenced state. It has no independent product authority and renders imported or
+generated content as untrusted text.
+
+## Cross-platform release and updates
+
+Support names exact Rust target triples, operating-system floors, architectures,
+packages, graphics or accelerator backends, and hardware envelopes. Build and test
+packages on the operating system they target.
+
+Windows artifacts are signed. macOS artifacts are signed and notarized. Linux ships
+only formats that pass clean install, upgrade, recovery, removal, and desktop
+integration on named distributions. Bootstrap installers verify a signed manifest
+and artifact digest before execution, install per user without elevation, stage side
+by side, smoke-test, and switch atomically.
+
+Update checks are explicit and separate from core operation. Runtime, model,
+protocol, schema, dependency, and application upgrades invalidate only the evidence
+they actually affect and never silently change a document or profile.
+
+## Tooling and release evidence
+
+| Concern | Tooling or policy |
 | --- | --- |
-| Format | rustfmt |
-| Lint | Clippy with warnings denied |
-| Test runner | cargo-nextest plus separate documentation tests |
+| Format and lint | rustfmt and Clippy with warnings denied |
+| Tests | cargo-nextest plus separate documentation and exact shipping-feature tests |
 | Coverage | cargo-llvm-cov with an 80 percent repository floor |
-| Property tests | proptest |
-| Golden output | insta where semantic assertions also exist |
-| CLI tests | assert_cmd |
-| HTTP simulation | wiremock |
-| Fuzzing | cargo-fuzz on Linux |
-| Mutation testing | cargo-mutants on critical crates |
-| Frontend unit and component tests | Vitest plus Testing Library |
-| Frontend coverage | `@vitest/coverage-v8` with general and critical threshold configs |
-| Frontend accessibility | axe-core plus keyboard and accessibility-tree tests |
-| Instrumented desktop end-to-end | WebdriverIO Tauri service in a dedicated non-release feature |
-| Signed desktop black box | External native or accessibility harness selected per platform; XCTest or equivalent is qualified for macOS |
-| Visual and ARIA regression | Playwright in controlled per-platform environments |
-| Dependency and license policy | cargo-deny |
-| Vulnerability audit | cargo-audit |
-| Release packaging | `dist` for reviewed CLI artifact generation, first-party verified bootstrap wrappers, Tauri bundler for desktop |
+| Properties and goldens | proptest and reviewed insta fixtures |
+| CLI and HTTP | assert_cmd and wiremock |
+| Fuzz and mutation | cargo-fuzz and cargo-mutants on applicable critical paths |
+| Undefined behavior | Date-pinned Miri and target-qualified sanitizers |
+| Dependency policy | cargo-deny, cargo-audit, and planned Cargo Vet |
+| Rust API compatibility | cargo-semver-checks only for deliberately stable Rust APIs |
+| Supply chain | Vendored frozen source, binary dependency metadata, per-artifact SBOM |
+| Release | Independent unsigned rebuild comparison, checksums, signatures, and control-plane provenance |
+| Native desktop | Toolkit-owned component tests plus qualified platform-native black-box and accessibility harnesses |
 
 ## Primary references
 
 - [Rust releases](https://blog.rust-lang.org/releases/)
-- [Cargo workspaces](https://doc.rust-lang.org/cargo/reference/workspaces.html)
+- [Cargo features](https://doc.rust-lang.org/cargo/reference/features.html)
+- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
 - [Ollama API](https://docs.ollama.com/api/introduction)
-- [Ollama structured output](https://docs.ollama.com/capabilities/structured-outputs)
-- [Ollama embeddings](https://docs.ollama.com/capabilities/embeddings)
-- [Ollama installed models](https://docs.ollama.com/api/tags)
-- [Ollama model details](https://docs.ollama.com/api-reference/show-model-details)
-- [Qwen3.5-9B](https://huggingface.co/Qwen/Qwen3.5-9B)
-- [Qwen3 Embedding](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)
 - [llama.cpp server](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
-- [llama.cpp build backends](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
-- [dist release tooling](https://github.com/axodotdev/cargo-dist)
-- [pulldown-cmark source offsets](https://docs.rs/pulldown-cmark/latest/pulldown_cmark/struct.Parser.html)
-- [MCP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/index)
+- [pulldown-cmark](https://docs.rs/pulldown-cmark/latest/pulldown_cmark/)
+- [ECMA-376 Office Open XML](https://ecma-international.org/publications-and-standards/standards/ecma-376/)
+- [MCP 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28)
 - [Official Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)
-- [MCP conformance](https://github.com/modelcontextprotocol/conformance)
-- [Agent Skills specification](https://agentskills.io/specification)
-- [Skills over MCP status](https://modelcontextprotocol.io/community/working-groups/skills-over-mcp)
-- [Tauri releases](https://v2.tauri.app/release/)
-- [Tauri capabilities](https://v2.tauri.app/security/capabilities/)
-- [Tauri command scopes](https://v2.tauri.app/security/scope/)
-- [Tauri updater](https://v2.tauri.app/plugin/updater/)
-- [Tauri WebDriver testing](https://v2.tauri.app/develop/tests/webdriver/)
+- [Agent Skills](https://agentskills.io/specification)
+- [Agent Plugins 1.0.0](https://agent-plugins.org/specification)
+- [Open Knowledge Format 0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+- [Slint](https://slint.dev/)
+- [Iced](https://iced.rs/)
+- [egui](https://docs.rs/egui/latest/egui/)
 - [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
-- [CPAL](https://github.com/RustAudio/cpal)
-- [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
-- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)
+- [Cargo Vet](https://mozilla.github.io/cargo-vet/)
+- [SLSA provenance](https://slsa.dev/spec/v1.2/provenance)
