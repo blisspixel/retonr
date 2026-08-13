@@ -44,8 +44,9 @@ This order encodes five deliberate choices:
 
 The repository is still closing 0.1. Work proceeds in this exact order:
 
-1. Close the remaining 0.1 governance decisions, proxy and socket-denial evidence,
-   final cross-platform continuous integration, and refinement disposition.
+1. Close the remaining 0.1 governance decisions, proxy-environment and concurrency
+   conformance, final cross-platform continuous integration, and refinement
+   disposition.
 2. Complete the 0.2 plain-text transaction and CLI before adding profiles or another
    document format.
 3. Establish the versioned editorial-quality corpus during evaluation work, but do
@@ -170,8 +171,9 @@ polished CLI.
 - Safe terminal rendering and exact raw output only to a non-terminal sink or an
   explicit double opt-in
 - Shell completions, manual pages, stable diagnostics, and actionable recovery
-- Socket-level proof that core operation works with network access blocked after
-  explicit artifact setup
+- OS-enforced proof that all participating Retonr and runtime processes complete the
+  qualified workflow after explicit artifact setup with non-loopback outbound
+  connections denied and only the exact configured local transport allowed
 
 ### Exit gate
 
