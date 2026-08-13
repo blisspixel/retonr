@@ -44,9 +44,8 @@ This order encodes five deliberate choices:
 
 The repository is still closing 0.1. Work proceeds in this exact order:
 
-1. Close the remaining 0.1 governance decisions, proxy-environment and concurrency
-   conformance, final cross-platform continuous integration, and refinement
-   disposition.
+1. Close the remaining 0.1 governance approvals, final cross-platform continuous
+   integration, and refinement disposition.
 2. Complete the 0.2 plain-text transaction and CLI before adding profiles or another
    document format.
 3. Establish the versioned editorial-quality corpus during evaluation work, but do

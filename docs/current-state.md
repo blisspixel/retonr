@@ -110,22 +110,21 @@ is:
 
 1. Approve or revise the proposed data, consent, user-research, and adjudication
    governance before collecting non-synthetic data.
-2. Retain the process-isolated proxy-canary results on Windows, macOS, and Linux and
-   the loopback-only network-namespace result on Ubuntu.
-3. Add deterministic concurrency conformance for the local adapter.
-4. Rerun Windows, macOS, and Linux continuous integration for the final 0.1 closure
+2. Retain the process-isolated proxy-canary and concurrency results on Windows,
+   macOS, and Linux and the loopback-only network-namespace result on Ubuntu.
+3. Rerun Windows, macOS, and Linux continuous integration for the final 0.1 closure
    revision and retain its exact evidence.
-5. Review the proposed artifact, inference, transport, and grounded-authority
+4. Review the proposed artifact, inference, transport, and grounded-authority
    decision records at the 0.2 entry gate.
-6. Link redacted generation provenance into the durable transaction schema and
+5. Link redacted generation provenance into the durable transaction schema and
    implement artifact lifecycle storage and recovery.
-7. Add typed claim and invariant evidence without describing it as semantic proof,
+6. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.
-8. Complete stdin, safe diff, dry-run, trace, cancellation, terminal safety, and
+7. Complete stdin, safe diff, dry-run, trace, cancellation, terminal safety, and
    raw-output policy before exposing grounded rewriting in the CLI.
-9. Run exact artifact qualification and selective-risk reporting on declared
+8. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-10. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+9. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
    after the 0.2 exit gate passes. The current candidate-check rendering is limited
    to already implemented model-free behavior.
 
