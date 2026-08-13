@@ -127,47 +127,45 @@ impl<'a> OfflineArtifactImportService<'a> {
         let destination = self
             .artifacts
             .join(request.manifest.artifact_digest.as_str());
-        let mut staged = TemporaryFileBuilder::new()
-            .prefix(STAGING_PREFIX)
-            .tempfile_in(&self.staging)
-            .map_err(ArtifactImportError::StorageIo)?;
-        report_progress(
-            &mut progress,
-            ArtifactImportStage::StagingAndVerifying,
-            0,
-            request.manifest.byte_size,
-        );
-        let observed = copy_and_hash(
+        let destination_exists = stored_file_exists(&destination)?;
+        let mut staged = if destination_exists {
+            None
+        } else {
+            Some(
+                TemporaryFileBuilder::new()
+                    .prefix(STAGING_PREFIX)
+                    .tempfile_in(&self.staging)
+                    .map_err(ArtifactImportError::StorageIo)?,
+            )
+        };
+        let observed = verify_source_bytes(
             &mut source,
-            staged.as_file_mut(),
-            request.manifest.byte_size,
+            staged.as_mut(),
+            &request.manifest,
             cancellation,
-            &mut |completed| {
-                report_progress(
-                    &mut progress,
-                    ArtifactImportStage::StagingAndVerifying,
-                    completed,
-                    request.manifest.byte_size,
-                );
-            },
+            &mut progress,
         )?;
         verify_source_after_read(&source, request.manifest.byte_size)?;
         if observed != request.manifest.artifact_digest {
             return Err(ArtifactImportError::DigestMismatch);
         }
-        staged
-            .as_file_mut()
-            .sync_all()
-            .map_err(ArtifactImportError::StorageIo)?;
         ensure_not_cancelled(cancellation)?;
-        persist_or_verify(
-            staged,
-            &destination,
-            &request.manifest,
-            cancellation,
-            &mut progress,
-        )?;
-        sync_directory(&self.artifacts)?;
+        if let Some(mut staged) = staged {
+            staged
+                .as_file_mut()
+                .sync_all()
+                .map_err(ArtifactImportError::StorageIo)?;
+            persist_or_verify(
+                staged,
+                &destination,
+                &request.manifest,
+                cancellation,
+                &mut progress,
+            )?;
+            sync_directory(&self.artifacts)?;
+        } else {
+            verify_stored_file(&destination, &request.manifest, cancellation, &mut progress)?;
+        }
 
         let installed = InstalledArtifact {
             artifact_id: request.manifest.artifact_id.clone(),
@@ -212,6 +210,40 @@ fn open_source(path: &Path) -> Result<(File, Metadata), ArtifactImportError> {
         return Err(ArtifactImportError::SourceNotRegular);
     }
     Ok((source, opened_metadata))
+}
+
+fn verify_source_bytes(
+    source: &mut File,
+    staged: Option<&mut NamedTempFile>,
+    manifest: &ArtifactManifest,
+    cancellation: &CancellationToken,
+    progress: &mut impl FnMut(ArtifactImportProgress),
+) -> Result<Digest, ArtifactImportError> {
+    let stage = if staged.is_some() {
+        ArtifactImportStage::StagingAndVerifying
+    } else {
+        ArtifactImportStage::VerifyingSource
+    };
+    report_progress(progress, stage, 0, manifest.byte_size);
+    let mut source_progress = |completed| {
+        report_progress(progress, stage, completed, manifest.byte_size);
+    };
+    match staged {
+        Some(staged) => copy_and_hash(
+            source,
+            staged.as_file_mut(),
+            manifest.byte_size,
+            cancellation,
+            &mut source_progress,
+        ),
+        None => copy_and_hash(
+            source,
+            &mut io::sink(),
+            manifest.byte_size,
+            cancellation,
+            &mut source_progress,
+        ),
+    }
 }
 
 fn copy_and_hash<W: io::Write, F: FnMut(u64)>(
@@ -332,14 +364,25 @@ fn verify_stored_file(
 fn open_stored_file(path: &Path) -> Result<(File, Metadata), ArtifactImportError> {
     let metadata = fs::symlink_metadata(path).map_err(ArtifactImportError::StorageIo)?;
     if is_indirect(&metadata) || !metadata.is_file() {
-        return Err(ArtifactImportError::StorageConflict);
+        return Err(ArtifactImportError::UnsafeStorageLayout);
     }
     let file = open_readonly_no_follow(path).map_err(ArtifactImportError::StorageIo)?;
     let opened = file.metadata().map_err(ArtifactImportError::StorageIo)?;
     if !opened.is_file() || is_indirect(&opened) {
-        return Err(ArtifactImportError::StorageConflict);
+        return Err(ArtifactImportError::UnsafeStorageLayout);
     }
     Ok((file, opened))
+}
+
+fn stored_file_exists(path: &Path) -> Result<bool, ArtifactImportError> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if is_indirect(&metadata) || !metadata.is_file() => {
+            Err(ArtifactImportError::UnsafeStorageLayout)
+        }
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(ArtifactImportError::StorageIo(error)),
+    }
 }
 
 fn storage_key(digest: &Digest) -> String {

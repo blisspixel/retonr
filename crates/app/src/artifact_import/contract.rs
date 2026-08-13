@@ -36,6 +36,8 @@ pub enum ArtifactImportStage {
     InspectingSource,
     /// Copy and hash source bytes into application-owned staging.
     StagingAndVerifying,
+    /// Hash source bytes without staging because exact final bytes already exist.
+    VerifyingSource,
     /// Commit verified staged bytes under their content-derived key.
     CommittingFile,
     /// Reverify a final file that another exact import already committed.

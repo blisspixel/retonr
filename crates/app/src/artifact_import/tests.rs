@@ -120,8 +120,12 @@ fn imports_without_mutating_source_and_repeats_idempotently() {
     assert!(
         repeated_progress
             .iter()
-            .all(|event| event.stage != ArtifactImportStage::CommittingFile)
+            .any(|event| event.stage == ArtifactImportStage::VerifyingSource)
     );
+    assert!(repeated_progress.iter().all(|event| !matches!(
+        event.stage,
+        ArtifactImportStage::StagingAndVerifying | ArtifactImportStage::CommittingFile
+    )));
 }
 
 #[test]
@@ -303,6 +307,31 @@ fn rejects_directory_source_and_conflicting_final_bytes() {
         store.manifest(&artifact_id).expect("check absent state"),
         None
     );
+}
+
+#[test]
+fn rejects_non_file_destination_as_unsafe_storage() {
+    let directory = tempdir().expect("temporary directory");
+    let storage = directory.path().join("managed");
+    let source = directory.path().join("source.gguf");
+    fs::write(&source, ARTIFACT_BYTES).expect("write source fixture");
+    let expected_manifest = manifest(ARTIFACT_BYTES);
+    let destination = storage.join(storage_key(&expected_manifest.artifact_digest));
+    fs::create_dir_all(&destination).expect("create invalid destination directory");
+    let mut store = ArtifactStateStore::open(&directory.path().join("state.sqlite3"))
+        .expect("open artifact state");
+    let mut service = OfflineArtifactImportService::open(&storage, &mut store, limits())
+        .expect("open import service");
+
+    let error = run_import(
+        &mut service,
+        &OfflineArtifactImportRequest {
+            source,
+            manifest: expected_manifest,
+        },
+    )
+    .expect_err("non-file destination must fail as unsafe storage");
+    assert!(matches!(error, ArtifactImportError::UnsafeStorageLayout));
 }
 
 #[test]
