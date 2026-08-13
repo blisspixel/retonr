@@ -60,7 +60,7 @@ compensates for a fidelity failure.
 ## Current status
 
 Retonr is an early implementation, not a finished writing application. The current
-model-free slice includes versioned Rust contracts, plain-text parsing and
+slice includes versioned Rust contracts, plain-text parsing and
 reassembly, protected values, deterministic candidate gates, semantic assessment,
 lexicographic selection, document-atomic abstention, redacted records, a
 candidate-check CLI, durable artifact-state transactions, non-destructive offline
@@ -71,8 +71,10 @@ exact manifest and installation records or confirms that both existing records
 match. Inactive removal uses an installation generation and durable journal so an
 interrupted operation can resume and an old retry cannot delete a deliberate
 reinstall. Runtime artifact leases hold the shared lifecycle lock for their full
-use lifetime, while removal requires the exclusive lock. The artifact services are
-not exposed through the CLI yet.
+use lifetime, while removal requires the exclusive lock. A narrow offline CLI now
+exposes exact single-file import, read-only inventory, selected reconciliation,
+inactive removal, and explicit interrupted-removal recovery. It does not download,
+qualify, activate, or run a model.
 
 The evaluation tool also validates two synthetic editorial-quality groups with named
 findings and clean controls, including a balanced 24-case current-slop group. No
@@ -84,16 +86,34 @@ Run the current slice from the repository:
 
 ```console
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --format text
+cargo run --locked -p retonr-cli -- model --help
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_slop_v1.json
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
-model. The second runs the checked-in fidelity suite. The final two validate the
-synthetic editorial-quality groups and emit only content-free summaries. The planned
-lint engine, rewrite, profile, model-management CLI, agent, and desktop workflows are
-not yet implemented.
+model. The second lists the implemented offline artifact commands without changing
+local state. The remaining commands run the checked-in fidelity and
+synthetic editorial-quality suites. The rewrite, profile, runtime management, agent,
+and desktop workflows are not yet implemented.
+
+The implemented model commands are intentionally narrow:
+
+```console
+retonr --data-dir <DIRECTORY> model import <ARTIFACT> --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model inventory [--fail-on-findings]
+retonr --data-dir <DIRECTORY> model reconcile --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model remove --artifact-id <SHA256> --installation-generation <N> --yes
+retonr --data-dir <DIRECTORY> model recover-removal --artifact-id <SHA256> --installation-generation <N> --yes
+```
+
+These commands are offline and bounded. They never infer a data location, pull a
+model, follow a mutable model tag, activate an artifact, or treat a prior inventory
+report as mutation authority. First import creates one missing repository leaf or
+accepts one empty directory; it refuses a nonempty uninitialized directory and never
+changes permissions on a pre-existing root. JSON is the default machine format;
+`--format text` provides concise human output.
 
 ## Product surfaces
 

@@ -10,7 +10,7 @@ use crate::{
     artifact_inventory::ArtifactInventoryError,
     artifact_storage::{
         ExactArtifactExpectation, ExactArtifactSync, ExactArtifactVerificationError,
-        ExistingArtifactStorage, LifecycleLockMode, verify_exact_artifact,
+        ExistingArtifactStorage, LifecycleLockMode, managed_storage_key, verify_exact_artifact,
     },
 };
 pub use contract::{
@@ -127,6 +127,7 @@ impl<'a> ArtifactOrphanReconciliationService<'a> {
         };
         Ok(ArtifactOrphanReconciliationResult {
             installed,
+            installation: state.installation,
             disposition,
         })
     }
@@ -172,7 +173,7 @@ fn installed_from(manifest: &ArtifactManifest) -> InstalledArtifact {
         artifact_id: manifest.artifact_id.clone(),
         artifact_digest: manifest.artifact_digest.clone(),
         byte_size: manifest.byte_size,
-        storage_key: format!("artifacts/{}", manifest.artifact_digest.as_str()),
+        storage_key: managed_storage_key(&manifest.artifact_digest),
     }
 }
 

@@ -38,11 +38,34 @@ fn abstention_can_be_used_as_a_ci_failure() {
         .arg(candidate)
         .arg("--fail-on-abstain")
         .assert()
-        .code(2)
+        .code(3)
         .stdout(predicate::str::contains("\"status\": \"abstained\""))
         .stdout(predicate::str::contains(
             "\"reason\": \"protected_value_changed\"",
         ));
+}
+
+#[test]
+fn global_format_is_accepted_before_or_after_the_command() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, "Hello world\n").expect("write source fixture");
+    fs::write(&candidate, "Hello, world!\n").expect("write candidate fixture");
+
+    for arguments in [
+        vec!["--format", "text", "check"],
+        vec!["check", "--format", "text"],
+    ] {
+        Command::cargo_bin("retonr")
+            .expect("compiled CLI")
+            .args(arguments)
+            .arg(&source)
+            .arg(&candidate)
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("status: rewritten"));
+    }
 }
 
 #[test]

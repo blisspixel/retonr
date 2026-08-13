@@ -19,11 +19,17 @@ pub(crate) use entry::is_indirect;
 use errors::{map_active_error, map_initial_error};
 pub(crate) use existing::{ExistingArtifactStorage, LIFECYCLE_LOCK_FILE, LifecycleLockMode};
 pub(crate) use mutation::ExactEntryCapacity;
+#[cfg(unix)]
+pub(crate) use mutation::set_private_directory_permissions;
 pub(crate) use verification::{
     ExactArtifactExpectation, ExactArtifactSync, ExactArtifactVerificationError,
     VerifiedManagedArtifact, verify_exact_artifact, verify_exact_artifact_for_removal,
     verify_exact_artifact_for_runtime,
 };
+
+pub(crate) fn managed_storage_key(digest: &Digest) -> String {
+    format!("artifacts/{}", digest.as_str())
+}
 
 #[cfg(test)]
 mod mutation_tests;
@@ -427,7 +433,7 @@ pub(crate) fn fingerprint_std_file(
     MetadataFingerprint::from_file(file).map_err(ArtifactInventoryError::StorageIo)
 }
 
-pub(super) fn lock_shared(file: &File) -> Result<(), ArtifactInventoryError> {
+pub(crate) fn lock_shared(file: &File) -> Result<(), ArtifactInventoryError> {
     match file.try_lock_shared() {
         Ok(()) => Ok(()),
         Err(TryLockError::WouldBlock) => Err(ArtifactInventoryError::StorageInUse),

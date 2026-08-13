@@ -13,10 +13,17 @@ use super::{
 mod platform;
 mod sync;
 use platform::{
-    create_directory, create_new_file, hard_link, inspect_entry, open_or_create_file,
-    random_staging_name, remove_file, remove_verified_file,
+    create_directory, create_directory_exclusive, create_new_file, hard_link, inspect_entry,
+    open_or_create_file, random_staging_name, remove_file, remove_verified_file,
 };
 use sync::sync_directory;
+
+#[cfg(unix)]
+pub(crate) fn set_private_directory_permissions(
+    directory: &PinnedDirectory,
+) -> Result<(), ArtifactInventoryError> {
+    platform::set_private_permissions(&directory.handle)
+}
 
 const TEMP_NAME_ATTEMPTS: usize = 1_024;
 
@@ -40,6 +47,32 @@ pub(crate) enum ExactEntryCapacity {
 }
 
 impl PinnedDirectory {
+    pub(crate) fn create_child_directory_exclusive(
+        &self,
+        name: &OsStr,
+    ) -> Result<Self, ArtifactInventoryError> {
+        create_directory_exclusive(&self.handle, name)?;
+        let directory = self.open_directory(name).map_err(map_initial_error)?;
+        validate_directory_handle(&directory, true)?;
+        Ok(Self { handle: directory })
+    }
+
+    pub(crate) fn is_empty(&self) -> Result<bool, ArtifactInventoryError> {
+        match self.raw_entries(1, &CancellationToken::new()) {
+            Ok(entries) => Ok(entries.is_empty()),
+            Err(ArtifactInventoryError::StorageEntryLimitExceeded) => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+
+    pub(crate) fn has_direct_regular_child(
+        &self,
+        name: &OsStr,
+    ) -> Result<bool, ArtifactInventoryError> {
+        Ok(inspect_entry(&self.handle, name)?
+            .is_some_and(|entry| entry.direct_regular_file && !entry.indirect))
+    }
+
     pub(crate) fn ensure_child_directory(
         &self,
         name: &OsStr,

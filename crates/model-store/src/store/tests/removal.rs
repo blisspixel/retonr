@@ -21,35 +21,47 @@ fn migrates_schema_one_installations_to_first_epoch() {
              CREATE TABLE artifact_manifests (
                  artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
                  record_json TEXT NOT NULL
+                     CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
              ) STRICT;
              CREATE TABLE installed_artifacts (
                  artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
-                 record_json TEXT NOT NULL,
+                 record_json TEXT NOT NULL
+                     CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
                  FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
              ) STRICT;
              CREATE TABLE qualification_records (
-                 qualification_id TEXT PRIMARY KEY NOT NULL,
-                 artifact_id TEXT NOT NULL,
+                 qualification_id TEXT PRIMARY KEY NOT NULL CHECK(length(qualification_id) = 64),
+                 artifact_id TEXT NOT NULL CHECK(length(artifact_id) = 64),
                  record_json TEXT NOT NULL
+                     CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+                 FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
              ) STRICT;
              CREATE TABLE qualification_invalidations (
                  sequence INTEGER PRIMARY KEY,
-                 qualification_id TEXT NOT NULL,
-                 reason_code TEXT NOT NULL,
+                 qualification_id TEXT NOT NULL CHECK(length(qualification_id) = 64),
+                 reason_code TEXT NOT NULL CHECK(length(reason_code) BETWEEN 1 AND 64),
                  record_json TEXT NOT NULL
+                     CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+                 FOREIGN KEY(qualification_id)
+                     REFERENCES qualification_records(qualification_id)
              ) STRICT;
              CREATE INDEX invalidations_by_qualification
                  ON qualification_invalidations(qualification_id, sequence);
              CREATE TABLE activation_decisions (
-                 activation_id TEXT PRIMARY KEY NOT NULL,
-                 role TEXT NOT NULL,
+                 activation_id TEXT PRIMARY KEY NOT NULL CHECK(length(activation_id) = 64),
+                 role TEXT NOT NULL CHECK(length(role) BETWEEN 1 AND 64),
                  record_json TEXT NOT NULL
+                     CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
              ) STRICT;
              CREATE TABLE active_bindings (
-                 role TEXT PRIMARY KEY NOT NULL,
-                 artifact_id TEXT NOT NULL,
-                 qualification_id TEXT NOT NULL,
+                 role TEXT PRIMARY KEY NOT NULL CHECK(length(role) BETWEEN 1 AND 64),
+                 artifact_id TEXT NOT NULL CHECK(length(artifact_id) = 64),
+                 qualification_id TEXT NOT NULL CHECK(length(qualification_id) = 64),
                  record_json TEXT NOT NULL
+                     CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+                 FOREIGN KEY(artifact_id) REFERENCES installed_artifacts(artifact_id),
+                 FOREIGN KEY(qualification_id)
+                     REFERENCES qualification_records(qualification_id)
              ) STRICT;
              PRAGMA user_version = 1;",
         )
@@ -74,13 +86,17 @@ fn migrates_schema_one_installations_to_first_epoch() {
         .expect("insert legacy installation");
     drop(connection);
 
-    let store = ArtifactStateStore::open(&path).expect("migrate schema");
+    let store =
+        ArtifactStateStore::open_existing_and_migrate(&path).expect("migrate existing schema");
     let selection = store
         .artifact_removal_state(&fixture.installed.artifact_id)
         .expect("load migrated state")
         .0
         .expect("migrated installation");
     assert_eq!(selection.epoch.get(), 1);
+    drop(store);
+    ArtifactStateStore::open_existing_writable_exact(&path)
+        .expect("migrated schema reopens through the exact path");
 }
 
 #[test]

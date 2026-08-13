@@ -1,7 +1,7 @@
 use std::io;
 
 use rewrite_model::{ArtifactManifest, InstalledArtifact, ManifestError};
-use rewrite_model_store::StoreError;
+use rewrite_model_store::{StoreError, StoredArtifactInstallation};
 use thiserror::Error;
 
 /// Caller-owned resource ceilings for one selected orphan reconciliation.
@@ -34,6 +34,8 @@ pub enum ArtifactReconciliationDisposition {
 pub struct ArtifactOrphanReconciliationResult {
     /// Exact installation state derived from the supplied manifest.
     pub installed: InstalledArtifact,
+    /// Exact durable installation generation inserted or confirmed by the state store.
+    pub installation: StoredArtifactInstallation,
     /// Whether this call inserted or confirmed exact durable state.
     pub disposition: ArtifactReconciliationDisposition,
 }

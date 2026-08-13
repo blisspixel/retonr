@@ -45,9 +45,20 @@ pub enum StoreError {
     /// A durable record disagreed with its indexed identity or columns.
     #[error("persisted artifact state record failed integrity validation")]
     CorruptRecord,
-    /// The database schema is newer than this adapter understands.
+    /// The database schema is outside the versions this adapter understands.
     #[error("unsupported artifact state schema {0}")]
     UnsupportedSchema(i64),
+    /// An existing state database was required but no filesystem entry existed.
+    #[error("artifact state database is not initialized")]
+    NotInitialized,
+    /// A read-only open found an older schema that requires an explicit migration.
+    #[error("artifact state schema {found} requires migration to {current}")]
+    MigrationRequired {
+        /// Schema version found in the existing database.
+        found: i64,
+        /// Exact schema version required by this adapter.
+        current: i64,
+    },
     /// An immutable identifier already names different record bytes.
     #[error("immutable artifact state conflicts with an existing record")]
     ImmutableConflict,

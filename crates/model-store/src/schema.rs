@@ -7,25 +7,37 @@ use crate::{StoreError, StoreResult};
 pub(super) const STORE_SCHEMA_VERSION: i64 = 2;
 
 pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
-    connection.busy_timeout(Duration::from_secs(5))?;
-    connection.execute_batch(
-        "PRAGMA foreign_keys = ON;
-         PRAGMA trusted_schema = OFF;
-         PRAGMA synchronous = FULL;",
-    )?;
-
-    let version: i64 = connection.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if version > STORE_SCHEMA_VERSION {
-        return Err(StoreError::UnsupportedSchema(version));
-    }
-    if version == STORE_SCHEMA_VERSION {
-        return Ok(());
-    }
-
+    configure(connection, true)?;
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    if version == 0 {
-        transaction.execute_batch(
-            "CREATE TABLE artifact_manifests (
+    let version: i64 = transaction.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    match version {
+        0 => {
+            require_empty_schema(&transaction)?;
+            create_current_schema(&transaction)?;
+        }
+        1 => {
+            validate_schema_one(&transaction)?;
+            migrate_schema_one(&transaction)?;
+        }
+        STORE_SCHEMA_VERSION => validate_schema_shape(&transaction)?,
+        value if !(0..=STORE_SCHEMA_VERSION).contains(&value) => {
+            return Err(StoreError::UnsupportedSchema(value));
+        }
+        value => {
+            return Err(StoreError::MigrationRequired {
+                found: value,
+                current: STORE_SCHEMA_VERSION,
+            });
+        }
+    }
+    validate_schema_shape(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn create_current_schema(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(
+        "CREATE TABLE artifact_manifests (
              artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
              record_json TEXT NOT NULL
                  CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
@@ -90,10 +102,72 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
          ) STRICT;
 
          PRAGMA user_version = 2;",
-        )?;
-    } else if version == 1 {
-        transaction.execute_batch(
-            "ALTER TABLE installed_artifacts
+    )?;
+    Ok(())
+}
+
+const SCHEMA_ONE_SQL: &str = "CREATE TABLE artifact_manifests (
+         artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
+         record_json TEXT NOT NULL
+             CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
+     ) STRICT;
+
+     CREATE TABLE installed_artifacts (
+         artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
+         record_json TEXT NOT NULL
+             CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+         FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
+     ) STRICT;
+
+     CREATE TABLE qualification_records (
+         qualification_id TEXT PRIMARY KEY NOT NULL CHECK(length(qualification_id) = 64),
+         artifact_id TEXT NOT NULL CHECK(length(artifact_id) = 64),
+         record_json TEXT NOT NULL
+             CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+         FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
+     ) STRICT;
+
+     CREATE TABLE qualification_invalidations (
+         sequence INTEGER PRIMARY KEY,
+         qualification_id TEXT NOT NULL CHECK(length(qualification_id) = 64),
+         reason_code TEXT NOT NULL CHECK(length(reason_code) BETWEEN 1 AND 64),
+         record_json TEXT NOT NULL
+             CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+         FOREIGN KEY(qualification_id)
+             REFERENCES qualification_records(qualification_id)
+     ) STRICT;
+
+     CREATE INDEX invalidations_by_qualification
+         ON qualification_invalidations(qualification_id, sequence);
+
+     CREATE TABLE activation_decisions (
+         activation_id TEXT PRIMARY KEY NOT NULL CHECK(length(activation_id) = 64),
+         role TEXT NOT NULL CHECK(length(role) BETWEEN 1 AND 64),
+         record_json TEXT NOT NULL
+             CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
+     ) STRICT;
+
+     CREATE TABLE active_bindings (
+         role TEXT PRIMARY KEY NOT NULL CHECK(length(role) BETWEEN 1 AND 64),
+         artifact_id TEXT NOT NULL CHECK(length(artifact_id) = 64),
+         qualification_id TEXT NOT NULL CHECK(length(qualification_id) = 64),
+         record_json TEXT NOT NULL
+             CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+         FOREIGN KEY(artifact_id) REFERENCES installed_artifacts(artifact_id),
+         FOREIGN KEY(qualification_id)
+             REFERENCES qualification_records(qualification_id)
+     ) STRICT;
+
+     PRAGMA user_version = 1;";
+
+fn create_schema_one(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(SCHEMA_ONE_SQL)?;
+    Ok(())
+}
+
+fn migrate_schema_one(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(
+        "ALTER TABLE installed_artifacts
                  ADD COLUMN installation_epoch INTEGER NOT NULL DEFAULT 1
                  CHECK(installation_epoch BETWEEN 1 AND 9223372036854775807);
 
@@ -108,8 +182,185 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
              ) STRICT;
 
              PRAGMA user_version = 2;",
-        )?;
+    )?;
+    Ok(())
+}
+
+pub(super) fn initialize_empty(connection: &mut Connection) -> StoreResult<()> {
+    configure(connection, true)?;
+    let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let version: i64 = transaction.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if version == STORE_SCHEMA_VERSION {
+        validate_schema_shape(&transaction)?;
+        transaction.commit()?;
+        return Ok(());
     }
+    if version != 0 {
+        return if version < STORE_SCHEMA_VERSION {
+            Err(StoreError::MigrationRequired {
+                found: version,
+                current: STORE_SCHEMA_VERSION,
+            })
+        } else {
+            Err(StoreError::UnsupportedSchema(version))
+        };
+    }
+    require_empty_schema(&transaction)?;
+    create_current_schema(&transaction)?;
+    validate_schema_shape(&transaction)?;
     transaction.commit()?;
+    Ok(())
+}
+
+fn require_empty_schema(connection: &Connection) -> StoreResult<()> {
+    let schema_objects: i64 = connection.query_row(
+        "SELECT COUNT(*) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'",
+        [],
+        |row| row.get(0),
+    )?;
+    if schema_objects != 0 {
+        return Err(StoreError::MigrationRequired {
+            found: 0,
+            current: STORE_SCHEMA_VERSION,
+        });
+    }
+    Ok(())
+}
+
+pub(super) fn validate_exact(connection: &Connection) -> StoreResult<()> {
+    configure(connection, false)?;
+    validate_exact_version(connection)
+}
+
+pub(super) fn validate_exact_writable(connection: &Connection) -> StoreResult<()> {
+    configure(connection, true)?;
+    validate_exact_version(connection)
+}
+
+fn validate_exact_version(connection: &Connection) -> StoreResult<()> {
+    let version: i64 = connection.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if version < 0 {
+        return Err(StoreError::UnsupportedSchema(version));
+    }
+    if version < STORE_SCHEMA_VERSION {
+        return Err(StoreError::MigrationRequired {
+            found: version,
+            current: STORE_SCHEMA_VERSION,
+        });
+    }
+    if version > STORE_SCHEMA_VERSION {
+        return Err(StoreError::UnsupportedSchema(version));
+    }
+    validate_schema_shape(connection)
+}
+
+fn validate_schema_shape(connection: &Connection) -> StoreResult<()> {
+    let actual = schema_objects(connection)?;
+    let current = canonical_current_objects()?;
+    if actual == current || actual == canonical_migrated_objects()? {
+        Ok(())
+    } else {
+        Err(StoreError::CorruptRecord)
+    }
+}
+
+fn validate_schema_one(connection: &Connection) -> StoreResult<()> {
+    if schema_objects(connection)? == canonical_schema_one_objects()? {
+        Ok(())
+    } else {
+        Err(StoreError::CorruptRecord)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct SchemaObject {
+    kind: String,
+    name: String,
+    table: String,
+    sql: Option<String>,
+}
+
+fn schema_objects(connection: &Connection) -> StoreResult<Vec<SchemaObject>> {
+    let mut statement = connection.prepare(
+        "SELECT type, name, tbl_name, sql
+         FROM sqlite_schema
+         ORDER BY type, name",
+    )?;
+    statement
+        .query_map([], |row| {
+            Ok(SchemaObject {
+                kind: row.get(0)?,
+                name: row.get(1)?,
+                table: row.get(2)?,
+                sql: row
+                    .get::<_, Option<String>>(3)?
+                    .map(|sql| normalize_sql(&sql)),
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(StoreError::Database)
+}
+
+fn canonical_current_objects() -> StoreResult<Vec<SchemaObject>> {
+    let connection = Connection::open_in_memory()?;
+    create_current_schema(&connection)?;
+    schema_objects(&connection)
+}
+
+fn canonical_schema_one_objects() -> StoreResult<Vec<SchemaObject>> {
+    let connection = Connection::open_in_memory()?;
+    create_schema_one(&connection)?;
+    schema_objects(&connection)
+}
+
+fn canonical_migrated_objects() -> StoreResult<Vec<SchemaObject>> {
+    let connection = Connection::open_in_memory()?;
+    create_schema_one(&connection)?;
+    migrate_schema_one(&connection)?;
+    schema_objects(&connection)
+}
+
+fn normalize_sql(sql: &str) -> String {
+    let mut normalized = String::with_capacity(sql.len());
+    let mut characters = sql.chars().peekable();
+    let mut quote = None;
+    let mut pending_space = false;
+    while let Some(character) = characters.next() {
+        if let Some(terminator) = quote {
+            normalized.push(character);
+            if character == terminator {
+                if terminator != ']' && characters.peek() == Some(&terminator) {
+                    if let Some(escaped) = characters.next() {
+                        normalized.push(escaped);
+                    }
+                } else {
+                    quote = None;
+                }
+            }
+        } else if character.is_ascii_whitespace() {
+            pending_space = !normalized.is_empty();
+        } else {
+            if pending_space {
+                normalized.push(' ');
+                pending_space = false;
+            }
+            normalized.push(character.to_ascii_lowercase());
+            if matches!(character, '\'' | '"' | '`' | '[') {
+                quote = Some(if character == '[' { ']' } else { character });
+            }
+        }
+    }
+    normalized
+}
+
+fn configure(connection: &Connection, writable: bool) -> StoreResult<()> {
+    connection.busy_timeout(Duration::from_secs(5))?;
+    connection.execute_batch(
+        "PRAGMA foreign_keys = ON;
+         PRAGMA trusted_schema = OFF;",
+    )?;
+    if writable {
+        connection.execute_batch("PRAGMA synchronous = FULL;")?;
+    }
     Ok(())
 }

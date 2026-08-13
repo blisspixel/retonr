@@ -107,6 +107,18 @@ pub(super) fn create_directory(parent: &File, name: &OsStr) -> Result<(), Artifa
     }
 }
 
+#[cfg(unix)]
+pub(super) fn create_directory_exclusive(
+    parent: &File,
+    name: &OsStr,
+) -> Result<(), ArtifactInventoryError> {
+    use rustix::fs::Mode;
+
+    rustix::fs::mkdirat(parent, name, Mode::RUSR | Mode::WUSR | Mode::XUSR)
+        .map_err(io::Error::from)
+        .map_err(map_initial_error)
+}
+
 #[cfg(windows)]
 pub(super) fn create_directory(parent: &File, name: &OsStr) -> Result<(), ArtifactInventoryError> {
     let options = cap_primitives::fs::DirOptions::new();
@@ -115,6 +127,15 @@ pub(super) fn create_directory(parent: &File, name: &OsStr) -> Result<(), Artifa
         Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(()),
         Err(error) => Err(map_initial_error(error)),
     }
+}
+
+#[cfg(windows)]
+pub(super) fn create_directory_exclusive(
+    parent: &File,
+    name: &OsStr,
+) -> Result<(), ArtifactInventoryError> {
+    let options = cap_primitives::fs::DirOptions::new();
+    cap_primitives::fs::create_dir(parent, Path::new(name), &options).map_err(map_initial_error)
 }
 
 #[cfg(unix)]

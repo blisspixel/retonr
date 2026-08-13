@@ -128,10 +128,11 @@ remove a shared validation step.
 
 ## Generation strategies
 
-The first generative milestone implements only `Grounded`. The current CLI still
-checks caller-supplied candidates, while the application layer has a provisional
-grounded strategy exercised through a fake backend and bounded Ollama adapter. It is
-not a qualified user-facing model path yet. Other strategies are introduced only
+The first generative milestone implements only `Grounded`. The current CLI checks
+caller-supplied candidates and administers exact local artifact files, while the
+application layer has a provisional grounded strategy exercised through a fake
+backend and bounded Ollama adapter. It is not a qualified user-facing model path yet.
+Other strategies are introduced only
 after the evaluation harness demonstrates a need.
 
 | Strategy | Contract | Intended use |
@@ -573,6 +574,22 @@ the transitions outside the application removal service, but this remains a 0.x
 internal boundary rather than a stable hard guarantee. The transition API must take
 an unforgeable lifecycle authority before another runtime consumer or a stable
 artifact API is exposed.
+
+The first administrative repository facade derives managed storage, exact-schema
+SQLite state, and an outer lifecycle lock from one explicit application data
+directory. It pins the direct single-link state file before opening SQLite, rechecks
+its identity around each service operation, and suppresses external progress
+callbacks while the database is open. First import may reserve and synchronize an
+empty state file and initialize the current schema; ordinary commands never create an
+ambient default or migrate older state. Read-only inventory uses shared authority;
+import, reconciliation, removal, and recovery use exclusive authority. First import
+creates exactly one missing private leaf below an existing pinned parent
+or accepts an empty existing directory. It refuses a nonempty uninitialized root and
+does not change permissions on a pre-existing caller directory. The facade is
+still a provisional 0.x API: its inventory result contains store-owned records, and
+the lower journal transitions still need an opaque lifecycle capability before a
+stable artifact API or another runtime consumer is exposed. The qualified boundary
+is a local, application-owned filesystem used only by cooperating Retonr processes.
 
 Small personal corpora use filtered brute-force vector scoring in Rust with vectors
 stored as versioned blobs. SQLite FTS5 supports lexical retrieval. A vector extension
