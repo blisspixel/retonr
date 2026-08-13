@@ -134,7 +134,7 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             })?;
             let cancellation = CancellationToken::new();
             let signal_cancellation = cancellation.clone();
-            ctrlc::try_set_handler(move || signal_cancellation.cancel())
+            ctrlc::set_handler(move || signal_cancellation.cancel())
                 .map_err(|_| (RunFailure::operational(command_name), format))?;
             let success = model::run(command, data_directory, &cancellation)
                 .map_err(|error| (RunFailure::from_model(error), format))?;
