@@ -44,8 +44,9 @@ This order encodes five deliberate choices:
 
 The repository is still closing 0.1. Work proceeds in this exact order:
 
-1. Close the remaining 0.1 governance approvals, final cross-platform continuous
-   integration, and refinement disposition.
+1. Record owner disposition of ADR 0001 and the completed four-pass refinement to
+   close 0.1, then record governance and ADR 0003 through 0005 decisions at the 0.2
+   entry gate. Technical 0.1 implementation evidence is complete.
 2. Complete the 0.2 plain-text transaction and CLI before adding profiles or another
    document format.
 3. Establish the versioned editorial-quality corpus during evaluation work, but do
