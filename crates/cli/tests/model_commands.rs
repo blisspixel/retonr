@@ -69,8 +69,12 @@ fn import(data: &Path, source: &Path, manifest: &Path) -> Value {
         .arg(manifest)
         .output()
         .expect("run import");
-    assert!(output.status.success(), "import stderr was not empty");
-    assert!(output.stderr.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "import failed: {stderr}");
+    assert!(
+        output.stderr.is_empty(),
+        "import stderr was not empty: {stderr}"
+    );
     serde_json::from_slice(&output.stdout).expect("parse import JSON")
 }
 
