@@ -62,13 +62,13 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The implementation through application-owned artifact inventory DTOs passed at
-exact-main revision `c0592573f663f7b0e752c2b0dbc5c83e083d6700` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31737750254).
-The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
-Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
-concurrency, and the Ubuntu loopback-only network namespace. Remote evidence for
-the focused rewrite-record v2 branch is pending publication.
+The rewrite-record v2 generation-provenance implementation passed at exact-main
+revision `f9396681a6970e092f7ffec04ed743927eafc737` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31739447977).
+This evidence-only update changes no code. The retained jobs cover Windows, macOS,
+and Linux Rust checks, repository policy, Markdown, coverage, dependency and
+supply-chain policy, fuzz smoke, proxy isolation, concurrency, and the Ubuntu
+loopback-only network namespace.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
