@@ -16,7 +16,7 @@ use tempfile::tempdir;
 
 const SOURCE_BYTES: u64 = 512 * 1024 * 1024;
 #[cfg(windows)]
-const WINDOWS_SENDER_SETUP_TIMEOUT: Duration = Duration::from_secs(120);
+const WINDOWS_SENDER_SETUP_TIMEOUT: Duration = Duration::from_mins(2);
 
 #[test]
 fn interrupt_requests_typed_import_cancellation_before_registration() {
