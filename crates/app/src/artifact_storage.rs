@@ -49,6 +49,7 @@ impl DirectoryEntrySnapshot {
     }
 }
 
+#[cfg_attr(unix, derive(Clone, Copy))]
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) struct MetadataFingerprint {
     file_type: FileTypeFingerprint,
