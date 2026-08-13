@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod binding;
 mod error;
 mod record;
 mod schema;

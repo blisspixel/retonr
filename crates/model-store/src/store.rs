@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use rusqlite::{Connection, OptionalExtension as _, Transaction, TransactionBehavior, params};
+use rusqlite::{Connection, Transaction, TransactionBehavior, params};
 
 use rewrite_model::{
     ActivationAction, ActivationDecision, ActivationId, ActiveArtifactBinding, ArtifactId,
@@ -10,6 +10,7 @@ use rewrite_model::{
 
 use crate::{
     StoreError, StoreResult,
+    binding::{load_active_binding, load_active_bindings, role_key},
     record::{
         decode_record, encode_record, immutable_disposition, insert_immutable, load_record,
         load_required,
@@ -304,22 +305,8 @@ impl ArtifactStateStore {
     where
         F: FnMut(&InstalledArtifact) -> bool,
     {
-        let encoded = self
-            .connection
-            .query_row(
-                "SELECT record_json FROM active_bindings WHERE role = ?1",
-                [role_key(role)],
-                |row| row.get::<_, String>(0),
-            )
-            .optional()?;
-        encoded
-            .map(|value| {
-                let binding = decode_record::<ActiveArtifactBinding>(&value)?;
-                if binding.role != role {
-                    return Err(StoreError::InvalidActiveBinding);
-                }
-                validate_binding(&self.connection, &binding, &mut verify_installed)
-            })
+        load_active_binding(&self.connection, role)?
+            .map(|binding| validate_binding(&self.connection, &binding, &mut verify_installed))
             .transpose()
     }
 
@@ -336,19 +323,9 @@ impl ArtifactStateStore {
     where
         F: FnMut(&InstalledArtifact) -> bool,
     {
-        let mut statement = self
-            .connection
-            .prepare("SELECT role, record_json FROM active_bindings ORDER BY role ASC")?;
-        let rows = statement.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })?;
-        let encoded = rows.collect::<Result<Vec<_>, _>>()?;
-        let mut recovered = Vec::with_capacity(encoded.len());
-        for (stored_role, value) in encoded {
-            let binding = decode_record::<ActiveArtifactBinding>(&value)?;
-            if role_key(binding.role) != stored_role {
-                return Err(StoreError::InvalidActiveBinding);
-            }
+        let bindings = load_active_bindings(&self.connection)?;
+        let mut recovered = Vec::with_capacity(bindings.len());
+        for binding in bindings {
             recovered.push(validate_binding(
                 &self.connection,
                 &binding,
@@ -368,14 +345,11 @@ impl ArtifactStateStore {
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let active: bool = transaction.query_row(
-            "SELECT EXISTS(
-                 SELECT 1 FROM active_bindings WHERE artifact_id = ?1
-             )",
-            [artifact_id.digest().as_str()],
-            |row| row.get(0),
-        )?;
-        if active {
+        let active_bindings = load_active_bindings(&transaction)?;
+        if active_bindings
+            .iter()
+            .any(|binding| &binding.artifact_id == artifact_id)
+        {
             return Err(StoreError::ActiveArtifact);
         }
         let changed = transaction.execute(
@@ -528,17 +502,6 @@ where
         Ok(recovered)
     } else {
         Err(StoreError::InvalidActiveBinding)
-    }
-}
-
-const fn role_key(role: ArtifactRole) -> &'static str {
-    match role {
-        ArtifactRole::Generation => "generation",
-        ArtifactRole::Embedding => "embedding",
-        ArtifactRole::SpeechRecognition => "speech_recognition",
-        ArtifactRole::VoiceActivityDetection => "voice_activity_detection",
-        ArtifactRole::SpeechSynthesis => "speech_synthesis",
-        ArtifactRole::Voice => "voice",
     }
 }
 

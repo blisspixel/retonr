@@ -12,6 +12,8 @@ use rewrite_types::Digest;
 use super::{ArtifactStateStore, WriteDisposition};
 use crate::StoreError;
 
+mod integrity;
+
 struct Fixture {
     manifest: ArtifactManifest,
     installed: InstalledArtifact,
@@ -323,7 +325,7 @@ fn recovery_fails_closed_on_a_tampered_binding() {
         .expect("tamper fixture");
     assert!(matches!(
         store.recover_active_bindings(|_| true),
-        Err(StoreError::InvalidActiveBinding)
+        Err(StoreError::CorruptRecord)
     ));
 }
 

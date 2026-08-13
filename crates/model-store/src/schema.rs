@@ -26,19 +26,22 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
     transaction.execute_batch(
         "CREATE TABLE artifact_manifests (
              artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
-             record_json TEXT NOT NULL CHECK(length(record_json) <= 1048576)
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
          ) STRICT;
 
          CREATE TABLE installed_artifacts (
              artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
-             record_json TEXT NOT NULL CHECK(length(record_json) <= 1048576),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
              FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
          ) STRICT;
 
          CREATE TABLE qualification_records (
              qualification_id TEXT PRIMARY KEY NOT NULL CHECK(length(qualification_id) = 64),
              artifact_id TEXT NOT NULL CHECK(length(artifact_id) = 64),
-             record_json TEXT NOT NULL CHECK(length(record_json) <= 1048576),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
              FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
          ) STRICT;
 
@@ -46,7 +49,8 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
              sequence INTEGER PRIMARY KEY,
              qualification_id TEXT NOT NULL CHECK(length(qualification_id) = 64),
              reason_code TEXT NOT NULL CHECK(length(reason_code) BETWEEN 1 AND 64),
-             record_json TEXT NOT NULL CHECK(length(record_json) <= 1048576),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
              FOREIGN KEY(qualification_id)
                  REFERENCES qualification_records(qualification_id)
          ) STRICT;
@@ -57,14 +61,16 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
          CREATE TABLE activation_decisions (
              activation_id TEXT PRIMARY KEY NOT NULL CHECK(length(activation_id) = 64),
              role TEXT NOT NULL CHECK(length(role) BETWEEN 1 AND 64),
-             record_json TEXT NOT NULL CHECK(length(record_json) <= 1048576)
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
          ) STRICT;
 
          CREATE TABLE active_bindings (
              role TEXT PRIMARY KEY NOT NULL CHECK(length(role) BETWEEN 1 AND 64),
              artifact_id TEXT NOT NULL CHECK(length(artifact_id) = 64),
              qualification_id TEXT NOT NULL CHECK(length(qualification_id) = 64),
-             record_json TEXT NOT NULL CHECK(length(record_json) <= 1048576),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
              FOREIGN KEY(artifact_id) REFERENCES installed_artifacts(artifact_id),
              FOREIGN KEY(qualification_id)
                  REFERENCES qualification_records(qualification_id)
