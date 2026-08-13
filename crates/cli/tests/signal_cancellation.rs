@@ -142,15 +142,18 @@ fn wait_for_output(mut child: Child) -> Output {
 fn configure_interruptible_child(_command: &mut Command) {}
 
 #[cfg(unix)]
-struct InterruptSender;
+struct InterruptSender {
+    ready: bool,
+}
 
 #[cfg(unix)]
 impl InterruptSender {
     fn prepare(_directory: &Path) -> Self {
-        Self
+        Self { ready: true }
     }
 
     fn send(self, child: &Child) {
+        assert!(self.ready, "POSIX interrupt sender was not prepared");
         let status = Command::new("kill")
             .arg("-INT")
             .arg(child.id().to_string())
