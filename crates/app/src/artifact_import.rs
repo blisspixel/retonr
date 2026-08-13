@@ -160,12 +160,6 @@ impl<'a> OfflineArtifactImportService<'a> {
             .sync_all()
             .map_err(ArtifactImportError::StorageIo)?;
         ensure_not_cancelled(cancellation)?;
-        report_progress(
-            &mut progress,
-            ArtifactImportStage::CommittingFile,
-            request.manifest.byte_size,
-            request.manifest.byte_size,
-        );
         persist_or_verify(
             staged,
             &destination,
@@ -276,6 +270,12 @@ fn persist_or_verify(
     if destination.exists() {
         return verify_stored_file(destination, manifest, cancellation, progress);
     }
+    report_progress(
+        progress,
+        ArtifactImportStage::CommittingFile,
+        manifest.byte_size,
+        manifest.byte_size,
+    );
     match staged.persist_noclobber(destination) {
         Ok(file) => file.sync_all().map_err(ArtifactImportError::StorageIo),
         Err(error) if error.error.kind() == io::ErrorKind::AlreadyExists => {

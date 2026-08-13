@@ -103,10 +103,25 @@ fn imports_without_mutating_source_and_repeats_idempotently() {
         })
     );
 
-    let repeated = run_import(&mut service, &request).expect("repeat exact import");
+    let mut repeated_progress = Vec::new();
+    let repeated = service
+        .import(&request, &CancellationToken::new(), |event| {
+            repeated_progress.push(event);
+        })
+        .expect("repeat exact import");
     assert_eq!(repeated.installed, first.installed);
     assert_eq!(repeated.state.manifest, WriteDisposition::AlreadyPresent);
     assert_eq!(repeated.state.installed, WriteDisposition::AlreadyPresent);
+    assert!(
+        repeated_progress
+            .iter()
+            .any(|event| event.stage == ArtifactImportStage::VerifyingExistingFile)
+    );
+    assert!(
+        repeated_progress
+            .iter()
+            .all(|event| event.stage != ArtifactImportStage::CommittingFile)
+    );
 }
 
 #[test]
