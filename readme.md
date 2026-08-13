@@ -81,7 +81,9 @@ exact manifest and installation records or confirms that both existing records
 match. Inactive removal uses an installation generation and durable journal so an
 interrupted operation can resume and an old retry cannot delete a deliberate
 reinstall. Runtime artifact leases hold the shared lifecycle lock for their full
-use lifetime, while removal requires the exclusive lock. A narrow offline CLI now
+use lifetime. Removal's durable state transitions require a live, non-cloneable
+exclusive lifecycle-lock capability bound by the application to the exact pinned
+repository lock entry. A narrow offline CLI now
 exposes exact single-file import, read-only inventory, read-only pending-operation
 inspection, selected reconciliation, inactive removal, and explicit
 interrupted-removal recovery. It does not download, qualify, activate, or run a

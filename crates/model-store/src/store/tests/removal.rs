@@ -111,25 +111,25 @@ fn prepares_completes_and_reinstalls_with_a_new_epoch() {
         .installation;
     assert_eq!(
         store
-            .prepare_artifact_removal(&first)
+            .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &first)
             .expect("prepare removal"),
         RemovalPreparationDisposition::Prepared
     );
     assert_eq!(
         store
-            .prepare_artifact_removal(&first)
+            .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &first)
             .expect("repeat prepared removal"),
         RemovalPreparationDisposition::AlreadyPrepared
     );
     assert_eq!(
         store
-            .complete_artifact_removal(&first)
+            .complete_artifact_removal(&super::exclusive_lifecycle_lock(), &first)
             .expect("complete removal"),
         RemovalCompletionDisposition::Completed
     );
     assert_eq!(
         store
-            .complete_artifact_removal(&first)
+            .complete_artifact_removal(&super::exclusive_lifecycle_lock(), &first)
             .expect("repeat completed removal"),
         RemovalCompletionDisposition::AlreadyCompleted
     );
@@ -151,7 +151,7 @@ fn prepares_completes_and_reinstalls_with_a_new_epoch() {
         .expect("activate reinstalled generation");
     assert_eq!(
         store
-            .prepare_artifact_removal(&first)
+            .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &first)
             .expect("old retry remains complete despite current active generation"),
         RemovalPreparationDisposition::AlreadyCompleted
     );
@@ -183,7 +183,7 @@ fn pending_removal_blocks_installation_and_activation() {
         .0
         .expect("installed selection");
     store
-        .prepare_artifact_removal(&selection)
+        .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
         .expect("prepare removal");
     assert!(matches!(
         store.put_installation(&fixture.manifest, &fixture.installed),
@@ -221,7 +221,7 @@ fn active_selection_cannot_be_prepared() {
         .0
         .expect("installed selection");
     assert!(matches!(
-        store.prepare_artifact_removal(&selection),
+        store.prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection),
         Err(StoreError::ActiveArtifact)
     ));
 }
@@ -237,7 +237,7 @@ fn inventory_retains_validated_pending_removal_state() {
         .expect("register installation")
         .installation;
     store
-        .prepare_artifact_removal(&selection)
+        .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
         .expect("prepare removal");
 
     let state = store.artifact_inventory(1).expect("inventory");
@@ -272,7 +272,7 @@ fn pending_removal_inspection_is_bounded_sorted_and_excludes_history() {
             .expect("register pending fixture")
             .installation;
         store
-            .prepare_artifact_removal(&selection)
+            .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
             .expect("prepare removal");
     }
     let pending = store
@@ -285,7 +285,7 @@ fn pending_removal_inspection_is_bounded_sorted_and_excludes_history() {
     );
 
     store
-        .complete_artifact_removal(&pending[0])
+        .complete_artifact_removal(&super::exclusive_lifecycle_lock(), &pending[0])
         .expect("complete one journal");
     assert!(matches!(
         store.pending_artifact_removals(1),
@@ -314,7 +314,7 @@ fn pending_removal_inspection_fails_closed_on_a_dangling_journal() {
         .expect("register installation")
         .installation;
     store
-        .prepare_artifact_removal(&selection)
+        .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
         .expect("prepare removal");
     drop(store);
 
@@ -352,10 +352,10 @@ fn epoch_overflow_fails_closed() {
         .0
         .expect("installed selection");
     store
-        .prepare_artifact_removal(&selection)
+        .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
         .expect("prepare first generation");
     store
-        .complete_artifact_removal(&selection)
+        .complete_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
         .expect("complete first generation");
     store
         .connection
@@ -391,7 +391,11 @@ fn prepare_and_complete_failures_preserve_the_prior_transaction_state() {
              BEGIN SELECT RAISE(ABORT, 'injected preparation failure'); END;",
         )
         .expect("create preparation fault");
-    assert!(store.prepare_artifact_removal(&selection).is_err());
+    assert!(
+        store
+            .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
+            .is_err()
+    );
     store
         .connection
         .execute_batch("DROP TRIGGER fail_preparation_delete;")
@@ -403,7 +407,7 @@ fn prepare_and_complete_failures_preserve_the_prior_transaction_state() {
     assert_eq!(removal, None);
 
     store
-        .prepare_artifact_removal(&selection)
+        .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
         .expect("prepare removal");
     store
         .connection
@@ -413,7 +417,11 @@ fn prepare_and_complete_failures_preserve_the_prior_transaction_state() {
              BEGIN SELECT RAISE(ABORT, 'injected completion failure'); END;",
         )
         .expect("create completion fault");
-    assert!(store.complete_artifact_removal(&selection).is_err());
+    assert!(
+        store
+            .complete_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
+            .is_err()
+    );
     let (installed, removal) = store
         .artifact_removal_state(&fixture.installed.artifact_id)
         .expect("inspect preserved preparation");
@@ -437,10 +445,10 @@ fn corrupt_epoch_sequences_fail_before_activation_or_recovery() {
         .0
         .expect("installed selection");
     store
-        .prepare_artifact_removal(&selection)
+        .prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
         .expect("prepare removal");
     store
-        .complete_artifact_removal(&selection)
+        .complete_artifact_removal(&super::exclusive_lifecycle_lock(), &selection)
         .expect("complete removal");
     store
         .put_installation(&fixture.manifest, &fixture.installed)

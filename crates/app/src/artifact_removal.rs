@@ -166,10 +166,7 @@ impl<'a> ArtifactRemovalService<'a> {
                     .map_err(map_storage_error)?;
             }
         }
-        let prepared = self
-            .store
-            .prepare_artifact_removal(&request.selection)
-            .map_err(map_store_error)?;
+        let prepared = self.prepare_state(&request.selection)?;
         if prepared == RemovalPreparationDisposition::AlreadyCompleted {
             return Ok(result(request, ArtifactRemovalDisposition::AlreadyRemoved));
         }
@@ -182,6 +179,19 @@ impl<'a> ArtifactRemovalService<'a> {
                 ArtifactRemovalDisposition::Removed
             },
         ))
+    }
+
+    fn prepare_state(
+        &mut self,
+        selection: &rewrite_model_store::StoredArtifactInstallation,
+    ) -> Result<RemovalPreparationDisposition, ArtifactRemovalError> {
+        let lifecycle_lock = self
+            .storage
+            .exclusive_lifecycle_lock()
+            .map_err(map_storage_error)?;
+        self.store
+            .prepare_artifact_removal(lifecycle_lock, selection)
+            .map_err(map_store_error)
     }
 
     fn verify<F>(
@@ -276,7 +286,12 @@ impl<'a> ArtifactRemovalService<'a> {
             ));
         }
         self.store
-            .complete_artifact_removal(&request.selection)
+            .complete_artifact_removal(
+                self.storage.exclusive_lifecycle_lock().map_err(|error| {
+                    ArtifactRemovalError::RecoveryRequired(map_recovery_storage_error(error))
+                })?,
+                &request.selection,
+            )
             .map_err(|error| {
                 ArtifactRemovalError::RecoveryRequired(ArtifactRemovalRecoveryError::State(error))
             })?;

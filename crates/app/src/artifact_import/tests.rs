@@ -159,9 +159,13 @@ fn pending_removal_is_rejected_before_source_copy_or_canonical_recreation() {
         .put_installation(&value, &installed)
         .expect("register state")
         .installation;
-    store
-        .prepare_artifact_removal(&selection)
-        .expect("prepare removal");
+    fs::create_dir(&storage).expect("create managed root");
+    fs::create_dir(storage.join("artifacts")).expect("create artifacts directory");
+    fs::write(storage.join(LIFECYCLE_LOCK_FILE), []).expect("create lifecycle lock");
+    crate::artifact_storage::test_support::prepare_artifact_removal(
+        &storage, &mut store, &selection,
+    )
+    .expect("prepare removal");
     let mut service = OfflineArtifactImportService::open(&storage, &mut store, limits())
         .expect("open import service");
     let mut progress = Vec::new();

@@ -5,12 +5,14 @@
 
 mod binding;
 mod error;
+mod lifecycle;
 mod record;
 mod removal;
 mod schema;
 mod store;
 
 pub use error::{StoreError, StoreResult};
+pub use lifecycle::ExclusiveArtifactLifecycleLock;
 pub use removal::{
     ArtifactInstallationEpoch, ArtifactRemovalPhase, StoredArtifactInstallation,
     StoredArtifactRemoval,

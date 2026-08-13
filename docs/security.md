@@ -296,7 +296,9 @@ Controls:
   identity, exact lowercase name, and single-name status, and refuses any active
   binding before durable preparation.
 - The state store writes a prepared removal journal and revokes installed-state
-  authority in one immediate transaction before byte deletion. Only after exact
+  authority in one immediate transaction before byte deletion. Both the preparation
+  and completion transitions require a live non-cloneable exclusive lifecycle-lock
+  capability. Only after exact
   absence, artifact-directory synchronization, and held-layout revalidation does it
   mark the operation completed. A prepared operation is resumed rather than
   cancelled, and generation ordering prevents an old retry from deleting a later
@@ -312,11 +314,12 @@ Controls:
   use of managed bytes must retain a verified shared lifecycle lease; removal takes
   the exclusive lock. The operation is not secure erasure and cannot remove external
   copies, backups, caches, loaded runtime memory, or provider data.
-- The unpublished store journal transitions currently enforce state invariants but
-  accept the application's exclusive lifecycle lock as a documented precondition,
-  not a typed opaque authority. Product code calls them only through the removal
-  service. A stable artifact API and any additional runtime consumer are blocked on
-  making that lock authority unforgeable.
+- The application opens the exact lifecycle-lock entry through its pinned storage
+  root, clones that same handle into the opaque exclusive capability, and retains
+  the original handle for layout fingerprint checks. The store cannot prepare or
+  complete removal without a live capability reference. The capability proves that
+  its handle is exclusively locked; the surrounding pinned application boundary
+  proves that handle is the selected repository lock.
 - The administrative artifact CLI requires one explicit data directory. Its
   repository facade derives all child paths, takes an outer shared or exclusive lock,
   pins the direct single-link SQLite state file before opening it, and rechecks exact

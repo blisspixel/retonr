@@ -14,7 +14,7 @@ use rewrite_model::{
     ARTIFACT_MANIFEST_SCHEMA_VERSION, ArtifactId, ArtifactManifest, ArtifactRole, ArtifactSource,
     DeclaredCapabilities, InstalledArtifact, LicenseRecord,
 };
-use rewrite_model_store::ArtifactStateStore;
+use rewrite_model_store::{ArtifactStateStore, ExclusiveArtifactLifecycleLock};
 use rewrite_types::{CancellationToken, Digest};
 
 const CHILD_MODE: &str = "RETONR_REMOVAL_CRASH_MODE";
@@ -66,8 +66,12 @@ fn removal_crash_child() {
         .expect("load child selection");
     assert!(removal.is_none());
     let selection = selection.expect("installed child selection");
+    let lifecycle_lock = ExclusiveArtifactLifecycleLock::try_acquire(
+        fs::File::open(root.join(".artifact-import.lock")).expect("open lifecycle lock"),
+    )
+    .expect("acquire exclusive lifecycle lock");
     store
-        .prepare_artifact_removal(&selection)
+        .prepare_artifact_removal(&lifecycle_lock, &selection)
         .expect("durably prepare child removal");
     if mode == "unlinked" {
         fs::remove_file(root.join("artifacts").join(digest.as_str()))

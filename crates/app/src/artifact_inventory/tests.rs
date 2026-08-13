@@ -190,9 +190,12 @@ fn pending_removal_is_disjoint_from_registered_and_orphan_state() {
         .put_installation(&value, &installed(&value))
         .expect("register installation")
         .installation;
-    store
-        .prepare_artifact_removal(&selection)
-        .expect("prepare removal");
+    crate::artifact_storage::test_support::prepare_artifact_removal(
+        &storage(&directory),
+        &mut store,
+        &selection,
+    )
+    .expect("prepare removal");
 
     let report = inventory(&directory, &store, limits()).expect("inventory pending removal");
     assert!(report.registered.is_empty());

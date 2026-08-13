@@ -50,7 +50,7 @@ fn indexed_binding_corruption_blocks_reads_recovery_and_removal() {
         epoch: crate::ArtifactInstallationEpoch::for_test(1).expect("first epoch"),
     };
     assert!(matches!(
-        store.prepare_artifact_removal(&selection),
+        store.prepare_artifact_removal(&super::exclusive_lifecycle_lock(), &selection),
         Err(StoreError::CorruptRecord)
     ));
     assert!(matches!(

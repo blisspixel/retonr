@@ -4,8 +4,8 @@ use rewrite_model::{ArtifactId, ArtifactManifest, InstalledArtifact};
 
 use super::{ArtifactStateStore, validate_binding};
 use crate::{
-    ArtifactRemovalPhase, StoreError, StoreResult, StoredArtifactInstallation,
-    StoredArtifactRemoval,
+    ArtifactRemovalPhase, ExclusiveArtifactLifecycleLock, StoreError, StoreResult,
+    StoredArtifactInstallation, StoredArtifactRemoval,
     binding::load_active_bindings,
     record::{load_record, validate_existing_installation},
     removal::{load_installation, load_removal, write_removal},
@@ -142,15 +142,16 @@ impl ArtifactStateStore {
 
     /// Atomically records a pending removal and revokes installed-state authority.
     ///
-    /// The caller must verify current managed bytes before this transaction. Exact
-    /// retries are idempotent. No managed bytes are changed by this operation.
+    /// The caller must verify current managed bytes before this transaction. The
+    /// required capability keeps an exclusive lifecycle file lock held across the
+    /// transition. Exact retries are idempotent. No managed bytes are changed.
     ///
     /// Low-level durable transition for an application-owned removal protocol.
     ///
-    /// This method does not inspect or delete filesystem bytes. Callers must first
-    /// hold the product lifecycle lock exclusively and verify the exact managed
-    /// artifact through the application boundary. This unpublished workspace crate
-    /// does not expose a standalone managed-byte removal API.
+    /// This method does not inspect or delete filesystem bytes. The application
+    /// boundary must bind the capability to its exact pinned lifecycle-lock entry
+    /// and verify the selected managed artifact first. This unpublished workspace
+    /// crate does not expose a standalone managed-byte removal API.
     ///
     /// # Errors
     ///
@@ -158,6 +159,7 @@ impl ArtifactStateStore {
     /// transaction cannot commit in full.
     pub fn prepare_artifact_removal(
         &mut self,
+        _lifecycle_lock: &ExclusiveArtifactLifecycleLock,
         selection: &StoredArtifactInstallation,
     ) -> StoreResult<RemovalPreparationDisposition> {
         selection
@@ -227,6 +229,7 @@ impl ArtifactStateStore {
     /// is corrupt, or cannot be updated atomically.
     pub fn complete_artifact_removal(
         &mut self,
+        _lifecycle_lock: &ExclusiveArtifactLifecycleLock,
         selection: &StoredArtifactInstallation,
     ) -> StoreResult<RemovalCompletionDisposition> {
         let transaction = self

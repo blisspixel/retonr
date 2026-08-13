@@ -56,22 +56,24 @@ proceeds in this exact order:
    CLI, retain the complete 0.2 lifecycle evidence.
 2. Keep runtime use behind verified shared leases before wiring a real model
    consumer. Do not add network acquisition to the current administrative slice.
-3. Before a stable public artifact API, replace the unpublished store's low-level
-   removal transitions with an opaque lifecycle authority that proves the exclusive
-   pinned-storage lock is held.
-4. Link redacted generation provenance into the durable rewrite transaction, add
+3. Retain the completed opaque exclusive-lock capability on both low-level removal
+   transitions. The application binds it to the exact pinned repository lock entry;
+   no new runtime consumer may bypass that boundary.
+4. Wrap store-owned inventory records in application DTOs before a stable artifact
+   API, CLI schema freeze, or another external consumer.
+5. Link redacted generation provenance into the durable rewrite transaction, add
    typed claims and an independent evaluator, and complete the grounded validation
    cascade.
-5. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
+6. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
    qualify one exact local runtime and artifact combination and retain complete
    cross-platform release evidence before adding profiles or another format.
-6. Establish the versioned editorial-quality corpus during evaluation work, but do
+7. Establish the versioned editorial-quality corpus during evaluation work, but do
    not give lint findings product authority until the 0.3 rule and profile contracts
    pass qualification.
-7. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-8. Let editorial lint guide or rank generated candidates in 0.5 only after the
+8. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+9. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
-9. Add agent packaging, rich document formats, and native presentation layers only
+10. Add agent packaging, rich document formats, and native presentation layers only
    after the underlying CLI and application contracts are proven.
 
 This sequencing makes three independent outcomes visible in every release report:
