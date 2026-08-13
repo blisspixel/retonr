@@ -269,7 +269,9 @@ Controls:
   entries, and hashes only canonical direct regular files within per-file and total
   ceilings. It follows no symlink or reparse point, never resolves a persisted
   storage key as a path, rejects external hard-link aliases as managed authority,
-  and emits only aggregate counts for malformed raw names.
+  and emits only aggregate counts for malformed raw names. Its application result
+  replaces store-owned installation records with exact persistence-neutral artifact
+  identity and generation keys before reaching the repository facade or CLI.
 - The inventory repeats the complete entry snapshot, checks stable metadata around
   each hash, and requires a matching second bounded state snapshot. Concurrent
   changes fail the operation without a partial report. On Windows, child opens and

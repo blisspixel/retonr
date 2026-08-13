@@ -218,7 +218,7 @@ impl<'a> InventoryBuilder<'a> {
                 )?;
                 self.pending_removals
                     .push(PendingArtifactRemovalInspection {
-                        selection: removal.selection.clone(),
+                        selection: crate::ArtifactInstallationKey::from_stored(&removal.selection),
                         bytes,
                     });
                 self.complete_registered(progress);
@@ -232,7 +232,7 @@ impl<'a> InventoryBuilder<'a> {
             let bytes = self.classify_registered(artifacts, &installed.installed, cancellation)?;
             self.registered.push(RegisteredArtifactInspection {
                 manifest: state.manifest.clone(),
-                installation: installed.clone(),
+                installation: crate::ArtifactInstallationKey::from_stored(installed),
                 active_bindings: state.active_bindings.clone(),
                 bytes,
             });

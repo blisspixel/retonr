@@ -575,9 +575,11 @@ The application creates the capability from a clone of the lifecycle-lock handle
 opened through the pinned storage root. It retains the original handle for exact
 path fingerprint checks before and after storage work. The capability proves the OS
 lock is held; the application boundary proves that handle is the selected
-repository's exact pinned lock entry. Store-owned inventory records remain a 0.x
-internal type boundary and must be projected into application DTOs before a stable
-artifact API is exposed.
+repository's exact pinned lock entry. Store-owned inventory records remain internal.
+Read-only inventory projects each registered or pending installation into an
+application-owned `ArtifactInstallationKey` containing only the content identity and
+positive installation generation. Persistence records, serialized rows, and storage
+keys do not cross the repository facade or CLI boundary.
 
 The first administrative repository facade derives managed storage, exact-schema
 SQLite state, and an outer lifecycle lock from one explicit application data
@@ -594,10 +596,11 @@ ambient default or migrate older state. Read-only inventory uses shared authorit
 import, reconciliation, removal, and recovery use exclusive authority. First import
 creates exactly one missing private leaf below an existing pinned parent
 or accepts an empty existing directory. It refuses a nonempty uninitialized root and
-does not change permissions on a pre-existing caller directory. The facade is
-still a provisional 0.x API because its inventory result contains store-owned
-records. The qualified boundary is a local, application-owned filesystem used only
-by cooperating Retonr processes.
+does not change permissions on a pre-existing caller directory. The facade remains
+a provisional 0.x API while the wider artifact lifecycle and rewrite transaction
+contracts evolve. Its inventory result is application-owned and
+persistence-neutral. The qualified boundary is a local, application-owned
+filesystem used only by cooperating Retonr processes.
 
 Small personal corpora use filtered brute-force vector scoring in Rust with vectors
 stored as versioned blobs. SQLite FTS5 supports lexical retrieval. A vector extension

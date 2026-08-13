@@ -171,9 +171,7 @@ impl InventoryResult {
             .into_iter()
             .map(|entry| RegisteredSummary {
                 manifest: ManifestSummary::from_manifest(&entry.manifest),
-                selection: ArtifactSelectionDto::from(&rewrite_app::ArtifactInstallationKey::from(
-                    &entry.installation,
-                )),
+                selection: ArtifactSelectionDto::from(&entry.installation),
                 active_roles: entry
                     .active_bindings
                     .iter()
@@ -186,9 +184,7 @@ impl InventoryResult {
             .pending_removals
             .into_iter()
             .map(|entry| PendingSummary {
-                selection: ArtifactSelectionDto::from(&rewrite_app::ArtifactInstallationKey::from(
-                    &entry.selection,
-                )),
+                selection: ArtifactSelectionDto::from(&entry.selection),
                 bytes: RegisteredBytesSummary::from(entry.bytes),
             })
             .collect();

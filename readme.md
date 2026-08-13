@@ -2,10 +2,11 @@
 
 Own the final expression.
 
-Retonr is a local-first editorial engine for turning generated, delegated, and rough
-drafts into cleaner writing that sounds more like you. In each qualified format, it
-treats facts, structure, formatting, formulas, links, protected terms, and other
-content that must remain intact as constraints, not disposable context.
+Retonr is a local-first editorial engine for reclaiming generated, delegated, and
+rough drafts. It makes bounded changes to eligible prose so the result is less
+generic and more recognizably yours. In each qualified format, facts, structure,
+formatting, formulas, links, protected terms, and other content that must remain
+intact are constraints, not disposable context.
 
 The pitch is simple:
 
@@ -17,8 +18,8 @@ The pitch is simple:
 - Reject a candidate or leave a unit unchanged when the required fidelity checks do
   not pass.
 
-Less remote exposure. Less generic model prose. More of your style. More control
-over the finished work.
+Less remote exposure. Less generic model prose. More of your style. The finished
+expression stays under your control.
 
 It treats generated, delegated, and rough text as drafts. The product applies the
 same kind of bounded editorial refinement a person might apply to an intern's draft,
@@ -89,6 +90,10 @@ inspection, selected reconciliation, inactive removal, and explicit
 interrupted-removal recovery. It does not download, qualify, activate, or run a
 model.
 
+Artifact inventory crosses the application boundary through persistence-neutral
+installation keys. SQLite records and storage-layout fields are not part of the CLI
+contract.
+
 The evaluation tool also validates two synthetic editorial-quality groups with named
 findings and clean controls, including a balanced 24-case current-slop group. No
 editorial-lint rule has product authority yet.
@@ -145,6 +150,11 @@ The completed product is planned around one application service:
 - A cross-platform native Rust desktop application, built after the CLI and agent
   contracts without an embedded browser or hosted web application
 - A narrow offline adapter for completed text-only assistant responses
+
+Agent packaging targets the current Agent Plugins 1.0.0 Working Draft after the CLI
+and MCP contracts stabilize. Open Knowledge Format 0.2 remains an optional,
+experimental knowledge projection, not Retonr's database, authorization model, or
+execution protocol.
 
 The 1.0 compatibility adapter handles completed responses and never makes an
 upstream model request. Completed-unit event streams graduate separately after their
