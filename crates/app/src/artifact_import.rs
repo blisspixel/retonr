@@ -135,6 +135,7 @@ impl<'a> OfflineArtifactImportService<'a> {
         let mut staged = if destination_exists {
             None
         } else {
+            ensure_directory(&self.staging)?;
             Some(
                 TemporaryFileBuilder::new()
                     .prefix(STAGING_PREFIX)

@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, io, path::Path};
 
 use rewrite_model::{
     ARTIFACT_MANIFEST_SCHEMA_VERSION, ArtifactId, ArtifactManifest, ArtifactRole, ArtifactSource,
@@ -56,6 +56,16 @@ fn run_import(
     request: &OfflineArtifactImportRequest,
 ) -> Result<ArtifactImportResult, ArtifactImportError> {
     service.import(request, &CancellationToken::new(), |_| {})
+}
+
+#[cfg(unix)]
+fn create_directory_link(target: &Path, link: &Path) -> io::Result<()> {
+    std::os::unix::fs::symlink(target, link)
+}
+
+#[cfg(windows)]
+fn create_directory_link(target: &Path, link: &Path) -> io::Result<()> {
+    std::os::windows::fs::symlink_dir(target, link)
 }
 
 #[test]
@@ -346,6 +356,44 @@ fn rejects_non_file_lock_path_as_unsafe_storage() {
         panic!("non-file lock path must fail as unsafe storage");
     };
     assert!(matches!(error, ArtifactImportError::UnsafeStorageLayout));
+}
+
+#[test]
+fn rejects_staging_directory_replaced_with_an_indirect_path() {
+    let directory = tempdir().expect("temporary directory");
+    let storage = directory.path().join("managed");
+    let source = directory.path().join("source.gguf");
+    let redirected = directory.path().join("redirected");
+    fs::write(&source, ARTIFACT_BYTES).expect("write source fixture");
+    fs::create_dir(&redirected).expect("create redirected directory");
+    let mut store = ArtifactStateStore::open(&directory.path().join("state.sqlite3"))
+        .expect("open artifact state");
+    let mut service = OfflineArtifactImportService::open(&storage, &mut store, limits())
+        .expect("open import service");
+    let staging = storage.join(".staging");
+    fs::remove_dir(&staging).expect("remove original staging directory");
+    if let Err(error) = create_directory_link(&redirected, &staging) {
+        if cfg!(windows) && error.kind() == io::ErrorKind::PermissionDenied {
+            return;
+        }
+        panic!("replace staging with directory link: {error}");
+    }
+
+    let error = run_import(
+        &mut service,
+        &OfflineArtifactImportRequest {
+            source,
+            manifest: manifest(ARTIFACT_BYTES),
+        },
+    )
+    .expect_err("indirect staging directory must fail before writing");
+    assert!(matches!(error, ArtifactImportError::UnsafeStorageLayout));
+    assert_eq!(
+        fs::read_dir(&redirected)
+            .expect("read redirected directory")
+            .count(),
+        0
+    );
 }
 
 #[test]
