@@ -12,6 +12,7 @@ use rewrite_types::Digest;
 use super::{ArtifactStateStore, WriteDisposition};
 use crate::StoreError;
 
+mod installation;
 mod integrity;
 
 struct Fixture {

@@ -16,8 +16,13 @@ use rewrite_types::{
 };
 use thiserror::Error;
 
+mod artifact_import;
 mod grounded;
 
+pub use artifact_import::{
+    ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
+    ArtifactImportStage, OfflineArtifactImportRequest, OfflineArtifactImportService,
+};
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
 
 /// Maximum accepted source or candidate size for the plain-text check service.

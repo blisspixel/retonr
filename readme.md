@@ -63,8 +63,9 @@ Retonr is an early implementation, not a finished writing application. The curre
 model-free slice includes versioned Rust contracts, plain-text parsing and
 reassembly, protected values, deterministic candidate gates, semantic assessment,
 lexicographic selection, document-atomic abstention, redacted records, a
-candidate-check CLI, durable artifact-state transactions, and positive and
-hard-negative evaluation fixtures.
+candidate-check CLI, durable artifact-state transactions, non-destructive offline
+artifact-file import, and positive and hard-negative evaluation fixtures. The import
+service is not exposed through the CLI yet.
 The evaluation tool also validates two synthetic editorial-quality groups with named
 findings and clean controls, including a balanced 24-case current-slop group. No
 editorial-lint rule has product authority yet.
