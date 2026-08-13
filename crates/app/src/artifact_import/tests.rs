@@ -401,7 +401,12 @@ fn rejects_symbolic_link_source() {
     let source = directory.path().join("source.gguf");
     let link = directory.path().join("linked.gguf");
     fs::write(&source, ARTIFACT_BYTES).expect("write source fixture");
-    symlink_file(&source, &link).expect("create source symbolic link");
+    if let Err(error) = symlink_file(&source, &link) {
+        if error.kind() == std::io::ErrorKind::PermissionDenied {
+            return;
+        }
+        panic!("create source symbolic link: {error}");
+    }
     let mut store = ArtifactStateStore::open(&directory.path().join("state.sqlite3"))
         .expect("open artifact state");
     let mut service =

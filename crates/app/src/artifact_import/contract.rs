@@ -89,7 +89,7 @@ pub enum ArtifactImportError {
     /// The complete source digest did not match the immutable manifest.
     #[error("artifact source digest does not match its manifest")]
     DigestMismatch,
-    /// Cancellation was requested before the commit section began.
+    /// Cancellation was observed during a cancellable import or verification stage.
     #[error("artifact import was cancelled")]
     Cancelled,
     /// The application-owned storage layout was missing or unsafe.

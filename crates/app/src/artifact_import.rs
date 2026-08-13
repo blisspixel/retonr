@@ -211,6 +211,9 @@ fn open_source(path: &Path) -> Result<(File, Metadata), ArtifactImportError> {
     }
     let source = open_readonly_no_follow(path).map_err(ArtifactImportError::SourceIo)?;
     let opened_metadata = source.metadata().map_err(ArtifactImportError::SourceIo)?;
+    if is_indirect(&opened_metadata) {
+        return Err(ArtifactImportError::IndirectSource);
+    }
     if !opened_metadata.is_file() {
         return Err(ArtifactImportError::SourceNotRegular);
     }
