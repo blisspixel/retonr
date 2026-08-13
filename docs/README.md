@@ -44,6 +44,7 @@ These documents define the product direction and constrain implementation.
 | [Evaluation data policy](governance/data-policy.md) | Proposed authorization, retention, revocation, and deletion rules |
 | [User research protocol](governance/user-research.md) | Proposed research, consent, annotation, and adjudication workflow |
 | [0.1 refinement record](reviews/2026-08-12-0.1-refinement.md) | Evidence and open findings from the required refinement passes |
+| [Owner decision gate](reviews/2026-08-13-owner-decision-gate.md) | Exact approvals required to close 0.1 and activate 0.2, with explicit non-authorizations |
 
 ## Document status
 

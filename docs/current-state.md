@@ -49,22 +49,24 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 108 Rust unit, integration, and process tests pass. Documentation tests also
-pass. The measured Rust line coverage is 90.46 percent overall. The repository's 80 percent line
-coverage floor passes with margin.
+All 112 Rust unit, integration, and process tests pass. One process helper is
+intentionally ignored by the ordinary runner and exercised by its isolated parent
+test. Documentation tests also pass. The measured Rust line coverage is 90.49
+percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check and execute both fuzz targets. The two
 bounded smoke runs completed without a crash. Continuous integration retains the
 Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not installed in the local
 environment, so this checkpoint used the documented `cargo test` fallback.
 
-Remote continuous integration for revision `c671e7f` passed in both the
-[push workflow](https://github.com/blisspixel/retonr/actions/runs/31642737679) and
-[pull-request workflow](https://github.com/blisspixel/retonr/actions/runs/31642741108).
+Remote continuous integration for implementation closure revision `b2d41fc` passed
+in the exact-main
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31658435581)
+and the
+[dynamic review workflow](https://github.com/blisspixel/retonr/actions/runs/31658436624).
 The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
-Markdown, coverage, dependency and supply-chain policy, and fuzz smoke. Later
-documentation changes require their own passing revision before they inherit that
-claim.
+Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
+concurrency, and the Ubuntu loopback-only network namespace.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the 188-crate
@@ -108,23 +110,21 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Approve or revise the proposed data, consent, user-research, and adjudication
-   governance before collecting non-synthetic data.
-2. Retain the process-isolated proxy-canary and concurrency results on Windows,
-   macOS, and Linux and the loopback-only network-namespace result on Ubuntu.
-3. Rerun Windows, macOS, and Linux continuous integration for the final 0.1 closure
-   revision and retain its exact evidence.
-4. Review the proposed artifact, inference, transport, and grounded-authority
-   decision records at the 0.2 entry gate.
-5. Link redacted generation provenance into the durable transaction schema and
+1. Accept or revise ADR 0001 and the four-pass refinement disposition to close
+   milestone 0.1.
+2. Approve or revise the proposed data and user-research governance and accept or
+   revise ADRs 0003 through 0005 at the 0.2 entry gate. The exact commitments are
+   consolidated in the
+   [owner decision gate](reviews/2026-08-13-owner-decision-gate.md).
+3. Link redacted generation provenance into the durable transaction schema and
    implement artifact lifecycle storage and recovery.
-6. Add typed claim and invariant evidence without describing it as semantic proof,
+4. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.
-7. Complete stdin, safe diff, dry-run, trace, cancellation, terminal safety, and
+5. Complete stdin, safe diff, dry-run, trace, cancellation, terminal safety, and
    raw-output policy before exposing grounded rewriting in the CLI.
-8. Run exact artifact qualification and selective-risk reporting on declared
+6. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-9. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+7. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
    after the 0.2 exit gate passes. The current candidate-check rendering is limited
    to already implemented model-free behavior.
 
