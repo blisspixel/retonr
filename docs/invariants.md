@@ -82,9 +82,12 @@ retry, ranking, or acceptance.
 
 ### INV-E01: Core work is local and offline after setup
 
-Parsing, planning, profile access, generation through a selected local runtime,
-validation, reassembly, and ordinary diagnostics complete with network access
-blocked after explicit artifact installation or offline import.
+Parsing, planning, profile access, validation, reassembly, and ordinary diagnostics
+complete without network access. Generation through a selected local runtime may use
+only its exact configured local transport. After explicit artifact installation or
+offline import, every participating process operates with non-loopback outbound
+connections denied. A local HTTP runtime may use only its exact configured
+IP-literal loopback endpoint.
 
 Downloads, updates, remote runtimes, and remote APIs are separate opt-in actions.
 Opening a file or receiving a rewrite request never triggers a download or enables

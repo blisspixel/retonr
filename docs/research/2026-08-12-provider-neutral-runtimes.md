@@ -449,10 +449,11 @@ The existing `InferenceBackend` boundary is a good base: it is object-safe,
 backend-neutral, bounded, cancellable, and carries an explicit artifact digest,
 sampling policy, reasoning policy, output contract, and context limits. Keep it.
 
-The Ollama adapter is correctly loopback-only, disables proxies and redirects,
-uses the native API, rechecks the inventory digest around generation, bounds
-responses, and treats generated JSON as untrusted. It is an implemented
-candidate, not yet a qualified backend, for these reasons:
+At code-review level, the Ollama adapter accepts only IP-literal loopback endpoints,
+configures reqwest to bypass proxies and not follow redirects, uses the native API,
+rechecks the inventory digest around generation, bounds responses, and treats
+generated JSON as untrusted. It is an implemented candidate, not yet a qualified
+backend, for these reasons:
 
 - `RuntimeIdentity.digest` is currently `None`; `/api/version` text cannot detect
   a replaced build with the same reported version.

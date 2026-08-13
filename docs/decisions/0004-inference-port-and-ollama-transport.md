@@ -21,7 +21,8 @@ qualify and replace without moving transport concerns into the deterministic eng
 - Backends remain replaceable and testable without a real model.
 - Complete prompt, source, candidate, body, time, and cancellation bounds are
   explicit.
-- Local-only mode cannot be bypassed by DNS, proxies, or redirects.
+- Local-only transport rejects every hostname and non-loopback endpoint before HTTP
+  work, ignores ambient proxy routes, and follows no redirect.
 - No qualified run depends on a mutable tag or undocumented generation default.
 - Errors and traces do not expose source, prompt, candidate, or protected values.
 
@@ -87,15 +88,19 @@ or removes the runtime or a model.
 - Add delayed, disconnected, partial, redirected, chunked-oversize, and deadline
   conformance cases.
 - Record endpoint configuration precedence before exposing user configuration.
-- Add a socket-denial qualification test for local-only operation.
+- During milestone 0.2 qualification, add OS-enforced non-loopback isolation evidence
+  for every participating Retonr and runtime process while allowing only the exact
+  local transport required by the selected runtime.
 - Qualify exact Ollama and artifact versions separately from fake-server tests.
 
 ## Validation
 
-The decision passes when fake-server conformance proves loopback rejection,
-proxy and redirect denial, body bounds, cancellation, deadline behavior, malformed
-response handling, exact request parameters, pre-call drift rejection, post-call
-drift discard, and absence of content in errors and traces.
+The decision passes when endpoint tests prove hostname and non-loopback rejection, a
+process-isolated proxy-canary test proves the enumerated proxy environment does not
+alter the adapter route to the configured loopback endpoint, and fake-server
+conformance proves redirects are not followed, body bounds, cancellation, deadline
+behavior, malformed-response handling, exact request parameters, pre-call drift
+rejection, post-call drift discard, and absence of content in errors and traces.
 
 Revisit if the selected runtime removes required identity or structured-output
 capabilities, or if a product-managed in-process runtime provides a smaller and more
