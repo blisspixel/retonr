@@ -567,12 +567,16 @@ Removal requires the exclusive lock and cannot begin while such a lease exists.
 Removal is not secure erasure and does not affect external copies, caches, backups,
 runtime memory, or provider records.
 
-The unpublished SQLite adapter exposes the two journal transitions to the
-application crate with a documented exclusive-lock precondition. Rust visibility
-does not yet encode that precondition as an opaque authority. No product path calls
-the transitions outside the application removal service, but this remains a 0.x
-internal boundary rather than a stable hard guarantee. The transition API must take
-an unforgeable lifecycle authority before another runtime consumer or a stable
+The unpublished SQLite adapter requires a live
+`ExclusiveArtifactLifecycleLock` reference for both journal transitions. This
+non-cloneable capability owns the exclusively locked file handle until it is
+dropped, so a durable transition cannot be called with only a state-store handle.
+The application creates the capability from a clone of the lifecycle-lock handle it
+opened through the pinned storage root. It retains the original handle for exact
+path fingerprint checks before and after storage work. The capability proves the OS
+lock is held; the application boundary proves that handle is the selected
+repository's exact pinned lock entry. Store-owned inventory records remain a 0.x
+internal type boundary and must be projected into application DTOs before a stable
 artifact API is exposed.
 
 The first administrative repository facade derives managed storage, exact-schema
@@ -591,10 +595,9 @@ import, reconciliation, removal, and recovery use exclusive authority. First imp
 creates exactly one missing private leaf below an existing pinned parent
 or accepts an empty existing directory. It refuses a nonempty uninitialized root and
 does not change permissions on a pre-existing caller directory. The facade is
-still a provisional 0.x API: its inventory result contains store-owned records, and
-the lower journal transitions still need an opaque lifecycle capability before a
-stable artifact API or another runtime consumer is exposed. The qualified boundary
-is a local, application-owned filesystem used only by cooperating Retonr processes.
+still a provisional 0.x API because its inventory result contains store-owned
+records. The qualified boundary is a local, application-owned filesystem used only
+by cooperating Retonr processes.
 
 Small personal corpora use filtered brute-force vector scoring in Rust with vectors
 stored as versioned blobs. SQLite FTS5 supports lexical retrieval. A vector extension

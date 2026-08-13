@@ -14,6 +14,8 @@ mod entry;
 mod errors;
 mod existing;
 mod mutation;
+#[cfg(test)]
+pub(crate) mod test_support;
 mod verification;
 pub(crate) use entry::is_indirect;
 use errors::{map_active_error, map_initial_error};
@@ -34,7 +36,6 @@ pub(crate) fn managed_storage_key(digest: &Digest) -> String {
 #[cfg(test)]
 mod mutation_tests;
 
-const HASH_BUFFER_BYTES: usize = 1024 * 1024;
 #[cfg(windows)]
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
 
@@ -503,7 +504,7 @@ fn hash_exact_bytes(
     cancellation: &CancellationToken,
 ) -> Result<Digest, ArtifactInventoryError> {
     let mut hasher = Sha256::new();
-    let mut buffer = vec![0_u8; HASH_BUFFER_BYTES];
+    let mut buffer = vec![0_u8; 1024 * 1024];
     let mut observed = 0_u64;
     while observed < expected_size {
         ensure_not_cancelled(cancellation)?;

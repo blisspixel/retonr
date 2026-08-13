@@ -263,8 +263,7 @@ mod tests {
             .put_installation(&manifest, &installed)
             .expect("register")
             .installation;
-        store
-            .prepare_artifact_removal(&first)
+        crate::artifact_storage::test_support::prepare_artifact_removal(&root, &mut store, &first)
             .expect("prepare removal");
         let lease_limits = RuntimeArtifactLeaseLimits {
             maximum_artifact_bytes: 1024,
@@ -280,8 +279,7 @@ mod tests {
             ),
             Err(ArtifactInventoryError::ConcurrentModification)
         ));
-        store
-            .complete_artifact_removal(&first)
+        crate::artifact_storage::test_support::complete_artifact_removal(&root, &mut store, &first)
             .expect("complete removal state");
         let second = store
             .put_installation(&manifest, &installed)

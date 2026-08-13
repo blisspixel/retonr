@@ -9,7 +9,7 @@ use rewrite_model::{
 use rewrite_types::Digest;
 
 use super::{ArtifactStateStore, WriteDisposition};
-use crate::StoreError;
+use crate::{ExclusiveArtifactLifecycleLock, StoreError};
 
 mod installation;
 mod integrity;
@@ -99,6 +99,11 @@ fn qualification_id(fixture: &Fixture) -> rewrite_model::QualificationId {
         .qualification
         .qualification_id()
         .expect("fixture qualification is valid")
+}
+
+fn exclusive_lifecycle_lock() -> ExclusiveArtifactLifecycleLock {
+    ExclusiveArtifactLifecycleLock::try_acquire(tempfile::tempfile().expect("temporary lock file"))
+        .expect("acquire test lifecycle lock")
 }
 
 #[test]
@@ -290,7 +295,7 @@ fn removal_cannot_orphan_an_active_binding() {
         .0
         .expect("installed selection");
     assert!(matches!(
-        store.prepare_artifact_removal(&selection),
+        store.prepare_artifact_removal(&exclusive_lifecycle_lock(), &selection),
         Err(StoreError::ActiveArtifact)
     ));
     store
@@ -300,7 +305,7 @@ fn removal_cannot_orphan_an_active_binding() {
         )
         .expect("deactivate");
     store
-        .prepare_artifact_removal(&selection)
+        .prepare_artifact_removal(&exclusive_lifecycle_lock(), &selection)
         .expect("prepare inactive installation removal");
 }
 

@@ -197,9 +197,12 @@ fn prepared_removal_requires_explicit_exact_recovery() {
         .artifact_removal_state(imported.key.artifact_id())
         .expect("load installation selection");
     assert_eq!(
-        store
-            .prepare_artifact_removal(&selection.expect("installed selection"))
-            .expect("prepare removal"),
+        crate::artifact_storage::test_support::prepare_artifact_removal(
+            &repository.managed_storage(),
+            &mut store,
+            &selection.expect("installed selection"),
+        )
+        .expect("prepare removal"),
         RemovalPreparationDisposition::Prepared
     );
     drop(store);
@@ -225,9 +228,12 @@ fn pending_operation_inspection_is_read_only_bounded_and_cancellable() {
     let (selection, _) = store
         .artifact_removal_state(imported.key.artifact_id())
         .expect("load installed selection");
-    store
-        .prepare_artifact_removal(&selection.expect("installed selection"))
-        .expect("prepare removal");
+    crate::artifact_storage::test_support::prepare_artifact_removal(
+        &repository.managed_storage(),
+        &mut store,
+        &selection.expect("installed selection"),
+    )
+    .expect("prepare removal");
     drop(store);
     fs::remove_file(
         repository

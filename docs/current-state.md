@@ -15,11 +15,11 @@ or stored-data contracts.
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, semantic port, deterministic reason priority, lexicographic selection, and document-atomic abstention |
 | `rewrite-model` | Separate immutable artifact, qualification, invalidation, activation-decision, and active-binding contracts |
-| `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
+| `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, opaque exclusive-lock capability requirements for removal transitions, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery and generation contracts, cancellation and deadlines, stable redacted errors, and deterministic fake |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
-| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory and pending-operation inspection, selected orphan reconciliation, crash-recoverable inactive removal, and verified runtime artifact lease groundwork |
+| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory and pending-operation inspection, selected orphan reconciliation, crash-recoverable inactive removal with exact pinned-lock capability binding, and verified runtime artifact lease groundwork |
 | `retonr` | Provisional `check` command plus an explicit-root offline model-artifact CLI for import, inventory, pending-operation inspection, selected reconciliation, inactive removal, and exact removal recovery |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
@@ -50,9 +50,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 285 Rust unit, integration, and process tests pass. Two process helpers are
+All 286 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.86
+Documentation tests also pass. The measured Rust line coverage is 90.88
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -112,11 +112,6 @@ uses its own clean runner database.
   configurations is
   within the current boundary; network filesystem semantics and other Windows
   filesystem drivers are not qualified.
-- The unpublished model-store removal transitions have a documented exclusive-lock
-  precondition but do not yet require an opaque lock authority in their Rust types.
-  Current product code reaches them only through the application removal service.
-  Narrowing this internal API is required before a stable artifact API or another
-  runtime consumer is exposed.
 - The Ollama adapter is fake-server tested but has not been qualified against a real
   pinned runtime and model artifact on the three operating systems.
 - The grounded path can safely accept only literal-mode token-preserving changes
@@ -146,17 +141,18 @@ is:
 
 1. Retain the completed non-mutating pending-operation inspection and process-level
    signal cancellation evidence across Windows, macOS, and Linux.
-2. Before a stable artifact API, require an opaque lifecycle authority for the
-   model-store removal transitions and wrap store-owned inventory records in
-   application DTOs.
-3. Link redacted generation provenance into the durable rewrite transaction schema.
-4. Add typed claim and invariant evidence without describing it as semantic proof,
+2. Before a stable artifact API, wrap store-owned inventory records in application
+   DTOs so persistence types do not become a CLI or public contract.
+3. Retain the completed opaque lifecycle-lock capability requirement for every
+   low-level durable removal transition as new runtime consumers are added.
+4. Link redacted generation provenance into the durable rewrite transaction schema.
+5. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.
-5. Complete stdin, safe diff, dry-run, trace, terminal safety, and
+6. Complete stdin, safe diff, dry-run, trace, terminal safety, and
    raw-output policy before exposing grounded rewriting in the CLI.
-6. Run exact artifact qualification and selective-risk reporting on declared
+7. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-7. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+8. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
    after the 0.2 completion evidence passes. The current candidate-check rendering is
    limited to already implemented model-free behavior.
 

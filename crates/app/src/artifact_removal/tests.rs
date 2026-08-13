@@ -169,9 +169,12 @@ fn resumes_prepared_removal_after_state_reopen_with_present_or_missing_bytes() {
         let canonical = root
             .join("artifacts")
             .join(request.selection.installed.artifact_digest.as_str());
-        store
-            .prepare_artifact_removal(&request.selection)
-            .expect("simulate crash after preparation");
+        crate::artifact_storage::test_support::prepare_artifact_removal(
+            &root,
+            &mut store,
+            &request.selection,
+        )
+        .expect("simulate crash after preparation");
         drop(store);
         if remove_before_retry {
             fs::remove_file(&canonical).expect("simulate crash after unlink");
@@ -191,9 +194,12 @@ fn resumes_prepared_removal_after_state_reopen_with_present_or_missing_bytes() {
 fn lowered_byte_ceiling_cannot_misreport_prepared_recovery_as_fresh_refusal() {
     let (directory, mut store, request) = initialized(b"artifact");
     let root = directory.path().join("managed");
-    store
-        .prepare_artifact_removal(&request.selection)
-        .expect("prepare removal under original ceiling");
+    crate::artifact_storage::test_support::prepare_artifact_removal(
+        &root,
+        &mut store,
+        &request.selection,
+    )
+    .expect("prepare removal under original ceiling");
     let error = ArtifactRemovalService::open_existing(
         &root,
         &mut store,
@@ -212,9 +218,12 @@ fn lowered_byte_ceiling_cannot_misreport_prepared_recovery_as_fresh_refusal() {
 fn prepared_recovery_ignores_cancellation_and_emits_no_progress() {
     let (directory, mut store, request) = initialized(b"artifact");
     let root = directory.path().join("managed");
-    store
-        .prepare_artifact_removal(&request.selection)
-        .expect("prepare removal");
+    crate::artifact_storage::test_support::prepare_artifact_removal(
+        &root,
+        &mut store,
+        &request.selection,
+    )
+    .expect("prepare removal");
     let cancellation = CancellationToken::new();
     cancellation.cancel();
     let mut progress = Vec::new();
@@ -233,9 +242,12 @@ fn prepared_conflict_remains_recoverable_and_never_restores_authority() {
     let canonical = root
         .join("artifacts")
         .join(request.selection.installed.artifact_digest.as_str());
-    store
-        .prepare_artifact_removal(&request.selection)
-        .expect("prepare removal");
+    crate::artifact_storage::test_support::prepare_artifact_removal(
+        &root,
+        &mut store,
+        &request.selection,
+    )
+    .expect("prepare removal");
     fs::write(&canonical, b"conflict").expect("replace bytes with conflict");
     let error = ArtifactRemovalService::open_existing(&root, &mut store, limits())
         .expect("open recovery")
@@ -473,9 +485,12 @@ fn rejects_invalid_limits_selection_and_byte_ceiling() {
 #[test]
 fn pending_state_blocks_reconciliation_registration() {
     let (directory, mut store, request) = initialized(b"artifact");
-    store
-        .prepare_artifact_removal(&request.selection)
-        .expect("prepare removal");
+    crate::artifact_storage::test_support::prepare_artifact_removal(
+        &directory.path().join("managed"),
+        &mut store,
+        &request.selection,
+    )
+    .expect("prepare removal");
     assert!(matches!(
         store.put_installation(&manifest(b"artifact"), &request.selection.installed),
         Err(StoreError::RemovalPending)
