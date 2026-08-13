@@ -579,7 +579,10 @@ The first administrative repository facade derives managed storage, exact-schema
 SQLite state, and an outer lifecycle lock from one explicit application data
 directory. It pins the direct single-link state file before opening SQLite, rechecks
 its identity around each service operation, and suppresses external progress
-callbacks while the database is open. First import may reserve and synchronize an
+callbacks while the database is open. SQLite receives a canonicalized existing
+parent plus the original final filename, then retains its no-follow flag. This
+accepts macOS system directory aliases without allowing an indirect final database
+entry. First import may reserve and synchronize an
 empty state file and initialize the current schema; ordinary commands never create an
 ambient default or migrate older state. Read-only inventory uses shared authority;
 import, reconciliation, removal, and recovery use exclusive authority. First import

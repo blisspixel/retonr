@@ -320,9 +320,12 @@ Controls:
 - The administrative artifact CLI requires one explicit data directory. Its
   repository facade derives all child paths, takes an outer shared or exclusive lock,
   pins the direct single-link SQLite state file before opening it, and rechecks exact
-  identity after the service call. Existing commands require the current exact schema
-  and do not migrate it. Only first import may reserve and synchronize a new empty
-  state file before initializing the current schema.
+  identity after the service call. SQLite receives a canonicalized existing parent
+  plus the original final filename and retains its no-follow flag. This permits macOS
+  system directory aliases while still refusing an indirect final state file.
+  Existing commands require the current exact schema and do not migrate it. Only
+  first import may reserve and synchronize a new empty state file before initializing
+  the current schema.
 - First initialization creates only one missing private repository leaf below an
   existing pinned parent, or accepts an empty existing directory without changing its
   permissions. A nonempty uninitialized `--data-dir` is refused without mutation.

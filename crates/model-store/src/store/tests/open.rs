@@ -41,6 +41,35 @@ fn explicit_existing_opens_never_create_missing_state() {
     assert_eq!(directory_entries(directory.path()), before);
 }
 
+#[cfg(unix)]
+#[test]
+fn ancestor_symlink_is_resolved_but_final_symlink_is_rejected() {
+    use std::os::unix::fs::symlink;
+
+    let directory = tempdir().expect("temporary directory");
+    let target = directory.path().join("target");
+    let alias = directory.path().join("alias");
+    fs::create_dir(&target).expect("create target directory");
+    symlink(&target, &alias).expect("create ancestor symlink");
+
+    let aliased_state = alias.join("state.db");
+    drop(
+        ArtifactStateStore::open_or_create_and_migrate(&aliased_state)
+            .expect("create through ancestor alias"),
+    );
+    ArtifactStateStore::open_existing_read_only(&aliased_state)
+        .expect("read through ancestor alias");
+    ArtifactStateStore::open_existing_writable_exact(&aliased_state)
+        .expect("write through ancestor alias");
+
+    let final_alias = alias.join("final.db");
+    symlink(target.join("state.db"), &final_alias).expect("create final symlink");
+    assert!(matches!(
+        ArtifactStateStore::open_existing_read_only(&final_alias),
+        Err(StoreError::Database(_))
+    ));
+}
+
 #[test]
 fn read_only_open_rejects_legacy_schema_without_mutation() {
     assert_read_only_schema_rejection(

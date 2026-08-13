@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OpenFlags};
 
@@ -23,7 +23,8 @@ impl ArtifactStateStore {
     /// Returns [`StoreError`] when the database cannot be opened, configured, or
     /// migrated without losing existing state.
     pub fn open_or_create_and_migrate(path: &Path) -> StoreResult<Self> {
-        let mut connection = Connection::open_with_flags(path, create_flags())?;
+        let path = sqlite_path(path);
+        let mut connection = Connection::open_with_flags(&path, create_flags())?;
         schema::initialize(&mut connection)?;
         Ok(Self { connection })
     }
@@ -108,7 +109,8 @@ fn read_only_flags() -> OpenFlags {
 }
 
 fn open_existing(path: &Path, flags: OpenFlags) -> StoreResult<Connection> {
-    match Connection::open_with_flags(path, flags) {
+    let sqlite_path = sqlite_path(path);
+    match Connection::open_with_flags(&sqlite_path, flags) {
         Ok(connection) => Ok(connection),
         Err(error) => match path.symlink_metadata() {
             Err(metadata_error) if metadata_error.kind() == std::io::ErrorKind::NotFound => {
@@ -117,4 +119,23 @@ fn open_existing(path: &Path, flags: OpenFlags) -> StoreResult<Connection> {
             _ => Err(StoreError::Database(error)),
         },
     }
+}
+
+#[cfg(unix)]
+fn sqlite_path(path: &Path) -> PathBuf {
+    let absolute = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    let Some(parent) = absolute.parent() else {
+        return absolute;
+    };
+    let Some(name) = absolute.file_name() else {
+        return absolute;
+    };
+    parent
+        .canonicalize()
+        .map_or(absolute.clone(), |canonical| canonical.join(name))
+}
+
+#[cfg(not(unix))]
+fn sqlite_path(path: &Path) -> PathBuf {
+    path.to_path_buf()
 }
