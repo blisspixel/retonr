@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use rusqlite::{Connection, Transaction, TransactionBehavior, params};
 
 use rewrite_model::{
@@ -19,7 +17,6 @@ use crate::{
         ArtifactInstallationEpoch, ArtifactRemovalPhase, StoredArtifactInstallation,
         load_installation, load_removal,
     },
-    schema,
 };
 
 /// Outcome of writing an immutable record.
@@ -43,6 +40,7 @@ pub struct InstallationWriteDisposition {
 }
 
 mod inventory;
+mod open;
 mod removal;
 
 pub use inventory::StoredArtifactState;
@@ -54,18 +52,6 @@ pub struct ArtifactStateStore {
 }
 
 impl ArtifactStateStore {
-    /// Opens or creates an artifact state database and applies supported migrations.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`StoreError`] when the database cannot be opened, configured, or
-    /// migrated without losing existing state.
-    pub fn open(path: &Path) -> StoreResult<Self> {
-        let mut connection = Connection::open(path)?;
-        schema::initialize(&mut connection)?;
-        Ok(Self { connection })
-    }
-
     /// Stores one validated immutable artifact manifest.
     ///
     /// # Errors

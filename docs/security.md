@@ -317,6 +317,26 @@ Controls:
   not a typed opaque authority. Product code calls them only through the removal
   service. A stable artifact API and any additional runtime consumer are blocked on
   making that lock authority unforgeable.
+- The administrative artifact CLI requires one explicit data directory. Its
+  repository facade derives all child paths, takes an outer shared or exclusive lock,
+  pins the direct single-link SQLite state file before opening it, and rechecks exact
+  identity after the service call. On Unix, the adapter resolves a canonicalizable
+  existing parent before SQLite opens it, preserves the original final filename, and
+  retains SQLite's no-follow flag. If resolution fails, it retains the original path
+  and no-follow behavior so SQLite fails closed. This permits macOS system directory
+  aliases while still refusing an indirect final state file.
+  Existing commands require the current exact schema and do not migrate it. Only
+  first import may reserve and synchronize a new empty state file before initializing
+  the current schema.
+- First initialization creates only one missing private repository leaf below an
+  existing pinned parent, or accepts an empty existing directory without changing its
+  permissions. A nonempty uninitialized `--data-dir` is refused without mutation.
+- The implemented model commands are offline and content-redacted. They expose no
+  implicit home-directory repository, remote URL, download, runtime pull,
+  qualification, activation, or model execution. The current CLI installs a Ctrl-C
+  handler that requests cooperative cancellation for cancellable pre-commit work.
+  Prepared-removal recovery remains non-cancellable and process termination still
+  relies on crash-safe state plus explicit recovery.
 
 ### Agent Plugin packages
 

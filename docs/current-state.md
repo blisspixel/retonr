@@ -20,7 +20,7 @@ or stored-data contracts.
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
 | `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory, selected orphan reconciliation, crash-recoverable inactive removal, and verified runtime artifact lease groundwork |
-| `retonr` | Provisional `check` command with bounded file reads, JSON or text reports, protected terms, and optional fatal abstention |
+| `retonr` | Provisional `check` command plus an explicit-root offline model-artifact CLI for import, inventory, selected reconciliation, inactive removal, and exact removal recovery |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
@@ -50,9 +50,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 246 Rust unit, integration, and process tests pass. Two process helpers are
+All 279 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 91.49
+Documentation tests also pass. The measured Rust line coverage is 90.69
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -71,15 +71,15 @@ concurrency, and the Ubuntu loopback-only network namespace.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
-237-crate graph passed. Dependency sources and licenses pass policy. Reviewed
+243-crate graph passed. Dependency sources and licenses pass policy. Reviewed
 duplicate-version warnings now include the target-only capability filesystem
 dependency tree and the two transitive `syn` major versions. Continuous integration
 uses its own clean runner database.
 
 ## Deliberate limitations
 
-- The current CLI checks a supplied candidate. The grounded application path is not
-  exposed as a CLI command yet.
+- The current CLI checks a supplied candidate and administers exact local artifact
+  files. The grounded generation path is not exposed as a CLI command yet.
 - The editorial corpus contract and 39 synthetic fixtures across two groups are
   implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
   implemented yet.
@@ -99,8 +99,12 @@ uses its own clean runner database.
   boundary verifies current durable state and bytes, then retains the shared
   lifecycle lock and file handle until use ends. No real runtime consumer uses that
   lease yet. Artifact-set and folder import, downloads,
-  runtime-native pulls, bulk reconciliation, orphan deletion, CLI commands, and
-  exact real-artifact qualification are not implemented. Removal is not secure
+  runtime-native pulls, bulk reconciliation, orphan deletion, runtime commands, and
+  exact real-artifact qualification are not implemented. The CLI requires one
+  explicit `--data-dir`; its five artifact commands do not use the network or apply
+  schema migrations. The current product ceilings are 256 GiB per artifact, 4,096
+  durable or storage entries, 512 GiB of aggregate inventory verification, and
+  1 MiB per manifest. Removal is not secure
   erasure and does not affect external copies, caches, backups, or provider records.
   Only local, application-owned storage on the tested platform and filesystem
   configurations is
@@ -138,13 +142,15 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Expose offline import, read-only inventory, selected reconciliation, and inactive
-   removal through explicit model commands.
-2. Add explicit pending-operation inspection and recovery output to those commands.
+1. Add a non-mutating pending-operation inspection command and process-level signal
+   cancellation fixtures across Windows, macOS, and Linux.
+2. Before a stable artifact API, require an opaque lifecycle authority for the
+   model-store removal transitions and wrap store-owned inventory records in
+   application DTOs.
 3. Link redacted generation provenance into the durable rewrite transaction schema.
 4. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.
-5. Complete stdin, safe diff, dry-run, trace, cancellation, terminal safety, and
+5. Complete stdin, safe diff, dry-run, trace, terminal safety, and
    raw-output policy before exposing grounded rewriting in the CLI.
 6. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.

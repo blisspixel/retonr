@@ -18,7 +18,13 @@ mod verify;
 
 use crate::artifact_storage::{
     ExactEntryCapacity, LIFECYCLE_LOCK_FILE, PinnedDirectory, fingerprint_std_file, is_indirect,
+    managed_storage_key,
 };
+
+#[cfg(test)]
+fn storage_key(digest: &Digest) -> String {
+    managed_storage_key(digest)
+}
 use boundary::{
     map_open_error as map_boundary_open_error, map_recovery_error as map_boundary_recovery_error,
     map_storage_error as map_boundary_storage_error,
@@ -152,7 +158,7 @@ impl<'a> OfflineArtifactImportService<'a> {
             return Err(ArtifactImportError::SizeMismatch);
         }
 
-        let installed_storage_key = storage_key(&request.manifest.artifact_digest);
+        let installed_storage_key = managed_storage_key(&request.manifest.artifact_digest);
         let destination_name = OsString::from(request.manifest.artifact_digest.as_str());
         let destination_exists = self
             .artifacts
@@ -448,10 +454,6 @@ fn verify_source_after_read(source: &File, expected_size: u64) -> Result<(), Art
         return Err(ArtifactImportError::SizeMismatch);
     }
     Ok(())
-}
-
-fn storage_key(digest: &Digest) -> String {
-    format!("artifacts/{}", digest.as_str())
 }
 
 fn ensure_not_cancelled(cancellation: &CancellationToken) -> Result<(), ArtifactImportError> {

@@ -1,4 +1,3 @@
-use rusqlite::Connection;
 use tempfile::tempdir;
 
 use rewrite_model::{
@@ -15,6 +14,7 @@ use crate::StoreError;
 mod installation;
 mod integrity;
 mod inventory;
+mod open;
 mod removal;
 
 struct Fixture {
@@ -431,21 +431,6 @@ fn activation_rejects_an_invalidation_changed_under_indexed_columns() {
             &stored_id,
         ),
         Err(StoreError::CorruptRecord)
-    ));
-}
-
-#[test]
-fn newer_schema_is_rejected_without_migration() {
-    let directory = tempdir().expect("temporary directory");
-    let path = directory.path().join("future.db");
-    let connection = Connection::open(&path).expect("create database");
-    connection
-        .pragma_update(None, "user_version", 3)
-        .expect("set future version");
-    drop(connection);
-    assert!(matches!(
-        ArtifactStateStore::open(&path),
-        Err(StoreError::UnsupportedSchema(3))
     ));
 }
 
