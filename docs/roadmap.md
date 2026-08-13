@@ -60,18 +60,24 @@ proceeds in this exact order:
    transitions and the completed application-owned inventory DTO boundary. The
    application binds the lock capability to the exact pinned repository entry, and
    persistence records do not become a CLI or public inventory contract.
-4. Retain the completed rewrite-record v2 generation-provenance boundary, add typed
-   claims and an independent evaluator, and complete the grounded validation cascade.
-5. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
+4. Retain the completed rewrite-record v2, typed invariant summaries, typed claim
+   evidence, and deterministic comparison boundary. Add a separately cancellable,
+   error-aware extraction operation and independent evaluator qualification without
+   treating probabilistic extraction as proof.
+5. Implement the versioned local evaluation plan, run the currently installed Gemma 4
+   26B and Qwen3.6 27B packages, and add the previously observed Ministral 3 8B only
+   after its local identity is revalidated or acquisition is separately approved.
+   Keep runtime strata separate and publish no support claim from this development run.
+6. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
    qualify one exact local runtime and artifact combination and retain complete
    cross-platform release evidence before adding profiles or another format.
-6. Establish the versioned editorial-quality corpus during evaluation work, but do
+7. Establish the versioned editorial-quality corpus during evaluation work, but do
    not give lint findings product authority until the 0.3 rule and profile contracts
    pass qualification.
-7. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-8. Let editorial lint guide or rank generated candidates in 0.5 only after the
+8. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+9. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
-9. Add agent packaging, rich document formats, and native presentation layers only
+10. Add agent packaging, rich document formats, and native presentation layers only
    after the underlying CLI and application contracts are proven.
 
 This sequencing makes three independent outcomes visible in every release report:

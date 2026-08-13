@@ -1,10 +1,10 @@
 use rewrite_types::{
-    CandidateId, CandidateRank, CandidateTextKind, Digest, DocumentIr, GateResult,
-    GeneratedCandidate, MediaType, RewriteMode, RewriteOptions, RewriteUnit, RewriteUnitId,
-    SemanticAssessment, SourceSpan, StructuralFingerprint,
+    CandidateId, CandidateRank, CandidateTextKind, Digest, DocumentIr, GeneratedCandidate,
+    MediaType, RewriteMode, RewriteOptions, RewriteUnit, RewriteUnitId, SemanticAssessment,
+    SourceSpan, StructuralFingerprint,
 };
 
-use super::StructureValidator;
+use super::{StructureAssessment, StructureValidator};
 use crate::{
     CancellationToken, CandidateGenerator, GenerationError, GenerationRequest, SemanticEvaluator,
 };
@@ -12,19 +12,19 @@ use crate::{
 pub(super) struct PassStructure;
 
 impl StructureValidator for PassStructure {
-    fn validate(&self, _unit: &RewriteUnit, _candidate: &str) -> GateResult {
-        GateResult::pass("structure")
+    fn validate(&self, _unit: &RewriteUnit, _candidate: &str) -> StructureAssessment {
+        StructureAssessment::Preserved
     }
 }
 
 pub(super) struct NoNewlineChange;
 
 impl StructureValidator for NoNewlineChange {
-    fn validate(&self, unit: &RewriteUnit, candidate: &str) -> GateResult {
+    fn validate(&self, unit: &RewriteUnit, candidate: &str) -> StructureAssessment {
         if unit.text.matches('\n').count() == candidate.matches('\n').count() {
-            GateResult::pass("structure")
+            StructureAssessment::Preserved
         } else {
-            GateResult::fail("structure", "newline", "newline count changed")
+            StructureAssessment::Changed
         }
     }
 }
@@ -81,6 +81,53 @@ impl CandidateGenerator for MismatchedUnitGenerator {
             text_kind: CandidateTextKind::Raw,
             rank: CandidateRank::default(),
         }])
+    }
+}
+
+pub(super) struct MismatchedCandidateIdGenerator;
+
+impl CandidateGenerator for MismatchedCandidateIdGenerator {
+    fn id(&self) -> &'static str {
+        "mismatched-candidate-id-fixture"
+    }
+
+    fn generate(
+        &self,
+        request: &GenerationRequest,
+        _cancellation: &CancellationToken,
+    ) -> Result<Vec<GeneratedCandidate>, GenerationError> {
+        let other_document = rewrite_types::DocumentId::from_digest(&Digest::sha256(b"other"));
+        let other_unit = RewriteUnitId::new(&other_document, 0);
+        Ok(vec![GeneratedCandidate {
+            id: CandidateId::new(&other_unit, 0),
+            unit_id: request.unit_id.clone(),
+            text: "Hello.".to_owned(),
+            text_kind: CandidateTextKind::Raw,
+            rank: CandidateRank::default(),
+        }])
+    }
+}
+
+pub(super) struct DuplicateCandidateIdGenerator;
+
+impl CandidateGenerator for DuplicateCandidateIdGenerator {
+    fn id(&self) -> &'static str {
+        "duplicate-candidate-id-fixture"
+    }
+
+    fn generate(
+        &self,
+        request: &GenerationRequest,
+        _cancellation: &CancellationToken,
+    ) -> Result<Vec<GeneratedCandidate>, GenerationError> {
+        let candidate = GeneratedCandidate {
+            id: CandidateId::new(&request.unit_id, 0),
+            unit_id: request.unit_id.clone(),
+            text: "Hello.".to_owned(),
+            text_kind: CandidateTextKind::Raw,
+            rank: CandidateRank::default(),
+        };
+        Ok(vec![candidate.clone(), candidate])
     }
 }
 
@@ -162,7 +209,7 @@ impl SemanticEvaluator for FixedSemantic {
     }
 
     fn evaluate(&self, _source: &str, _candidate: &str, _mode: RewriteMode) -> SemanticAssessment {
-        self.0
+        self.0.clone()
     }
 }
 

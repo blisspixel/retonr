@@ -1,4 +1,28 @@
-use rewrite_types::{GateStatus, RewriteMode, SemanticAssessment};
+use rewrite_types::{
+    Digest, GateStatus, RewriteMode, RewriteUnitId, SemanticAssessment, SemanticEvidence,
+    SemanticEvidenceCode, SemanticEvidenceDetails,
+};
+
+pub(crate) fn evidence_matches(
+    assessment: &SemanticAssessment,
+    unit_id: &RewriteUnitId,
+    source: &str,
+    candidate: &str,
+) -> bool {
+    let source_digest = Digest::sha256(source.as_bytes());
+    let candidate_digest = Digest::sha256(candidate.as_bytes());
+    assessment.evidence.iter().all(|evidence| {
+        let Some(SemanticEvidenceDetails::ClaimComparison(comparison)) = evidence.details.as_ref()
+        else {
+            return true;
+        };
+        comparison.unit_id() == unit_id
+            && comparison.source_text_digest() == &source_digest
+            && comparison.candidate_text_digest() == &candidate_digest
+            && comparison.source_text_bytes() == source.len() as u64
+            && comparison.candidate_text_bytes() == candidate.len() as u64
+    })
+}
 
 /// Port implemented by an independently qualified semantic evaluator.
 pub trait SemanticEvaluator: Send + Sync {
@@ -26,6 +50,7 @@ impl SemanticEvaluator for LiteralSemanticEvaluator {
             return SemanticAssessment {
                 status: GateStatus::Uncertain,
                 confidence: None,
+                evidence: vec![evidence(SemanticEvidenceCode::UnsupportedMode)],
             };
         }
 
@@ -35,14 +60,20 @@ impl SemanticEvaluator for LiteralSemanticEvaluator {
             SemanticAssessment {
                 status: GateStatus::Pass,
                 confidence: Some(1.0),
+                evidence: vec![evidence(SemanticEvidenceCode::LiteralTokensEqual)],
             }
         } else {
             SemanticAssessment {
                 status: GateStatus::Uncertain,
                 confidence: None,
+                evidence: vec![evidence(SemanticEvidenceCode::LiteralTokensChanged)],
             }
         }
     }
+}
+
+const fn evidence(code: SemanticEvidenceCode) -> SemanticEvidence {
+    SemanticEvidence::new(code, None)
 }
 
 fn lexical_tokens(text: &str) -> Vec<String> {
@@ -81,12 +112,18 @@ mod tests {
         let evaluator = LiteralSemanticEvaluator;
         let punctuation = evaluator.evaluate("Hello world", "Hello, world!", RewriteMode::Literal);
         assert_eq!(punctuation.status, GateStatus::Pass);
+        assert_eq!(
+            punctuation.evidence[0].code.as_str(),
+            "literal_tokens_equal"
+        );
 
         let lexical = evaluator.evaluate("Hello world", "Hello there", RewriteMode::Literal);
         assert_eq!(lexical.status, GateStatus::Uncertain);
+        assert_eq!(lexical.evidence[0].code.as_str(), "literal_tokens_changed");
 
         let non_literal = evaluator.evaluate("Hello world", "Hello world", RewriteMode::Balanced);
         assert_eq!(non_literal.status, GateStatus::Uncertain);
+        assert_eq!(non_literal.evidence[0].code.as_str(), "unsupported_mode");
 
         let moved_newline =
             evaluator.evaluate("Hello\nworld\n", "Hello world\n\n", RewriteMode::Literal);

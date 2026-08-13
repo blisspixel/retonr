@@ -75,6 +75,14 @@ impl CandidateId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Returns whether this candidate identifier belongs to the exact rewrite unit.
+    #[must_use]
+    pub fn is_scoped_to(&self, unit: &RewriteUnitId) -> bool {
+        self.0
+            .rsplit_once(":candidate:")
+            .is_some_and(|(scope, _ordinal)| scope == unit.as_str())
+    }
 }
 
 impl FromStr for CandidateId {

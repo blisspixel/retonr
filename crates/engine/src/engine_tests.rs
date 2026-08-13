@@ -2,11 +2,12 @@ use rewrite_types::{
     Atomicity, GateStatus, RewriteMode, RewriteOptions, RewriteStatus, SemanticAssessment,
 };
 
-use super::RewriteEngine;
-use super::test_support::{
-    CancellingGenerator, EmptyGenerator, ErrorGenerator, FixedSemantic, InvalidRankGenerator,
-    MaskedEchoGenerator, MismatchedUnitGenerator, NoNewlineChange, PassStructure, document,
-    literal_options, two_unit_document,
+use crate::RewriteEngine;
+use crate::engine_test_support::{
+    CancellingGenerator, DuplicateCandidateIdGenerator, EmptyGenerator, ErrorGenerator,
+    FixedSemantic, InvalidRankGenerator, MaskedEchoGenerator, MismatchedCandidateIdGenerator,
+    MismatchedUnitGenerator, NoNewlineChange, PassStructure, document, literal_options,
+    two_unit_document,
 };
 use crate::{
     CancellationToken, GenerationError, LiteralSemanticEvaluator, ProvidedCandidateGenerator,
@@ -226,8 +227,9 @@ fn validates_units_and_masked_candidates() {
     .expect("unit mismatch is an outcome");
     assert_eq!(
         mismatched.reason,
-        Some(rewrite_types::ReasonCode::StructureChanged)
+        Some(rewrite_types::ReasonCode::InvalidCandidate)
     );
+    assert!(mismatched.assessments.is_empty());
 
     let masked = RewriteEngine::new(
         &MaskedEchoGenerator,
@@ -242,6 +244,77 @@ fn validates_units_and_masked_candidates() {
     .expect("valid masked candidate succeeds");
     assert_eq!(masked.status, RewriteStatus::Rewritten);
     assert_eq!(masked.edits[0].replacement, "Version 2!");
+}
+
+#[test]
+fn invalid_candidate_identity_scope_is_a_validated_ineligible_record() {
+    let outcome = RewriteEngine::new(
+        &MismatchedCandidateIdGenerator,
+        &LiteralSemanticEvaluator,
+        &PassStructure,
+    )
+    .run(
+        &document("Hello"),
+        &literal_options(),
+        &CancellationToken::new(),
+    )
+    .expect("invalid identity is a safe outcome");
+    assert_eq!(
+        outcome.reason,
+        Some(rewrite_types::ReasonCode::InvalidCandidate)
+    );
+    assert!(outcome.assessments.is_empty());
+    assert!(outcome.selected_candidates.is_empty());
+
+    let duplicate = RewriteEngine::new(
+        &DuplicateCandidateIdGenerator,
+        &LiteralSemanticEvaluator,
+        &PassStructure,
+    )
+    .run(
+        &document("Hello"),
+        &literal_options(),
+        &CancellationToken::new(),
+    )
+    .expect("duplicate identities are a safe outcome");
+    assert_eq!(
+        duplicate.reason,
+        Some(rewrite_types::ReasonCode::InvalidCandidate)
+    );
+    assert!(duplicate.assessments.is_empty());
+    assert!(duplicate.selected_candidates.is_empty());
+}
+
+#[test]
+fn protected_gate_reports_redacted_typed_counts() {
+    let source = "Email Ada at ada@example.com and pay $12.";
+    let generator = ProvidedCandidateGenerator::new(vec![format!("{source}!")]);
+    let options = RewriteOptions {
+        mode: RewriteMode::Literal,
+        atomicity: Atomicity::Document,
+        protected_terms: vec!["Ada".to_owned()],
+        minimum_semantic_confidence: 0.95,
+    };
+    let outcome = RewriteEngine::new(&generator, &LiteralSemanticEvaluator, &PassStructure)
+        .run(&document(source), &options, &CancellationToken::new())
+        .expect("exact invariants pass");
+    let gate = outcome.assessments[0]
+        .gates
+        .iter()
+        .find(|gate| gate.gate_id == "protected_values")
+        .expect("protected gate exists");
+    let Some(rewrite_types::GateEvidenceDetails::InvariantSummary(summary)) =
+        gate.evidence[0].details
+    else {
+        panic!("typed invariant counts are retained");
+    };
+    assert_eq!(summary.declared_terms, 1);
+    assert_eq!(summary.emails, 1);
+    assert_eq!(summary.numbers, 1);
+    assert_eq!(summary.total, 3);
+    let encoded = serde_json::to_string(gate).expect("gate serializes");
+    assert!(!encoded.contains("Ada"));
+    assert!(!encoded.contains("example.com"));
 }
 
 #[test]
@@ -286,6 +359,10 @@ fn semantic_failure_and_low_confidence_abstain() {
     let fail_semantic = FixedSemantic(SemanticAssessment {
         status: GateStatus::Fail,
         confidence: Some(1.0),
+        evidence: vec![rewrite_types::SemanticEvidence::new(
+            rewrite_types::SemanticEvidenceCode::LiteralTokensChanged,
+            None,
+        )],
     });
     let failed = RewriteEngine::new(&generator, &fail_semantic, &PassStructure)
         .run(
@@ -302,6 +379,10 @@ fn semantic_failure_and_low_confidence_abstain() {
     let low_confidence = FixedSemantic(SemanticAssessment {
         status: GateStatus::Pass,
         confidence: Some(0.5),
+        evidence: vec![rewrite_types::SemanticEvidence::new(
+            rewrite_types::SemanticEvidenceCode::LiteralTokensEqual,
+            None,
+        )],
     });
     let uncertain = RewriteEngine::new(&generator, &low_confidence, &PassStructure)
         .run(
@@ -321,6 +402,44 @@ fn semantic_failure_and_low_confidence_abstain() {
             .map(|gate| gate.status),
         Some(GateStatus::Uncertain)
     );
+}
+
+#[test]
+fn malformed_semantic_evidence_fails_closed_without_retaining_supplied_findings() {
+    let generator = ProvidedCandidateGenerator::new(vec!["Hello.".to_owned()]);
+    let malformed = FixedSemantic(SemanticAssessment {
+        status: GateStatus::Pass,
+        confidence: Some(f32::NAN),
+        evidence: vec![
+            rewrite_types::SemanticEvidence::new(
+                rewrite_types::SemanticEvidenceCode::LiteralTokensEqual,
+                None,
+            );
+            rewrite_types::MAX_SEMANTIC_EVIDENCE_ITEMS + 1
+        ],
+    });
+    let outcome = RewriteEngine::new(&generator, &malformed, &PassStructure)
+        .run(
+            &document("Hello"),
+            &literal_options(),
+            &CancellationToken::new(),
+        )
+        .expect("malformed evidence is a safe outcome");
+    assert_eq!(
+        outcome.reason,
+        Some(rewrite_types::ReasonCode::SemanticUncertain)
+    );
+    let gate = outcome.assessments[0]
+        .gates
+        .last()
+        .expect("semantic gate is retained");
+    assert_eq!(gate.status, GateStatus::Uncertain);
+    assert_eq!(gate.confidence, None);
+    assert_eq!(gate.evidence.len(), 1);
+    assert_eq!(gate.evidence[0].code, "invalid_evaluator_evidence");
+    let encoded = serde_json::to_string(&outcome.assessments).expect("assessment serializes");
+    assert!(!encoded.contains("literal_tokens_equal"));
+    assert!(gate.validate().is_ok());
 }
 
 #[test]
@@ -375,8 +494,14 @@ fn abstention_reason_priority_is_order_independent() {
         rewrite_types::ReasonCode::UnsupportedAtomicity,
     ];
     for pair in ordered.windows(2) {
-        assert_eq!(super::preferred_reason(Some(pair[1]), pair[0]), pair[0]);
-        assert_eq!(super::preferred_reason(Some(pair[0]), pair[1]), pair[0]);
-        assert!(super::reason_priority(pair[0]) < super::reason_priority(pair[1]));
+        assert_eq!(
+            crate::policy::preferred_reason(Some(pair[1]), pair[0]),
+            pair[0]
+        );
+        assert_eq!(
+            crate::policy::preferred_reason(Some(pair[0]), pair[1]),
+            pair[0]
+        );
+        assert!(crate::policy::reason_priority(pair[0]) < crate::policy::reason_priority(pair[1]));
     }
 }
