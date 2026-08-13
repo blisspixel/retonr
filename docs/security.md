@@ -247,7 +247,8 @@ Controls:
 - One exclusive storage lock serializes staging recovery and import. Recovery
   removes only reserved staging names. The configured artifact root must be local,
   application-owned storage; network filesystem semantics are not qualified.
-- Durable artifact state is registered only after the final file is synchronized.
+- Durable artifact state is registered only after the final file and containing
+  directory are synchronized on Windows, macOS, and Linux.
   A state failure can leave an unregistered content-addressed file, never a record
   pointing to bytes that did not commit. A later reconciliation operation must
   inspect and reclaim such orphans explicitly.

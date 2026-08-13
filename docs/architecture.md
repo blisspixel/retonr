@@ -467,17 +467,18 @@ freezes.
 
 The application artifact service accepts an explicit manifest and one regular-file
 source for its first offline-import slice. It opens the source without following the
-final symlink or reparse entry, copies through a fixed-size buffer into an
-application-owned staging directory under an explicit caller-owned byte ceiling,
-verifies exact size and SHA-256, synchronizes and commits under a content-derived
-storage key without replacement, then registers the manifest and installed state in
-one database transaction. It never changes the source or activates the artifact.
-Typed progress contains only lifecycle stage and byte counts. Cancellation removes
-uncommitted staging; after file commit begins, the bounded file-and-state commit
-section runs to completion. Exact existing bytes and records make a repeated import
-idempotent. Artifact-set manifests, folder import, runtime-native pulls, downloads,
-orphan reconciliation, and removal of managed bytes remain later lifecycle
-operations.
+final symlink or reparse entry and verifies exact size and SHA-256 through a
+fixed-size buffer under an explicit caller-owned byte ceiling. A new artifact is
+copied into application-owned staging, synchronized, and committed under a
+content-derived storage key without replacement. The containing directory is
+synchronized before the manifest and installed state are registered in one database
+transaction. A repeated import hashes the source without a staging copy, reverifies
+the exact managed bytes, and idempotently checks state. Import never changes the
+source or activates the artifact. Typed progress contains only lifecycle stage and
+byte counts. Cancellation removes uncommitted staging; after file commit begins, the
+bounded file-and-state commit section runs to completion. Artifact-set manifests,
+folder import, runtime-native pulls, downloads, orphan reconciliation, and removal
+of managed bytes remain later lifecycle operations.
 
 Small personal corpora use filtered brute-force vector scoring in Rust with vectors
 stored as versioned blobs. SQLite FTS5 supports lexical retrieval. A vector extension
