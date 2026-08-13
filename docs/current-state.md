@@ -77,9 +77,9 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The typed-evidence and local-model planning slice passed at exact-main revision
-`7efafa6fbf7f3f014fcaacb0f1fca4c121e7185b` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31751867164).
+The provider-neutral structured-completion slice passed at exact-main revision
+`35ed2cdd43afa99a3cca51fed0b2f0e43c693a9a` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31755221203).
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
