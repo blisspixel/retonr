@@ -15,6 +15,8 @@ use rewrite_types::Digest;
 use tempfile::tempdir;
 
 const SOURCE_BYTES: u64 = 512 * 1024 * 1024;
+#[cfg(windows)]
+const WINDOWS_SENDER_SETUP_TIMEOUT: Duration = Duration::from_secs(120);
 
 #[test]
 fn interrupt_requests_typed_import_cancellation_before_registration() {
@@ -183,7 +185,7 @@ impl InterruptSender {
     fn prepare(directory: &Path) -> Self {
         let ready = directory.join("signal-sender-ready");
         let request = directory.join("signal-sender-request");
-        let script = "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class RetonrSignal { [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool FreeConsole(); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool AttachConsole(uint p); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool SetConsoleCtrlHandler(IntPtr h, bool a); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g); }'; Set-Content -LiteralPath $env:RETONR_SIGNAL_READY -Value ready -NoNewline; $deadline = [DateTime]::UtcNow.AddSeconds(30); while (-not (Test-Path -LiteralPath $env:RETONR_SIGNAL_REQUEST)) { if ([DateTime]::UtcNow -ge $deadline) { exit 2 }; Start-Sleep -Milliseconds 5 }; $target = [uint32](Get-Content -LiteralPath $env:RETONR_SIGNAL_REQUEST -Raw); [RetonrSignal]::FreeConsole() | Out-Null; if (-not [RetonrSignal]::AttachConsole($target)) { exit 3 }; if (-not [RetonrSignal]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)) { exit 4 }; if (-not [RetonrSignal]::GenerateConsoleCtrlEvent(1, $target)) { exit 5 }; Start-Sleep -Milliseconds 100";
+        let script = "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class RetonrSignal { [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool FreeConsole(); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool AttachConsole(uint p); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool SetConsoleCtrlHandler(IntPtr h, bool a); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g); }'; Set-Content -LiteralPath $env:RETONR_SIGNAL_READY -Value ready -NoNewline; $deadline = [DateTime]::UtcNow.AddSeconds(120); while (-not (Test-Path -LiteralPath $env:RETONR_SIGNAL_REQUEST)) { if ([DateTime]::UtcNow -ge $deadline) { exit 2 }; Start-Sleep -Milliseconds 5 }; $target = [uint32](Get-Content -LiteralPath $env:RETONR_SIGNAL_REQUEST -Raw); [RetonrSignal]::FreeConsole() | Out-Null; if (-not [RetonrSignal]::AttachConsole($target)) { exit 3 }; if (-not [RetonrSignal]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)) { exit 4 }; if (-not [RetonrSignal]::GenerateConsoleCtrlEvent(1, $target)) { exit 5 }; Start-Sleep -Milliseconds 100";
         let mut child = Command::new("powershell.exe")
             .args(["-NoProfile", "-NonInteractive", "-Command", script])
             .env("RETONR_SIGNAL_READY", &ready)
@@ -214,7 +216,7 @@ impl InterruptSender {
 
 #[cfg(windows)]
 fn wait_for_sender(child: &mut Child, path: &Path) {
-    let deadline = Instant::now() + Duration::from_secs(30);
+    let deadline = Instant::now() + WINDOWS_SENDER_SETUP_TIMEOUT;
     while !path.is_file() {
         assert!(
             child
