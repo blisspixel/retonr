@@ -10,7 +10,7 @@ use tempfile::tempdir;
 
 use super::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
-    ArtifactImportStage, COPY_BUFFER_BYTES, OfflineArtifactImportRequest,
+    ArtifactImportStage, COPY_BUFFER_BYTES, LOCK_FILE, OfflineArtifactImportRequest,
     OfflineArtifactImportService, storage_key,
 };
 
@@ -331,6 +331,20 @@ fn rejects_non_file_destination_as_unsafe_storage() {
         },
     )
     .expect_err("non-file destination must fail as unsafe storage");
+    assert!(matches!(error, ArtifactImportError::UnsafeStorageLayout));
+}
+
+#[test]
+fn rejects_non_file_lock_path_as_unsafe_storage() {
+    let directory = tempdir().expect("temporary directory");
+    let storage = directory.path().join("managed");
+    fs::create_dir_all(storage.join(LOCK_FILE)).expect("create invalid lock directory");
+    let mut store = ArtifactStateStore::open(&directory.path().join("state.sqlite3"))
+        .expect("open artifact state");
+
+    let Err(error) = OfflineArtifactImportService::open(&storage, &mut store, limits()) else {
+        panic!("non-file lock path must fail as unsafe storage");
+    };
     assert!(matches!(error, ArtifactImportError::UnsafeStorageLayout));
 }
 

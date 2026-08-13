@@ -17,10 +17,9 @@ pub use contract::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
     ArtifactImportStage, OfflineArtifactImportRequest,
 };
-use platform::{
-    is_indirect, open_lock_file, open_readonly_no_follow, set_private_directory_permissions,
-    sync_directory,
-};
+#[cfg(unix)]
+use platform::set_private_directory_permissions;
+use platform::{is_indirect, open_lock_file, open_readonly_no_follow, sync_directory};
 
 const COPY_BUFFER_BYTES: usize = 1024 * 1024;
 const STAGING_PREFIX: &str = ".import-";
@@ -58,7 +57,7 @@ impl<'a> OfflineArtifactImportService<'a> {
         ensure_directory(&root)?;
         sync_parent_directory(&root)?;
         let lock_path = root.join(LOCK_FILE);
-        reject_existing_indirect_path(&lock_path)?;
+        reject_existing_non_regular_path(&lock_path)?;
         let lock = open_lock_file(&lock_path).map_err(ArtifactImportError::StorageIo)?;
         let lock_metadata = lock.metadata().map_err(ArtifactImportError::StorageIo)?;
         if !lock_metadata.is_file() || is_indirect(&lock_metadata) {
@@ -303,7 +302,7 @@ fn persist_or_verify(
     cancellation: &CancellationToken,
     progress: &mut impl FnMut(ArtifactImportProgress),
 ) -> Result<(), ArtifactImportError> {
-    reject_existing_indirect_path(destination)?;
+    reject_existing_non_regular_path(destination)?;
     if destination.exists() {
         return verify_stored_file(destination, manifest, cancellation, progress);
     }
@@ -421,6 +420,7 @@ fn ensure_directory(path: &Path) -> Result<(), ArtifactImportError> {
     if !metadata.is_dir() || is_indirect(&metadata) {
         return Err(ArtifactImportError::UnsafeStorageLayout);
     }
+    #[cfg(unix)]
     set_private_directory_permissions(path)?;
     Ok(())
 }
@@ -435,9 +435,11 @@ fn sync_parent_directory(path: &Path) -> Result<(), ArtifactImportError> {
     sync_directory(parent)
 }
 
-fn reject_existing_indirect_path(path: &Path) -> Result<(), ArtifactImportError> {
+fn reject_existing_non_regular_path(path: &Path) -> Result<(), ArtifactImportError> {
     match fs::symlink_metadata(path) {
-        Ok(metadata) if is_indirect(&metadata) => Err(ArtifactImportError::UnsafeStorageLayout),
+        Ok(metadata) if is_indirect(&metadata) || !metadata.is_file() => {
+            Err(ArtifactImportError::UnsafeStorageLayout)
+        }
         Ok(_) => Ok(()),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(ArtifactImportError::StorageIo(error)),

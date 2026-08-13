@@ -14,16 +14,6 @@ pub(super) fn set_private_directory_permissions(path: &Path) -> Result<(), Artif
         .map_err(ArtifactImportError::StorageIo)
 }
 
-#[cfg(windows)]
-pub(super) fn set_private_directory_permissions(path: &Path) -> Result<(), ArtifactImportError> {
-    let metadata = fs::symlink_metadata(path).map_err(ArtifactImportError::StorageIo)?;
-    if metadata.is_dir() && !is_indirect(&metadata) {
-        Ok(())
-    } else {
-        Err(ArtifactImportError::UnsafeStorageLayout)
-    }
-}
-
 pub(super) fn sync_directory(path: &Path) -> Result<(), ArtifactImportError> {
     let metadata = fs::symlink_metadata(path).map_err(ArtifactImportError::StorageIo)?;
     if !metadata.is_dir() || is_indirect(&metadata) {
