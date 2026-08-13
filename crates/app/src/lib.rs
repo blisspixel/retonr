@@ -18,6 +18,7 @@ use thiserror::Error;
 
 mod artifact_import;
 mod artifact_inventory;
+mod artifact_storage;
 mod grounded;
 
 pub use artifact_import::{

@@ -10,16 +10,15 @@ use rewrite_model_store::{ArtifactStateStore, StoreError, StoredArtifactState};
 use rewrite_types::{CancellationToken, Digest};
 
 mod contract;
-mod platform;
 
+use crate::artifact_storage::{
+    DirectoryEntrySnapshot, MetadataFingerprint, PinnedDirectory, fingerprint_std_file, lock_shared,
+};
 pub use contract::{
     ArtifactInventoryError, ArtifactInventoryLimits, ArtifactInventoryProgress,
     ArtifactInventoryReport, ArtifactInventoryStage, ContentAddressConflict,
     OrphanManifestAssociation, OversizedArtifactFile, RegisteredArtifactBytes,
     RegisteredArtifactInspection, UnexpectedArtifactEntryCounts, VerifiedArtifactOrphan,
-};
-use platform::{
-    DirectoryEntrySnapshot, MetadataFingerprint, PinnedDirectory, fingerprint_std_file, lock_shared,
 };
 
 const LOCK_FILE: &str = ".artifact-import.lock";
@@ -33,6 +32,7 @@ struct StorageLayoutFingerprint {
 
 /// Read-only, point-in-time inspection of application-owned artifact storage.
 pub struct ArtifactInventoryService<'a> {
+    root_path: std::path::PathBuf,
     root: PinnedDirectory,
     artifacts: PinnedDirectory,
     limits: ArtifactInventoryLimits,
@@ -57,11 +57,14 @@ impl<'a> ArtifactInventoryService<'a> {
         limits: ArtifactInventoryLimits,
     ) -> Result<Self, ArtifactInventoryError> {
         validate_limits(limits)?;
-        let root = PinnedDirectory::open_existing(root.as_ref())?;
+        let root_path =
+            std::path::absolute(root.as_ref()).map_err(ArtifactInventoryError::StorageIo)?;
+        let root = PinnedDirectory::open_existing(&root_path)?;
         let (lock, _) = root.open_lock_file(OsStr::new(LOCK_FILE))?;
         lock_shared(&lock)?;
         let artifacts = root.open_child_directory(OsStr::new("artifacts"))?;
         let service = Self {
+            root_path,
             root,
             artifacts,
             limits,
@@ -140,6 +143,9 @@ impl<'a> ArtifactInventoryService<'a> {
     }
 
     fn validate_storage_layout(&self) -> Result<StorageLayoutFingerprint, ArtifactInventoryError> {
+        if self.root.fingerprint()? != PinnedDirectory::fingerprint_path(&self.root_path)? {
+            return Err(ArtifactInventoryError::ConcurrentModification);
+        }
         let lock_path = self.root.child_file_fingerprint(OsStr::new(LOCK_FILE))?;
         let lock_handle = fingerprint_std_file(&self.lock)?;
         if lock_handle != lock_path {
@@ -274,6 +280,9 @@ impl<'a> InventoryBuilder<'a> {
         if entry.indirect || !entry.direct_regular_file {
             return Ok(RegisteredArtifactBytes::UnsafeEntry);
         }
+        if !entry.has_single_link() {
+            return Ok(RegisteredArtifactBytes::AliasedEntry);
+        }
         if entry.byte_size != installed.byte_size {
             return Ok(RegisteredArtifactBytes::SizeConflict {
                 observed_bytes: entry.byte_size,
@@ -332,6 +341,9 @@ impl<'a> InventoryBuilder<'a> {
             } else if entry.byte_size == 0 {
                 self.unexpected_entries.empty_files =
                     self.unexpected_entries.empty_files.saturating_add(1);
+            } else if !entry.has_single_link() {
+                self.unexpected_entries.aliased_files =
+                    self.unexpected_entries.aliased_files.saturating_add(1);
             } else if entry.byte_size > self.limits.maximum_artifact_bytes {
                 self.oversized_files.push(OversizedArtifactFile {
                     claimed_artifact_id,

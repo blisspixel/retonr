@@ -27,6 +27,8 @@ pub enum RegisteredArtifactBytes {
     Missing,
     /// The expected name was occupied by an indirect or non-regular entry.
     UnsafeEntry,
+    /// The file had another hard-link name outside its canonical managed entry.
+    AliasedEntry,
     /// The persisted storage key did not match the application-owned layout.
     StateLayoutConflict,
     /// Direct regular bytes had a different observed size.
@@ -115,6 +117,8 @@ pub struct UnexpectedArtifactEntryCounts {
     pub non_regular_entries: u64,
     /// Uninstalled canonical direct files that were empty.
     pub empty_files: u64,
+    /// Uninstalled canonical direct files with another hard-link name.
+    pub aliased_files: u64,
 }
 
 /// Complete read-only reconciliation evidence from one coherent operation.

@@ -18,6 +18,8 @@ pub struct OfflineArtifactImportRequest {
 pub struct ArtifactImportLimits {
     /// Maximum bytes accepted for one imported artifact file.
     pub maximum_artifact_bytes: u64,
+    /// Maximum entries accepted in the managed artifact directory after import.
+    pub maximum_storage_entries: usize,
 }
 
 /// Result of durably staging and registering one local artifact.
@@ -40,12 +42,8 @@ pub enum ArtifactImportStage {
     VerifyingSource,
     /// Commit verified staged bytes under their content-derived key.
     CommittingFile,
-    /// Reverify a final file that another exact import already committed.
-    VerifyingExistingFile,
-    /// Atomically register the manifest and installed-artifact state.
-    RegisteringState,
-    /// The file and durable state both committed successfully.
-    Complete,
+    /// Begin silent final-file verification and atomic state registration.
+    Finalizing,
 }
 
 /// Content-free progress snapshot for one offline artifact import.
@@ -100,6 +98,15 @@ pub enum ArtifactImportError {
     /// Another process currently owns the artifact import service.
     #[error("artifact storage is already in use")]
     StorageInUse,
+    /// Managed storage changed during a coherence-sensitive operation.
+    #[error("artifact storage changed during import")]
+    StorageChanged,
+    /// Recovery encountered more staging entries than its fixed safety ceiling.
+    #[error("artifact staging exceeds the recovery entry limit")]
+    StagingEntryLimitExceeded,
+    /// Managed artifact storage reached the caller-owned entry ceiling.
+    #[error("managed artifact storage exceeds the configured entry limit")]
+    StorageEntryLimitExceeded,
     /// Application-owned staging or persistence failed.
     #[error("artifact storage operation failed")]
     StorageIo(#[source] io::Error),

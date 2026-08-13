@@ -40,7 +40,10 @@ fn rejects_non_file_destination_as_unsafe_storage() {
         },
     )
     .expect_err("non-file destination must fail as unsafe storage");
-    assert!(matches!(error, ArtifactImportError::UnsafeStorageLayout));
+    assert!(
+        matches!(error, ArtifactImportError::UnsafeStorageLayout),
+        "unexpected error: {error:?}"
+    );
 }
 
 #[test]
@@ -54,7 +57,10 @@ fn rejects_non_file_lock_path_as_unsafe_storage() {
     let Err(error) = OfflineArtifactImportService::open(&storage, &mut store, limits()) else {
         panic!("non-file lock path must fail as unsafe storage");
     };
-    assert!(matches!(error, ArtifactImportError::UnsafeStorageLayout));
+    assert!(
+        matches!(error, ArtifactImportError::UnsafeStorageLayout),
+        "unexpected error: {error:?}"
+    );
 }
 
 #[test]
@@ -86,7 +92,28 @@ fn rejects_staging_directory_replaced_with_an_indirect_path() {
     let mut service = OfflineArtifactImportService::open(&storage, &mut store, limits())
         .expect("open import service");
     let staging = storage.join(".staging");
-    fs::remove_dir(&staging).expect("remove original staging directory");
+    if let Err(error) = fs::remove_dir(&staging) {
+        if cfg!(windows)
+            && (error.kind() == io::ErrorKind::PermissionDenied || error.raw_os_error() == Some(32))
+        {
+            run_import(
+                &mut service,
+                &OfflineArtifactImportRequest {
+                    source,
+                    manifest: manifest(ARTIFACT_BYTES),
+                },
+            )
+            .expect("pinned Windows storage remains usable after replacement is blocked");
+            assert_eq!(
+                fs::read_dir(&redirected)
+                    .expect("read redirected directory")
+                    .count(),
+                0
+            );
+            return;
+        }
+        panic!("remove original staging directory: {error}");
+    }
     if let Err(error) = create_directory_link(&redirected, &staging) {
         if cfg!(windows) && error.kind() == io::ErrorKind::PermissionDenied {
             return;
@@ -102,7 +129,13 @@ fn rejects_staging_directory_replaced_with_an_indirect_path() {
         },
     )
     .expect_err("indirect staging directory must fail before writing");
-    assert!(matches!(error, ArtifactImportError::UnsafeStorageLayout));
+    assert!(
+        matches!(
+            error,
+            ArtifactImportError::UnsafeStorageLayout | ArtifactImportError::StorageChanged
+        ),
+        "unexpected error: {error:?}"
+    );
     assert_eq!(
         fs::read_dir(&redirected)
             .expect("read redirected directory")

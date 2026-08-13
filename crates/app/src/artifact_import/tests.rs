@@ -14,6 +14,7 @@ use super::{
     OfflineArtifactImportService, storage_key,
 };
 
+mod hardening;
 mod storage_layout;
 
 const ARTIFACT_BYTES: &[u8] = b"verified local model artifact";
@@ -21,6 +22,7 @@ const ARTIFACT_BYTES: &[u8] = b"verified local model artifact";
 const fn limits() -> ArtifactImportLimits {
     ArtifactImportLimits {
         maximum_artifact_bytes: 64 * 1024 * 1024,
+        maximum_storage_entries: 1_024,
     }
 }
 
@@ -99,10 +101,20 @@ fn imports_without_mutating_source_and_repeats_idempotently() {
     assert_eq!(
         progress.last(),
         Some(&ArtifactImportProgress {
-            stage: ArtifactImportStage::Complete,
-            completed_bytes: expected_manifest.byte_size,
+            stage: ArtifactImportStage::Finalizing,
+            completed_bytes: 0,
             total_bytes: expected_manifest.byte_size,
         })
+    );
+    assert_eq!(
+        progress.iter().map(|event| event.stage).collect::<Vec<_>>(),
+        vec![
+            ArtifactImportStage::InspectingSource,
+            ArtifactImportStage::StagingAndVerifying,
+            ArtifactImportStage::StagingAndVerifying,
+            ArtifactImportStage::CommittingFile,
+            ArtifactImportStage::Finalizing,
+        ]
     );
 
     let mut repeated_progress = Vec::new();
@@ -114,20 +126,18 @@ fn imports_without_mutating_source_and_repeats_idempotently() {
     assert_eq!(repeated.installed, first.installed);
     assert_eq!(repeated.state.manifest, WriteDisposition::AlreadyPresent);
     assert_eq!(repeated.state.installed, WriteDisposition::AlreadyPresent);
-    assert!(
+    assert_eq!(
         repeated_progress
             .iter()
-            .any(|event| event.stage == ArtifactImportStage::VerifyingExistingFile)
+            .map(|event| event.stage)
+            .collect::<Vec<_>>(),
+        vec![
+            ArtifactImportStage::InspectingSource,
+            ArtifactImportStage::VerifyingSource,
+            ArtifactImportStage::VerifyingSource,
+            ArtifactImportStage::Finalizing,
+        ]
     );
-    assert!(
-        repeated_progress
-            .iter()
-            .any(|event| event.stage == ArtifactImportStage::VerifyingSource)
-    );
-    assert!(repeated_progress.iter().all(|event| !matches!(
-        event.stage,
-        ArtifactImportStage::StagingAndVerifying | ArtifactImportStage::CommittingFile
-    )));
 }
 
 #[test]
@@ -193,9 +203,22 @@ fn rejects_invalid_and_exceeded_resource_limits_before_copying() {
         &mut store,
         ArtifactImportLimits {
             maximum_artifact_bytes: 0,
+            maximum_storage_entries: 1_024,
         },
     ) else {
         panic!("zero byte ceiling must fail");
+    };
+    assert!(matches!(invalid, ArtifactImportError::InvalidLimits));
+
+    let Err(invalid) = OfflineArtifactImportService::open(
+        &storage,
+        &mut store,
+        ArtifactImportLimits {
+            maximum_artifact_bytes: 1,
+            maximum_storage_entries: 0,
+        },
+    ) else {
+        panic!("zero storage-entry ceiling must fail");
     };
     assert!(matches!(invalid, ArtifactImportError::InvalidLimits));
 
@@ -204,6 +227,7 @@ fn rejects_invalid_and_exceeded_resource_limits_before_copying() {
         &mut store,
         ArtifactImportLimits {
             maximum_artifact_bytes: 1,
+            maximum_storage_entries: 1_024,
         },
     )
     .expect("open bounded import service");

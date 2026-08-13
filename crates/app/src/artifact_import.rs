@@ -1,4 +1,5 @@
 use std::{
+    ffi::{OsStr, OsString},
     fs::{self, File, Metadata, TryLockError},
     io::{self, Read as _},
     path::{Path, PathBuf},
@@ -8,30 +9,44 @@ use rewrite_model::{ArtifactManifest, InstalledArtifact};
 use rewrite_model_store::ArtifactStateStore;
 use rewrite_types::{CancellationToken, Digest};
 use sha2::{Digest as _, Sha256};
-use tempfile::{Builder as TemporaryFileBuilder, NamedTempFile};
 
+mod boundary;
 mod contract;
 pub(crate) mod platform;
+mod staged;
+mod verify;
 
+use crate::artifact_storage::{
+    ExactEntryCapacity, PinnedDirectory, fingerprint_std_file, is_indirect,
+};
+use boundary::{
+    map_open_error as map_boundary_open_error, map_recovery_error as map_boundary_recovery_error,
+    map_storage_error as map_boundary_storage_error,
+};
 pub use contract::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
     ArtifactImportStage, OfflineArtifactImportRequest,
 };
 #[cfg(unix)]
 use platform::set_private_directory_permissions;
-use platform::{is_indirect, open_lock_file, open_readonly_no_follow, sync_directory};
+use platform::{open_readonly_no_follow, sync_directory};
+use staged::StagedArtifact;
+use verify::verify_stored_file;
 
 const COPY_BUFFER_BYTES: usize = 1024 * 1024;
 const STAGING_PREFIX: &str = ".import-";
 const LOCK_FILE: &str = ".artifact-import.lock";
+const MAX_RECOVERY_ENTRIES: usize = 1_024;
 
 /// Application service for non-destructive, offline artifact-file import.
 pub struct OfflineArtifactImportService<'a> {
-    artifacts: PathBuf,
-    staging: PathBuf,
+    root_path: PathBuf,
+    root: PinnedDirectory,
+    artifacts: PinnedDirectory,
+    staging: PinnedDirectory,
     limits: ArtifactImportLimits,
     store: &'a mut ArtifactStateStore,
-    _lock: File,
+    lock: File,
 }
 
 impl<'a> OfflineArtifactImportService<'a> {
@@ -50,19 +65,20 @@ impl<'a> OfflineArtifactImportService<'a> {
         store: &'a mut ArtifactStateStore,
         limits: ArtifactImportLimits,
     ) -> Result<Self, ArtifactImportError> {
-        if limits.maximum_artifact_bytes == 0 {
+        if limits.maximum_artifact_bytes == 0
+            || limits.maximum_storage_entries == 0
+            || limits.maximum_storage_entries.checked_add(1).is_none()
+        {
             return Err(ArtifactImportError::InvalidLimits);
         }
-        let root = root.as_ref().to_path_buf();
-        ensure_directory(&root)?;
-        sync_parent_directory(&root)?;
-        let lock_path = root.join(LOCK_FILE);
-        reject_existing_non_regular_path(&lock_path)?;
-        let lock = open_lock_file(&lock_path).map_err(ArtifactImportError::StorageIo)?;
-        let lock_metadata = lock.metadata().map_err(ArtifactImportError::StorageIo)?;
-        if !lock_metadata.is_file() || is_indirect(&lock_metadata) {
-            return Err(ArtifactImportError::UnsafeStorageLayout);
-        }
+        let root_path =
+            std::path::absolute(root.as_ref()).map_err(ArtifactImportError::StorageIo)?;
+        ensure_root_directory(&root_path)?;
+        sync_parent_directory(&root_path)?;
+        let root = PinnedDirectory::open_existing(&root_path).map_err(map_boundary_open_error)?;
+        let (lock, _) = root
+            .open_or_create_lock_file(OsStr::new(LOCK_FILE))
+            .map_err(map_boundary_open_error)?;
         match lock.try_lock() {
             Ok(()) => {}
             Err(TryLockError::WouldBlock) => return Err(ArtifactImportError::StorageInUse),
@@ -70,19 +86,27 @@ impl<'a> OfflineArtifactImportService<'a> {
                 return Err(ArtifactImportError::StorageIo(error));
             }
         }
-        let staging = root.join(".staging");
-        let artifacts = root.join("artifacts");
-        ensure_directory(&staging)?;
-        ensure_directory(&artifacts)?;
-        sync_directory(&root)?;
-        recover_staging(&staging)?;
-        Ok(Self {
+        let staging = root
+            .ensure_child_directory(OsStr::new(".staging"))
+            .map_err(map_boundary_open_error)?;
+        let artifacts = root
+            .ensure_child_directory(OsStr::new("artifacts"))
+            .map_err(map_boundary_open_error)?;
+        root.sync().map_err(map_boundary_open_error)?;
+        staging
+            .recover_owned_staging(STAGING_PREFIX, MAX_RECOVERY_ENTRIES)
+            .map_err(map_boundary_recovery_error)?;
+        let service = Self {
+            root_path,
+            root,
             artifacts,
             staging,
             limits,
             store,
-            _lock: lock,
-        })
+            lock,
+        };
+        service.validate_storage_layout()?;
+        Ok(service)
     }
 
     /// Copies, verifies, atomically persists, and registers one artifact file.
@@ -105,16 +129,8 @@ impl<'a> OfflineArtifactImportService<'a> {
         F: FnMut(ArtifactImportProgress),
     {
         ensure_not_cancelled(cancellation)?;
-        request
-            .manifest
-            .validate()
-            .map_err(ArtifactImportError::InvalidManifest)?;
-        if request.manifest.byte_size > self.limits.maximum_artifact_bytes {
-            return Err(ArtifactImportError::ArtifactTooLarge {
-                actual: request.manifest.byte_size,
-                maximum: self.limits.maximum_artifact_bytes,
-            });
-        }
+        self.validate_storage_layout()?;
+        self.validate_request(request)?;
         report_progress(
             &mut progress,
             ArtifactImportStage::InspectingSource,
@@ -127,25 +143,32 @@ impl<'a> OfflineArtifactImportService<'a> {
         }
 
         let installed_storage_key = storage_key(&request.manifest.artifact_digest);
-        ensure_directory(&self.artifacts)?;
-        let destination = self
+        let destination_name = OsString::from(request.manifest.artifact_digest.as_str());
+        let destination_exists = self
             .artifacts
-            .join(request.manifest.artifact_digest.as_str());
-        let destination_exists = stored_file_exists(&destination)?;
+            .open_managed_file(
+                &destination_name,
+                self.limits.maximum_storage_entries,
+                cancellation,
+            )
+            .map_err(map_boundary_storage_error)?
+            .is_some();
         let mut staged = if destination_exists {
             None
         } else {
-            ensure_directory(&self.staging)?;
-            Some(
-                TemporaryFileBuilder::new()
-                    .prefix(STAGING_PREFIX)
-                    .tempfile_in(&self.staging)
-                    .map_err(ArtifactImportError::StorageIo)?,
-            )
+            let (name, file) = self
+                .staging
+                .create_staging_file(STAGING_PREFIX, MAX_RECOVERY_ENTRIES, cancellation)
+                .map_err(map_boundary_recovery_error)?;
+            Some(StagedArtifact::new(&self.staging, name, file))
+        };
+        let staged_file = match staged.as_mut() {
+            Some(staged) => Some(staged.file_mut()?),
+            None => None,
         };
         let observed = verify_source_bytes(
             &mut source,
-            staged.as_mut(),
+            staged_file,
             &request.manifest,
             cancellation,
             &mut progress,
@@ -156,20 +179,14 @@ impl<'a> OfflineArtifactImportService<'a> {
         }
         ensure_not_cancelled(cancellation)?;
         if let Some(mut staged) = staged {
-            staged
-                .as_file_mut()
-                .sync_all()
-                .map_err(ArtifactImportError::StorageIo)?;
-            persist_or_verify(
+            staged.freeze_single_link()?;
+            self.commit_staged(
                 staged,
-                &destination,
-                &request.manifest,
+                &destination_name,
+                request.manifest.byte_size,
                 cancellation,
                 &mut progress,
             )?;
-            sync_directory(&self.artifacts)?;
-        } else {
-            verify_stored_file(&destination, &request.manifest, cancellation, &mut progress)?;
         }
 
         let installed = InstalledArtifact {
@@ -180,21 +197,141 @@ impl<'a> OfflineArtifactImportService<'a> {
         };
         report_progress(
             &mut progress,
-            ArtifactImportStage::RegisteringState,
-            request.manifest.byte_size,
+            ArtifactImportStage::Finalizing,
+            0,
             request.manifest.byte_size,
         );
+        ensure_not_cancelled(cancellation)?;
+        verify_stored_file(
+            &self.artifacts,
+            &destination_name,
+            &request.manifest,
+            self.limits.maximum_storage_entries,
+            cancellation,
+        )?;
+        self.validate_storage_layout()?;
+        ensure_not_cancelled(cancellation)?;
         let state = self
             .store
             .put_installation(&request.manifest, &installed)
             .map_err(ArtifactImportError::State)?;
-        report_progress(
-            &mut progress,
-            ArtifactImportStage::Complete,
-            request.manifest.byte_size,
-            request.manifest.byte_size,
-        );
         Ok(ArtifactImportResult { installed, state })
+    }
+
+    fn commit_staged<F>(
+        &self,
+        mut staged: StagedArtifact<'_>,
+        destination_name: &OsStr,
+        total_bytes: u64,
+        cancellation: &CancellationToken,
+        progress: &mut F,
+    ) -> Result<(), ArtifactImportError>
+    where
+        F: FnMut(ArtifactImportProgress),
+    {
+        let commit = (|| {
+            report_progress(
+                progress,
+                ArtifactImportStage::CommittingFile,
+                total_bytes,
+                total_bytes,
+            );
+            ensure_not_cancelled(cancellation)?;
+            staged.recheck_frozen_single_link(cancellation)?;
+            match self.artifacts.exact_entry_capacity(
+                destination_name,
+                self.limits.maximum_storage_entries,
+                cancellation,
+            ) {
+                Ok(ExactEntryCapacity::Available) => {}
+                Ok(ExactEntryCapacity::Present) => {
+                    return Err(ArtifactImportError::StorageChanged);
+                }
+                Ok(ExactEntryCapacity::Full) => {
+                    return Err(ArtifactImportError::StorageEntryLimitExceeded);
+                }
+                Err(error) => return Err(map_boundary_storage_error(error)),
+            }
+            staged
+                .file_mut()?
+                .sync_all()
+                .map_err(ArtifactImportError::StorageIo)?;
+            match self
+                .staging
+                .hard_link_to(staged.name(), &self.artifacts, destination_name)
+            {
+                Ok(()) => self.artifacts.sync().map_err(map_boundary_storage_error),
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                    Err(ArtifactImportError::StorageChanged)
+                }
+                Err(error) => Err(ArtifactImportError::StorageIo(error)),
+            }
+        })();
+        let cleanup = staged.cleanup();
+        commit?;
+        cleanup
+    }
+
+    fn validate_storage_layout(&self) -> Result<(), ArtifactImportError> {
+        let root = self
+            .root
+            .fingerprint()
+            .map_err(map_boundary_storage_error)?;
+        let path_root = PinnedDirectory::fingerprint_path(&self.root_path)
+            .map_err(map_boundary_storage_error)?;
+        if root != path_root {
+            return Err(ArtifactImportError::StorageChanged);
+        }
+        let lock_path = self
+            .root
+            .child_file_fingerprint(OsStr::new(LOCK_FILE))
+            .map_err(map_boundary_storage_error)?;
+        let lock_handle = fingerprint_std_file(&self.lock).map_err(map_boundary_storage_error)?;
+        if lock_path != lock_handle {
+            return Err(ArtifactImportError::StorageChanged);
+        }
+        let artifacts = self
+            .artifacts
+            .fingerprint()
+            .map_err(map_boundary_storage_error)?;
+        if artifacts
+            != self
+                .root
+                .child_directory_fingerprint(OsStr::new("artifacts"))
+                .map_err(map_boundary_storage_error)?
+        {
+            return Err(ArtifactImportError::StorageChanged);
+        }
+        let staging = self
+            .staging
+            .fingerprint()
+            .map_err(map_boundary_storage_error)?;
+        if staging
+            != self
+                .root
+                .child_directory_fingerprint(OsStr::new(".staging"))
+                .map_err(map_boundary_storage_error)?
+        {
+            return Err(ArtifactImportError::StorageChanged);
+        }
+        Ok(())
+    }
+
+    fn validate_request(
+        &self,
+        request: &OfflineArtifactImportRequest,
+    ) -> Result<(), ArtifactImportError> {
+        request
+            .manifest
+            .validate()
+            .map_err(ArtifactImportError::InvalidManifest)?;
+        if request.manifest.byte_size > self.limits.maximum_artifact_bytes {
+            return Err(ArtifactImportError::ArtifactTooLarge {
+                actual: request.manifest.byte_size,
+                maximum: self.limits.maximum_artifact_bytes,
+            });
+        }
+        Ok(())
     }
 }
 
@@ -219,7 +356,7 @@ fn open_source(path: &Path) -> Result<(File, Metadata), ArtifactImportError> {
 
 fn verify_source_bytes(
     source: &mut File,
-    staged: Option<&mut NamedTempFile>,
+    staged: Option<&mut File>,
     manifest: &ArtifactManifest,
     cancellation: &CancellationToken,
     progress: &mut impl FnMut(ArtifactImportProgress),
@@ -236,7 +373,7 @@ fn verify_source_bytes(
     match staged {
         Some(staged) => copy_and_hash(
             source,
-            staged.as_file_mut(),
+            staged,
             manifest.byte_size,
             cancellation,
             &mut source_progress,
@@ -296,100 +433,6 @@ fn verify_source_after_read(source: &File, expected_size: u64) -> Result<(), Art
     Ok(())
 }
 
-fn persist_or_verify(
-    staged: NamedTempFile,
-    destination: &Path,
-    manifest: &ArtifactManifest,
-    cancellation: &CancellationToken,
-    progress: &mut impl FnMut(ArtifactImportProgress),
-) -> Result<(), ArtifactImportError> {
-    reject_existing_non_regular_path(destination)?;
-    if destination.exists() {
-        return verify_stored_file(destination, manifest, cancellation, progress);
-    }
-    report_progress(
-        progress,
-        ArtifactImportStage::CommittingFile,
-        manifest.byte_size,
-        manifest.byte_size,
-    );
-    match staged.persist_noclobber(destination) {
-        Ok(file) => file.sync_all().map_err(ArtifactImportError::StorageIo),
-        Err(error) if error.error.kind() == io::ErrorKind::AlreadyExists => {
-            drop(error.file);
-            verify_stored_file(destination, manifest, cancellation, progress)
-        }
-        Err(error) => Err(ArtifactImportError::StorageIo(error.error)),
-    }
-}
-
-fn verify_stored_file(
-    path: &Path,
-    manifest: &ArtifactManifest,
-    cancellation: &CancellationToken,
-    progress: &mut impl FnMut(ArtifactImportProgress),
-) -> Result<(), ArtifactImportError> {
-    let (mut file, metadata) = open_stored_file(path)?;
-    if metadata.len() != manifest.byte_size {
-        return Err(ArtifactImportError::StorageConflict);
-    }
-    report_progress(
-        progress,
-        ArtifactImportStage::VerifyingExistingFile,
-        0,
-        manifest.byte_size,
-    );
-    let digest = copy_and_hash(
-        &mut file,
-        &mut io::sink(),
-        manifest.byte_size,
-        cancellation,
-        &mut |completed| {
-            report_progress(
-                progress,
-                ArtifactImportStage::VerifyingExistingFile,
-                completed,
-                manifest.byte_size,
-            );
-        },
-    )
-    .map_err(|error| match error {
-        ArtifactImportError::SizeMismatch | ArtifactImportError::DigestMismatch => {
-            ArtifactImportError::StorageConflict
-        }
-        ArtifactImportError::SourceIo(source) => ArtifactImportError::StorageIo(source),
-        other => other,
-    })?;
-    if digest != manifest.artifact_digest {
-        return Err(ArtifactImportError::StorageConflict);
-    }
-    Ok(())
-}
-
-fn open_stored_file(path: &Path) -> Result<(File, Metadata), ArtifactImportError> {
-    let metadata = fs::symlink_metadata(path).map_err(ArtifactImportError::StorageIo)?;
-    if is_indirect(&metadata) || !metadata.is_file() {
-        return Err(ArtifactImportError::UnsafeStorageLayout);
-    }
-    let file = open_readonly_no_follow(path).map_err(ArtifactImportError::StorageIo)?;
-    let opened = file.metadata().map_err(ArtifactImportError::StorageIo)?;
-    if !opened.is_file() || is_indirect(&opened) {
-        return Err(ArtifactImportError::UnsafeStorageLayout);
-    }
-    Ok((file, opened))
-}
-
-fn stored_file_exists(path: &Path) -> Result<bool, ArtifactImportError> {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) if is_indirect(&metadata) || !metadata.is_file() => {
-            Err(ArtifactImportError::UnsafeStorageLayout)
-        }
-        Ok(_) => Ok(true),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
-        Err(error) => Err(ArtifactImportError::StorageIo(error)),
-    }
-}
-
 fn storage_key(digest: &Digest) -> String {
     format!("artifacts/{}", digest.as_str())
 }
@@ -415,7 +458,7 @@ fn report_progress(
     });
 }
 
-fn ensure_directory(path: &Path) -> Result<(), ArtifactImportError> {
+fn ensure_root_directory(path: &Path) -> Result<(), ArtifactImportError> {
     match fs::create_dir_all(path) {
         Ok(()) => {}
         Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
@@ -438,34 +481,6 @@ fn sync_parent_directory(path: &Path) -> Result<(), ArtifactImportError> {
         return Ok(());
     };
     sync_directory(parent)
-}
-
-fn reject_existing_non_regular_path(path: &Path) -> Result<(), ArtifactImportError> {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) if is_indirect(&metadata) || !metadata.is_file() => {
-            Err(ArtifactImportError::UnsafeStorageLayout)
-        }
-        Ok(_) => Ok(()),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(ArtifactImportError::StorageIo(error)),
-    }
-}
-
-fn recover_staging(staging: &Path) -> Result<(), ArtifactImportError> {
-    for entry in fs::read_dir(staging).map_err(ArtifactImportError::StorageIo)? {
-        let entry = entry.map_err(ArtifactImportError::StorageIo)?;
-        let name = entry.file_name();
-        if !name.to_string_lossy().starts_with(STAGING_PREFIX) {
-            continue;
-        }
-        let metadata =
-            fs::symlink_metadata(entry.path()).map_err(ArtifactImportError::StorageIo)?;
-        if !metadata.is_file() || is_indirect(&metadata) {
-            return Err(ArtifactImportError::UnsafeStorageLayout);
-        }
-        fs::remove_file(entry.path()).map_err(ArtifactImportError::StorageIo)?;
-    }
-    sync_directory(staging)
 }
 
 #[cfg(test)]
