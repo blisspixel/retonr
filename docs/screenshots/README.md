@@ -37,6 +37,9 @@ not present planned functionality as implemented.
 - Record the binary version, platform, theme, viewport, scale, and fixture ID.
 - Use the same fixture when comparing platforms.
 - Show platform-specific images when behavior or native controls differ materially.
+- Use a Linux terminal capture for the primary CLI image and POSIX-style shell
+  examples for platform-neutral workflows. Keep Windows and macOS captures when
+  behavior, installation, or native controls differ materially.
 - Crop only irrelevant operating-system chrome.
 - Do not edit product content, validation states, or timing claims into the image.
 - Remove usernames, machine names, paths, tokens, and unrelated applications.

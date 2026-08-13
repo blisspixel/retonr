@@ -177,6 +177,20 @@ release. It could not preserve upstream token timing, token boundaries, logprobs
 usage accounting, IDs, or fingerprints, and therefore requires a separate product,
 security, and compatibility decision.
 
+## Framed streaming
+
+Streaming input is first-class when the transport supplies a pinned frame schema and
+an unambiguous completed text-unit boundary. Retonr parses incrementally with byte,
+frame, queue, time, and spool limits; applies backpressure; preserves frame order;
+and cancels on disconnect. Non-text frames are never interpreted as prose.
+
+Rewriting remains atomic at the completed unit. The adapter buffers eligible text,
+runs the owning format adapter and full validation cascade, then emits a validated
+replacement transaction or the exact original unit. It never emits candidate tokens
+or revises bytes already forwarded. A provider-specific event stream graduates only
+after complete-response conformance and its own malformed, missing-final, duplicate,
+reordered, slow-consumer, cancellation, drift, and non-target event fixtures pass.
+
 ## Conformance
 
 One fixture corpus runs through CLI, API, MCP, skills, Agent Plugin launch, desktop

@@ -280,6 +280,11 @@ path, and no dependency on a provider-specific output policy.
   eligible candidates only after every fidelity gate passes
 - Runtime capability records that disclose known source marking, provenance,
   moderation, remote logging, or silent transformation behavior
+- An optional post-acceptance provider-mark diagnostic boundary. A provider adapter
+  is eligible only after its supported interface and technical scope are published.
+  It is off by default, requires explicit network authority, compares only the
+  frozen source and final accepted text, and cannot affect generation, retries,
+  ranking, acceptance, profiles, or style learning.
 - Cumulative runtime assurance evidence that inventories every known insertion
   point, proves offline local execution where claimed, captures output boundaries,
   runs differential fixtures, and invalidates on artifact or configuration drift
@@ -304,6 +309,9 @@ path, and no dependency on a provider-specific output policy.
   fidelity floor.
 - Detector and source-signal diagnostics remain research-only and cannot rank live
   candidates.
+- Any shipped provider-mark adapter reports only scheme-specific results under an
+  exact detector identity. It cannot report authorship, human origin, universal
+  watermark removal, or a detector-clean success state.
 - Editorial-lint improvements are reported by named rule and never presented as an
   AI-authorship verdict.
 - Public watermark fixtures, synthetic keys, complete-procedure calibration, attack
@@ -523,22 +531,28 @@ appears.
 Post-1.0 work remains dependency ordered and must preserve the stable core:
 
 1. Broaden Markdown and WordprocessingML one qualified capability at a time.
-2. Add bounded SpreadsheetML prose-cell rewriting with formulas and workbook
+2. Add schema-bound JSON prose values and source-spliced HTML text nodes through
+   explicit adapters. No structured input is flattened to plain text.
+3. Add a completed-unit event-stream adapter only after completed-response JSON,
+   framing, backpressure, cancellation, ordering, and atomic output are qualified.
+4. Add bounded SpreadsheetML prose-cell rewriting with formulas and workbook
    structure protected exactly under the
    [document transaction contract](document-transactions.md).
-3. Add languages and mixed-language sets only after independent data and fidelity
+5. Add languages and mixed-language sets only after independent data and fidelity
    qualification.
-4. Add more local runtimes and user-controlled API adapters through the same exact
-   identity, network, and conformance boundaries.
-5. Deepen native desktop workflows without making the desktop the only path.
-6. Evaluate local voice-assisted profile and document-brief acquisition as optional
+6. Qualify LM Studio, vLLM, and MLX LM where their exact runtime-specific identity
+   and offline controls pass the same suite as Ollama and llama.cpp. Review other
+   major local runtimes through the same rolling candidate process; API dialect
+   compatibility alone never grants support.
+7. Deepen native desktop workflows without making the desktop the only path.
+8. Evaluate local voice-assisted profile and document-brief acquisition as optional
    input modes after typed workflows, native accessibility, artifact licensing, and
    deletion behavior are already proven.
-7. Evaluate PDF extraction and new-document export without claiming perfect source
+9. Evaluate PDF extraction and new-document export without claiming perfect source
    round trip.
-8. Consider editor integrations, mobile applications, and team synchronization only
+10. Consider editor integrations, mobile applications, and team synchronization only
    after a separate authority, privacy, and conflict-resolution design.
-9. Expand Open Knowledge Format import, export, and attested evaluation recipes only
+11. Expand Open Knowledge Format import, export, and attested evaluation recipes only
    if exact compatibility adds value over canonical JSON without weakening privacy,
    consent, authorization, or reproducibility.
 

@@ -139,6 +139,14 @@ A separately authorized research harness may exercise public schemes with synthe
 keys and locked data. Its results remain scheme-specific diagnostics and cannot
 alter a production rewrite.
 
+If a provider later publishes a supported mark detector, Retonr may add an optional
+post-acceptance adapter. The source and final text are already frozen before that
+operation begins. A hosted check requires explicit network authority and informed
+selection of the exact content sent. Results use `supported mark detected`,
+`supported mark not detected`, `inconclusive`, or `detector unavailable`, qualified
+by the exact detector identity. Failure, unavailability, or result movement never
+changes the accepted artifact or enters the style profile.
+
 ## Report contract
 
 The private local report includes, as applicable:
@@ -152,6 +160,8 @@ The private local report includes, as applicable:
 - Whether the source remained unchanged
 - Derivative credential and configured signer status
 - External checks requested, completed, skipped, failed, or inaccessible
+- Post-acceptance detector identity, declared scope, source and final result, and
+  whether a hosted check was authorized
 - Known runtime watermark declarations and exact limitations
 
 Raw metadata can contain personal and operational data. Human, agent, and default

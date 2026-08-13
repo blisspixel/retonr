@@ -363,6 +363,15 @@ research suite to understand the effects of rerendering. These diagnostics:
 A lower source-classification score is not proof of human authorship, privacy, or
 provenance removal.
 
+A provider-supplied detector may be evaluated as a separate black-box condition only
+after its supported interface, technical scope, result vocabulary, and data terms
+are documented. The operation runs after source and final output are frozen. It is
+off by default, requires explicit authority before either text is transmitted, and
+cannot change prompts, generation, retries, ranking, acceptance, profiles, or style
+learning. Reports name the exact detector and may compare its scheme-specific source
+and final results. They never convert a detected-to-not-detected transition into a
+claim of watermark removal, evasion, human origin, or authorship.
+
 The watermark research suite freezes the complete detector procedure, including
 normalization, tokenizer, repeated-event policy, eligibility, windows, keys,
 payloads, aggregation, thresholds, abstention, and runtime. It calibrates that

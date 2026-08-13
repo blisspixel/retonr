@@ -198,6 +198,8 @@ LibreOffice, printer driver, or font environment.
 | --- | --- | --- | --- |
 | Plain text | Complete bounded text | Newline kind, final newline, byte-order policy, protected literals | Exact reassembly contract |
 | Markdown | Declared paragraph and heading prose spans | Syntax, code, HTML, links, destinations, references, unsupported constructs, non-target bytes | Reparse, structural fingerprint, and byte identity |
+| JSON | Schema-declared or explicitly selected prose string values | Keys, structural strings, numbers, booleans, nulls, ordering, whitespace, escapes outside accepted ranges, and non-target bytes | Context escaping, full reparse, masked-tree comparison, and byte identity |
+| HTML | Qualified prose text nodes | Markup, attributes, URLs, scripts, styles, templates, code, forms, embedded content, comments, unsupported nodes, and non-target bytes | Context escaping, pinned-parser reparse, structural fingerprint, and byte identity |
 | DOCX | Declared main-story paragraphs and table cells with supported run formatting | Unsupported runs and parts, relationships, styles, numbering, fields, drawings, macros, metadata by policy | Package checks, untouched-part verification, reopen, and qualified render comparison |
 | XLSX | Post-1.0 opt-in prose cells in a declared workbook subset | Formulas, cached values, cell types, references, names, validation, tables, styles, conditional formatting, charts, macros, external links, workbook and sheet structure | Formula and structure fingerprints, shared-string isolation, package checks, recalculation policy, and reopen fixtures |
 
