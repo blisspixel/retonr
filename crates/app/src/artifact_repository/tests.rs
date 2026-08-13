@@ -143,7 +143,14 @@ fn import_returns_generation_and_inventory_is_read_only() {
         .inventory(inventory_limits(), &CancellationToken::new())
         .expect("inventory repository");
     assert_eq!(report.registered.len(), 1);
-    assert_eq!(report.registered[0].installation.epoch.get(), 1);
+    assert_eq!(
+        report.registered[0].installation.artifact_id(),
+        imported.key.artifact_id()
+    );
+    assert_eq!(
+        report.registered[0].installation.installation_generation(),
+        1
+    );
     assert_eq!(
         report.registered[0].bytes,
         RegisteredArtifactBytes::Verified
@@ -181,7 +188,10 @@ fn old_generation_cannot_remove_a_reinstall() {
     let report = repository
         .inventory(inventory_limits(), &CancellationToken::new())
         .expect("inventory reinstalled artifact");
-    assert_eq!(report.registered[0].installation.epoch.get(), 2);
+    assert_eq!(
+        report.registered[0].installation.installation_generation(),
+        2
+    );
     assert_eq!(
         report.registered[0].bytes,
         RegisteredArtifactBytes::Verified

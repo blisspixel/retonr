@@ -158,7 +158,7 @@ impl ArtifactRepository {
             let artifact_removals = store
                 .pending_artifact_removals(maximum_state_entries)?
                 .iter()
-                .map(ArtifactInstallationKey::from)
+                .map(ArtifactInstallationKey::from_stored)
                 .collect();
             ensure_repository_not_cancelled(cancellation)?;
             Ok(ArtifactRepositoryPendingOperations { artifact_removals })
@@ -234,7 +234,7 @@ impl ArtifactRepository {
             guard.recheck()?;
             let (current, removal) = store.artifact_removal_state(key.artifact_id())?;
             if let Some(removal) = removal.as_ref()
-                && ArtifactInstallationKey::from(&removal.selection) == *key
+                && ArtifactInstallationKey::from_stored(&removal.selection) == *key
             {
                 if removal.phase == ArtifactRemovalPhase::Prepared {
                     return Err(ArtifactRepositoryError::RemovalRecoveryPending {
@@ -247,7 +247,7 @@ impl ArtifactRepository {
                 });
             }
             let selection = current.ok_or(ArtifactRepositoryError::ArtifactNotInstalled)?;
-            if ArtifactInstallationKey::from(&selection) != *key {
+            if ArtifactInstallationKey::from_stored(&selection) != *key {
                 return Err(ArtifactRepositoryError::StaleInstallation);
             }
             let mut service =
@@ -286,7 +286,7 @@ impl ArtifactRepository {
             guard.recheck()?;
             let (current, removal) = store.artifact_removal_state(key.artifact_id())?;
             let removal = removal.ok_or(ArtifactRepositoryError::RemovalRecoveryNotPending)?;
-            if ArtifactInstallationKey::from(&removal.selection) != *key {
+            if ArtifactInstallationKey::from_stored(&removal.selection) != *key {
                 return Err(ArtifactRepositoryError::StaleInstallation);
             }
             if removal.phase == ArtifactRemovalPhase::Completed {

@@ -94,10 +94,8 @@ impl ArtifactInstallationKey {
     pub const fn installation_generation(&self) -> u64 {
         self.installation_generation
     }
-}
 
-impl From<&StoredArtifactInstallation> for ArtifactInstallationKey {
-    fn from(value: &StoredArtifactInstallation) -> Self {
+    pub(crate) fn from_stored(value: &StoredArtifactInstallation) -> Self {
         Self {
             artifact_id: value.installed.artifact_id.clone(),
             installation_generation: value.epoch.get(),
@@ -131,7 +129,7 @@ impl From<ArtifactImportResult> for ArtifactRepositoryImportResult {
             ArtifactRepositoryImportDisposition::Imported
         };
         Self {
-            key: ArtifactInstallationKey::from(&value.state.installation),
+            key: ArtifactInstallationKey::from_stored(&value.state.installation),
             disposition,
         }
     }
@@ -149,7 +147,7 @@ pub struct ArtifactRepositoryReconciliationResult {
 impl From<ArtifactOrphanReconciliationResult> for ArtifactRepositoryReconciliationResult {
     fn from(value: ArtifactOrphanReconciliationResult) -> Self {
         Self {
-            key: ArtifactInstallationKey::from(&value.installation),
+            key: ArtifactInstallationKey::from_stored(&value.installation),
             disposition: value.disposition,
         }
     }
@@ -174,7 +172,7 @@ pub struct ArtifactRepositoryPendingOperations {
 impl From<ArtifactRemovalResult> for ArtifactRepositoryRemovalResult {
     fn from(value: ArtifactRemovalResult) -> Self {
         Self {
-            key: ArtifactInstallationKey::from(&value.selection),
+            key: ArtifactInstallationKey::from_stored(&value.selection),
             disposition: value.disposition,
         }
     }

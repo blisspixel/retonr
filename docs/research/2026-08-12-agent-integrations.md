@@ -24,6 +24,11 @@ is `0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883` for
 frozen MCP 2026-07-28 requirements file. These are research evidence, not
 automatic future implementation pins.
 
+The Agent Plugins normative page and repository were revalidated on August 13,
+2026. Version 1.0.0 remains the published Working Draft, and repository main remains
+at `bd383552095128f6effe895b9257cfd580a6d179`. No compatibility or sequencing
+change is required.
+
 ## Decision summary
 
 - Treat the Retonr CLI and application service as the product. Agent packaging is

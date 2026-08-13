@@ -19,7 +19,7 @@ or stored-data contracts.
 | `rewrite-inference` | Backend-neutral bounded discovery and generation contracts, cancellation and deadlines, stable redacted errors, and deterministic fake |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
-| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory and pending-operation inspection, selected orphan reconciliation, crash-recoverable inactive removal with exact pinned-lock capability binding, and verified runtime artifact lease groundwork |
+| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory with application-owned result DTOs, pending-operation inspection, selected orphan reconciliation, crash-recoverable inactive removal with exact pinned-lock capability binding, and verified runtime artifact lease groundwork |
 | `retonr` | Provisional `check` command plus an explicit-root offline model-artifact CLI for import, inventory, pending-operation inspection, selected reconciliation, inactive removal, and exact removal recovery |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
@@ -52,7 +52,7 @@ cargo build --locked --workspace --release
 
 All 286 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.88
+Documentation tests also pass. The measured Rust line coverage is 90.90
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -141,20 +141,17 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Retain the completed non-mutating pending-operation inspection and process-level
-   signal cancellation evidence across Windows, macOS, and Linux.
-2. Before a stable artifact API, wrap store-owned inventory records in application
-   DTOs so persistence types do not become a CLI or public contract.
-3. Retain the completed opaque lifecycle-lock capability requirement for every
-   low-level durable removal transition as new runtime consumers are added.
-4. Link redacted generation provenance into the durable rewrite transaction schema.
-5. Add typed claim and invariant evidence without describing it as semantic proof,
+1. Preserve the completed artifact lifecycle boundary, application-owned inventory
+   DTOs, non-mutating pending-operation inspection, and process-level signal
+   cancellation evidence as new consumers are added.
+2. Link redacted generation provenance into the durable rewrite transaction schema.
+3. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.
-6. Complete stdin, safe diff, dry-run, trace, terminal safety, and
+4. Complete stdin, safe diff, dry-run, trace, terminal safety, and
    raw-output policy before exposing grounded rewriting in the CLI.
-7. Run exact artifact qualification and selective-risk reporting on declared
+5. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-8. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+6. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
    after the 0.2 completion evidence passes. The current candidate-check rendering is
    limited to already implemented model-free behavior.
 

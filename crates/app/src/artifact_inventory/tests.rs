@@ -201,7 +201,16 @@ fn pending_removal_is_disjoint_from_registered_and_orphan_state() {
     assert!(report.registered.is_empty());
     assert!(report.verified_orphans.is_empty());
     assert_eq!(report.pending_removals.len(), 1);
-    assert_eq!(report.pending_removals[0].selection, selection);
+    assert_eq!(
+        report.pending_removals[0].selection.artifact_id(),
+        &selection.installed.artifact_id
+    );
+    assert_eq!(
+        report.pending_removals[0]
+            .selection
+            .installation_generation(),
+        selection.epoch.get()
+    );
     assert_eq!(
         report.pending_removals[0].bytes,
         RegisteredArtifactBytes::Verified

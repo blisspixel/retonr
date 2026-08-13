@@ -6,6 +6,10 @@ Reviewed: August 12, 2026.
 
 Evidence cutoff: August 12, 2026.
 
+Revalidated: August 13, 2026. The official repository still specifies OKF v0.2 at
+main revision `374e0bc4c644310ff56cdf9c0fe81eccdec862b0`; no product sequencing
+change is required.
+
 The June 12 Google Cloud announcement introduced Open Knowledge Format v0.1. The
 current official repository now specifies OKF v0.2, which supersedes v0.1. Retonr
 therefore treats v0.2 as the current research target and the announcement as

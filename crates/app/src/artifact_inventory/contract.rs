@@ -1,9 +1,11 @@
 use std::io;
 
 use rewrite_model::{ActiveArtifactBinding, ArtifactId, ArtifactManifest};
-use rewrite_model_store::{StoreError, StoredArtifactInstallation};
+use rewrite_model_store::StoreError;
 use rewrite_types::Digest;
 use thiserror::Error;
+
+use crate::ArtifactInstallationKey;
 
 /// Caller-owned resource ceilings for one read-only artifact inventory.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -53,8 +55,8 @@ pub enum RegisteredArtifactBytes {
 pub struct RegisteredArtifactInspection {
     /// Immutable artifact facts and source metadata.
     pub manifest: ArtifactManifest,
-    /// Registered application-owned installation state.
-    pub installation: StoredArtifactInstallation,
+    /// Persistence-neutral identity of the exact registered installation.
+    pub installation: ArtifactInstallationKey,
     /// Validated active bindings that currently reference this installation.
     pub active_bindings: Vec<ActiveArtifactBinding>,
     /// Current point-in-time managed-byte classification.
@@ -64,8 +66,8 @@ pub struct RegisteredArtifactInspection {
 /// Current byte status for one exact durably prepared removal.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PendingArtifactRemovalInspection {
-    /// Exact installation generation selected by the pending removal.
-    pub selection: StoredArtifactInstallation,
+    /// Persistence-neutral identity selected by the pending removal.
+    pub selection: ArtifactInstallationKey,
     /// Current point-in-time canonical-byte classification.
     pub bytes: RegisteredArtifactBytes,
 }
