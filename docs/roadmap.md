@@ -3,13 +3,18 @@
 ## Roadmap contract
 
 This roadmap is a dependency order, not a calendar. It contains no duration or date
-estimates. Research may run ahead, but a production capability cannot skip its entry
-or exit gate.
+estimates. Research and implementation may run ahead during 0.x. Milestone
+completion requires the named evidence, but an incomplete checkpoint does not block
+reversible work in a later package. Irreversible publication, external data
+collection, license acceptance, and network authority remain separately authorized
+actions.
 
 The [product and engineering invariants](invariants.md) apply to every phase. A
 milestone may narrow scope or move work later. It may not weaken an invariant to
-preserve a version number. The [phase execution plans](planning/README.md) define the
-detailed work packages and evidence.
+preserve a version number. ADRs and preview contracts remain revisable through 0.8;
+0.9 is the compatibility-freeze and release-qualification phase. The
+[phase execution plans](planning/README.md) define detailed work packages and
+evidence.
 
 The [current-state document](current-state.md) is the only authority for implemented
 behavior. Roadmap content is planned until that document records exact verification
@@ -42,20 +47,18 @@ This order encodes five deliberate choices:
 
 ## Current build queue
 
-The repository is still closing 0.1. Work proceeds in this exact order:
+Milestone 0.1 technical evidence is complete, and 0.2 implementation is active. Work
+proceeds in this exact order:
 
-1. Record owner disposition of ADR 0001 and the completed four-pass refinement to
-   close 0.1, then record governance and ADR 0003 through 0005 decisions at the 0.2
-   entry gate. Technical 0.1 implementation evidence is complete.
-2. Complete the 0.2 plain-text transaction and CLI before adding profiles or another
+1. Complete the 0.2 plain-text transaction and CLI before adding profiles or another
    document format.
-3. Establish the versioned editorial-quality corpus during evaluation work, but do
+2. Establish the versioned editorial-quality corpus during evaluation work, but do
    not give lint findings product authority until the 0.3 rule and profile contracts
    pass qualification.
-4. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-5. Let editorial lint guide or rank generated candidates in 0.5 only after the
+3. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+4. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
-6. Add agent packaging, rich document formats, and native presentation layers only
+5. Add agent packaging, rich document formats, and native presentation layers only
    after the underlying CLI and application contracts are proven.
 
 This sequencing makes three independent outcomes visible in every release report:
@@ -103,7 +106,7 @@ complexity is introduced.
   warnings, oversized modules, and broken local documentation links
 - Deferred public-release gates for name, licenses, packages, and model artifacts
 
-### Exit gate
+### Completion evidence
 
 - The thesis is fidelity-gated and does not promise universal semantic equivalence,
   detector evasion, human authorship, or provider-record deletion.
@@ -129,7 +132,7 @@ or user interface.
   targets, and coverage reporting
 - Deterministic fake generation and evaluation backends with cancellation
 
-### Exit gate
+### Completion evidence
 
 - Every failure and abstention has a stable category and reason.
 - Deterministic regression suites contain no known critical failure.
@@ -175,7 +178,7 @@ polished CLI.
   qualified workflow after explicit artifact setup with non-loopback outbound
   connections denied and only the exact configured local transport allowed
 
-### Exit gate
+### Completion evidence
 
 - Clean installations complete the documented workflows on Windows, macOS, and
   Linux.
@@ -217,7 +220,7 @@ that improves owner preference over the strongest simple baseline.
 - Document analysis and a bounded typed editorial brief that asks only high-value,
   answerable questions and never silently promotes document choices to the profile
 
-### Exit gate
+### Completion evidence
 
 - Blind held-out evaluation shows a meaningful owner preference gain without a
   material fidelity regression.
@@ -248,7 +251,7 @@ preserving structure and every non-target byte it claims to preserve.
   differential, and fuzz fixtures
 - Feature graduation process that adds one syntax capability at a time
 
-### Exit gate
+### Completion evidence
 
 - Every advertised fixture preserves structure and non-target bytes exactly.
 - No supported case introduces executable syntax or changes a protected target.
@@ -281,6 +284,12 @@ path, and no dependency on a provider-specific output policy.
   eligible candidates only after every fidelity gate passes
 - Runtime capability records that disclose known source marking, provenance,
   moderation, remote logging, or silent transformation behavior
+- Experimental native adapters and shared conformance results for the current major
+  user-controlled runtimes: Ollama, pinned llama.cpp, LM Studio native v1, vLLM,
+  and MLX LM where the operating system and runtime capabilities apply
+- A runtime status matrix that labels every named path as qualified, experimental,
+  or unsupported with an exact reason. Generic OpenAI-compatible transport never
+  substitutes for runtime-specific identity.
 - An optional post-acceptance provider-mark diagnostic boundary. A provider adapter
   is eligible only after its supported interface and technical scope are published.
   It is off by default, requires explicit network authority, compares only the
@@ -299,11 +308,13 @@ path, and no dependency on a provider-specific output policy.
   and full-brief baselines under the
   [guided editorial brief contract](editorial-brief.md)
 
-### Exit gate
+### Completion evidence
 
 - Predeclared fidelity and transformation-coverage thresholds pass on the locked set.
 - At least two independently controlled runtime paths pass their exact qualification
   matrices without silent fallback.
+- Every current major-runtime candidate has an explicit 0.9 disposition with retained
+  native identity and conformance evidence or a documented unsupported reason.
 - A loopback API-backed runtime path is opt-in, names its process and retention
   boundary, and cannot become the default through discovery or failure recovery.
 - Adding a strategy or runtime improves a measured outcome without weakening the
@@ -365,7 +376,7 @@ standard MCP, and a portable Agent Plugin package without duplicated product log
 - Thin packages that call the application service and contain no validation, profile,
   model, or format implementation
 
-### Exit gate
+### Completion evidence
 
 - Equivalent owned requests produce equivalent outcomes, reasons, digests, and
   rewrite records through every advertised interface.
@@ -400,7 +411,7 @@ the package or making a broad formatting-preservation claim.
 - Cross-format folder transactions with staged outputs, recovery manifests, exact
   per-document outcomes, and machine-readable change reports
 
-### Exit gate
+### Completion evidence
 
 - Every advertised feature passes package, structure, formatting, reopen, and
   fidelity fixtures.
@@ -433,7 +444,7 @@ browser or hosted web application.
 - Signed test builds, update and recovery spike, visual regression fixtures, and real
   screenshots from passing builds
 
-### Exit gate
+### Completion evidence
 
 - The native application contains no independent product or validation logic.
 - Core workflows pass automated and named manual accessibility review on every
@@ -467,7 +478,7 @@ reproducible, and supported by retained cross-platform evidence.
   runtime, and platform qualification with exact release artifacts
 - Public documentation and screenshots that describe only implemented behavior
 
-### Exit gate
+### Release-candidate evidence
 
 - No open critical security, fidelity, data-loss, privacy, accessibility, license,
   packaging, migration, or compatibility defect remains.
@@ -541,10 +552,10 @@ Post-1.0 work remains dependency ordered and must preserve the stable core:
    [document transaction contract](document-transactions.md).
 5. Add languages and mixed-language sets only after independent data and fidelity
    qualification.
-6. Qualify LM Studio, vLLM, and MLX LM where their exact runtime-specific identity
-   and offline controls pass the same suite as Ollama and llama.cpp. Review other
-   major local runtimes through the same rolling candidate process; API dialect
-   compatibility alone never grants support.
+6. Deepen LM Studio, vLLM, MLX LM, and other major local-runtime support beyond the
+   explicit 0.9 status matrix. New qualifications use the same rolling native
+   identity, offline-control, and conformance process; API dialect compatibility
+   alone never grants support.
 7. Deepen native desktop workflows without making the desktop the only path.
 8. Evaluate local voice-assisted profile and document-brief acquisition as optional
    input modes after typed workflows, native accessibility, artifact licensing, and

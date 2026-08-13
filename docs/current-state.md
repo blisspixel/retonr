@@ -2,9 +2,10 @@
 
 ## Checkpoint
 
-The public repository is implementing milestone 0.1 under the `Retonr` project
-identity. External contracts remain provisional. Public source availability does
-not freeze package, protocol, or stored-data contracts.
+The public repository completed the milestone 0.1 technical evidence and is
+implementing milestone 0.2 under the `Retonr` project identity. External contracts
+remain provisional. Public source availability does not freeze package, protocol,
+or stored-data contracts.
 
 ## Implemented
 
@@ -19,7 +20,7 @@ not freeze package, protocol, or stored-data contracts.
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
 | `rewrite-app` | Model-free candidate check plus provisional grounded application path through the same engine and adapter transaction |
 | `retonr` | Provisional `check` command with bounded file reads, JSON or text reports, protected terms, and optional fatal abstention |
-| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, synthetic editorial-corpus validation, and redacted aggregate reporting |
+| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
@@ -43,21 +44,22 @@ cargo audit --db target/advisory-db-clean
 npm run lint:markdown
 pwsh -NoProfile -File scripts/check-repository.ps1
 cargo +nightly check --locked --manifest-path fuzz/Cargo.toml --bins
-cargo +nightly fuzz run protection_roundtrip -- -max_total_time=10
-cargo +nightly fuzz run text_adapter_identity -- -max_total_time=10
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
+cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_slop_v1.json
 cargo build --locked --workspace --release
 ```
 
-All 112 Rust unit, integration, and process tests pass. One process helper is
+All 114 Rust unit, integration, and process tests pass. One process helper is
 intentionally ignored by the ordinary runner and exercised by its isolated parent
 test. Documentation tests also pass. The measured Rust line coverage is 90.49
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
-The local nightly toolchain can type-check and execute both fuzz targets. The two
-bounded smoke runs completed without a crash. Continuous integration retains the
-Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not installed in the local
-environment, so this checkpoint used the documented `cargo test` fallback.
+The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
+supports its libFuzzer execution path on Unix-like targets, so Windows is not
+reported as a local fuzz-execution result. Continuous integration runs both bounded
+targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
+installed in the local environment, so this checkpoint used the documented
+`cargo test` fallback.
 
 Remote continuous integration for implementation closure revision `b2d41fc` passed
 in the exact-main
@@ -78,8 +80,9 @@ convergence. Continuous integration uses its own clean runner database.
 
 - The current CLI checks a supplied candidate. The grounded application path is not
   exposed as a CLI command yet.
-- The editorial corpus contract and 15 synthetic fixtures are implemented, but no
-  lint scanner, rule catalog, or live anti-slop ranking path is implemented yet.
+- The editorial corpus contract and 39 synthetic fixtures across two groups are
+  implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
+  implemented yet.
 - Only UTF-8 plain text up to 16 MiB is accepted.
 - Artifact lifecycle contracts exist only in memory. Acquisition, durable storage,
   exact real-artifact qualification, and recovery are not implemented.
@@ -110,23 +113,17 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Accept or revise ADR 0001 and the four-pass refinement disposition to close
-   milestone 0.1.
-2. Approve or revise the proposed data and user-research governance and accept or
-   revise ADRs 0003 through 0005 at the 0.2 entry gate. The exact commitments are
-   consolidated in the
-   [owner decision gate](reviews/2026-08-13-owner-decision-gate.md).
-3. Link redacted generation provenance into the durable transaction schema and
+1. Link redacted generation provenance into the durable transaction schema and
    implement artifact lifecycle storage and recovery.
-4. Add typed claim and invariant evidence without describing it as semantic proof,
+2. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.
-5. Complete stdin, safe diff, dry-run, trace, cancellation, terminal safety, and
+3. Complete stdin, safe diff, dry-run, trace, cancellation, terminal safety, and
    raw-output policy before exposing grounded rewriting in the CLI.
-6. Run exact artifact qualification and selective-risk reporting on declared
+4. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-7. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
-   after the 0.2 exit gate passes. The current candidate-check rendering is limited
-   to already implemented model-free behavior.
+5. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+   after the 0.2 completion evidence passes. The current candidate-check rendering is
+   limited to already implemented model-free behavior.
 
 Later work follows the dependency order in the
 [phase execution plan index](planning/README.md).

@@ -10,10 +10,13 @@ security, dependencies, or delivery.
 3. Describe the context and decision drivers before selecting an option.
 4. Record considered alternatives and their concrete tradeoffs.
 5. Set the status to `proposed`.
-6. Change the status to `accepted` only after the relevant roadmap gate passes.
+6. Keep 0.x working decisions `proposed` while evidence can still materially change
+   them. Accept compatibility decisions during 0.9 qualification or earlier only
+   when an irreversible external action requires a frozen choice.
 7. Replace an accepted decision through a new record that links to the old one.
 
-Decision records do not hide uncertainty. A time-bounded experiment records its
+Decision records do not hide uncertainty or block reversible exploration merely
+because a preview choice is still proposed. A time-bounded experiment records its
 success and stop conditions.
 
 ## Records

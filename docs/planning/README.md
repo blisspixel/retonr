@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The versioned roadmap defines scope and release gates. These execution plans define
-how each phase reaches those gates without freezing an interface before evidence is
-available.
+The versioned roadmap defines scope and completion evidence. These execution plans
+define how each phase earns those claims without freezing an interface before
+evidence is available.
 
 All plans are prospective. A listed capability is not implemented until
 [the current-state document](../current-state.md) says it is implemented and records
@@ -59,7 +59,9 @@ Every phase follows the same control loop:
 5. Run qualification on frozen fixtures and exact artifacts.
 6. Complete the four refinement passes in the quality standard.
 7. Update current state, capability matrices, limitations, and screenshots.
-8. Close the phase only when every exit gate has objective evidence.
+8. Mark the phase complete only when every completion claim has objective evidence.
+   Incomplete evidence does not block reversible research or experimental work in a
+   later phase.
 
 An implementation may be useful before its phase closes. It remains experimental
 and receives no stable compatibility or preservation claim until the gate passes.
@@ -111,7 +113,7 @@ state document. The required categories are:
 
 | Evidence | Required content |
 | --- | --- |
-| Decision | Accepted architecture decision record with consequences and rollback path |
+| Decision | Working or accepted architecture decision record with consequences and rollback path |
 | Contract | Versioned schema, examples, compatibility range, and malformed-input fixtures |
 | Test | Command, exact revision, platform, result, and retained report or fixture |
 | Qualification | Exact model or format artifact, runtime, hardware, metrics, and limits |
@@ -137,8 +139,10 @@ choice that affects:
 - Desktop framework, updater, or distribution behavior
 - Voice runtime, audio retention, or model distribution
 
-Experiments may compare options before the record is accepted. Experimental code
-must remain behind an internal boundary and must not create user data that cannot be
+Reversible 0.x implementation may proceed against a proposed record while the choice
+is still being tested. Acceptance is required before the choice creates irreversible
+external effects or enters the 0.9 compatibility freeze. Experimental code must
+remain behind an internal boundary and must not create user data that cannot be
 migrated.
 
 ## Cross-cutting release tracks

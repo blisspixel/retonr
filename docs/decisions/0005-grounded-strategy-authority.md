@@ -2,7 +2,7 @@
 
 - Status: proposed
 - Decision owners: project maintainers
-- Decision gate: roadmap milestone 0.2 entry closure
+- Decision checkpoint: roadmap milestone 0.2 implementation
 - Last reviewed: 2026-08-12
 
 ## Context

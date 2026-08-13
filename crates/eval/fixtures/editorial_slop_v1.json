@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "corpus_id": "synthetic-editorial-slop-v1",
+  "rule_catalog_version": 1,
+  "content_origin": "synthetic",
+  "license_spdx": "Apache-2.0",
+  "cases": [
+    {
+      "id": "finding-prefabricated-scene-setting",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "In today's rapidly evolving digital landscape, organizations must adapt to stay ahead of the curve.",
+      "reference_revision": "Organizations must adapt as their operating environment changes.",
+      "target_rules": ["prefabricated_scene_setting"],
+      "expected_source_findings": [
+        {"rule_id": "prefabricated_scene_setting", "evidence": "In today's rapidly evolving digital landscape", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["adapt"]
+    },
+    {
+      "id": "finding-contrastive-reframe",
+      "kind": "finding",
+      "language": "en",
+      "channel": "marketing",
+      "source": "This is not merely a formatting tool; it is a catalyst for a new era of communication.",
+      "reference_revision": "The tool formats text and supports editorial revision.",
+      "target_rules": ["contrastive_reframe"],
+      "expected_source_findings": [
+        {"rule_id": "contrastive_reframe", "evidence": "not merely a formatting tool; it is a catalyst", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["tool"]
+    },
+    {
+      "id": "finding-stacked-tricolon",
+      "kind": "finding",
+      "language": "en",
+      "channel": "marketing",
+      "source": "The platform is fast, flexible, and future-ready. It informs, inspires, and empowers every team.",
+      "reference_revision": "The platform processes documents quickly and supports configurable team workflows.",
+      "target_rules": ["stacked_tricolon"],
+      "expected_source_findings": [
+        {"rule_id": "stacked_tricolon", "evidence": "fast, flexible, and future-ready. It informs, inspires, and empowers", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["platform"]
+    },
+    {
+      "id": "finding-promotional-puffery",
+      "kind": "finding",
+      "language": "en",
+      "channel": "marketing",
+      "source": "This groundbreaking, game-changing platform unlocks unparalleled productivity with a seamless experience.",
+      "reference_revision": "The platform batches document checks and reports the results.",
+      "target_rules": ["promotional_puffery"],
+      "expected_source_findings": [
+        {"rule_id": "promotional_puffery", "evidence": "groundbreaking, game-changing platform unlocks unparalleled productivity", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["platform"]
+    },
+    {
+      "id": "finding-ornamental-abstraction",
+      "kind": "finding",
+      "language": "en",
+      "channel": "essay",
+      "source": "We delve into the rich tapestry of a multifaceted landscape where innovation shapes the future.",
+      "reference_revision": "We examine how three documented innovations changed the market.",
+      "target_rules": ["ornamental_abstraction"],
+      "expected_source_findings": [
+        {"rule_id": "ornamental_abstraction", "evidence": "delve into the rich tapestry of a multifaceted landscape", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["innovation"]
+    },
+    {
+      "id": "finding-reader-segmentation",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Whether you're a seasoned professional or just starting out, this guide has something for everyone.",
+      "reference_revision": "This guide covers installation, configuration, and recovery.",
+      "target_rules": ["reader_segmentation"],
+      "expected_source_findings": [
+        {"rule_id": "reader_segmentation", "evidence": "Whether you're a seasoned professional or just starting out", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["guide"]
+    },
+    {
+      "id": "finding-performative-question-answer",
+      "kind": "finding",
+      "language": "en",
+      "channel": "marketing",
+      "source": "The result? A seamless, robust, and intuitive experience that simply works.",
+      "reference_revision": "The result is a workflow with three documented steps.",
+      "target_rules": ["performative_question_answer"],
+      "expected_source_findings": [
+        {"rule_id": "performative_question_answer", "evidence": "The result? A seamless, robust, and intuitive experience", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["result"]
+    },
+    {
+      "id": "finding-empty-significance",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "At its core, this represents a pivotal step forward and marks a significant milestone in the journey.",
+      "reference_revision": "This release adds offline import and checksum verification.",
+      "target_rules": ["empty_significance"],
+      "expected_source_findings": [
+        {"rule_id": "empty_significance", "evidence": "represents a pivotal step forward and marks a significant milestone", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-summary-pileup",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "In summary, the migration is complete. Ultimately, the migration succeeded. In conclusion, the migration is now complete.",
+      "reference_revision": "The migration completed successfully.",
+      "target_rules": ["summary_pileup"],
+      "expected_source_findings": [
+        {"rule_id": "summary_pileup", "evidence": "In summary", "occurrence": 0},
+        {"rule_id": "summary_pileup", "evidence": "Ultimately", "occurrence": 0},
+        {"rule_id": "summary_pileup", "evidence": "In conclusion", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["migration"]
+    },
+    {
+      "id": "finding-generic-positive-close",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "The possibilities are endless, and the future is bright for everyone involved.",
+      "reference_revision": "The next review will measure adoption, error rate, and support volume.",
+      "target_rules": ["generic_positive_close"],
+      "expected_source_findings": [
+        {"rule_id": "generic_positive_close", "evidence": "The possibilities are endless, and the future is bright", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-transition-pileup",
+      "kind": "finding",
+      "language": "en",
+      "channel": "essay",
+      "source": "Moreover, the system is flexible. Furthermore, it is robust. Additionally, it is scalable.",
+      "reference_revision": "The system supports configurable limits and concurrent workers.",
+      "target_rules": ["transition_pileup"],
+      "expected_source_findings": [
+        {"rule_id": "transition_pileup", "evidence": "Moreover", "occurrence": 0},
+        {"rule_id": "transition_pileup", "evidence": "Furthermore", "occurrence": 0},
+        {"rule_id": "transition_pileup", "evidence": "Additionally", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["system"]
+    },
+    {
+      "id": "finding-performative-collaboration",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Let's embark on this journey together and unlock the power of better writing.",
+      "reference_revision": "Start by reviewing the source and selecting an editing profile.",
+      "target_rules": ["performative_collaboration"],
+      "expected_source_findings": [
+        {"rule_id": "performative_collaboration", "evidence": "Let's embark on this journey together and unlock the power", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-dated-landscape-description",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The 2026 survey maps the digital advertising landscape in five countries.",
+      "reference_revision": null,
+      "target_rules": ["prefabricated_scene_setting"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["2026"]
+    },
+    {
+      "id": "clean-literal-correction",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The default is not 5 seconds but 7 seconds.",
+      "reference_revision": null,
+      "target_rules": ["contrastive_reframe"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["5 seconds", "7 seconds"]
+    },
+    {
+      "id": "clean-single-technical-list",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The parser checks size, encoding, and line endings.",
+      "reference_revision": null,
+      "target_rules": ["stacked_tricolon"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-quoted-promotional-copy",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The archived advertisement calls the product a \"game-changing platform.\"",
+      "reference_revision": null,
+      "target_rules": ["promotional_puffery"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-literal-tapestry",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The museum conservator repaired the seventeenth-century tapestry.",
+      "reference_revision": null,
+      "target_rules": ["ornamental_abstraction"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-operational-whether-clause",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The command verifies the digest whether the artifact is active or inactive.",
+      "reference_revision": null,
+      "target_rules": ["reader_segmentation"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["digest"]
+    },
+    {
+      "id": "clean-factual-question-answer",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The result? A checksum mismatch at byte 4096.",
+      "reference_revision": null,
+      "target_rules": ["performative_question_answer"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["4096"]
+    },
+    {
+      "id": "clean-core-data-structure",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "At its core, the scheduler maintains a bounded priority queue.",
+      "reference_revision": null,
+      "target_rules": ["empty_significance"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-single-summary-marker",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "In summary, three of the four migration checks passed.",
+      "reference_revision": null,
+      "target_rules": ["summary_pileup"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["three", "four"]
+    },
+    {
+      "id": "clean-quoted-campaign-slogan",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The campaign used the slogan \"The future is bright\" from May through July.",
+      "reference_revision": null,
+      "target_rules": ["generic_positive_close"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["May", "July"]
+    },
+    {
+      "id": "clean-single-transition",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "essay",
+      "source": "Furthermore, the second trial reproduced the first trial's result.",
+      "reference_revision": null,
+      "target_rules": ["transition_pileup"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-quoted-travel-copy",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The brochure opens with \"Let's embark on this journey together.\"",
+      "reference_revision": null,
+      "target_rules": ["performative_collaboration"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    }
+  ]
+}
