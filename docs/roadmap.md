@@ -50,22 +50,24 @@ This order encodes five deliberate choices:
 Milestone 0.1 technical evidence is complete, and 0.2 implementation is active. Work
 proceeds in this exact order:
 
-1. With the pinned offline artifact boundary complete, add selected orphan
-   reconciliation, crash-recoverable inactive removal, and the narrow offline model
-   CLI. Each mutation reverifies current bytes under the exclusive lifecycle lock.
-2. Link redacted generation provenance into the durable rewrite transaction, add
+1. With the pinned offline artifact boundary and selected orphan reconciliation
+   complete, add crash-recoverable inactive removal. Removal reverifies current bytes
+   under the exclusive lifecycle lock and cannot orphan an active binding.
+2. Expose offline import, read-only inventory, selected reconciliation, and inactive
+   removal through the narrow offline model CLI before network acquisition commands.
+3. Link redacted generation provenance into the durable rewrite transaction, add
    typed claims and an independent evaluator, and complete the grounded validation
    cascade.
-3. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
+4. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
    qualify one exact local runtime and artifact combination and retain complete
    cross-platform release evidence before adding profiles or another format.
-4. Establish the versioned editorial-quality corpus during evaluation work, but do
+5. Establish the versioned editorial-quality corpus during evaluation work, but do
    not give lint findings product authority until the 0.3 rule and profile contracts
    pass qualification.
-5. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-6. Let editorial lint guide or rank generated candidates in 0.5 only after the
+6. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+7. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
-7. Add agent packaging, rich document formats, and native presentation layers only
+8. Add agent packaging, rich document formats, and native presentation layers only
    after the underlying CLI and application contracts are proven.
 
 This sequencing makes three independent outcomes visible in every release report:
@@ -163,7 +165,8 @@ polished CLI.
   identity before and after generation
 - One qualified local adapter, selected from a user-managed Ollama service or pinned
   llama.cpp sidecar based on retained bakeoff evidence
-- Explicit model list, inspect, recommend, download, import, verify, evaluate,
+- Explicit model list, inspect, recommend, download, import, inventory, reconcile,
+  verify, evaluate,
   qualify, activate, deactivate, and remove commands
 - Hardware-aware recommendations that never silently activate or downgrade
 - Capability-specific open-weight recommendations for conservative editing,

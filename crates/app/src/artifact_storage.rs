@@ -12,10 +12,17 @@ use crate::artifact_inventory::ArtifactInventoryError;
 
 mod entry;
 mod errors;
+mod existing;
 mod mutation;
+mod verification;
 pub(crate) use entry::is_indirect;
 use errors::{map_active_error, map_initial_error};
-pub(crate) use mutation::{ExactEntryCapacity, ManagedFile};
+pub(crate) use existing::{ExistingArtifactStorage, LIFECYCLE_LOCK_FILE, LifecycleLockMode};
+pub(crate) use mutation::ExactEntryCapacity;
+pub(crate) use verification::{
+    ExactArtifactExpectation, ExactArtifactSync, ExactArtifactVerificationError,
+    VerifiedManagedArtifact, verify_exact_artifact,
+};
 
 #[cfg(test)]
 mod mutation_tests;

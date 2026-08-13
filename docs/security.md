@@ -279,6 +279,18 @@ Controls:
   A verified orphan is only a point-in-time candidate. Any later repair or removal
   must reacquire the exclusive lock and reverify the exact entry. Network filesystem
   replacement and locking semantics remain unqualified.
+- Selected orphan reconciliation accepts only a complete exact manifest, derives the
+  canonical digest name internally, and takes the lifecycle lock exclusively. It
+  ignores prior inventory evidence as authority, requires one direct regular
+  single-name file, and applies caller-owned entry and byte ceilings.
+- After the last byte-progress callback, reconciliation silently checks the hashed
+  file's stable identity and single-name status, synchronizes the file, reopens and
+  rechecks the exact entry, synchronizes the artifact directory, and revalidates the
+  held storage layout. It atomically inserts any missing exact
+  manifest and installation records or confirms that both existing records match
+  while retaining the verified file handle. It never changes or deletes managed
+  bytes, qualifies or activates the artifact, or accesses the network. Cancellation
+  or state failure before commit leaves the orphan unchanged.
 
 ### Agent Plugin packages
 

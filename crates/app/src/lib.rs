@@ -18,6 +18,7 @@ use thiserror::Error;
 
 mod artifact_import;
 mod artifact_inventory;
+mod artifact_reconciliation;
 mod artifact_storage;
 mod grounded;
 
@@ -31,6 +32,12 @@ pub use artifact_inventory::{
     ContentAddressConflict, OrphanManifestAssociation, OversizedArtifactFile,
     RegisteredArtifactBytes, RegisteredArtifactInspection, UnexpectedArtifactEntryCounts,
     VerifiedArtifactOrphan,
+};
+pub use artifact_reconciliation::{
+    ArtifactOrphanReconciliationProgress, ArtifactOrphanReconciliationRequest,
+    ArtifactOrphanReconciliationResult, ArtifactOrphanReconciliationService,
+    ArtifactOrphanReconciliationStage, ArtifactReconciliationDisposition,
+    ArtifactReconciliationError, ArtifactReconciliationLimits,
 };
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
 

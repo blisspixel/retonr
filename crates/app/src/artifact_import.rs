@@ -17,7 +17,7 @@ mod staged;
 mod verify;
 
 use crate::artifact_storage::{
-    ExactEntryCapacity, PinnedDirectory, fingerprint_std_file, is_indirect,
+    ExactEntryCapacity, LIFECYCLE_LOCK_FILE, PinnedDirectory, fingerprint_std_file, is_indirect,
 };
 use boundary::{
     map_open_error as map_boundary_open_error, map_recovery_error as map_boundary_recovery_error,
@@ -35,7 +35,6 @@ use verify::verify_stored_file;
 
 const COPY_BUFFER_BYTES: usize = 1024 * 1024;
 const STAGING_PREFIX: &str = ".import-";
-const LOCK_FILE: &str = ".artifact-import.lock";
 const MAX_RECOVERY_ENTRIES: usize = 1_024;
 
 /// Application service for non-destructive, offline artifact-file import.
@@ -77,7 +76,7 @@ impl<'a> OfflineArtifactImportService<'a> {
         sync_parent_directory(&root_path)?;
         let root = PinnedDirectory::open_existing(&root_path).map_err(map_boundary_open_error)?;
         let (lock, _) = root
-            .open_or_create_lock_file(OsStr::new(LOCK_FILE))
+            .open_or_create_lock_file(OsStr::new(LIFECYCLE_LOCK_FILE))
             .map_err(map_boundary_open_error)?;
         match lock.try_lock() {
             Ok(()) => {}
@@ -202,7 +201,7 @@ impl<'a> OfflineArtifactImportService<'a> {
             request.manifest.byte_size,
         );
         ensure_not_cancelled(cancellation)?;
-        verify_stored_file(
+        let _verified = verify_stored_file(
             &self.artifacts,
             &destination_name,
             &request.manifest,
@@ -284,7 +283,7 @@ impl<'a> OfflineArtifactImportService<'a> {
         }
         let lock_path = self
             .root
-            .child_file_fingerprint(OsStr::new(LOCK_FILE))
+            .child_file_fingerprint(OsStr::new(LIFECYCLE_LOCK_FILE))
             .map_err(map_boundary_storage_error)?;
         let lock_handle = fingerprint_std_file(&self.lock).map_err(map_boundary_storage_error)?;
         if lock_path != lock_handle {

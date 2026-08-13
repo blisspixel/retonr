@@ -4,7 +4,7 @@ use rewrite_model_store::ArtifactStateStore;
 use tempfile::tempdir;
 
 use super::{
-    ARTIFACT_BYTES, ArtifactImportError, LOCK_FILE, OfflineArtifactImportRequest,
+    ARTIFACT_BYTES, ArtifactImportError, LIFECYCLE_LOCK_FILE, OfflineArtifactImportRequest,
     OfflineArtifactImportService, limits, manifest, run_import, storage_key,
 };
 
@@ -50,7 +50,7 @@ fn rejects_non_file_destination_as_unsafe_storage() {
 fn rejects_non_file_lock_path_as_unsafe_storage() {
     let directory = tempdir().expect("temporary directory");
     let storage = directory.path().join("managed");
-    fs::create_dir_all(storage.join(LOCK_FILE)).expect("create invalid lock directory");
+    fs::create_dir_all(storage.join(LIFECYCLE_LOCK_FILE)).expect("create invalid lock directory");
     let mut store = ArtifactStateStore::open(&directory.path().join("state.sqlite3"))
         .expect("open artifact state");
 

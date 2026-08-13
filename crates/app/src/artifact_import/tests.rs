@@ -10,7 +10,7 @@ use tempfile::tempdir;
 
 use super::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
-    ArtifactImportStage, COPY_BUFFER_BYTES, LOCK_FILE, OfflineArtifactImportRequest,
+    ArtifactImportStage, COPY_BUFFER_BYTES, LIFECYCLE_LOCK_FILE, OfflineArtifactImportRequest,
     OfflineArtifactImportService, storage_key,
 };
 
