@@ -33,7 +33,8 @@ pub(crate) enum ExactArtifactVerificationError {
 }
 
 pub(crate) struct VerifiedManagedArtifact {
-    _file: File,
+    file: File,
+    fingerprint: MetadataFingerprint,
 }
 
 pub(crate) fn verify_exact_artifact(
@@ -43,10 +44,78 @@ pub(crate) fn verify_exact_artifact(
     cancellation: &CancellationToken,
     mut progress: impl FnMut(u64),
 ) -> Result<VerifiedManagedArtifact, ExactArtifactVerificationError> {
-    let managed = artifacts
-        .open_managed_file_for_sync(name, expectation.maximum_entries, cancellation)
-        .map_err(ExactArtifactVerificationError::Boundary)?
-        .ok_or(ExactArtifactVerificationError::Missing)?;
+    verify_exact_artifact_with(
+        artifacts,
+        name,
+        expectation,
+        cancellation,
+        &mut progress,
+        VerificationMode::Synchronized,
+    )
+}
+
+pub(crate) fn verify_exact_artifact_for_removal(
+    artifacts: &PinnedDirectory,
+    name: &OsStr,
+    expectation: ExactArtifactExpectation<'_>,
+    cancellation: &CancellationToken,
+    mut progress: impl FnMut(u64),
+) -> Result<VerifiedManagedArtifact, ExactArtifactVerificationError> {
+    verify_exact_artifact_with(
+        artifacts,
+        name,
+        expectation,
+        cancellation,
+        &mut progress,
+        VerificationMode::Removal,
+    )
+}
+
+pub(crate) fn verify_exact_artifact_for_runtime(
+    artifacts: &PinnedDirectory,
+    name: &OsStr,
+    expectation: ExactArtifactExpectation<'_>,
+    cancellation: &CancellationToken,
+    mut progress: impl FnMut(u64),
+) -> Result<VerifiedManagedArtifact, ExactArtifactVerificationError> {
+    verify_exact_artifact_with(
+        artifacts,
+        name,
+        expectation,
+        cancellation,
+        &mut progress,
+        VerificationMode::ReadOnly,
+    )
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum VerificationMode {
+    Synchronized,
+    Removal,
+    ReadOnly,
+}
+
+fn verify_exact_artifact_with(
+    artifacts: &PinnedDirectory,
+    name: &OsStr,
+    expectation: ExactArtifactExpectation<'_>,
+    cancellation: &CancellationToken,
+    progress: &mut impl FnMut(u64),
+    mode: VerificationMode,
+) -> Result<VerifiedManagedArtifact, ExactArtifactVerificationError> {
+    let managed = match mode {
+        VerificationMode::Synchronized => {
+            artifacts.open_managed_file_for_sync(name, expectation.maximum_entries, cancellation)
+        }
+        VerificationMode::Removal => {
+            artifacts.open_managed_file_for_removal(name, expectation.maximum_entries, cancellation)
+        }
+        VerificationMode::ReadOnly => {
+            artifacts.open_managed_file(name, expectation.maximum_entries, cancellation)
+        }
+    }
+    .map_err(ExactArtifactVerificationError::Boundary)?
+    .ok_or(ExactArtifactVerificationError::Missing)?;
     if managed.byte_size != expectation.byte_size {
         return Err(ExactArtifactVerificationError::SizeMismatch);
     }
@@ -54,12 +123,7 @@ pub(crate) fn verify_exact_artifact(
         return Err(ExactArtifactVerificationError::Aliased);
     }
     let mut file = managed.file;
-    let observed = hash_exact(
-        &mut file,
-        expectation.byte_size,
-        cancellation,
-        &mut progress,
-    );
+    let observed = hash_exact(&mut file, expectation.byte_size, cancellation, progress);
     let after_hash = MetadataFingerprint::from_file(&file)
         .map_err(ArtifactInventoryError::StorageIo)
         .map_err(ExactArtifactVerificationError::Boundary)?;
@@ -72,17 +136,70 @@ pub(crate) fn verify_exact_artifact(
     if &observed != expectation.digest {
         return Err(ExactArtifactVerificationError::DigestMismatch);
     }
-    sync_file(&file, expectation.sync)?;
-    artifacts
-        .recheck_managed_file_for_lifecycle(
+    if mode == VerificationMode::Synchronized {
+        sync_file(&file, expectation.sync)?;
+    }
+    if mode == VerificationMode::Removal {
+        artifacts.recheck_managed_file_for_removal(
             name,
             &managed.fingerprint,
             expectation.maximum_entries,
             cancellation,
         )
-        .map_err(ExactArtifactVerificationError::Boundary)?;
-    sync_artifacts(artifacts, expectation.sync)?;
-    Ok(VerifiedManagedArtifact { _file: file })
+    } else {
+        artifacts.recheck_managed_file_for_lifecycle(
+            name,
+            &managed.fingerprint,
+            expectation.maximum_entries,
+            cancellation,
+        )
+    }
+    .map_err(ExactArtifactVerificationError::Boundary)?;
+    if mode != VerificationMode::ReadOnly {
+        sync_artifacts(artifacts, expectation.sync)?;
+    }
+    Ok(VerifiedManagedArtifact {
+        file,
+        fingerprint: managed.fingerprint,
+    })
+}
+
+impl VerifiedManagedArtifact {
+    pub(crate) fn recheck_for_removal(
+        &self,
+        artifacts: &PinnedDirectory,
+        name: &OsStr,
+        maximum_entries: usize,
+    ) -> Result<(), ArtifactInventoryError> {
+        let current = MetadataFingerprint::from_file(&self.file)
+            .map_err(ArtifactInventoryError::StorageIo)?;
+        if current != self.fingerprint || !current.has_single_link() {
+            return Err(ArtifactInventoryError::ConcurrentModification);
+        }
+        artifacts.recheck_managed_file_for_removal(
+            name,
+            &self.fingerprint,
+            maximum_entries,
+            &CancellationToken::new(),
+        )
+    }
+
+    pub(crate) fn recheck_and_remove(
+        self,
+        artifacts: &PinnedDirectory,
+        name: &OsStr,
+        maximum_entries: usize,
+    ) -> Result<(), ArtifactInventoryError> {
+        let Self { file, fingerprint } = self;
+        let current =
+            MetadataFingerprint::from_file(&file).map_err(ArtifactInventoryError::StorageIo)?;
+        if current != fingerprint || !current.has_single_link() {
+            return Err(ArtifactInventoryError::ConcurrentModification);
+        }
+        #[cfg(windows)]
+        drop(current);
+        artifacts.remove_held_managed_file(name, file, fingerprint, maximum_entries)
+    }
 }
 
 fn sync_file(file: &File, sync: ExactArtifactSync) -> Result<(), ExactArtifactVerificationError> {

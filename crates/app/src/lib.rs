@@ -19,8 +19,10 @@ use thiserror::Error;
 mod artifact_import;
 mod artifact_inventory;
 mod artifact_reconciliation;
+mod artifact_removal;
 mod artifact_storage;
 mod grounded;
+mod runtime_artifact_lease;
 
 pub use artifact_import::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
@@ -30,8 +32,8 @@ pub use artifact_inventory::{
     ArtifactInventoryError, ArtifactInventoryLimits, ArtifactInventoryProgress,
     ArtifactInventoryReport, ArtifactInventoryService, ArtifactInventoryStage,
     ContentAddressConflict, OrphanManifestAssociation, OversizedArtifactFile,
-    RegisteredArtifactBytes, RegisteredArtifactInspection, UnexpectedArtifactEntryCounts,
-    VerifiedArtifactOrphan,
+    PendingArtifactRemovalInspection, RegisteredArtifactBytes, RegisteredArtifactInspection,
+    UnexpectedArtifactEntryCounts, VerifiedArtifactOrphan,
 };
 pub use artifact_reconciliation::{
     ArtifactOrphanReconciliationProgress, ArtifactOrphanReconciliationRequest,
@@ -39,7 +41,13 @@ pub use artifact_reconciliation::{
     ArtifactOrphanReconciliationStage, ArtifactReconciliationDisposition,
     ArtifactReconciliationError, ArtifactReconciliationLimits,
 };
+pub use artifact_removal::{
+    ArtifactRemovalDisposition, ArtifactRemovalError, ArtifactRemovalLimits,
+    ArtifactRemovalProgress, ArtifactRemovalRecoveryError, ArtifactRemovalRequest,
+    ArtifactRemovalResult, ArtifactRemovalService, ArtifactRemovalStage,
+};
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
+pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};
 
 /// Maximum accepted source or candidate size for the plain-text check service.
 pub const MAX_CANDIDATE_CHECK_BYTES: usize = MAX_PLAIN_TEXT_BYTES;

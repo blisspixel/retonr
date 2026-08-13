@@ -1,7 +1,7 @@
 use std::io;
 
-use rewrite_model::{ActiveArtifactBinding, ArtifactId, ArtifactManifest, InstalledArtifact};
-use rewrite_model_store::StoreError;
+use rewrite_model::{ActiveArtifactBinding, ArtifactId, ArtifactManifest};
+use rewrite_model_store::{StoreError, StoredArtifactInstallation};
 use rewrite_types::Digest;
 use thiserror::Error;
 
@@ -54,10 +54,19 @@ pub struct RegisteredArtifactInspection {
     /// Immutable artifact facts and source metadata.
     pub manifest: ArtifactManifest,
     /// Registered application-owned installation state.
-    pub installed: InstalledArtifact,
+    pub installation: StoredArtifactInstallation,
     /// Validated active bindings that currently reference this installation.
     pub active_bindings: Vec<ActiveArtifactBinding>,
     /// Current point-in-time managed-byte classification.
+    pub bytes: RegisteredArtifactBytes,
+}
+
+/// Current byte status for one exact durably prepared removal.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingArtifactRemovalInspection {
+    /// Exact installation generation selected by the pending removal.
+    pub selection: StoredArtifactInstallation,
+    /// Current point-in-time canonical-byte classification.
     pub bytes: RegisteredArtifactBytes,
 }
 
@@ -126,6 +135,8 @@ pub struct UnexpectedArtifactEntryCounts {
 pub struct ArtifactInventoryReport {
     /// Persisted installations and their current canonical-byte classifications.
     pub registered: Vec<RegisteredArtifactInspection>,
+    /// Prepared removals, disjoint from registered installations and orphans.
+    pub pending_removals: Vec<PendingArtifactRemovalInspection>,
     /// Valid manifests that currently have no installed-artifact record.
     pub manifest_only: Vec<ArtifactManifest>,
     /// Verified files with no installation under the canonical storage key.

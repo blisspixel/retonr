@@ -2,8 +2,12 @@ use rusqlite::Connection;
 
 use rewrite_model::{ActiveArtifactBinding, ArtifactManifest, InstalledArtifact};
 
-use super::{ArtifactStateStore, validate_binding};
-use crate::{StoreError, StoreResult, binding::load_active_bindings, record::decode_record};
+use super::{ArtifactStateStore, removal::validate_removal_state, validate_binding};
+use crate::{
+    ArtifactInstallationEpoch, StoreError, StoreResult, StoredArtifactInstallation,
+    StoredArtifactRemoval, binding::load_active_bindings, record::decode_record,
+    removal::decode_removal,
+};
 
 /// One integrity-validated manifest with its optional installation and active use.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -13,7 +17,9 @@ pub struct StoredArtifactState {
     /// Integrity-validated persisted installation record, when present.
     ///
     /// Current filesystem bytes are not verified by this store operation.
-    pub installed: Option<InstalledArtifact>,
+    pub installed: Option<StoredArtifactInstallation>,
+    /// Latest validated removal journal, including completed generation history.
+    pub removal: Option<StoredArtifactRemoval>,
     /// Durable bindings validated against the same persisted-state snapshot.
     ///
     /// Callers must verify current artifact bytes before treating a binding as
@@ -48,9 +54,9 @@ impl ArtifactStateStore {
         let mut validated_bindings = Vec::new();
         for binding in load_active_bindings(&transaction)? {
             let verified = validate_binding(&transaction, &binding, &mut |candidate| {
-                states
-                    .iter()
-                    .any(|item| item.installed.as_ref() == Some(candidate))
+                states.iter().any(|item| {
+                    item.installed.as_ref().map(|value| &value.installed) == Some(candidate)
+                })
             })?;
             validated_bindings.push(verified);
         }
@@ -78,10 +84,14 @@ fn load_artifact_states(
     query_limit: i64,
 ) -> StoreResult<Vec<StoredArtifactState>> {
     let mut statement = connection.prepare(
-        "SELECT manifests.artifact_id, manifests.record_json, installed.record_json
+        "SELECT manifests.artifact_id, manifests.record_json,
+                installed.installation_epoch, installed.record_json,
+                removals.installation_epoch, removals.phase, removals.record_json
          FROM artifact_manifests AS manifests
          LEFT JOIN installed_artifacts AS installed
            ON installed.artifact_id = manifests.artifact_id
+         LEFT JOIN artifact_removals AS removals
+           ON removals.artifact_id = manifests.artifact_id
          ORDER BY manifests.artifact_id ASC
          LIMIT ?1",
     )?;
@@ -89,7 +99,11 @@ fn load_artifact_states(
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
-            row.get::<_, Option<String>>(2)?,
+            row.get::<_, Option<i64>>(2)?,
+            row.get::<_, Option<String>>(3)?,
+            row.get::<_, Option<i64>>(4)?,
+            row.get::<_, Option<String>>(5)?,
+            row.get::<_, Option<String>>(6)?,
         ))
     })?;
     let mut states = Vec::new();
@@ -97,7 +111,15 @@ fn load_artifact_states(
         if states.len() == maximum_entries {
             return Err(StoreError::InventoryLimitExceeded);
         }
-        let (stored_id, manifest_record, installed_record) = row?;
+        let (
+            stored_id,
+            manifest_record,
+            installed_epoch,
+            installed_record,
+            removal_epoch,
+            removal_phase,
+            removal_record,
+        ) = row?;
         let manifest = decode_record::<ArtifactManifest>(&manifest_record)?;
         manifest.validate().map_err(StoreError::InvalidManifest)?;
         if manifest.artifact_id.digest().as_str() != stored_id {
@@ -115,16 +137,39 @@ fn load_artifact_states(
                 {
                     return Err(StoreError::CorruptRecord);
                 }
-                Ok(installed)
+                Ok(StoredArtifactInstallation {
+                    installed,
+                    epoch: ArtifactInstallationEpoch::from_database(
+                        installed_epoch.ok_or(StoreError::CorruptRecord)?,
+                    )?,
+                })
             })
             .transpose()?;
+        if installed.is_none() && installed_epoch.is_some() {
+            return Err(StoreError::CorruptRecord);
+        }
+        let removal = match (removal_epoch, removal_phase, removal_record) {
+            (None, None, None) => None,
+            (Some(epoch), Some(phase), Some(record)) => {
+                Some(decode_removal(&stored_id, epoch, &phase, &record)?)
+            }
+            _ => return Err(StoreError::CorruptRecord),
+        };
+        validate_removal_state(
+            &stored_id,
+            Some(&manifest),
+            installed.as_ref(),
+            removal.as_ref(),
+        )?;
         states.push(StoredArtifactState {
             manifest,
             installed,
+            removal,
             active_bindings: Vec::new(),
         });
     }
     reject_installed_without_manifest(connection)?;
+    reject_removal_without_manifest(connection)?;
     Ok(states)
 }
 
@@ -134,6 +179,24 @@ fn reject_installed_without_manifest(connection: &Connection) -> StoreResult<()>
              SELECT 1 FROM installed_artifacts AS installed
              LEFT JOIN artifact_manifests AS manifests
                ON manifests.artifact_id = installed.artifact_id
+             WHERE manifests.artifact_id IS NULL
+         )",
+        [],
+        |row| row.get(0),
+    )?;
+    if exists {
+        Err(StoreError::MissingRecord)
+    } else {
+        Ok(())
+    }
+}
+
+fn reject_removal_without_manifest(connection: &Connection) -> StoreResult<()> {
+    let exists: bool = connection.query_row(
+        "SELECT EXISTS(
+             SELECT 1 FROM artifact_removals AS removals
+             LEFT JOIN artifact_manifests AS manifests
+               ON manifests.artifact_id = removals.artifact_id
              WHERE manifests.artifact_id IS NULL
          )",
         [],

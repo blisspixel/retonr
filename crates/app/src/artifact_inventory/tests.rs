@@ -182,6 +182,30 @@ fn empty_inventory_is_read_only_and_does_not_clean_staging() {
 }
 
 #[test]
+fn pending_removal_is_disjoint_from_registered_and_orphan_state() {
+    let (directory, mut store) = initialized();
+    let value = manifest(b"pending", "pending-removal");
+    write_artifact(&directory, &value.artifact_digest, b"pending");
+    let selection = store
+        .put_installation(&value, &installed(&value))
+        .expect("register installation")
+        .installation;
+    store
+        .prepare_artifact_removal(&selection)
+        .expect("prepare removal");
+
+    let report = inventory(&directory, &store, limits()).expect("inventory pending removal");
+    assert!(report.registered.is_empty());
+    assert!(report.verified_orphans.is_empty());
+    assert_eq!(report.pending_removals.len(), 1);
+    assert_eq!(report.pending_removals[0].selection, selection);
+    assert_eq!(
+        report.pending_removals[0].bytes,
+        RegisteredArtifactBytes::Verified
+    );
+}
+
+#[test]
 fn reports_registered_missing_size_digest_and_layout_conflicts() {
     let (directory, mut store) = initialized();
     let missing = manifest(b"missing", "missing");

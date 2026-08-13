@@ -26,6 +26,7 @@ rustix.workspace = true
 [target.'cfg(windows)'.dependencies]
 cap-fs-ext.workspace = true
 cap-primitives.workspace = true
+fs_at.workspace = true
 same-file.workspace = true
 winx.workspace = true
 

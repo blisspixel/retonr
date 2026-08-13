@@ -68,7 +68,11 @@ artifact-file import, read-only managed-artifact inventory, and positive and
 hard-negative evaluation fixtures. Selected orphan reconciliation independently
 reverifies exactly one canonical managed file, then atomically inserts any missing
 exact manifest and installation records or confirms that both existing records
-match. The artifact services are not exposed through the CLI yet.
+match. Inactive removal uses an installation generation and durable journal so an
+interrupted operation can resume and an old retry cannot delete a deliberate
+reinstall. Runtime artifact leases hold the shared lifecycle lock for their full
+use lifetime, while removal requires the exclusive lock. The artifact services are
+not exposed through the CLI yet.
 
 The evaluation tool also validates two synthetic editorial-quality groups with named
 findings and clean controls, including a balanced 24-case current-slop group. No

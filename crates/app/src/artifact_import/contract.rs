@@ -116,4 +116,7 @@ pub enum ArtifactImportError {
     /// Durable lifecycle-state registration failed.
     #[error("artifact state registration failed")]
     State(#[source] StoreError),
+    /// The selected identity has a durably prepared removal to recover first.
+    #[error("artifact removal is pending recovery")]
+    RemovalPending,
 }

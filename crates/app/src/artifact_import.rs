@@ -130,6 +130,17 @@ impl<'a> OfflineArtifactImportService<'a> {
         ensure_not_cancelled(cancellation)?;
         self.validate_storage_layout()?;
         self.validate_request(request)?;
+        let (current, removal) = self
+            .store
+            .artifact_removal_state(&request.manifest.artifact_id)
+            .map_err(ArtifactImportError::State)?;
+        if current.is_none()
+            && removal.is_some_and(|value| {
+                value.phase == rewrite_model_store::ArtifactRemovalPhase::Prepared
+            })
+        {
+            return Err(ArtifactImportError::RemovalPending);
+        }
         report_progress(
             &mut progress,
             ArtifactImportStage::InspectingSource,
@@ -213,7 +224,7 @@ impl<'a> OfflineArtifactImportService<'a> {
         let state = self
             .store
             .put_installation(&request.manifest, &installed)
-            .map_err(ArtifactImportError::State)?;
+            .map_err(map_state_error)?;
         Ok(ArtifactImportResult { installed, state })
     }
 
@@ -331,6 +342,13 @@ impl<'a> OfflineArtifactImportService<'a> {
             });
         }
         Ok(())
+    }
+}
+
+fn map_state_error(error: rewrite_model_store::StoreError) -> ArtifactImportError {
+    match error {
+        rewrite_model_store::StoreError::RemovalPending => ArtifactImportError::RemovalPending,
+        other => ArtifactImportError::State(other),
     }
 }
 

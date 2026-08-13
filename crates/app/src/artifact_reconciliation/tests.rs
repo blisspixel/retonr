@@ -145,7 +145,10 @@ fn registers_no_manifest_orphan_and_retries_idempotently() {
     let states = store.artifact_inventory(8).expect("inspect state");
     assert_eq!(states.len(), 1);
     assert_eq!(states[0].manifest, value);
-    assert_eq!(states[0].installed.as_ref(), Some(&first.installed));
+    assert_eq!(
+        states[0].installed.as_ref().map(|value| &value.installed),
+        Some(&first.installed)
+    );
     assert!(states[0].active_bindings.is_empty());
 }
 
@@ -453,16 +456,6 @@ fn cancellation_and_last_byte_mutation_fail_or_are_blocked() {
                 | ArtifactReconciliationError::StorageIo(_))
         ));
     }
-}
-
-#[test]
-fn maps_persisted_integrity_failures_without_exposing_content() {
-    let error = super::map_store_error(rewrite_model_store::StoreError::CorruptRecord);
-    assert!(matches!(
-        error,
-        ArtifactReconciliationError::StateCorrupt(rewrite_model_store::StoreError::CorruptRecord)
-    ));
-    assert_eq!(error.to_string(), "persisted artifact state is corrupt");
 }
 
 #[test]

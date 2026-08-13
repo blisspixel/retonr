@@ -490,8 +490,8 @@ cancellation check, the service silently reverifies the final canonical bytes an
 every held storage boundary before committing state. Successful return is
 completion. A state failure can retain a verified orphan, while an observed
 cancellation before final registration never creates durable state. Artifact-set
-manifests, folder import, runtime-native pulls, downloads, repair, and removal of
-managed bytes remain later operations.
+manifests, folder import, runtime-native pulls, downloads, and repair remain later
+operations.
 
 A separate read-only artifact inventory uses the same pinned storage boundary,
 acquires the lifecycle lock in shared mode, and opens only existing storage. It
@@ -533,6 +533,46 @@ same orphan bytes, and successful
 return is the completion signal. This establishes only that one canonical file
 matched one manifest during the exclusive operation; it does not establish model
 safety, licensing approval, runtime qualification, or future byte integrity.
+
+Inactive managed-byte removal is a separate existing-only mutation under the
+exclusive lifecycle lock. It accepts only a current store-issued installation
+generation, verifies the canonical direct regular file by exact size and SHA-256,
+requires one filesystem name, and rejects any active binding. One immediate SQLite
+transaction writes a prepared removal journal and revokes installed-state authority
+before the canonical entry is deleted. The service then confirms absence,
+synchronizes the artifact directory, revalidates the held layout, and marks the
+journal completed. A prepared operation resumes without callbacks or cancellation,
+including after a process stops between state preparation, deletion, directory
+synchronization, and completion. Installation generations prevent an old completed
+retry from deleting a deliberate reinstall. On Unix, deletion is relative to the
+pinned artifact-directory descriptor. The lifecycle lock serializes cooperating
+Retonr processes, but the current Unix unlink does not claim identity-bound
+protection against a non-cooperating same-user process that swaps the final
+directory entry. On Windows, the verified file is opened with delete authority and
+removed through a safe delete-by-handle operation after all identity comparison
+handles are released. The target-only Apache-2.0 `fs_at` 0.2.1 dependency is
+retained for that reviewed safe wrapper and adds no authority outside this
+boundary. Its internal Windows disposition implementation, read-only handling, and
+transitive `windows-sys` 0.52 tree are explicit supply-chain review items. The
+alternatives are repository-owned unsafe code, which policy forbids, or a weaker
+pathname deletion.
+
+Runtime consumer groundwork now includes a shared artifact lease boundary for later
+reading or mapping of managed bytes. The lease checks exact current durable state
+before and after byte verification, retains the pinned boundary and verified file
+handle, and holds the shared lifecycle lock until the lease ends. No real runtime
+consumer uses it yet.
+Removal requires the exclusive lock and cannot begin while such a lease exists.
+Removal is not secure erasure and does not affect external copies, caches, backups,
+runtime memory, or provider records.
+
+The unpublished SQLite adapter exposes the two journal transitions to the
+application crate with a documented exclusive-lock precondition. Rust visibility
+does not yet encode that precondition as an opaque authority. No product path calls
+the transitions outside the application removal service, but this remains a 0.x
+internal boundary rather than a stable hard guarantee. The transition API must take
+an unforgeable lifecycle authority before another runtime consumer or a stable
+artifact API is exposed.
 
 Small personal corpora use filtered brute-force vector scoring in Rust with vectors
 stored as versioned blobs. SQLite FTS5 supports lexical retrieval. A vector extension

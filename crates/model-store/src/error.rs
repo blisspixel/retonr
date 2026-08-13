@@ -57,6 +57,15 @@ pub enum StoreError {
     /// An installed artifact still has an active role binding.
     #[error("active artifact installation cannot be removed")]
     ActiveArtifact,
+    /// A prepared removal blocks installation or activation until resumed.
+    #[error("artifact removal is pending")]
+    RemovalPending,
+    /// The selected installation generation is no longer current.
+    #[error("artifact installation selection is stale")]
+    StaleInstallation,
+    /// The per-artifact installation epoch cannot be incremented safely.
+    #[error("artifact installation epoch is exhausted")]
+    InstallationEpochExhausted,
     /// Persisted active state did not revalidate against its durable evidence.
     #[error("persisted active artifact binding failed recovery validation")]
     InvalidActiveBinding,

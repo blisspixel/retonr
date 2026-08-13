@@ -15,6 +15,7 @@ use crate::StoreError;
 mod installation;
 mod integrity;
 mod inventory;
+mod removal;
 
 struct Fixture {
     manifest: ArtifactManifest,
@@ -84,13 +85,10 @@ fn fixture() -> Fixture {
     }
 }
 
-fn populate(store: &ArtifactStateStore, fixture: &Fixture) {
+fn populate(store: &mut ArtifactStateStore, fixture: &Fixture) {
     store
-        .put_manifest(&fixture.manifest)
-        .expect("store manifest");
-    store
-        .put_installed(&fixture.installed)
-        .expect("store installation");
+        .put_installation(&fixture.manifest, &fixture.installed)
+        .expect("store manifest and installation");
     store
         .put_qualification(&fixture.qualification)
         .expect("store qualification");
@@ -110,7 +108,7 @@ fn persists_and_recovers_an_exact_active_binding() {
     let fixture = fixture();
     {
         let mut store = ArtifactStateStore::open(&path).expect("open store");
-        populate(&store, &fixture);
+        populate(&mut store, &fixture);
         let binding = store
             .activate(
                 ActivationId::from_digest(Digest::sha256(b"activation-1")),
@@ -156,7 +154,7 @@ fn conflicting_activation_rolls_back_without_moving_the_pointer() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     let activation_id = ActivationId::from_digest(Digest::sha256(b"activation"));
     let first = store
         .activate(
@@ -189,7 +187,7 @@ fn failure_after_decision_insert_rolls_back_the_complete_activation() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     let first = store
         .activate(
             ActivationId::from_digest(Digest::sha256(b"activation-1")),
@@ -239,7 +237,7 @@ fn invalidation_clears_the_pointer_and_prevents_reactivation() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     store
         .activate(
             ActivationId::from_digest(Digest::sha256(b"activation")),
@@ -277,7 +275,7 @@ fn removal_cannot_orphan_an_active_binding() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     store
         .activate(
             ActivationId::from_digest(Digest::sha256(b"activation")),
@@ -286,8 +284,13 @@ fn removal_cannot_orphan_an_active_binding() {
             &qualification_id(&fixture),
         )
         .expect("activate");
+    let selection = store
+        .artifact_removal_state(&fixture.installed.artifact_id)
+        .expect("load removal selection")
+        .0
+        .expect("installed selection");
     assert!(matches!(
-        store.remove_installed(&fixture.installed.artifact_id),
+        store.prepare_artifact_removal(&selection),
         Err(StoreError::ActiveArtifact)
     ));
     store
@@ -297,8 +300,8 @@ fn removal_cannot_orphan_an_active_binding() {
         )
         .expect("deactivate");
     store
-        .remove_installed(&fixture.installed.artifact_id)
-        .expect("remove inactive installation");
+        .prepare_artifact_removal(&selection)
+        .expect("prepare inactive installation removal");
 }
 
 #[test]
@@ -307,7 +310,7 @@ fn recovery_fails_closed_on_a_tampered_binding() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     let mut binding = store
         .activate(
             ActivationId::from_digest(Digest::sha256(b"activation")),
@@ -337,7 +340,7 @@ fn activation_and_recovery_require_current_byte_verification() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     let mut stale = fixture.installed.clone();
     stale.storage_key = "artifacts/replaced.gguf".to_owned();
     assert!(matches!(
@@ -369,7 +372,7 @@ fn activation_rejects_qualification_content_changed_under_an_existing_id() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     let stored_id = qualification_id(&fixture);
     let mut changed = fixture.qualification.clone();
     changed.context_token_limit += 1;
@@ -399,7 +402,7 @@ fn activation_rejects_an_invalidation_changed_under_indexed_columns() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     let stored_id = qualification_id(&fixture);
     store
         .invalidate(&QualificationInvalidation {
@@ -437,12 +440,12 @@ fn newer_schema_is_rejected_without_migration() {
     let path = directory.path().join("future.db");
     let connection = Connection::open(&path).expect("create database");
     connection
-        .pragma_update(None, "user_version", 2)
+        .pragma_update(None, "user_version", 3)
         .expect("set future version");
     drop(connection);
     assert!(matches!(
         ArtifactStateStore::open(&path),
-        Err(StoreError::UnsupportedSchema(2))
+        Err(StoreError::UnsupportedSchema(3))
     ));
 }
 
@@ -459,7 +462,7 @@ fn invalid_boundary_records_are_rejected_before_sql() {
 
     fixture.installed.storage_key = "../outside".to_owned();
     assert!(matches!(
-        store.put_installed(&fixture.installed),
+        store.put_installation(&fixture.manifest, &fixture.installed),
         Err(StoreError::InvalidInstallation(_))
     ));
 
