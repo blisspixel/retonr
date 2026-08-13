@@ -69,14 +69,12 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The last exact-main implementation revision before this typed-evidence branch was
-`5c35dbe4b0e6cd3fb594bf0a2ee203cbe82e66f7` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31740601430).
-Remote cross-platform evidence for this focused branch is pending. The local branch
-passes the documented Windows gates. The retained exact-main jobs cover Windows,
-macOS, and Linux Rust checks, repository policy, Markdown, coverage, dependency and
-supply-chain policy, fuzz smoke, proxy isolation, concurrency, and the Ubuntu
-loopback-only network namespace.
+The typed-evidence and local-model planning slice passed at exact-main revision
+`9ebd536f31c8bd33a08beaf4cc3f4ca68a99157e` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31751454252).
+The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
+policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
+isolation, concurrency, and the Ubuntu loopback-only network namespace.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
