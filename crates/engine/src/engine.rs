@@ -1,15 +1,18 @@
 use rewrite_types::{
-    AcceptedEdit, Atomicity, CandidateAssessment, CandidateRank, CandidateTextKind, DocumentError,
-    DocumentIr, GateEvidence, GateResult, GateStatus, GeneratedCandidate, ReasonCode,
-    RewriteOptions, RewriteStatus, RewriteUnit, Severity,
+    AcceptedEdit, Atomicity, CandidateAssessment, CandidateTextKind, DocumentError, DocumentIr,
+    GateEvidence, GateEvidenceDetails, GateResult, GateStatus, GeneratedCandidate,
+    InvariantEvidenceSummary, ReasonCode, RewriteOptions, RewriteStatus, RewriteUnit,
+    RewriteUnitId, Severity,
 };
 use thiserror::Error;
 
-use crate::protection::protected_terms_are_valid;
+use crate::policy::{
+    candidate_batch_reason, candidate_contract_is_valid, preferred_reason, validate_rewrite_options,
+};
 use crate::selection::compare_candidates;
 use crate::{
     CancellationToken, CandidateGenerator, GenerationError, GenerationRequest, ProtectionError,
-    ProtectionPlan, SemanticEvaluator,
+    ProtectionPlan, SemanticEvaluator, StructureAssessment, StructureValidator,
 };
 
 const UNIT_GATE: &str = "candidate_unit";
@@ -22,13 +25,6 @@ const SEMANTIC_GATE: &str = "semantic_fidelity";
 pub const MAX_GENERATED_CANDIDATES: usize = 16;
 /// Maximum generated candidate text size for one rewrite unit.
 pub const MAX_GENERATED_TEXT_BYTES: usize = 16 * 1024 * 1024;
-/// Adapter-owned structural validation applied to restored candidate text.
-pub trait StructureValidator: Send + Sync {
-    /// Returns redacted evidence describing whether the candidate preserves the
-    /// structure required by its source unit.
-    fn validate(&self, unit: &RewriteUnit, candidate: &str) -> GateResult;
-}
-
 /// Deterministic result produced before an adapter commits edits.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EngineOutcome {
@@ -167,7 +163,7 @@ impl<'a> RewriteEngine<'a> {
                 }
                 Err(error) => return Err(error.into()),
             };
-            if let Some(reason) = candidate_count_reason(candidates.len()) {
+            if let Some(reason) = candidate_batch_reason(&unit.id, &candidates) {
                 return Ok(EngineOutcome::abstained(reason, assessments));
             }
 
@@ -219,42 +215,15 @@ impl<'a> RewriteEngine<'a> {
     fn assess_candidate(
         &self,
         unit: &RewriteUnit,
-        mut candidate: GeneratedCandidate,
+        candidate: GeneratedCandidate,
         protection: &ProtectionPlan,
         options: &RewriteOptions,
     ) -> EvaluatedCandidate {
         let mut gates = Vec::new();
-        if candidate.unit_id == unit.id {
-            gates.push(GateResult::pass(UNIT_GATE));
-        } else {
-            gates.push(GateResult::fail(
-                UNIT_GATE,
-                "unit_mismatch",
-                "candidate targets a different rewrite unit",
-            ));
-            return ineligible(
-                candidate,
-                String::new(),
-                gates,
-                ReasonCode::StructureChanged,
-            );
-        }
-
-        if candidate_contract_is_valid(&candidate) {
-            gates.push(GateResult::pass(CANDIDATE_GATE));
-        } else {
-            gates.push(GateResult::fail(
-                CANDIDATE_GATE,
-                "invalid_candidate_contract",
-                "candidate size or ranking metadata violates engine limits",
-            ));
-            return ineligible(
-                candidate,
-                String::new(),
-                gates,
-                ReasonCode::InvalidCandidate,
-            );
-        }
+        let mut candidate = match validate_candidate_metadata(unit, candidate, &mut gates) {
+            Ok(candidate) => candidate,
+            Err(evaluated) => return *evaluated,
+        };
 
         let masked = match candidate.text_kind {
             CandidateTextKind::Masked => protection
@@ -269,38 +238,52 @@ impl<'a> RewriteEngine<'a> {
             }
             Err(error) => {
                 gates.push(protection_failure(SENTINEL_GATE, &error));
-                return ineligible(candidate, String::new(), gates, protection_reason(&error));
+                return ineligible(
+                    candidate,
+                    unit.id.clone(),
+                    String::new(),
+                    gates,
+                    protection_reason(&error),
+                );
             }
         };
 
         let restored = match protection.restore(&masked) {
             Ok(restored) => {
-                gates.push(GateResult::pass(PROTECTED_GATE));
+                gates.push(protected_values_pass(protection));
                 restored
             }
             Err(error) => {
                 gates.push(protection_failure(PROTECTED_GATE, &error));
-                return ineligible(candidate, String::new(), gates, protection_reason(&error));
+                return ineligible(
+                    candidate,
+                    unit.id.clone(),
+                    String::new(),
+                    gates,
+                    protection_reason(&error),
+                );
             }
         };
 
         let structure = self.structure.validate(unit, &restored);
-        let structure_reason = if structure.gate_id == "plain_text_safety" {
-            ReasonCode::UnsafeText
-        } else {
-            ReasonCode::StructureChanged
-        };
-        let structure_passed = structure.status == GateStatus::Pass;
-        gates.push(structure);
+        let (structure_gate, structure_reason) = crate::structure::retained_gate(structure);
+        let structure_passed = structure == StructureAssessment::Preserved;
+        gates.push(structure_gate);
         if !structure_passed {
-            return ineligible(candidate, restored, gates, structure_reason);
+            return ineligible(
+                candidate,
+                unit.id.clone(),
+                restored,
+                gates,
+                structure_reason,
+            );
         }
 
         let (semantic_gate, semantic_passed, semantic_reason) =
-            self.semantic_gate(&unit.text, &restored, options);
+            self.semantic_gate(&unit.id, &unit.text, &restored, options);
         gates.push(semantic_gate);
         if !semantic_passed {
-            return ineligible(candidate, restored, gates, semantic_reason);
+            return ineligible(candidate, unit.id.clone(), restored, gates, semantic_reason);
         }
 
         candidate.rank.edit_cost = surface_edit_cost(&unit.text, &restored);
@@ -321,11 +304,17 @@ impl<'a> RewriteEngine<'a> {
 
     fn semantic_gate(
         &self,
+        unit_id: &RewriteUnitId,
         source: &str,
         candidate: &str,
         options: &RewriteOptions,
     ) -> (GateResult, bool, ReasonCode) {
         let semantic = self.semantic.evaluate(source, candidate, options.mode);
+        if semantic.validate().is_err()
+            || !crate::semantic::evidence_matches(&semantic, unit_id, source, candidate)
+        {
+            return invalid_semantic_gate();
+        }
         let confidence_passed = semantic
             .confidence
             .is_some_and(|value| value >= options.minimum_semantic_confidence);
@@ -335,23 +324,104 @@ impl<'a> RewriteEngine<'a> {
         } else {
             semantic.status
         };
-        let reason = if semantic.status == GateStatus::Fail {
+        let reason = if status == GateStatus::Fail {
             ReasonCode::SemanticMismatch
         } else {
             ReasonCode::SemanticUncertain
         };
-        (
-            GateResult {
-                gate_id: SEMANTIC_GATE.to_owned(),
-                gate_version: self.semantic.id().to_owned(),
-                status,
-                severity: Severity::Error,
-                evidence: Vec::new(),
-                confidence: semantic.confidence,
-            },
-            passed,
-            reason,
-        )
+        let gate = GateResult {
+            gate_id: SEMANTIC_GATE.to_owned(),
+            gate_version: self.semantic.id().to_owned(),
+            status,
+            severity: Severity::Error,
+            evidence: semantic
+                .evidence
+                .into_iter()
+                .map(semantic_evidence)
+                .collect(),
+            confidence: semantic.confidence,
+        };
+        if gate.validate().is_err() {
+            invalid_semantic_gate()
+        } else {
+            (gate, passed, reason)
+        }
+    }
+}
+
+fn semantic_evidence(evidence: rewrite_types::SemanticEvidence) -> GateEvidence {
+    use rewrite_types::{SemanticEvidenceCode, SemanticEvidenceDetails};
+    let message = match evidence.code {
+        SemanticEvidenceCode::LiteralTokensEqual => "literal token sequence was preserved",
+        SemanticEvidenceCode::LiteralTokensChanged => "literal token sequence changed",
+        SemanticEvidenceCode::UnsupportedMode => "semantic evaluator does not support this mode",
+        SemanticEvidenceCode::ClaimComparisonPreserved => {
+            "typed claim comparison found no conflict"
+        }
+        SemanticEvidenceCode::ClaimComparisonConflict => "typed claim comparison found a conflict",
+        SemanticEvidenceCode::ClaimComparisonUncertain => {
+            "typed claim comparison retained uncertainty"
+        }
+    };
+    GateEvidence {
+        code: evidence.code.as_str().to_owned(),
+        message: message.to_owned(),
+        details: evidence.details.map(|details| match details {
+            SemanticEvidenceDetails::ClaimComparison(comparison) => {
+                GateEvidenceDetails::ClaimComparison(Box::new(comparison))
+            }
+        }),
+    }
+}
+
+fn invalid_semantic_gate() -> (GateResult, bool, ReasonCode) {
+    (
+        GateResult {
+            gate_id: SEMANTIC_GATE.to_owned(),
+            gate_version: "semantic-evidence-contract-v1".to_owned(),
+            status: GateStatus::Uncertain,
+            severity: Severity::Error,
+            evidence: vec![GateEvidence {
+                code: "invalid_evaluator_evidence".to_owned(),
+                message: "semantic evaluator returned malformed or unbounded evidence".to_owned(),
+                details: None,
+            }],
+            confidence: None,
+        },
+        false,
+        ReasonCode::SemanticUncertain,
+    )
+}
+
+fn protected_values_pass(protection: &ProtectionPlan) -> GateResult {
+    let mut summary = InvariantEvidenceSummary {
+        declared_terms: 0,
+        urls: 0,
+        emails: 0,
+        numbers: 0,
+        total: 0,
+    };
+    for value in protection.values() {
+        let count = match value.kind {
+            crate::ProtectedKind::DeclaredTerm => &mut summary.declared_terms,
+            crate::ProtectedKind::Url => &mut summary.urls,
+            crate::ProtectedKind::Email => &mut summary.emails,
+            crate::ProtectedKind::Number => &mut summary.numbers,
+        };
+        *count = count.saturating_add(1);
+        summary.total = summary.total.saturating_add(1);
+    }
+    GateResult {
+        gate_id: PROTECTED_GATE.to_owned(),
+        gate_version: "1".to_owned(),
+        status: GateStatus::Pass,
+        severity: Severity::Error,
+        evidence: vec![GateEvidence {
+            code: "invariant_counts".to_owned(),
+            message: "exact protected invariant counts were preserved".to_owned(),
+            details: Some(GateEvidenceDetails::InvariantSummary(summary)),
+        }],
+        confidence: None,
     }
 }
 
@@ -366,15 +436,54 @@ struct EvaluatedCandidate {
     reason: Option<ReasonCode>,
 }
 
+fn validate_candidate_metadata(
+    unit: &RewriteUnit,
+    candidate: GeneratedCandidate,
+    gates: &mut Vec<GateResult>,
+) -> Result<GeneratedCandidate, Box<EvaluatedCandidate>> {
+    if candidate.unit_id != unit.id {
+        gates.push(GateResult::fail(
+            UNIT_GATE,
+            "unit_mismatch",
+            "candidate targets a different rewrite unit",
+        ));
+        return Err(Box::new(ineligible(
+            candidate,
+            unit.id.clone(),
+            String::new(),
+            core::mem::take(gates),
+            ReasonCode::StructureChanged,
+        )));
+    }
+    gates.push(GateResult::pass(UNIT_GATE));
+    if !candidate_contract_is_valid(&candidate) {
+        gates.push(GateResult::fail(
+            CANDIDATE_GATE,
+            "invalid_candidate_contract",
+            "candidate size, identity, or ranking metadata violates engine limits",
+        ));
+        return Err(Box::new(ineligible(
+            candidate,
+            unit.id.clone(),
+            String::new(),
+            core::mem::take(gates),
+            ReasonCode::InvalidCandidate,
+        )));
+    }
+    gates.push(GateResult::pass(CANDIDATE_GATE));
+    Ok(candidate)
+}
+
 fn ineligible(
     candidate: GeneratedCandidate,
+    assessed_unit_id: RewriteUnitId,
     restored: String,
     gates: Vec<GateResult>,
     reason: ReasonCode,
 ) -> EvaluatedCandidate {
     let assessment = CandidateAssessment {
         candidate_id: candidate.id.clone(),
-        unit_id: candidate.unit_id.clone(),
+        unit_id: assessed_unit_id,
         eligible: false,
         gates,
     };
@@ -407,6 +516,7 @@ fn protection_failure(gate_id: &str, error: &ProtectionError) -> GateResult {
         evidence: vec![GateEvidence {
             code: code.to_owned(),
             message: "candidate did not preserve protected-value integrity".to_owned(),
+            details: None,
         }],
         confidence: None,
     }
@@ -434,72 +544,3 @@ fn surface_edit_cost(source: &str, candidate: &str) -> u64 {
     let length_delta = source.chars().count().abs_diff(candidate.chars().count());
     u64::try_from(substitutions.saturating_add(length_delta)).unwrap_or(u64::MAX)
 }
-
-/// Validates caller-controlled rewrite policy before generation begins.
-///
-/// # Errors
-///
-/// Returns [`EngineError`] when semantic confidence or protected terms violate
-/// the bounded engine contract.
-pub fn validate_rewrite_options(options: &RewriteOptions) -> Result<(), EngineError> {
-    if !options.minimum_semantic_confidence.is_finite()
-        || !(0.0..=1.0).contains(&options.minimum_semantic_confidence)
-    {
-        return Err(EngineError::InvalidSemanticConfidence);
-    }
-    if !protected_terms_are_valid(&options.protected_terms) {
-        return Err(EngineError::InvalidProtectedTerms);
-    }
-    Ok(())
-}
-
-fn candidate_contract_is_valid(candidate: &GeneratedCandidate) -> bool {
-    candidate.text.len() <= MAX_GENERATED_TEXT_BYTES && candidate_rank_is_valid(candidate.rank)
-}
-
-const fn candidate_count_reason(count: usize) -> Option<ReasonCode> {
-    if count == 0 {
-        Some(ReasonCode::NoCandidate)
-    } else if count > MAX_GENERATED_CANDIDATES {
-        Some(ReasonCode::InvalidCandidate)
-    } else {
-        None
-    }
-}
-
-fn candidate_rank_is_valid(rank: CandidateRank) -> bool {
-    [rank.style, rank.channel, rank.fluency]
-        .into_iter()
-        .all(|score| score.is_finite() && (0.0..=1.0).contains(&score))
-}
-
-const fn preferred_reason(current: Option<ReasonCode>, candidate: ReasonCode) -> ReasonCode {
-    match current {
-        Some(current) if reason_priority(current) <= reason_priority(candidate) => current,
-        _ => candidate,
-    }
-}
-
-const fn reason_priority(reason: ReasonCode) -> u8 {
-    match reason {
-        ReasonCode::SentinelIntegrity => 0,
-        ReasonCode::ProtectedValueChanged => 1,
-        ReasonCode::UnsafeText => 2,
-        ReasonCode::StructureChanged => 3,
-        ReasonCode::SemanticMismatch => 4,
-        ReasonCode::SemanticUncertain => 5,
-        ReasonCode::InvalidCandidate => 6,
-        ReasonCode::NoCandidate => 7,
-        ReasonCode::ReassemblyVerification => 8,
-        ReasonCode::Cancelled => 9,
-        ReasonCode::UnsupportedAtomicity => 10,
-    }
-}
-
-#[cfg(test)]
-#[path = "engine_test_support.rs"]
-mod test_support;
-
-#[cfg(test)]
-#[path = "engine_tests.rs"]
-mod tests;

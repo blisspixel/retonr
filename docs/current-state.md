@@ -11,9 +11,9 @@ or stored-data contracts.
 
 | Component | Current behavior |
 | --- | --- |
-| `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, and rewrite-record v2 contracts with optional redacted generation provenance |
+| `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, and content-redacted typed claim-evidence contracts |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
-| `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, semantic port, deterministic reason priority, lexicographic selection, and document-atomic abstention |
+| `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
 | `rewrite-model` | Separate immutable artifact, qualification, invalidation, activation-decision, and active-binding contracts |
 | `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, opaque exclusive-lock capability requirements for removal transitions, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery and generation contracts, cancellation and deadlines, stable redacted errors, and deterministic fake |
@@ -27,6 +27,13 @@ or stored-data contracts.
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
 and newline-token sequence. Punctuation can change. Lexical content, newline
 placement, unsafe controls, protected values, or structure cannot.
+
+Typed claim evidence binds each bounded extraction to an exact unit, text digest,
+extractor-manifest digest, completion state, confidence policy, and canonical evidence
+digest. The deterministic comparator accepts only complete compatible sets, rejects an
+empty nontrivial source extraction, retains unknown and below-threshold counts, and
+binds the aggregate to both exact evidence sets. Extraction is not implemented and
+remains probabilistic when added; comparison evidence is not semantic proof.
 
 ## Verified locally
 
@@ -50,9 +57,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 289 Rust unit, integration, and process tests pass. Two process helpers are
+All 307 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.98
+Documentation tests also pass. The measured Rust line coverage is 90.83
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -62,11 +69,12 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The rewrite-record v2 generation-provenance implementation passed at exact-main
-revision `f9396681a6970e092f7ffec04ed743927eafc737` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31739447977).
-This evidence-only update changes no code. The retained jobs cover Windows, macOS,
-and Linux Rust checks, repository policy, Markdown, coverage, dependency and
+The last exact-main implementation revision before this typed-evidence branch was
+`5c35dbe4b0e6cd3fb594bf0a2ee203cbe82e66f7` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31740601430).
+Remote cross-platform evidence for this focused branch is pending. The local branch
+passes the documented Windows gates. The retained exact-main jobs cover Windows,
+macOS, and Linux Rust checks, repository policy, Markdown, coverage, dependency and
 supply-chain policy, fuzz smoke, proxy isolation, concurrency, and the Ubuntu
 loopback-only network namespace.
 
@@ -117,6 +125,9 @@ uses its own clean runner database.
   pinned runtime and model artifact on the three operating systems.
 - The grounded path can safely accept only literal-mode token-preserving changes
   under the current evaluator. Open-domain paraphrases and broader modes abstain.
+- The typed claim contract and deterministic comparator are implemented, but no
+  learned extractor or runtime-backed semantic evaluator is connected. The current
+  synchronous semantic port is not the future runtime extraction boundary.
 - UTF-16, Markdown, DOCX, profiles, persistence, document briefs, file and folder
   transactions, API, MCP, Agent Skills, Agent Plugins, and native desktop are not
   implemented yet.
@@ -143,15 +154,18 @@ is:
 1. Preserve the completed artifact lifecycle boundary, application-owned inventory
    DTOs, non-mutating pending-operation inspection, and process-level signal
    cancellation evidence as new consumers are added.
-2. Preserve the completed rewrite-record v2 generation-provenance boundary while
-   extending the transaction with typed claim and invariant evidence.
-3. Add typed claim and invariant evidence without describing it as semantic proof,
-   then calibrate an independent semantic evaluator.
-4. Complete stdin, safe diff, dry-run, trace, terminal safety, and
+2. Preserve the completed rewrite-record v2, typed invariant summaries, typed claim
+   evidence, and deterministic comparison boundary.
+3. Add an application-level cancellable extraction operation with explicit errors and
+   exact effective identity, then calibrate it independently from generators.
+4. Add the local evaluation plan, run the currently installed 26B and 27B packages,
+   and add the previously observed 8B package only after revalidation or separately
+   approved acquisition. Start only after product-path evidence joins are complete.
+5. Complete stdin, safe diff, dry-run, trace, terminal safety, and
    raw-output policy before exposing grounded rewriting in the CLI.
-5. Run exact artifact qualification and selective-risk reporting on declared
+6. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-6. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+7. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
    after the 0.2 completion evidence passes. The current candidate-check rendering is
    limited to already implemented model-free behavior.
 

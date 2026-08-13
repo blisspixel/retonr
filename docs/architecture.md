@@ -284,6 +284,19 @@ The same learned extractor cannot certify its own result. Exact gates, independe
 extraction, clause alignment, bidirectional entailment, contradiction checks, and
 document-level checks provide complementary evidence.
 
+The implemented preview contract retains only content-redacted identities and counts.
+Each claim set records completion state, exact text identity, an effective extractor
+manifest digest, confidence policy, and a canonical evidence-set digest. Deterministic
+comparison requires complete compatible sets, binds its aggregate to both evidence
+sets, and preserves extraction uncertainty. Raw text, spans, and claim identities do
+not enter the retained comparison aggregate. These digests are evidence bindings, not
+anonymization or proof that an extraction is correct.
+
+Runtime-backed extraction will not use the current synchronous semantic port. It needs
+an application-level operation with cancellation, deadline, explicit operational
+errors, and exact runtime, artifact, prompt, and configuration identity. The common
+engine remains responsible for deterministic comparison and fail-closed policy.
+
 ## Protected sentinel flow
 
 URLs, paths, identifiers, quantities, dates, protected terms, and code-like spans are
@@ -643,6 +656,13 @@ tracking should use an installation-keyed identifier or remain opt-in.
 Generation provenance proves only what the selected adapter reported and what the
 strategy rechecked for that completed call. It does not prove semantic correctness,
 human authorship, ownership, compliance, model safety, or reproducibility.
+
+Invariant-bearing assessment vectors reject excess elements during deserialization,
+not only after constructing the complete vector. These domain types still do not
+define an untrusted byte-stream reader. Any future external rewrite-record import must
+bound the complete byte input before calling a serializer, then validate the nested
+record contract. The current product emits records and has no external record-import
+command.
 
 Replay is best effort unless model artifact, backend, quantization, prompt, runtime,
 and hardware behavior are all controlled.

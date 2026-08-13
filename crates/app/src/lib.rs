@@ -5,14 +5,13 @@
 
 use rewrite_engine::{
     CancellationToken, CandidateGenerator, EngineError, LiteralSemanticEvaluator, ProtectionError,
-    ProvidedCandidateGenerator, RewriteEngine, StructureValidator,
+    ProvidedCandidateGenerator, RewriteEngine, StructureAssessment, StructureValidator,
 };
 use rewrite_text_adapter::{
     MAX_PLAIN_TEXT_BYTES, ParsedTextDocument, TextAdapter, TextAdapterError,
 };
 use rewrite_types::{
-    Digest, GateResult, ReasonCode, RewriteMode, RewriteOptions, RewriteRecord, RewriteStatus,
-    RewriteUnit,
+    Digest, ReasonCode, RewriteMode, RewriteOptions, RewriteRecord, RewriteStatus, RewriteUnit,
 };
 use thiserror::Error;
 
@@ -180,22 +179,14 @@ struct PlainTextStructure<'a> {
 }
 
 impl StructureValidator for PlainTextStructure<'_> {
-    fn validate(&self, unit: &RewriteUnit, candidate: &str) -> GateResult {
+    fn validate(&self, unit: &RewriteUnit, candidate: &str) -> StructureAssessment {
         if !TextAdapter::replacement_preserves_text_safety(&unit.text, candidate) {
-            return GateResult::fail(
-                "plain_text_safety",
-                "unsafe_text_control",
-                "candidate introduced an unsafe text control",
-            );
+            return StructureAssessment::UnsafeText;
         }
         if TextAdapter::replacement_preserves_structure(self.parsed, candidate) {
-            GateResult::pass("plain_text_structure")
+            StructureAssessment::Preserved
         } else {
-            GateResult::fail(
-                "plain_text_structure",
-                "newline_skeleton_changed",
-                "candidate changed the source newline sequence",
-            )
+            StructureAssessment::Changed
         }
     }
 }

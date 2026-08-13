@@ -113,6 +113,12 @@ names are discovery hints, not identities.
 Artifact or runtime drift invalidates the active binding and discards the complete
 candidate batch. Qualification records never imply formal semantic guarantees.
 
+Probabilistic claim extraction and deterministic comparison are separate evidence
+stages. Retained comparison evidence binds to the exact extractor manifest, unit,
+source and candidate text identities, and evidence-set identities. Incomplete, empty
+for nontrivial source text, mismatched, or unresolved extraction cannot silently become
+a clean semantic pass. Content digests are identity evidence, not anonymization.
+
 ### INV-E04: Inputs are immutable until verified commit
 
 The source is never overwritten by default. Planning and generation cannot mutate

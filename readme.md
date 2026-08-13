@@ -21,11 +21,11 @@ The pitch is simple:
 Less remote exposure. Less generic model prose. More of your style. The finished
 expression stays under your control.
 
-It treats generated, delegated, and rough text as drafts. The product applies the
-same kind of bounded editorial refinement a person might apply to an intern's draft,
-authorized notes, or an existing report, but makes that process inspectable and
-repeatable across larger inputs. Generation proposes. Retonr validates, selects, or
-abstains. The user remains the final editor.
+Retonr treats generated, delegated, and rough text as drafts, not declarations of
+ownership by a model provider. It applies bounded editorial refinement like a careful
+human editor, but makes that process inspectable and repeatable across larger inputs.
+Generation proposes. Retonr validates, selects, or abstains. The user remains the
+final editor.
 
 Model providers are tools in that process, not permanent governors or presumptive
 authors of the finished expression. Retonr is built to help a person turn authorized
@@ -71,9 +71,10 @@ compensates for a fidelity failure.
 ## Current status
 
 Retonr is an early implementation, not a finished writing application. The current
-slice includes versioned Rust contracts, plain-text parsing and
-reassembly, protected values, deterministic candidate gates, semantic assessment,
-lexicographic selection, document-atomic abstention, redacted records, a
+slice includes versioned Rust contracts, plain-text parsing and reassembly, protected
+values, deterministic candidate gates, a semantic assessment port, content-redacted
+typed claim evidence, deterministic claim comparison, lexicographic selection,
+document-atomic abstention, redacted records, a
 candidate-check CLI, rewrite-record v2 generation provenance, durable artifact-state
 transactions, non-destructive offline
 artifact-file import, read-only managed-artifact inventory, and positive and
@@ -153,9 +154,10 @@ The completed product is planned around one application service:
 - A narrow offline adapter for completed text-only assistant responses
 
 Agent packaging targets the current Agent Plugins 1.0.0 Working Draft after the CLI
-and MCP contracts stabilize. Open Knowledge Format 0.2 remains an optional,
-experimental knowledge projection, not Retonr's database, authorization model, or
-execution protocol.
+and MCP 2026-07-28 contracts stabilize. Open Knowledge Format 0.2 remains an optional,
+experimental Markdown and YAML knowledge projection for redacted, portable views. It
+is not Retonr's database, authorization model, inference transport, or execution
+protocol.
 
 The 1.0 compatibility adapter handles completed responses and never makes an
 upstream model request. Completed-unit event streams graduate separately after their
@@ -167,6 +169,14 @@ vLLM, MLX LM, and compatible local endpoints remain named candidates until their
 runtime-specific identity and policy evidence passes. Models are recommended and
 qualified by exact artifact set, runtime, language, mode, format, output policy, and
 measured hardware class rather than by a mutable model name or API shape.
+
+The first cross-tier development bakeoff targets Ministral 3 8B, Gemma 4 26B, and
+Qwen3.6 27B. Gemma and Qwen are currently installed; the previously observed Ministral
+package must be revalidated locally or separately reacquired before use. This is a local
+experiment, not a support claim. Small and medium first-party GGUF cohorts follow only
+after explicit acquisition approval. See the [local model tiers](docs/research/2026-08-13-local-model-tiers.md),
+[evaluation protocol](docs/research/2026-08-13-local-model-evaluation.md), and
+[runtime matrix](docs/research/2026-08-13-local-runtime-matrix.md).
 
 ## Installation direction
 

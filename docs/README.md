@@ -35,6 +35,9 @@ These documents define the product direction and constrain implementation.
 | [Agent integration research](research/2026-08-12-agent-integrations.md) | Agent Plugins, Agent Skills, MCP, conformance, and packaging gates |
 | [Open Knowledge Format research](research/2026-08-12-open-knowledge-format.md) | OKF v0.2 knowledge bundles, trust, portability, attestation, and Retonr boundaries |
 | [Provider-neutral runtime research](research/2026-08-12-provider-neutral-runtimes.md) | Local runtime matrix, artifact identity, output policy, and long-input qualification |
+| [Current local runtime matrix](research/2026-08-13-local-runtime-matrix.md) | Dated cross-platform runtime status, exact identity requirements, and Agent Plugin and MCP boundary |
+| [Local model tiers](research/2026-08-13-local-model-tiers.md) | Small, medium, and workstation candidates, exact revisions, local inventory, and qualification gates |
+| [Local model evaluation protocol](research/2026-08-13-local-model-evaluation.md) | Zero-download bakeoff, hardware strata, metrics, execution limits, and logical implementation order |
 | [Local model smoke comparison](research/2026-08-12-local-model-smoke.md) | Three-family local editing smoke run, clean control, exact identities, and limitations |
 | [Local watermark assurance](research/2026-08-12-local-watermark-assurance.md) | Intentional insertion points, exact-stack evidence levels, bounded claims, and requalification |
 | [Text watermark science](research/2026-08-12-text-watermark-science.md) | Mechanisms, detectors, attacks, trade-offs, limits, and product implications |
