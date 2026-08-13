@@ -8,8 +8,9 @@ mod artifact;
 mod qualification;
 
 pub use activation::{
-    ActivationAction, ActivationDecision, ActivationError, ActivationId, ActiveArtifactBinding,
-    InstalledArtifact, QualificationInvalidation, activate,
+    ActivationAction, ActivationDecision, ActivationDecisionError, ActivationError, ActivationId,
+    ActiveArtifactBinding, InstallationError, InstalledArtifact, QualificationInvalidation,
+    QualificationInvalidationError, activate,
 };
 pub use artifact::{
     ARTIFACT_MANIFEST_SCHEMA_VERSION, ArtifactId, ArtifactManifest, ArtifactRole, ArtifactSource,
@@ -17,5 +18,5 @@ pub use artifact::{
 };
 pub use qualification::{
     HardwareTier, LicenseDecision, QUALIFICATION_SCHEMA_VERSION, QualificationId,
-    QualificationRecord, QualificationStatus, RuntimeIdentity,
+    QualificationRecord, QualificationRecordError, QualificationStatus, RuntimeIdentity,
 };
