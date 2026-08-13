@@ -146,9 +146,9 @@ jobs:
             -maxdepth 1 \
             -type f \
             -executable \
-            \( -name 'rewrite_ollama-*' -o -name 'proxy_environment-*' \) \
+            \( -name 'rewrite_ollama-*' -o -name 'concurrency-*' -o -name 'proxy_environment-*' \) \
             -print > "$RUNNER_TEMP/retonr-ollama-test-binaries"
-          test "$(wc -l < "$RUNNER_TEMP/retonr-ollama-test-binaries")" -eq 2
+          test "$(wc -l < "$RUNNER_TEMP/retonr-ollama-test-binaries")" -eq 3
 
       - name: Run tests with loopback as the only network interface
         shell: bash

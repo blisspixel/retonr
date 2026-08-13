@@ -85,8 +85,8 @@ or removes the runtime or a model.
 
 ### Follow-up
 
-- Add delayed, disconnected, partial, redirected, chunked-oversize, and deadline
-  conformance cases.
+- Retain cross-platform conformance for delayed, disconnected, partial, redirected,
+  oversized, deadline, cancellation, proxy-environment, and concurrency behavior.
 - Record endpoint configuration precedence before exposing user configuration.
 - During milestone 0.2 qualification, add OS-enforced non-loopback isolation evidence
   for every participating Retonr and runtime process while allowing only the exact
@@ -100,7 +100,8 @@ process-isolated proxy-canary test proves the enumerated proxy environment does 
 alter the adapter route to the configured loopback endpoint, and fake-server
 conformance proves redirects are not followed, body bounds, cancellation, deadline
 behavior, malformed-response handling, exact request parameters, pre-call drift
-rejection, post-call drift discard, and absence of content in errors and traces.
+rejection, post-call drift discard, configured concurrency, permit recovery, and
+absence of content in errors and traces.
 
 Revisit if the selected runtime removes required identity or structured-output
 capabilities, or if a product-managed in-process runtime provides a smaller and more
