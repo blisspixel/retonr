@@ -131,6 +131,7 @@ fn blocks_ancestor_replacement_during_inventory() {
             &mut store,
             ArtifactImportLimits {
                 maximum_artifact_bytes: 4_096,
+                maximum_storage_entries: 32,
             },
         )
         .expect("initialize nested artifact storage");
@@ -172,6 +173,7 @@ fn shared_inventory_lock_excludes_import() {
         &mut importing_store,
         ArtifactImportLimits {
             maximum_artifact_bytes: 4_096,
+            maximum_storage_entries: 32,
         },
     )
     .expect("hold exclusive import lock");
@@ -200,6 +202,7 @@ fn held_inventory_blocks_import_and_allows_another_inventory() {
             &mut importing_store,
             ArtifactImportLimits {
                 maximum_artifact_bytes: 4_096,
+                maximum_storage_entries: 32,
             },
         ),
         Err(crate::ArtifactImportError::StorageInUse)
@@ -211,6 +214,7 @@ fn held_inventory_blocks_import_and_allows_another_inventory() {
         &mut importing_store,
         ArtifactImportLimits {
             maximum_artifact_bytes: 4_096,
+            maximum_storage_entries: 32,
         },
     )
     .expect("import opens after both shared locks are released");

@@ -50,15 +50,22 @@ This order encodes five deliberate choices:
 Milestone 0.1 technical evidence is complete, and 0.2 implementation is active. Work
 proceeds in this exact order:
 
-1. Complete the 0.2 plain-text transaction and CLI before adding profiles or another
-   document format.
-2. Establish the versioned editorial-quality corpus during evaluation work, but do
+1. With the pinned offline artifact boundary complete, add selected orphan
+   reconciliation, crash-recoverable inactive removal, and the narrow offline model
+   CLI. Each mutation reverifies current bytes under the exclusive lifecycle lock.
+2. Link redacted generation provenance into the durable rewrite transaction, add
+   typed claims and an independent evaluator, and complete the grounded validation
+   cascade.
+3. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
+   qualify one exact local runtime and artifact combination and retain complete
+   cross-platform release evidence before adding profiles or another format.
+4. Establish the versioned editorial-quality corpus during evaluation work, but do
    not give lint findings product authority until the 0.3 rule and profile contracts
    pass qualification.
-3. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-4. Let editorial lint guide or rank generated candidates in 0.5 only after the
+5. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+6. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
-5. Add agent packaging, rich document formats, and native presentation layers only
+7. Add agent packaging, rich document formats, and native presentation layers only
    after the underlying CLI and application contracts are proven.
 
 This sequencing makes three independent outcomes visible in every release report:

@@ -1,10 +1,11 @@
 use std::{
-    fs::{self, File, Metadata},
+    fs::{self, File},
     io,
     path::Path,
 };
 
 use super::ArtifactImportError;
+use crate::artifact_storage::is_indirect;
 
 #[cfg(unix)]
 pub(super) fn set_private_directory_permissions(path: &Path) -> Result<(), ArtifactImportError> {
@@ -72,48 +73,4 @@ pub(super) fn open_readonly_no_follow(path: &Path) -> io::Result<File> {
         .read(true)
         .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
         .open(path)
-}
-
-#[cfg(unix)]
-pub(super) fn open_lock_file(path: &Path) -> io::Result<File> {
-    use rustix::fs::{Mode, OFlags};
-
-    rustix::fs::open(
-        path,
-        OFlags::RDWR | OFlags::CREATE | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-        Mode::RUSR | Mode::WUSR,
-    )
-    .map(File::from)
-    .map_err(io::Error::from)
-}
-
-#[cfg(windows)]
-pub(super) fn open_lock_file(path: &Path) -> io::Result<File> {
-    use std::os::windows::fs::OpenOptionsExt as _;
-
-    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
-    fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
-        .open(path)
-}
-
-pub(crate) fn is_indirect(metadata: &Metadata) -> bool {
-    if metadata.file_type().is_symlink() {
-        return true;
-    }
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt as _;
-
-        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
-        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
-    }
-    #[cfg(unix)]
-    {
-        false
-    }
 }

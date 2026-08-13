@@ -241,21 +241,35 @@ Controls:
   rewrite.
 - Make document and selection atomicity explicit and retain staged recovery state.
 - Offline artifact-file import opens the final source entry without following a
-  symlink or Windows reparse point, accepts only a regular file, streams into a
-  reserved application staging directory, verifies manifest size and digest, and
-  commits without replacing an existing content-addressed file.
+  symlink or Windows reparse point, accepts only a regular file, and streams into a
+  create-new reserved staging name containing 128 random bits. It verifies manifest
+  size and digest and commits without replacing an existing content-addressed file.
+- Import applies caller-owned managed-entry and byte ceilings. Exact-name scans honor
+  cancellation, and capacity is rechecked after the final caller callback before a
+  canonical entry is linked.
 - One exclusive storage lock serializes staging recovery and import. Recovery
-  removes only reserved staging names. The configured artifact root must be local,
-  application-owned storage; network filesystem semantics are not qualified.
+  removes only bounded, direct regular reserved staging names and fails closed on a
+  link, reparse point, or non-regular reserved entry. The storage root, lock,
+  staging directory, and artifact directory remain pinned across caller callbacks;
+  Unix managed child operations use those held boundaries. Windows child opens and
+  metadata checks are handle-relative; hard-link commit and cleanup are path-backed
+  within the pinned root and qualified on the continuous-integration NTFS
+  configuration. The configured artifact root must be local, application-owned
+  storage; network filesystem semantics are not qualified.
 - Durable artifact state is registered only after the final file and containing
-  directory are synchronized on Windows, macOS, and Linux.
-  A state failure can leave an unregistered content-addressed file, never a record
-  pointing to bytes that did not commit.
+  directories are synchronized and the final canonical bytes and held boundary
+  identities are silently reverified on Windows, macOS, and Linux. Successful
+  return is the completion signal, and no caller callback runs after that final
+  verification begins. Staging and canonical managed bytes must have exactly one
+  filesystem name, so an external hard-link alias fails closed. A state failure can
+  leave an unregistered content-addressed file, never a record pointing to bytes
+  that did not commit.
 - Read-only artifact inventory takes the lifecycle lock in shared mode, reads a
   bounded and integrity-validated state snapshot, freezes exact raw directory
   entries, and hashes only canonical direct regular files within per-file and total
   ceilings. It follows no symlink or reparse point, never resolves a persisted
-  storage key as a path, and emits only aggregate counts for malformed raw names.
+  storage key as a path, rejects external hard-link aliases as managed authority,
+  and emits only aggregate counts for malformed raw names.
 - The inventory repeats the complete entry snapshot, checks stable metadata around
   each hash, and requires a matching second bounded state snapshot. Concurrent
   changes fail the operation without a partial report. On Windows, child opens and

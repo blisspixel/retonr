@@ -8,8 +8,17 @@ use std::{
 use rewrite_types::{CancellationToken, Digest};
 use sha2::{Digest as _, Sha256};
 
-use super::ArtifactInventoryError;
-use crate::artifact_import::platform::is_indirect;
+use crate::artifact_inventory::ArtifactInventoryError;
+
+mod entry;
+mod errors;
+mod mutation;
+pub(crate) use entry::is_indirect;
+use errors::{map_active_error, map_initial_error};
+pub(crate) use mutation::{ExactEntryCapacity, ManagedFile};
+
+#[cfg(test)]
+mod mutation_tests;
 
 const HASH_BUFFER_BYTES: usize = 1024 * 1024;
 #[cfg(windows)]
@@ -24,8 +33,16 @@ pub(super) struct DirectoryEntrySnapshot {
     pub(super) byte_size: u64,
 }
 
+impl DirectoryEntrySnapshot {
+    pub(crate) fn has_single_link(&self) -> bool {
+        self.metadata
+            .as_ref()
+            .is_some_and(MetadataFingerprint::has_single_link)
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
-pub(super) struct MetadataFingerprint {
+pub(crate) struct MetadataFingerprint {
     file_type: FileTypeFingerprint,
     length: u64,
     #[cfg(unix)]
@@ -46,6 +63,7 @@ pub(super) struct MetadataFingerprint {
     creation_time: u64,
     #[cfg(windows)]
     last_write_time: u64,
+    link_count: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -81,23 +99,50 @@ impl MetadataFingerprint {
             creation_time: std::os::windows::fs::MetadataExt::creation_time(&metadata),
             #[cfg(windows)]
             last_write_time: std::os::windows::fs::MetadataExt::last_write_time(&metadata),
+            #[cfg(unix)]
+            link_count: std::os::unix::fs::MetadataExt::nlink(&metadata),
+            #[cfg(windows)]
+            link_count: winx::winapi_util::file::information(file)?.number_of_links(),
         })
+    }
+
+    pub(crate) fn has_single_link(&self) -> bool {
+        self.link_count == 1
+    }
+
+    pub(crate) fn same_identity(&self, other: &Self) -> bool {
+        #[cfg(unix)]
+        {
+            self.device == other.device && self.inode == other.inode
+        }
+        #[cfg(windows)]
+        {
+            self.identity == other.identity
+        }
     }
 }
 
-pub(super) struct PinnedDirectory {
+pub(crate) struct PinnedDirectory {
     handle: File,
 }
 
 impl PinnedDirectory {
-    pub(super) fn open_existing(path: &Path) -> Result<Self, ArtifactInventoryError> {
+    pub(crate) fn open_existing(path: &Path) -> Result<Self, ArtifactInventoryError> {
         let absolute = std::path::absolute(path).map_err(ArtifactInventoryError::StorageIo)?;
         let directory = open_directory_path(&absolute).map_err(map_initial_error)?;
         validate_directory_handle(&directory, true)?;
         Ok(Self { handle: directory })
     }
 
-    pub(super) fn open_child_directory(
+    pub(crate) fn fingerprint_path(
+        path: &Path,
+    ) -> Result<MetadataFingerprint, ArtifactInventoryError> {
+        let directory = open_directory_path(path).map_err(map_active_error)?;
+        validate_directory_handle(&directory, false)?;
+        MetadataFingerprint::from_file(&directory).map_err(ArtifactInventoryError::StorageIo)
+    }
+
+    pub(crate) fn open_child_directory(
         &self,
         name: &OsStr,
     ) -> Result<Self, ArtifactInventoryError> {
@@ -106,7 +151,7 @@ impl PinnedDirectory {
         Ok(Self { handle: directory })
     }
 
-    pub(super) fn open_lock_file(
+    pub(crate) fn open_lock_file(
         &self,
         name: &OsStr,
     ) -> Result<(File, MetadataFingerprint), ArtifactInventoryError> {
@@ -185,12 +230,12 @@ impl PinnedDirectory {
         Ok(observed)
     }
 
-    pub(super) fn fingerprint(&self) -> Result<MetadataFingerprint, ArtifactInventoryError> {
+    pub(crate) fn fingerprint(&self) -> Result<MetadataFingerprint, ArtifactInventoryError> {
         validate_directory_handle(&self.handle, false)?;
         MetadataFingerprint::from_file(&self.handle).map_err(ArtifactInventoryError::StorageIo)
     }
 
-    pub(super) fn child_directory_fingerprint(
+    pub(crate) fn child_directory_fingerprint(
         &self,
         name: &OsStr,
     ) -> Result<MetadataFingerprint, ArtifactInventoryError> {
@@ -199,7 +244,7 @@ impl PinnedDirectory {
         MetadataFingerprint::from_file(&directory).map_err(ArtifactInventoryError::StorageIo)
     }
 
-    pub(super) fn child_file_fingerprint(
+    pub(crate) fn child_file_fingerprint(
         &self,
         name: &OsStr,
     ) -> Result<MetadataFingerprint, ArtifactInventoryError> {
@@ -211,7 +256,7 @@ impl PinnedDirectory {
     }
 
     #[cfg(unix)]
-    fn open_directory(&self, name: &OsStr) -> io::Result<File> {
+    pub(super) fn open_directory(&self, name: &OsStr) -> io::Result<File> {
         use rustix::fs::{Mode, OFlags};
 
         rustix::fs::openat(
@@ -225,18 +270,23 @@ impl PinnedDirectory {
     }
 
     #[cfg(windows)]
-    fn open_directory(&self, name: &OsStr) -> io::Result<File> {
+    pub(super) fn open_directory(&self, name: &OsStr) -> io::Result<File> {
         cap_primitives::fs::open_dir_nofollow(&self.handle, Path::new(name))
     }
 
     #[cfg(unix)]
-    fn open_file(&self, name: &OsStr, _share: FileShare) -> io::Result<File> {
+    pub(super) fn open_file(&self, name: &OsStr, share: FileShare) -> io::Result<File> {
         use rustix::fs::{Mode, OFlags};
 
+        let access = if matches!(share, FileShare::Sync) {
+            OFlags::RDWR
+        } else {
+            OFlags::RDONLY
+        };
         rustix::fs::openat(
             &self.handle,
             name,
-            OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            access | OFlags::NOFOLLOW | OFlags::CLOEXEC,
             Mode::empty(),
         )
         .map(File::from)
@@ -244,7 +294,7 @@ impl PinnedDirectory {
     }
 
     #[cfg(windows)]
-    fn open_file(&self, name: &OsStr, share: FileShare) -> io::Result<File> {
+    pub(super) fn open_file(&self, name: &OsStr, share: FileShare) -> io::Result<File> {
         use cap_fs_ext::OpenOptionsFollowExt as _;
         use cap_primitives::fs::{FollowSymlinks, OpenOptions, OpenOptionsExt as _};
 
@@ -252,18 +302,19 @@ impl PinnedDirectory {
         const FILE_SHARE_WRITE: u32 = 0x0000_0002;
         let share_mode = match share {
             FileShare::Lifecycle => FILE_SHARE_READ | FILE_SHARE_WRITE,
-            FileShare::Verification => FILE_SHARE_READ,
+            FileShare::Verification | FileShare::Sync => FILE_SHARE_READ,
         };
         let mut options = OpenOptions::new();
-        options
-            .read(true)
-            .share_mode(share_mode)
-            .follow(FollowSymlinks::No);
+        options.read(true).share_mode(share_mode);
+        if matches!(share, FileShare::Sync) {
+            options.write(true);
+        }
+        options.follow(FollowSymlinks::No);
         cap_primitives::fs::open(&self.handle, Path::new(name), &options)
     }
 
     #[cfg(unix)]
-    fn raw_entries(
+    pub(super) fn raw_entries(
         &self,
         maximum_entries: usize,
         cancellation: &CancellationToken,
@@ -303,7 +354,7 @@ impl PinnedDirectory {
     }
 
     #[cfg(windows)]
-    fn raw_entries(
+    pub(super) fn raw_entries(
         &self,
         maximum_entries: usize,
         cancellation: &CancellationToken,
@@ -339,20 +390,21 @@ fn windows_indirect(file_attributes: u32) -> bool {
     file_attributes & FILE_ATTRIBUTE_REPARSE_POINT != 0
 }
 
-struct RawDirectoryEntry {
-    name: OsString,
-    direct_regular_file: bool,
-    indirect: bool,
-    byte_size: u64,
+pub(super) struct RawDirectoryEntry {
+    pub(super) name: OsString,
+    pub(super) direct_regular_file: bool,
+    pub(super) indirect: bool,
+    pub(super) byte_size: u64,
 }
 
 #[derive(Clone, Copy)]
-enum FileShare {
+pub(super) enum FileShare {
     Lifecycle,
     Verification,
+    Sync,
 }
 
-pub(super) fn fingerprint_std_file(
+pub(crate) fn fingerprint_std_file(
     file: &File,
 ) -> Result<MetadataFingerprint, ArtifactInventoryError> {
     MetadataFingerprint::from_file(file).map_err(ArtifactInventoryError::StorageIo)
@@ -394,7 +446,10 @@ fn open_directory_path(path: &Path) -> io::Result<File> {
         .open(path)
 }
 
-fn validate_directory_handle(file: &File, opening: bool) -> Result<(), ArtifactInventoryError> {
+pub(super) fn validate_directory_handle(
+    file: &File,
+    opening: bool,
+) -> Result<(), ArtifactInventoryError> {
     let metadata = file.metadata().map_err(ArtifactInventoryError::StorageIo)?;
     if metadata.is_dir() && !is_indirect(&metadata) {
         Ok(())
@@ -405,7 +460,10 @@ fn validate_directory_handle(file: &File, opening: bool) -> Result<(), ArtifactI
     }
 }
 
-fn validate_regular_file(file: &File, opening: bool) -> Result<(), ArtifactInventoryError> {
+pub(super) fn validate_regular_file(
+    file: &File,
+    opening: bool,
+) -> Result<(), ArtifactInventoryError> {
     let metadata = file.metadata().map_err(ArtifactInventoryError::StorageIo)?;
     if metadata.is_file() && !is_indirect(&metadata) {
         Ok(())
@@ -459,67 +517,10 @@ fn file_type(metadata: &Metadata) -> FileTypeFingerprint {
     }
 }
 
-fn map_initial_error(error: io::Error) -> ArtifactInventoryError {
-    if error.kind() == io::ErrorKind::NotFound {
-        ArtifactInventoryError::StorageNotInitialized
-    } else if error.kind() == io::ErrorKind::NotADirectory || is_link_error(&error) {
-        ArtifactInventoryError::UnsafeStorageLayout
-    } else {
-        ArtifactInventoryError::StorageIo(error)
-    }
-}
-
-fn map_active_error(error: io::Error) -> ArtifactInventoryError {
-    if error.kind() == io::ErrorKind::NotFound
-        || error.kind() == io::ErrorKind::NotADirectory
-        || is_link_error(&error)
-        || is_sharing_violation(&error)
-    {
-        ArtifactInventoryError::ConcurrentModification
-    } else {
-        ArtifactInventoryError::StorageIo(error)
-    }
-}
-
-fn is_link_error(error: &io::Error) -> bool {
-    #[cfg(unix)]
-    {
-        error.raw_os_error() == Some(rustix::io::Errno::LOOP.raw_os_error())
-    }
-    #[cfg(windows)]
-    {
-        error.raw_os_error() == Some(4390)
-    }
-}
-
-fn is_sharing_violation(error: &io::Error) -> bool {
-    #[cfg(unix)]
-    {
-        let _ = error;
-        false
-    }
-    #[cfg(windows)]
-    {
-        error.raw_os_error() == Some(32)
-    }
-}
-
 fn ensure_not_cancelled(cancellation: &CancellationToken) -> Result<(), ArtifactInventoryError> {
     if cancellation.is_cancelled() {
         Err(ArtifactInventoryError::Cancelled)
     } else {
         Ok(())
-    }
-}
-
-#[cfg(all(test, windows))]
-mod tests {
-    use super::{FILE_ATTRIBUTE_REPARSE_POINT, windows_indirect};
-
-    #[test]
-    fn every_windows_reparse_attribute_is_indirect() {
-        assert!(windows_indirect(FILE_ATTRIBUTE_REPARSE_POINT));
-        assert!(windows_indirect(FILE_ATTRIBUTE_REPARSE_POINT | 0x20));
-        assert!(!windows_indirect(0x20));
     }
 }

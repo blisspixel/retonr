@@ -466,27 +466,42 @@ systems. That design must pass a dedicated cross-platform spike before its inter
 freezes.
 
 The application artifact service accepts an explicit manifest and one regular-file
-source for its first offline-import slice. It opens the source without following the
-final symlink or reparse entry and verifies exact size and SHA-256 through a
+source for its first offline-import slice. It pins the storage root, lifecycle lock,
+staging directory, and artifact directory before invoking caller progress. Managed
+child creation, open, inspection, and synchronization remain relative to those held
+boundaries on Unix. Windows child opens and metadata checks are handle-relative;
+hard-link commit and cleanup are path-backed within the pinned root and qualified on
+the continuous-integration NTFS configuration. The source is opened without
+following the final symlink or reparse entry and verified for exact size and SHA-256 through a
 fixed-size buffer under an explicit caller-owned byte ceiling. A new artifact is
-copied into application-owned staging, synchronized, and committed under a
-content-derived storage key without replacement. The containing directory is
+copied to a create-new staging file whose reserved name contains 128 random bits,
+synchronized, and committed under its content-derived storage key without replacing
+an existing entry. Managed artifact directory scans use a caller-owned entry ceiling
+and honor cancellation; staging recovery has a separate fixed ceiling and reserves
+capacity before creating an import file. The staging and artifact directories are
 synchronized before the manifest and installed state are registered in one database
-transaction. A repeated import hashes the source without a staging copy, reverifies
-the exact managed bytes, and idempotently checks state. Import never changes the
-source or activates the artifact. Typed progress contains only lifecycle stage and
-byte counts. Cancellation removes uncommitted staging; after file commit begins, the
-bounded file-and-state commit section runs to completion. Artifact-set manifests,
-folder import, runtime-native pulls, downloads, repair, and removal of managed bytes
-remain later lifecycle operations.
+transaction. A repeated import hashes the source without another staging copy and
+idempotently checks state.
+Staging and final canonical bytes must each have exactly one filesystem name before
+state registration, preventing an external hard-link alias from retaining mutation
+authority. Import never changes the source or activates the artifact. Typed progress
+contains only lifecycle stage and byte counts. After the last callback and
+cancellation check, the service silently reverifies the final canonical bytes and
+every held storage boundary before committing state. Successful return is
+completion. A state failure can retain a verified orphan, while an observed
+cancellation before final registration never creates durable state. Artifact-set
+manifests, folder import, runtime-native pulls, downloads, repair, and removal of
+managed bytes remain later operations.
 
-A separate read-only artifact inventory acquires the same lifecycle lock in shared
-mode and opens only existing storage. It loads manifests, optional installations,
-and active bindings in a bounded database snapshot, freezes exact raw directory
+A separate read-only artifact inventory uses the same pinned storage boundary,
+acquires the lifecycle lock in shared mode, and opens only existing storage. It
+loads manifests, optional installations, and active bindings in a bounded database
+snapshot, freezes exact raw directory
 entries, and verifies eligible direct files with bounded streaming SHA-256. It
 reports registered-file status, manifest-only state, independently verified orphan
 candidates, content-address conflicts, oversized files, and aggregate unexpected
-entry counts. Exact lowercase names, application-owned storage keys, no-follow
+entry counts. Externally hard-linked files are not accepted as registered or orphan
+bytes. Exact lowercase names, application-owned storage keys, no-follow
 opens, stable metadata checks, and a second directory snapshot prevent a report from
 silently accepting an observed replacement. The operation never creates, cleans,
 repairs, or deletes storage. An orphan report is point-in-time evidence only; a

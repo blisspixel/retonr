@@ -19,7 +19,7 @@ or stored-data contracts.
 | `rewrite-inference` | Backend-neutral bounded discovery and generation contracts, cancellation and deadlines, stable redacted errors, and deterministic fake |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
-| `rewrite-app` | Model-free candidate check, provisional grounded path, cancellable regular-file offline import, and read-only artifact reconciliation with shared locking, exact names, bounded hashing, stable metadata checks, deterministic classifications, and no storage mutation |
+| `rewrite-app` | Model-free candidate check, provisional grounded path, and pinned, source-preserving regular-file offline import; read-only artifact inventory adds shared locking, exact names, bounded hashing, stable metadata checks, deterministic classifications, and no inventory mutation |
 | `retonr` | Provisional `check` command with bounded file reads, JSON or text reports, protected terms, and optional fatal abstention |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
@@ -50,9 +50,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 175 Rust unit, integration, and process tests pass. One process helper is
+All 198 Rust unit, integration, and process tests pass. One process helper is
 intentionally ignored by the ordinary runner and exercised by its isolated parent
-test. Documentation tests also pass. The measured Rust line coverage is 91.34
+test. Documentation tests also pass. The measured Rust line coverage is 91.02
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -62,11 +62,11 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The latest exact-main remote evidence before this focused inventory branch is
-revision `e03c6cd5fc79b519a277923030a17b985e959dd6` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31671590402).
-Remote evidence for the inventory branch remains pending publication. The retained
-jobs cover Windows, macOS, and Linux Rust checks, repository policy, Markdown,
+The latest exact-main remote evidence before this focused import-hardening branch is
+revision `8f8a60ac61155897301157184a8e7bf371966f8a` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31677831097).
+Remote evidence for the import-hardening branch remains pending publication. The
+retained jobs cover Windows, macOS, and Linux Rust checks, repository policy, Markdown,
 coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
 concurrency, and the Ubuntu loopback-only network namespace.
 
@@ -85,10 +85,10 @@ uses its own clean runner database.
   implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
   implemented yet.
 - Only UTF-8 plain text up to 16 MiB is accepted.
-- Durable artifact lifecycle state, recovery, single-file offline import, and
-  read-only managed-byte inventory are implemented. Inventory verifies registered
-  files, reports manifest-only state, and identifies safe orphan candidates and
-  conflicts without mutation. Artifact-set and folder import, downloads,
+- Durable artifact lifecycle state, bounded staging recovery, pinned single-file
+  offline import, and read-only managed-byte inventory are implemented. Inventory
+  verifies registered files, reports manifest-only state, and identifies safe orphan
+  candidates and conflicts without mutation. Artifact-set and folder import, downloads,
   runtime-native pulls, orphan repair or reclamation, managed-byte removal, CLI
   commands, and exact real-artifact qualification are not implemented. Local
   application-owned filesystems are the qualified boundary; network filesystem
@@ -120,9 +120,11 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Complete the mutation side of the headless artifact lifecycle: exclusively
-   reverify and reconcile selected orphans, safely remove inactive managed bytes,
-   and expose import, inventory, and recovery through explicit model commands.
+1. Complete the mutation side of the headless artifact lifecycle on the shared
+   pinned storage boundary: exclusively reverify and reconcile selected orphans,
+   safely remove inactive managed bytes, and expose offline import, read-only
+   inventory, selected reconciliation, and inactive removal through explicit model
+   commands.
 2. Link redacted generation provenance into the durable rewrite transaction schema.
 3. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.

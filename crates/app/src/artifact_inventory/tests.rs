@@ -74,6 +74,7 @@ fn initialized() -> (TempDir, ArtifactStateStore) {
             &mut store,
             ArtifactImportLimits {
                 maximum_artifact_bytes: 4_096,
+                maximum_storage_entries: 32,
             },
         )
         .expect("initialize artifact storage");
@@ -112,6 +113,7 @@ fn import_bytes(
         store,
         ArtifactImportLimits {
             maximum_artifact_bytes: 4_096,
+            maximum_storage_entries: 32,
         },
     )
     .expect("open import service");
@@ -226,6 +228,36 @@ fn reports_registered_missing_size_digest_and_layout_conflicts() {
                 OrphanManifestAssociation::MatchingManifest(manifest) if manifest == &layout
             )
     }));
+}
+
+#[test]
+fn rejects_external_hard_link_aliases_for_registered_and_orphan_bytes() {
+    let (directory, mut store) = initialized();
+    let registered = manifest(b"registered-alias", "registered-alias");
+    register(&mut store, &registered);
+    write_artifact(&directory, &registered.artifact_digest, b"registered-alias");
+    fs::hard_link(
+        artifacts(&directory).join(registered.artifact_digest.as_str()),
+        directory.path().join("registered-external-alias"),
+    )
+    .expect("create registered external alias");
+
+    let orphan = manifest(b"orphan-alias", "orphan-alias");
+    write_artifact(&directory, &orphan.artifact_digest, b"orphan-alias");
+    fs::hard_link(
+        artifacts(&directory).join(orphan.artifact_digest.as_str()),
+        directory.path().join("orphan-external-alias"),
+    )
+    .expect("create orphan external alias");
+
+    let report = inventory(&directory, &store, limits()).expect("inventory aliased bytes");
+    assert_eq!(
+        status(&report, &registered.artifact_id),
+        &RegisteredArtifactBytes::AliasedEntry
+    );
+    assert!(report.verified_orphans.is_empty());
+    assert_eq!(report.unexpected_entries.aliased_files, 1);
+    assert_eq!(report.verified_bytes, 0);
 }
 
 fn status<'a>(
