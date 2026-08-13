@@ -60,9 +60,8 @@ proceeds in this exact order:
    transitions and the completed application-owned inventory DTO boundary. The
    application binds the lock capability to the exact pinned repository entry, and
    persistence records do not become a CLI or public inventory contract.
-4. Link redacted generation provenance into the durable rewrite transaction, add
-   typed claims and an independent evaluator, and complete the grounded validation
-   cascade.
+4. Retain the completed rewrite-record v2 generation-provenance boundary, add typed
+   claims and an independent evaluator, and complete the grounded validation cascade.
 5. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
    qualify one exact local runtime and artifact combination and retain complete
    cross-platform release evidence before adding profiles or another format.

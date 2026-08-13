@@ -11,7 +11,7 @@ or stored-data contracts.
 
 | Component | Current behavior |
 | --- | --- |
-| `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, and redacted record contracts |
+| `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, and rewrite-record v2 contracts with optional redacted generation provenance |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, semantic port, deterministic reason priority, lexicographic selection, and document-atomic abstention |
 | `rewrite-model` | Separate immutable artifact, qualification, invalidation, activation-decision, and active-binding contracts |
@@ -50,9 +50,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 286 Rust unit, integration, and process tests pass. Two process helpers are
+All 289 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.90
+Documentation tests also pass. The measured Rust line coverage is 90.98
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -62,14 +62,13 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The artifact lifecycle implementation through the opaque removal-lock capability
-passed at exact-main revision
-`42ac0e3f33a59fbc8ff355622cac851f063615f7` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31723790758).
-This evidence-only update changes no code. The retained jobs cover Windows, macOS,
-and Linux Rust checks, repository policy, Markdown, coverage, dependency and
-supply-chain policy, fuzz smoke, proxy isolation, concurrency, and the Ubuntu
-loopback-only network namespace.
+The implementation through application-owned artifact inventory DTOs passed at
+exact-main revision `c0592573f663f7b0e752c2b0dbc5c83e083d6700` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31737750254).
+The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
+Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
+concurrency, and the Ubuntu loopback-only network namespace. Remote evidence for
+the focused rewrite-record v2 branch is pending publication.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
@@ -144,7 +143,8 @@ is:
 1. Preserve the completed artifact lifecycle boundary, application-owned inventory
    DTOs, non-mutating pending-operation inspection, and process-level signal
    cancellation evidence as new consumers are added.
-2. Link redacted generation provenance into the durable rewrite transaction schema.
+2. Preserve the completed rewrite-record v2 generation-provenance boundary while
+   extending the transaction with typed claim and invariant evidence.
 3. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.
 4. Complete stdin, safe diff, dry-run, trace, terminal safety, and

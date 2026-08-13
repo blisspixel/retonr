@@ -158,6 +158,19 @@ digests, a staged manifest, collision rules, atomic file commits where supported
 and a complete report. An interrupted batch leaves sources intact and identifies
 which independent outputs, if any, were committed.
 
+### INV-E08: Generation provenance is redacted evidence, not authority
+
+When a generation call completes, its rewrite record identifies the strategy,
+runtime, exact artifact, prompt template, serialized backend input, output schema,
+candidate count, and bounded usage observations that were available. It never stores
+raw source, output, candidates, protected values, profile samples, prompts, or model
+reasoning by default.
+
+Provenance cannot accept a candidate, weaken a fidelity gate, establish authorship
+or ownership, prove semantic correctness, or create legal or policy authority.
+Unknown or absent provenance remains visible as missing evidence, not silently
+inferred state.
+
 ## Interface invariants
 
 ### INV-I01: The CLI is the reference product surface

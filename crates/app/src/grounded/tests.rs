@@ -111,7 +111,12 @@ fn accepts_only_after_grounded_candidate_passes_common_gates() {
         .expect("grounded rewrite");
     assert_eq!(result.record.status, RewriteStatus::Rewritten);
     assert_eq!(result.output, b"Version 2 works!");
-    assert!(result.trace.is_some());
+    let generation = result.record.generation.expect("generation provenance");
+    assert_eq!(generation.runtime.backend, "fake");
+    assert_eq!(generation.candidate_count, 1);
+    let encoded = serde_json::to_string(&generation).expect("generation serializes");
+    assert!(!encoded.contains("Version"));
+    assert!(!encoded.contains("PROTECTED"));
 }
 
 #[test]
@@ -123,7 +128,7 @@ fn rejects_lexical_change_and_returns_exact_original() {
     assert_eq!(result.record.status, RewriteStatus::Abstained);
     assert_eq!(result.record.reason, Some(ReasonCode::SemanticUncertain));
     assert_eq!(result.output, b"Version 2 works.");
-    assert!(result.trace.is_some());
+    assert!(result.record.generation.is_some());
 }
 
 #[test]
@@ -139,7 +144,7 @@ fn backend_cancellation_becomes_safe_cancelled_abstention() {
     assert_eq!(result.record.status, RewriteStatus::Abstained);
     assert_eq!(result.record.reason, Some(ReasonCode::Cancelled));
     assert_eq!(result.output, b"Version 2 works.");
-    assert!(result.trace.is_none());
+    assert!(result.record.generation.is_none());
 }
 
 #[test]
@@ -157,6 +162,6 @@ fn ambiguous_source_mapping_abstains_without_backend_work() {
     assert_eq!(result.record.status, RewriteStatus::Abstained);
     assert_eq!(result.record.reason, Some(ReasonCode::SentinelIntegrity));
     assert_eq!(result.output, b"ada@example.com $12.ada@example.com $150");
-    assert!(result.trace.is_none());
+    assert!(result.record.generation.is_none());
     assert!(fake.requests().expect("request log").is_empty());
 }

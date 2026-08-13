@@ -74,7 +74,8 @@ Retonr is an early implementation, not a finished writing application. The curre
 slice includes versioned Rust contracts, plain-text parsing and
 reassembly, protected values, deterministic candidate gates, semantic assessment,
 lexicographic selection, document-atomic abstention, redacted records, a
-candidate-check CLI, durable artifact-state transactions, non-destructive offline
+candidate-check CLI, rewrite-record v2 generation provenance, durable artifact-state
+transactions, non-destructive offline
 artifact-file import, read-only managed-artifact inventory, and positive and
 hard-negative evaluation fixtures. Selected orphan reconciliation independently
 reverifies exactly one canonical managed file, then atomically inserts any missing
