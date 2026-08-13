@@ -62,12 +62,14 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The inactive managed-artifact removal implementation is retained at exact-main
-revision `f7246891f9caa66252ee5e9ff3233d4d8fa5e8b1` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31696247023).
-The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
-Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
-concurrency, and the Ubuntu loopback-only network namespace.
+The artifact lifecycle implementation through the opaque removal-lock capability
+passed at exact-main revision
+`42ac0e3f33a59fbc8ff355622cac851f063615f7` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31723790758).
+This evidence-only update changes no code. The retained jobs cover Windows, macOS,
+and Linux Rust checks, repository policy, Markdown, coverage, dependency and
+supply-chain policy, fuzz smoke, proxy isolation, concurrency, and the Ubuntu
+loopback-only network namespace.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
