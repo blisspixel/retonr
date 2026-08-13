@@ -1,6 +1,8 @@
 use rusqlite::{Connection, OptionalExtension as _, Transaction, params};
 use serde::{Serialize, de::DeserializeOwned};
 
+use rewrite_model::{ArtifactManifest, InstalledArtifact};
+
 use crate::{StoreError, StoreResult, store::WriteDisposition};
 
 const MAX_RECORD_BYTES: usize = 1_048_576;
@@ -75,4 +77,36 @@ pub(super) fn load_required<T: DeserializeOwned>(
     key: &str,
 ) -> StoreResult<T> {
     load_record(transaction, table, key_column, key)?.ok_or(StoreError::MissingRecord)
+}
+
+pub(super) fn validate_existing_installation(
+    indexed_id: &str,
+    manifest: Option<&ArtifactManifest>,
+    installed: Option<&InstalledArtifact>,
+) -> StoreResult<()> {
+    if installed.is_some() && manifest.is_none() {
+        return Err(StoreError::CorruptRecord);
+    }
+    if let Some(manifest) = manifest {
+        manifest.validate().map_err(|_| StoreError::CorruptRecord)?;
+        if manifest.artifact_id.digest().as_str() != indexed_id {
+            return Err(StoreError::CorruptRecord);
+        }
+    }
+    if let Some(installed) = installed {
+        installed
+            .validate()
+            .map_err(|_| StoreError::CorruptRecord)?;
+        if installed.artifact_id.digest().as_str() != indexed_id {
+            return Err(StoreError::CorruptRecord);
+        }
+        let manifest = manifest.ok_or(StoreError::CorruptRecord)?;
+        if installed.artifact_id != manifest.artifact_id
+            || installed.artifact_digest != manifest.artifact_digest
+            || installed.byte_size != manifest.byte_size
+        {
+            return Err(StoreError::CorruptRecord);
+        }
+    }
+    Ok(())
 }

@@ -518,6 +518,22 @@ NTFS configuration; other Windows filesystem drivers are not yet qualified. The
 dependency cost is accepted for the managed-storage trust boundary and remains
 subject to source, duplicate-version, and supply-chain review.
 
+Selected orphan reconciliation is a separate existing-only mutation. It accepts one
+complete manifest, derives only its canonical content-addressed name, and reacquires
+the lifecycle lock exclusively. It ignores prior inventory evidence as authority,
+requires exact lowercase direct regular bytes with one filesystem name, and applies
+caller-owned entry and byte ceilings. After its final byte-progress callback, it
+silently checks the hashed file's stable identity and single-name status,
+synchronizes the file, reopens and rechecks the exact entry, synchronizes the
+artifact directory, and revalidates the held storage layout. It then atomically inserts
+any missing exact manifest and installation records or confirms that both existing
+records match while retaining the verified file handle. It never copies, replaces,
+deletes, qualifies, activates, or accesses the network. A state failure leaves the
+same orphan bytes, and successful
+return is the completion signal. This establishes only that one canonical file
+matched one manifest during the exclusive operation; it does not establish model
+safety, licensing approval, runtime qualification, or future byte integrity.
+
 Small personal corpora use filtered brute-force vector scoring in Rust with vectors
 stored as versioned blobs. SQLite FTS5 supports lexical retrieval. A vector extension
 is not a required dependency until scale benchmarks justify it.

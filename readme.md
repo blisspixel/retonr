@@ -65,8 +65,10 @@ reassembly, protected values, deterministic candidate gates, semantic assessment
 lexicographic selection, document-atomic abstention, redacted records, a
 candidate-check CLI, durable artifact-state transactions, non-destructive offline
 artifact-file import, read-only managed-artifact inventory, and positive and
-hard-negative evaluation fixtures. The artifact services are not exposed through
-the CLI yet.
+hard-negative evaluation fixtures. Selected orphan reconciliation independently
+reverifies exactly one canonical managed file, then atomically inserts any missing
+exact manifest and installation records or confirms that both existing records
+match. The artifact services are not exposed through the CLI yet.
 
 The evaluation tool also validates two synthetic editorial-quality groups with named
 findings and clean controls, including a balanced 24-case current-slop group. No

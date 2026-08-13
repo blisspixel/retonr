@@ -1,7 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     ffi::OsStr,
-    fs::File,
     path::Path,
 };
 
@@ -12,7 +11,7 @@ use rewrite_types::{CancellationToken, Digest};
 mod contract;
 
 use crate::artifact_storage::{
-    DirectoryEntrySnapshot, MetadataFingerprint, PinnedDirectory, fingerprint_std_file, lock_shared,
+    DirectoryEntrySnapshot, ExistingArtifactStorage, LifecycleLockMode, PinnedDirectory,
 };
 pub use contract::{
     ArtifactInventoryError, ArtifactInventoryLimits, ArtifactInventoryProgress,
@@ -21,23 +20,11 @@ pub use contract::{
     RegisteredArtifactInspection, UnexpectedArtifactEntryCounts, VerifiedArtifactOrphan,
 };
 
-const LOCK_FILE: &str = ".artifact-import.lock";
-
-#[derive(Debug, Eq, PartialEq)]
-struct StorageLayoutFingerprint {
-    root: MetadataFingerprint,
-    lock_path: MetadataFingerprint,
-    artifacts: MetadataFingerprint,
-}
-
 /// Read-only, point-in-time inspection of application-owned artifact storage.
 pub struct ArtifactInventoryService<'a> {
-    root_path: std::path::PathBuf,
-    root: PinnedDirectory,
-    artifacts: PinnedDirectory,
+    storage: ExistingArtifactStorage,
     limits: ArtifactInventoryLimits,
     store: &'a ArtifactStateStore,
-    lock: File,
 }
 
 impl<'a> ArtifactInventoryService<'a> {
@@ -57,21 +44,12 @@ impl<'a> ArtifactInventoryService<'a> {
         limits: ArtifactInventoryLimits,
     ) -> Result<Self, ArtifactInventoryError> {
         validate_limits(limits)?;
-        let root_path =
-            std::path::absolute(root.as_ref()).map_err(ArtifactInventoryError::StorageIo)?;
-        let root = PinnedDirectory::open_existing(&root_path)?;
-        let (lock, _) = root.open_lock_file(OsStr::new(LOCK_FILE))?;
-        lock_shared(&lock)?;
-        let artifacts = root.open_child_directory(OsStr::new("artifacts"))?;
+        let storage = ExistingArtifactStorage::open(root, LifecycleLockMode::Shared)?;
         let service = Self {
-            root_path,
-            root,
-            artifacts,
+            storage,
             limits,
             store,
-            lock,
         };
-        service.validate_storage_layout()?;
         Ok(service)
     }
 
@@ -95,7 +73,7 @@ impl<'a> ArtifactInventoryService<'a> {
     {
         ensure_not_cancelled(cancellation)?;
         report_progress(&mut progress, ArtifactInventoryStage::OpeningStorage, 0, 0);
-        let initial_layout = self.validate_storage_layout()?;
+        let initial_layout = self.storage.validate_layout()?;
         ensure_not_cancelled(cancellation)?;
 
         report_progress(&mut progress, ArtifactInventoryStage::LoadingState, 0, 0);
@@ -108,11 +86,12 @@ impl<'a> ArtifactInventoryService<'a> {
         report_progress(&mut progress, ArtifactInventoryStage::FreezingStorage, 0, 0);
         ensure_not_cancelled(cancellation)?;
         let initial_entries = self
-            .artifacts
+            .storage
+            .artifacts()
             .snapshot(self.limits.maximum_storage_entries, cancellation)?;
         let mut builder = InventoryBuilder::new(&states, &initial_entries, self.limits);
-        builder.inspect_registered(&self.artifacts, cancellation, &mut progress)?;
-        builder.inspect_uninstalled(&self.artifacts, cancellation, &mut progress)?;
+        builder.inspect_registered(self.storage.artifacts(), cancellation, &mut progress)?;
+        builder.inspect_uninstalled(self.storage.artifacts(), cancellation, &mut progress)?;
         ensure_not_cancelled(cancellation)?;
 
         report_progress(
@@ -123,9 +102,10 @@ impl<'a> ArtifactInventoryService<'a> {
         );
         ensure_not_cancelled(cancellation)?;
         let final_entries = self
-            .artifacts
+            .storage
+            .artifacts()
             .snapshot(self.limits.maximum_storage_entries, cancellation)?;
-        if initial_entries != final_entries || initial_layout != self.validate_storage_layout()? {
+        if initial_entries != final_entries || initial_layout != self.storage.validate_layout()? {
             return Err(ArtifactInventoryError::ConcurrentModification);
         }
         let final_states = self
@@ -140,30 +120,6 @@ impl<'a> ArtifactInventoryService<'a> {
             u64::try_from(initial_entries.len())
                 .map_err(|_| ArtifactInventoryError::StorageEntryLimitExceeded)?,
         ))
-    }
-
-    fn validate_storage_layout(&self) -> Result<StorageLayoutFingerprint, ArtifactInventoryError> {
-        if self.root.fingerprint()? != PinnedDirectory::fingerprint_path(&self.root_path)? {
-            return Err(ArtifactInventoryError::ConcurrentModification);
-        }
-        let lock_path = self.root.child_file_fingerprint(OsStr::new(LOCK_FILE))?;
-        let lock_handle = fingerprint_std_file(&self.lock)?;
-        if lock_handle != lock_path {
-            return Err(ArtifactInventoryError::ConcurrentModification);
-        }
-        let artifacts = self.artifacts.fingerprint()?;
-        if self
-            .root
-            .child_directory_fingerprint(OsStr::new("artifacts"))?
-            != artifacts
-        {
-            return Err(ArtifactInventoryError::ConcurrentModification);
-        }
-        Ok(StorageLayoutFingerprint {
-            root: self.root.fingerprint()?,
-            lock_path,
-            artifacts,
-        })
     }
 }
 

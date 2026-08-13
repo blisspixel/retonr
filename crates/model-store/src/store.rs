@@ -13,7 +13,7 @@ use crate::{
     binding::{load_active_binding, load_active_bindings, role_key},
     record::{
         decode_record, encode_record, immutable_disposition, insert_immutable, load_record,
-        load_required,
+        load_required, validate_existing_installation,
     },
     schema,
 };
@@ -159,20 +159,59 @@ impl ArtifactStateStore {
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let manifest_disposition = insert_immutable(
+        let existing_manifest = load_record::<ArtifactManifest>(
             &transaction,
             "artifact_manifests",
             "artifact_id",
             manifest_key,
-            &manifest_record,
         )?;
-        let installed_disposition = insert_immutable(
+        let existing_installed = load_record::<InstalledArtifact>(
             &transaction,
             "installed_artifacts",
             "artifact_id",
             manifest_key,
-            &installed_record,
         )?;
+        validate_existing_installation(
+            manifest_key,
+            existing_manifest.as_ref(),
+            existing_installed.as_ref(),
+        )?;
+        if existing_installed.is_none()
+            && load_active_bindings(&transaction)?
+                .iter()
+                .any(|binding| binding.artifact_id == manifest.artifact_id)
+        {
+            return Err(StoreError::CorruptRecord);
+        }
+        if existing_manifest
+            .as_ref()
+            .is_some_and(|existing| existing != manifest)
+            || existing_installed
+                .as_ref()
+                .is_some_and(|existing| existing != installed)
+        {
+            return Err(StoreError::ImmutableConflict);
+        }
+        let manifest_disposition = match existing_manifest {
+            Some(_) => WriteDisposition::AlreadyPresent,
+            None => insert_immutable(
+                &transaction,
+                "artifact_manifests",
+                "artifact_id",
+                manifest_key,
+                &manifest_record,
+            )?,
+        };
+        let installed_disposition = match existing_installed {
+            Some(_) => WriteDisposition::AlreadyPresent,
+            None => insert_immutable(
+                &transaction,
+                "installed_artifacts",
+                "artifact_id",
+                manifest_key,
+                &installed_record,
+            )?,
+        };
         transaction.commit()?;
         Ok(InstallationWriteDisposition {
             manifest: manifest_disposition,
