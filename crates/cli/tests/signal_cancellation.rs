@@ -161,8 +161,8 @@ fn configure_interruptible_child(command: &mut Command) {
 #[cfg(windows)]
 fn send_interrupt(child: &Child) {
     let script = format!(
-        "Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public static class RetonrSignal {{ [DllImport(\"kernel32.dll\")] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g); }}'; if (-not [RetonrSignal]::GenerateConsoleCtrlEvent(1, {})) {{ exit 1 }}",
-        child.id()
+        "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class RetonrSignal {{ [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool FreeConsole(); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool AttachConsole(uint p); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool SetConsoleCtrlHandler(IntPtr h, bool a); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g); }}'; [RetonrSignal]::FreeConsole() | Out-Null; if (-not [RetonrSignal]::AttachConsole({0})) {{ exit 1 }}; if (-not [RetonrSignal]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)) {{ exit 1 }}; if (-not [RetonrSignal]::GenerateConsoleCtrlEvent(1, {0})) {{ exit 1 }}; Start-Sleep -Milliseconds 100",
+        child.id(),
     );
     let status = Command::new("powershell.exe")
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
