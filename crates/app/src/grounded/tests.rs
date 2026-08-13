@@ -63,7 +63,7 @@ fn fixtures(candidate: &str) -> (GroundedStrategy, FakeInferenceBackend) {
         runtime: runtime.clone(),
         capabilities: InferenceCapabilities {
             roles: vec![ArtifactRole::Generation],
-            structured_output: true,
+            admitted_output_contract_digests: vec![strategy.policy().output.schema_digest.clone()],
             seed: true,
             disable_reasoning: true,
         },

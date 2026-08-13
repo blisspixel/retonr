@@ -153,6 +153,21 @@ accepted edit. The application maps completed generation provenance into the
 versioned rewrite record before returning the transaction. Production grounded
 requests do not expose protected raw surfaces to the backend.
 
+Discovery lists sorted, unique digests for the exact structured-output contracts
+an adapter currently admits at its transport boundary. This is not model
+qualification. Consumers require a digest match before inference; generic JSON mode
+is not capability evidence. The provider-neutral structured completion operation
+returns one byte-bounded, syntactically complete JSON value with transport-derived
+terminal status, observed runtime identity, rechecked artifact identity, and a digest
+binding the complete request. Adapters and orchestrators compare the observed runtime
+with discovery. Its debug representation retains only identities, limits, usage, and
+byte counts. It does not parse a domain envelope or grant semantic authority.
+
+The Ollama adapter currently admits only the candidate-output contract. A future
+claim extractor receives its own schema, role, effective manifest, application
+orchestrator, and qualification. It will not be hidden behind the synchronous semantic
+port or silently reuse a generation binding.
+
 ## Document representation
 
 The semantic document and adapter reconstruction state are separate. Core code can

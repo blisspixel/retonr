@@ -103,6 +103,13 @@ No adapter receives exclusive product authority. No runtime may silently switch
 provider, artifact, quantization, context, prompt template, execution backend,
 language policy, privacy mode, or validation threshold.
 
+Structured-output admission is an exact schema-digest capability, not a Boolean or a
+transport-shape inference. Adapter-wide role and schema admission never establishes
+that every inventoried artifact is qualified for their cross-product. The application
+must join the exact artifact, role, runtime, qualification, and active binding before
+use. A raw structured completion is untrusted input to a domain strategy and has no
+semantic or rewrite authority by itself.
+
 ### INV-E03: Support binds to exact identity and evidence
 
 A support claim identifies the model or embedding artifact, runtime build,

@@ -8,7 +8,7 @@ use std::{
 
 use rewrite_inference::{
     GENERATION_REQUEST_SCHEMA_VERSION, GenerationRequest, InferenceBackend, InferenceErrorKind,
-    OperationContext, ReasoningPolicy, SamplingParameters,
+    OperationContext, ReasoningPolicy, SamplingParameters, candidate_output_contract,
 };
 use rewrite_model::ArtifactId;
 use rewrite_types::{CancellationToken, Digest};
@@ -19,9 +19,7 @@ use wiremock::{
     matchers::{body_json, body_partial_json, method, path},
 };
 
-use crate::{
-    OllamaBackend, OllamaEndpoint, OllamaLimits, OllamaModelBinding, candidate_output_contract,
-};
+use crate::{OllamaBackend, OllamaEndpoint, OllamaLimits, OllamaModelBinding};
 
 const MODEL: &str = "fixture:latest";
 const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -132,6 +130,10 @@ async fn discovers_only_exact_bound_generation_models() {
     assert_eq!(discovery.runtime.version, "0.13.0");
     assert_eq!(discovery.inventory.len(), 1);
     assert_eq!(discovery.inventory[0].artifact_digest.as_str(), DIGEST);
+    assert_eq!(
+        discovery.capabilities.admitted_output_contract_digests,
+        vec![candidate_output_contract().schema_digest]
+    );
 }
 
 #[tokio::test]
@@ -165,6 +167,7 @@ async fn generates_bounded_candidates_and_rechecks_identity() {
             "response": "{\"candidates\":[{\"text\":\"Clear replacement.\"}]}",
             "thinking": "",
             "done": true,
+            "done_reason": "stop",
             "prompt_eval_count": 9,
             "eval_count": 3,
             "eval_duration": 12000,
@@ -374,7 +377,8 @@ async fn discards_generation_when_digest_changes_after_response() {
             "model": MODEL,
             "response": "{\"candidates\":[{\"text\":\"discard me\"}]}",
             "thinking": "",
-            "done": true
+            "done": true,
+            "done_reason": "stop"
         })))
         .expect(1)
         .mount(&server)

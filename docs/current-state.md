@@ -16,9 +16,9 @@ or stored-data contracts.
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
 | `rewrite-model` | Separate immutable artifact, qualification, invalidation, activation-decision, and active-binding contracts |
 | `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, opaque exclusive-lock capability requirements for removal transitions, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
-| `rewrite-inference` | Backend-neutral bounded discovery and generation contracts, cancellation and deadlines, stable redacted errors, and deterministic fake |
+| `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
-| `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
+| `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
 | `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory with application-owned result DTOs, pending-operation inspection, selected orphan reconciliation, crash-recoverable inactive removal with exact pinned-lock capability binding, and verified runtime artifact lease groundwork |
 | `retonr` | Provisional `check` command plus an explicit-root offline model-artifact CLI for import, inventory, pending-operation inspection, selected reconciliation, inactive removal, and exact removal recovery |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
@@ -34,6 +34,14 @@ digest. The deterministic comparator accepts only complete compatible sets, reje
 empty nontrivial source extraction, retains unknown and below-threshold counts, and
 binds the aggregate to both exact evidence sets. Extraction is not implemented and
 remains probabilistic when added; comparison evidence is not semantic proof.
+
+Inference capability discovery now lists sorted, unique schema digests instead of a
+generic structured-output Boolean. Grounded generation and evaluation require an
+exact digest match before backend work. The structured-completion port returns only
+one bounded complete JSON value after exact artifact checks; its request and response
+debug views omit prompt and generated content. The current Ollama implementation
+admits only the existing candidate schema. No claim-extraction schema, strategy,
+role, qualification, or application evidence join is implemented.
 
 ## Verified locally
 
@@ -57,9 +65,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 307 Rust unit, integration, and process tests pass. Two process helpers are
+All 323 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.83
+Documentation tests also pass. The measured Rust line coverage is 90.92
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -70,8 +78,8 @@ installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
 The typed-evidence and local-model planning slice passed at exact-main revision
-`9ebd536f31c8bd33a08beaf4cc3f4ca68a99157e` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31751454252).
+`7efafa6fbf7f3f014fcaacb0f1fca4c121e7185b` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31751867164).
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
@@ -125,7 +133,10 @@ uses its own clean runner database.
   under the current evaluator. Open-domain paraphrases and broader modes abstain.
 - The typed claim contract and deterministic comparator are implemented, but no
   learned extractor or runtime-backed semantic evaluator is connected. The current
-  synchronous semantic port is not the future runtime extraction boundary.
+  synchronous semantic port is not the future runtime extraction boundary. The raw
+  structured-completion port has no semantic authority. The Ollama adapter admits
+  only the exact candidate contract currently advertised by discovery. This
+  backend-wide admission does not qualify every inventoried artifact for that role.
 - UTF-16, Markdown, DOCX, profiles, persistence, document briefs, file and folder
   transactions, API, MCP, Agent Skills, Agent Plugins, and native desktop are not
   implemented yet.
@@ -154,8 +165,10 @@ is:
    cancellation evidence as new consumers are added.
 2. Preserve the completed rewrite-record v2, typed invariant summaries, typed claim
    evidence, and deterministic comparison boundary.
-3. Add an application-level cancellable extraction operation with explicit errors and
-   exact effective identity, then calibrate it independently from generators.
+3. Add the distinct claim-extraction role, exact extractor manifest, strict ephemeral
+   wire contract, and application-level cancellable pair operation. Join evidence to
+   a two-phase engine path only after fake-backend conformance passes, then calibrate
+   it independently from generators in shadow mode.
 4. Add the local evaluation plan, run the currently installed 26B and 27B packages,
    and add the previously observed 8B package only after revalidation or separately
    approved acquisition. Start only after product-path evidence joins are complete.

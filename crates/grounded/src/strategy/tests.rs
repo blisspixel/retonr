@@ -81,7 +81,7 @@ fn fixtures() -> (
         runtime: runtime.clone(),
         capabilities: InferenceCapabilities {
             roles: vec![ArtifactRole::Generation],
-            structured_output: true,
+            admitted_output_contract_digests: vec![policy.output.schema_digest.clone()],
             seed: true,
             disable_reasoning: true,
         },
@@ -143,6 +143,20 @@ fn rejects_missing_exact_artifact_without_generation() {
     let error =
         block_ready(strategy.generate(&request, &fake, OperationContext::new(&token, None)))
             .expect_err("missing artifact is rejected");
+    assert_eq!(error, GroundedError::Unavailable);
+    assert!(fake.requests().expect("request observations").is_empty());
+}
+
+#[test]
+fn rejects_unqualified_output_contract_without_generation() {
+    let (policy, request, mut discovery, response) = fixtures();
+    discovery.capabilities.admitted_output_contract_digests = vec![Digest::sha256(b"other-schema")];
+    let strategy = GroundedStrategy::new(policy).expect("strategy policy");
+    let fake = FakeInferenceBackend::new(discovery, [FakeGenerationStep::Response(response)]);
+    let token = CancellationToken::new();
+    let error =
+        block_ready(strategy.generate(&request, &fake, OperationContext::new(&token, None)))
+            .expect_err("unqualified output contract is rejected");
     assert_eq!(error, GroundedError::Unavailable);
     assert!(fake.requests().expect("request observations").is_empty());
 }

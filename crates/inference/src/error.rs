@@ -3,6 +3,9 @@ use thiserror::Error;
 /// Versioned request-contract validation failure.
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum ContractError {
+    /// Discovery capabilities are duplicated, unordered, or unbounded.
+    #[error("inference capabilities are invalid")]
+    InvalidCapabilities,
     /// Request schema version is unsupported.
     #[error("unsupported generation request schema")]
     UnsupportedSchema,
@@ -21,6 +24,9 @@ pub enum ContractError {
     /// Structured-output schema is empty, oversized, or has a mismatched digest.
     #[error("generation output contract is invalid")]
     InvalidOutputContract,
+    /// Structured response identity, size, or JSON framing is invalid.
+    #[error("structured completion response is invalid")]
+    InvalidStructuredResponse,
 }
 
 /// Stable inference failure category used for retry and abstention policy.

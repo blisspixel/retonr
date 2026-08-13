@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rewrite_inference::{InferenceError, OutputContract};
+use rewrite_inference::InferenceError;
 use rewrite_model::ArtifactId;
 use rewrite_types::Digest;
 
@@ -10,7 +10,6 @@ pub(crate) const BACKEND_ID: &str = "ollama_native";
 pub(crate) const MAX_REFERENCE_BYTES: usize = 256;
 pub(crate) const MAX_VERSION_BYTES: usize = 128;
 pub(crate) const MAX_METADATA_BYTES: usize = 256;
-const CANDIDATE_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["candidates"],"properties":{"candidates":{"type":"array","minItems":1,"maxItems":16,"items":{"type":"object","additionalProperties":false,"required":["text"],"properties":{"text":{"type":"string"}}}}}}"#;
 
 /// Resource and timeout limits applied to every Ollama request.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -126,13 +125,4 @@ pub struct OllamaModelDetails {
     pub template_digest: Digest,
     /// Digest of canonical detailed model metadata.
     pub metadata_digest: Digest,
-}
-
-/// Returns the exact structured-output contract supported by this adapter.
-#[must_use]
-pub fn candidate_output_contract() -> OutputContract {
-    OutputContract {
-        schema_digest: Digest::sha256(CANDIDATE_SCHEMA.as_bytes()),
-        schema_json: CANDIDATE_SCHEMA.to_owned(),
-    }
 }

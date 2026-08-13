@@ -44,6 +44,8 @@ fn validate_tag<'a>(
     if !valid_text(&model.name, MAX_REFERENCE_BYTES)
         || !valid_text(&model.model, MAX_REFERENCE_BYTES)
         || model.size == 0
+        || !model.remote_model.is_empty()
+        || !model.remote_host.is_empty()
         || !references.insert(model.name.as_str())
     {
         return Err(malformed_error("invalid_inventory_entry"));
@@ -71,7 +73,13 @@ pub(crate) fn validate_generate_response(
     response: &GenerateResponse,
     binding: &OllamaModelBinding,
 ) -> Result<(), InferenceError> {
-    if response.model != binding.reference || !response.done || !response.thinking.is_empty() {
+    if response.model != binding.reference
+        || !response.remote_model.is_empty()
+        || !response.remote_host.is_empty()
+        || !response.done
+        || response.done_reason != "stop"
+        || !response.thinking.is_empty()
+    {
         return Err(malformed_error("invalid_generation_response"));
     }
     Ok(())
