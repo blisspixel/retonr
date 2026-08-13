@@ -62,12 +62,11 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The latest exact-main remote evidence before this focused import-hardening branch is
-revision `8f8a60ac61155897301157184a8e7bf371966f8a` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31677831097).
-Remote evidence for the import-hardening branch remains pending publication. The
-retained jobs cover Windows, macOS, and Linux Rust checks, repository policy, Markdown,
-coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
+The latest exact-main implementation evidence before this evidence-only update is
+revision `c862ae6f1a9e8198afbdf2f859ab0a049a7e1b0e` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31684427742).
+The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
+Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
 concurrency, and the Ubuntu loopback-only network namespace.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
