@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="860" viewBox="0 0 1440 860" role="img" aria-labelledby="title description">
+  <title id="title">Retonr candidate-check CLI on Linux</title>
+  <desc id="description">Bash output showing Retonr help followed by a successful plain-text candidate check.</desc>
+  <rect width="1440" height="860" fill="#070b14"/>
+  <rect x="36" y="28" width="1368" height="804" rx="16" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+  <rect x="36" y="28" width="1368" height="56" rx="16" fill="#161b22"/>
+  <rect x="36" y="68" width="1368" height="16" fill="#161b22"/>
+  <text x="68" y="63" fill="#8b949e" font-family="JetBrains Mono, Cascadia Mono, Consolas, monospace" font-size="18">Terminal</text>
+  <text x="1372" y="63" fill="#8b949e" font-family="JetBrains Mono, Cascadia Mono, Consolas, monospace" font-size="18" text-anchor="end">retonr 0.1.0 | linux x86_64</text>
+  <g font-family="JetBrains Mono, Cascadia Mono, Consolas, monospace" font-size="18" fill="#e6edf3">
+    <text x="68" y="124" fill="#7ee787">user@localhost:~/retonr$ retonr --help</text>
+    <text x="68" y="162">Command-line interface for local fidelity-gated draft re-expression</text>
+    <text x="68" y="208" fill="#79c0ff">Usage: retonr &lt;COMMAND&gt;</text>
+    <text x="68" y="254" fill="#79c0ff">Commands:</text>
+    <text x="88" y="286"><tspan fill="#d2a8ff">check</tspan><tspan>  Validate a supplied plain-text candidate without using a model</tspan></text>
+    <text x="88" y="318"><tspan fill="#d2a8ff">help</tspan><tspan>   Print this message or the help of the given subcommand(s)</tspan></text>
+    <text x="68" y="364" fill="#79c0ff">Options:</text>
+    <text x="88" y="396">-h, --help     Print help</text>
+    <text x="88" y="428">-V, --version  Print version</text>
+    <text x="68" y="482" fill="#7ee787">user@localhost:~/retonr$ retonr check fixtures/cli/source.txt \</text>
+    <text x="88" y="514" fill="#7ee787">fixtures/cli/candidate.txt --format text</text>
+    <text x="68" y="560"><tspan fill="#8b949e">status: </tspan><tspan fill="#7ee787">rewritten</tspan></text>
+    <text x="68" y="592"><tspan fill="#8b949e">source_digest: </tspan><tspan>1894a19c85ba153acbf743ac4e43fc004c891604b26f8c69e1e83ea2afc7c48f</tspan></text>
+    <text x="68" y="624"><tspan fill="#8b949e">output_digest: </tspan><tspan>d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5</tspan></text>
+    <text x="68" y="656"><tspan fill="#8b949e">candidates: </tspan><tspan>1</tspan></text>
+    <text x="68" y="688"><tspan fill="#8b949e">eligible_candidates: </tspan><tspan>1</tspan></text>
+    <text x="68" y="746" fill="#8b949e">Current implemented slice: deterministic candidate validation without a model</text>
+    <text x="68" y="786" fill="#8b949e">Fixture: fixtures/cli/source.txt + fixtures/cli/candidate.txt</text>
+  </g>
+</svg>

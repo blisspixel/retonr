@@ -86,6 +86,13 @@ boundaries. Their presence in discovery does not imply qualification. The exact
 matrix and primary-source analysis are recorded in
 [Provider-neutral, user-controlled model runtimes](research/2026-08-12-provider-neutral-runtimes.md).
 
+This is a rolling major-runtime ladder, not a closed vendor list. A new local runtime
+enters as catalogued, receives a runtime-specific identity and acquisition driver,
+and runs the shared conformance and qualification suites. It can become qualified
+without changing engine logic. Popularity or OpenAI-compatible transport alone does
+not waive exact artifact identity, effective-setting, offline, output-policy,
+cancellation, and drift evidence.
+
 Use `open source` only when the applicable license supports that description. Use
 `open weight` for weights with source-available or field-of-use-restricted terms.
 Runtime, model, tokenizer, conversion tool, accelerator, and redistribution licenses

@@ -1,13 +1,16 @@
 # Language and format preservation
 
-## Two independent support claims
+## Three independent support claims
 
-Retonr separates language support from document-format support:
+Retonr separates language, document-format, and transport support:
 
 - Language support means a qualified model and validation policy can process the
   declared language, locale, mode, and content class at the published risk bound.
 - Format support means an adapter can identify eligible text, apply accepted edits,
   and verify the advertised structure and unchanged regions.
+- Transport support means an interface can ingest bounded content, establish a
+  complete rewrite boundary, apply backpressure and cancellation, and return only
+  validated output without changing the format claim.
 
 A language can be qualified for plain text without being qualified for Markdown or
 DOCX. A format can be structurally supported while a particular language remains
@@ -66,8 +69,11 @@ profile owners must be fluent in the language they assess.
 | Plain-text clipboard | Read and write explicit plain text only; do not claim that fonts, colors, links, or other rich clipboard flavors are preserved |
 | TXT file | Preserve source bytes outside accepted text edits and return the complete original on document-atomic abstention |
 | Markdown | Rewrite only eligible source ranges, preserve all other bytes, reparse output, and compare a versioned structural fingerprint |
+| JSON | Rewrite only schema-declared or explicitly selected string values; preserve keys, numbers, booleans, nulls, ordering, whitespace, escapes outside accepted ranges, and every non-target byte |
+| HTML | Rewrite only qualified text nodes; protect markup, attributes, URLs, scripts, styles, templates, code, forms, embedded content, and unsupported elements; never execute or render imported markup as trusted UI |
 | DOCX | Patch only the declared WordprocessingML subset, verify package topology and untouched parts, and abstain on ambiguous formatting or unsupported features |
 | XLSX | Post-1.0 only: rewrite declared prose cells while protecting formulas, types, references, names, validation, styles, charts, macros, and workbook structure |
+| Framed text stream | Parse bounded frames incrementally, preserve ordering and non-text frames, and emit rewritten content only after the declared message or document boundary passes complete validation |
 | API or MCP | Require an explicit media type and encoding; return capabilities, unsupported features, and preservation evidence in the outcome |
 
 No path flattens a structured document into plain text and then claims formatting was
@@ -106,6 +112,27 @@ The output must:
 Tables, task lists, footnotes, and other extensions graduate separately with their
 own language and structure fixtures.
 
+## JSON and HTML
+
+JSON support is a text-value adapter, not a generic string rewriter. Eligible values
+come from an exact schema, JSON Pointer selection, or pinned upstream response
+contract. Keys and structural or machine-interpreted strings are ineligible unless a
+separate capability says otherwise. Replacements are escaped for the original JSON
+context, the complete payload is reparsed, the non-target semantic tree is compared,
+and bytes outside accepted ranges remain identical.
+
+HTML support uses source-linked text-node ranges and never serializes an arbitrary
+document through a browser DOM. Script, style, template, code, preformatted text,
+attributes, URLs, form state, custom elements, embedded content, comments, and
+unsupported nodes are protected. Accepted text is escaped for its exact node
+context, the output is reparsed with the pinned parser, and a structural fingerprint
+plus non-target byte check must pass. Retonr never executes source or generated HTML.
+
+There is no catch-all structured-text adapter. YAML, XML, CSV, TSV, RTF, EPUB, and
+other media types each require an explicit parser, eligible-range policy, security
+model, preservation fingerprint, fixtures, and capability record before support is
+claimed.
+
 ## DOCX
 
 The initial subset is unencrypted `.docx` main-story paragraphs and table cells with
@@ -118,6 +145,35 @@ Tracked changes, fields, signatures, encryption, macros, content controls, drawi
 equations, embedded objects, ambiguous mixed formatting, and other undeclared
 features are protected or rejected according to the capability matrix. Reopening a
 file is necessary evidence, not sufficient evidence of preservation.
+
+## Streaming text
+
+Streaming is a first-class transport contract, not permission to expose partial
+rewrites. Standard input is read incrementally but establishes one document at end
+of file. Framed integrations establish a boundary through a pinned message, turn,
+field, or document schema. The adapter can parse, spool, and apply backpressure while
+data arrives, but candidate tokens and unvalidated fragments never leave Retonr.
+
+An event-stream compatibility adapter must buffer each eligible completed text unit,
+preserve every non-text event and its order, and emit either a fully validated
+replacement transaction or the exact original unit. It cannot revise bytes already
+forwarded to a consumer. Disconnect, cancellation, bound exhaustion, malformed
+framing, missing completion, or schema drift retains the original and produces a
+typed outcome. Real-time token replacement is unsupported unless a future protocol
+can provide equivalent atomicity and verification evidence.
+
+## Qualification order
+
+The order follows preservation dependencies, not format importance:
+
+1. Plain text, TXT, multiline standard input, and file or folder transactions.
+2. Source-spliced Markdown.
+3. Completed schema-bound JSON text values and framed agent or API transport.
+4. Bounded DOCX with package and reopen evidence.
+5. Source-spliced HTML text nodes.
+6. Completed-unit event streams built on the proven JSON and transaction contracts.
+7. XLSX prose cells with formula, shared-string, package, and recalculation evidence.
+8. Additional formats one explicit adapter and capability set at a time.
 
 ## Verification and abstention
 

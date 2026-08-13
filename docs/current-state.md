@@ -95,10 +95,10 @@ convergence. Continuous integration uses its own clean runner database.
 - Rewrite records use unkeyed SHA-256 identity digests. These are not anonymization
   and can permit dictionary attacks on short predictable text. Stable local traces
   require an installation-keyed digest decision.
-- The README includes one reproducible rendering of verbatim output from the current
-  release-optimized candidate-check binary. Model-backed rewrite, abstention, diff,
-  trace and native desktop screenshots remain gated on their complete release-build
-  behaviors under the screenshot policy.
+- The README includes one reproducible Linux-first rendering of verbatim output from
+  the current release-optimized candidate-check binary. Model-backed rewrite,
+  abstention, diff, trace and native desktop screenshots remain gated on their
+  complete release-build behaviors under the screenshot policy.
 - Evaluation data and user-research policies are proposed, not approved. No
   non-synthetic collection is authorized.
 

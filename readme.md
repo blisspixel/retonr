@@ -68,12 +68,7 @@ The evaluation tool also validates an initial synthetic editorial-quality corpus
 with named findings and clean controls. No editorial-lint rule has product authority
 yet.
 
-![Retonr CLI help and a successful candidate check](docs/screenshots/cli-check-windows.png)
-
-The image is a reproducible rendering of verbatim output from the current
-release-optimized Windows build. It shows only implemented behavior. Capture details
-and the exact commands are recorded in the
-[screenshot metadata](docs/screenshots/cli-check-windows.md).
+[![Retonr CLI help and a successful candidate check on Linux](docs/screenshots/cli-check-linux.png)](docs/screenshots/cli-check-linux.md)
 
 Run the current slice from the repository:
 
@@ -104,9 +99,9 @@ The completed product is planned around one application service:
   contracts without an embedded browser or hosted web application
 - A narrow offline adapter for completed text-only assistant responses
 
-The compatibility adapter is not a transparent LLM proxy. It does not rewrite
-streams, tool calls, structured outputs, or multimodal events, and it never makes an
-upstream model request.
+The 1.0 compatibility adapter handles completed responses and never makes an
+upstream model request. Completed-unit event streams graduate separately after their
+framing, ordering, cancellation, and atomic-output contracts pass.
 
 Windows, macOS, and Linux are first-class release targets. The first qualification
 targets are a user-managed Ollama service and a pinned llama.cpp sidecar. LM Studio,
@@ -128,7 +123,7 @@ for the planned contract.
 
 ## Language and format scope
 
-Language support and format support qualify independently. The 1.0 plan requires
+Language, format, and transport support qualify independently. The 1.0 plan requires
 English, at least one additional Latin-script language, and at least one
 non-Latin-script language. Exact launch languages must earn support through separate
 fidelity, style, resource, Unicode, and mixed-language evaluation.
@@ -144,7 +139,9 @@ document guidance, small eligible-unit proposals, region consistency checks,
 format-owned reassembly, and complete verification. File and folder inputs write to
 a separate destination by default and produce a machine-readable change report.
 Spreadsheet prose-cell rewriting is planned after 1.0; formulas and workbook
-structure remain protected.
+structure remain protected. JSON prose values, HTML text nodes, event streams, and
+additional formats graduate through explicit adapters rather than a catch-all text
+conversion.
 
 ## Documentation
 

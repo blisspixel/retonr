@@ -641,6 +641,21 @@ final verification failure is an abstention that returns exact original bytes. A
 true outbound reverse proxy or remote generation backend is a separate post-1.0
 feature with its own network and credential design.
 
+Transport streaming and rewrite atomicity are independent. Standard input, framed
+agent messages, and long-operation progress can stream under bounded parsing,
+backpressure, cancellation, and ordering rules. Eligible text is released only at a
+declared message or document boundary after the owning adapter and complete
+validation cascade pass. A later event-stream compatibility adapter must preserve
+non-text events and cannot mutate bytes already forwarded to a consumer.
+
+Optional provider-mark diagnostics sit after the accepted artifact is frozen. A
+diagnostic adapter may inspect the frozen source and final accepted text only through
+a separate explicit operation. Its result has no edge into prompts, generation,
+candidate schedules, retries, ranking, acceptance, profiles, or style learning. A
+hosted detector requires per-operation network authority and disclosure that the
+selected content leaves the device. Detector identity, version, declared coverage,
+result vocabulary, terms, and retention policy are part of the record.
+
 Desktop presentation has no independent product authority. It is an installed native
 Rust application with no embedded browser, HTML or JavaScript frontend, hosted
 application, or ordinary-operation local HTTP dependency. The toolkit is selected

@@ -213,6 +213,12 @@ The 1.0 response-compatibility adapter is offline and makes no upstream requests
 future outbound proxy or remote backend requires a separate threat-model update,
 host allowlist, credential-redaction policy, and explicit network consent.
 
+An optional hosted provider-mark diagnostic is a separate post-acceptance network
+operation. It is disabled by default, never receives content through ordinary
+rewrite authority, shows the exact service and selected source or final artifact,
+and records applicable retention terms before consent. Its response cannot trigger
+generation, retries, ranking, acceptance, profile mutation, or output replacement.
+
 ### Filesystem writes
 
 Risks include symlink attacks, overwrite ambiguity, locked files, partial writes, and
