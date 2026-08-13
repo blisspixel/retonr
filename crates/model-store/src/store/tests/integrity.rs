@@ -49,6 +49,10 @@ fn indexed_binding_corruption_blocks_reads_recovery_and_removal() {
         store.remove_installed(&fixture.installed.artifact_id),
         Err(StoreError::CorruptRecord)
     ));
+    assert!(matches!(
+        store.artifact_inventory(1),
+        Err(StoreError::CorruptRecord)
+    ));
 }
 
 #[test]

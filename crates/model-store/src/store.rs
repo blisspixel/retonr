@@ -36,6 +36,10 @@ pub struct InstallationWriteDisposition {
     pub installed: WriteDisposition,
 }
 
+mod inventory;
+
+pub use inventory::StoredArtifactState;
+
 /// SQLite-backed artifact state repository.
 pub struct ArtifactStateStore {
     connection: Connection,
@@ -484,7 +488,7 @@ fn load_invalidations(
 ) -> StoreResult<Vec<QualificationInvalidation>> {
     let mut statement = connection.prepare(
         "SELECT reason_code, record_json FROM qualification_invalidations
-         WHERE qualification_id = ?1 ORDER BY sequence ASC",
+         WHERE qualification_id = ?1 ORDER BY sequence ASC LIMIT 1",
     )?;
     let rows = statement.query_map([qualification_id.digest().as_str()], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))

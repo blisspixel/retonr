@@ -477,8 +477,31 @@ the exact managed bytes, and idempotently checks state. Import never changes the
 source or activates the artifact. Typed progress contains only lifecycle stage and
 byte counts. Cancellation removes uncommitted staging; after file commit begins, the
 bounded file-and-state commit section runs to completion. Artifact-set manifests,
-folder import, runtime-native pulls, downloads, orphan reconciliation, and removal
-of managed bytes remain later lifecycle operations.
+folder import, runtime-native pulls, downloads, repair, and removal of managed bytes
+remain later lifecycle operations.
+
+A separate read-only artifact inventory acquires the same lifecycle lock in shared
+mode and opens only existing storage. It loads manifests, optional installations,
+and active bindings in a bounded database snapshot, freezes exact raw directory
+entries, and verifies eligible direct files with bounded streaming SHA-256. It
+reports registered-file status, manifest-only state, independently verified orphan
+candidates, content-address conflicts, oversized files, and aggregate unexpected
+entry counts. Exact lowercase names, application-owned storage keys, no-follow
+opens, stable metadata checks, and a second directory snapshot prevent a report from
+silently accepting an observed replacement. The operation never creates, cleans,
+repairs, or deletes storage. An orphan report is point-in-time evidence only; a
+future mutation must reacquire the exclusive lock and reverify the exact entry.
+Before returning, it requires a matching second bounded state snapshot and matching
+filesystem entry and boundary fingerprints. A successful return is the completion
+signal; no caller progress callback runs after these final coherence checks.
+On Windows, child opens and metadata queries use target-only capability filesystem
+dependencies so they remain relative to held directory handles, reject final reparse
+entries, and retain explicit sharing policy. The dependency's enumeration path is
+path-backed on Windows, so held root and artifact-directory handles deny deletion or
+rename throughout the scan. This behavior is tested on the continuous-integration
+NTFS configuration; other Windows filesystem drivers are not yet qualified. The
+dependency cost is accepted for the managed-storage trust boundary and remains
+subject to source, duplicate-version, and supply-chain review.
 
 Small personal corpora use filtered brute-force vector scoring in Rust with vectors
 stored as versioned blobs. SQLite FTS5 supports lexical retrieval. A vector extension

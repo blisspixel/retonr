@@ -17,11 +17,19 @@ use rewrite_types::{
 use thiserror::Error;
 
 mod artifact_import;
+mod artifact_inventory;
 mod grounded;
 
 pub use artifact_import::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
     ArtifactImportStage, OfflineArtifactImportRequest, OfflineArtifactImportService,
+};
+pub use artifact_inventory::{
+    ArtifactInventoryError, ArtifactInventoryLimits, ArtifactInventoryProgress,
+    ArtifactInventoryReport, ArtifactInventoryService, ArtifactInventoryStage,
+    ContentAddressConflict, OrphanManifestAssociation, OversizedArtifactFile,
+    RegisteredArtifactBytes, RegisteredArtifactInspection, UnexpectedArtifactEntryCounts,
+    VerifiedArtifactOrphan,
 };
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
 

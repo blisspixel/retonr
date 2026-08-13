@@ -250,8 +250,21 @@ Controls:
 - Durable artifact state is registered only after the final file and containing
   directory are synchronized on Windows, macOS, and Linux.
   A state failure can leave an unregistered content-addressed file, never a record
-  pointing to bytes that did not commit. A later reconciliation operation must
-  inspect and reclaim such orphans explicitly.
+  pointing to bytes that did not commit.
+- Read-only artifact inventory takes the lifecycle lock in shared mode, reads a
+  bounded and integrity-validated state snapshot, freezes exact raw directory
+  entries, and hashes only canonical direct regular files within per-file and total
+  ceilings. It follows no symlink or reparse point, never resolves a persisted
+  storage key as a path, and emits only aggregate counts for malformed raw names.
+- The inventory repeats the complete entry snapshot, checks stable metadata around
+  each hash, and requires a matching second bounded state snapshot. Concurrent
+  changes fail the operation without a partial report. On Windows, child opens and
+  metadata checks are handle-relative, but enumeration is path-backed. Held handles
+  deny ancestor replacement for the continuous-integration NTFS configuration;
+  other Windows filesystem drivers are not yet qualified.
+  A verified orphan is only a point-in-time candidate. Any later repair or removal
+  must reacquire the exclusive lock and reverify the exact entry. Network filesystem
+  replacement and locking semantics remain unqualified.
 
 ### Agent Plugin packages
 

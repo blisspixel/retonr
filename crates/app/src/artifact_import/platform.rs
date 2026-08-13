@@ -101,7 +101,7 @@ pub(super) fn open_lock_file(path: &Path) -> io::Result<File> {
         .open(path)
 }
 
-pub(super) fn is_indirect(metadata: &Metadata) -> bool {
+pub(crate) fn is_indirect(metadata: &Metadata) -> bool {
     if metadata.file_type().is_symlink() {
         return true;
     }
