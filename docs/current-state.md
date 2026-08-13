@@ -62,14 +62,12 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-The latest retained exact-main implementation evidence predating this selected
-reconciliation slice is
-revision `c862ae6f1a9e8198afbdf2f859ab0a049a7e1b0e` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31684427742).
+The selected reconciliation implementation is retained at exact-main revision
+`2323ba385c332e3b2084e67a406baeb52a8ad738` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31688437182).
 The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
 Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
 concurrency, and the Ubuntu loopback-only network namespace.
-Cross-platform evidence for selected reconciliation remains pending.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
