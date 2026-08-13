@@ -8,11 +8,13 @@ mod backend;
 mod backend_tests;
 mod contract;
 mod endpoint;
+#[cfg(test)]
+mod remote_tests;
 mod response;
+#[cfg(test)]
+mod structured_tests;
 mod wire;
 
 pub use backend::OllamaBackend;
-pub use contract::{
-    OllamaLimits, OllamaModelBinding, OllamaModelDetails, candidate_output_contract,
-};
+pub use contract::{OllamaLimits, OllamaModelBinding, OllamaModelDetails};
 pub use endpoint::{OllamaEndpoint, OllamaEndpointError};

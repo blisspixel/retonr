@@ -16,6 +16,10 @@ pub(crate) struct TagModel {
     pub(crate) model: String,
     pub(crate) size: u64,
     pub(crate) digest: String,
+    #[serde(default)]
+    pub(crate) remote_model: String,
+    #[serde(default)]
+    pub(crate) remote_host: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -26,6 +30,10 @@ pub(crate) struct ShowRequest<'a> {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct ShowResponse {
+    #[serde(default)]
+    pub(crate) remote_model: String,
+    #[serde(default)]
+    pub(crate) remote_host: String,
     #[serde(default)]
     pub(crate) license: String,
     #[serde(default)]
@@ -70,10 +78,16 @@ pub(crate) struct GenerateOptions {
 #[derive(Debug, Deserialize)]
 pub(crate) struct GenerateResponse {
     pub(crate) model: String,
+    #[serde(default)]
+    pub(crate) remote_model: String,
+    #[serde(default)]
+    pub(crate) remote_host: String,
     pub(crate) response: String,
     #[serde(default)]
     pub(crate) thinking: String,
     pub(crate) done: bool,
+    #[serde(default)]
+    pub(crate) done_reason: String,
     pub(crate) prompt_eval_count: Option<u64>,
     pub(crate) eval_count: Option<u64>,
     pub(crate) eval_duration: Option<u64>,

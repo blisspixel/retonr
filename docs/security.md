@@ -201,6 +201,13 @@ Controls:
   protection and restrictive permissions, redact logs and crash reports, and support
   rotation, revocation, and deletion.
 - Do not log prompts, content, profiles, or credentials by default.
+- Inference capability discovery carries only exact output-schema digests. Raw
+  structured-completion requests and responses redact prompt and generated content
+  from debug formatting, bind the complete request, enforce byte ceilings and exact
+  artifact identity, and require a transport-derived complete terminal result. The
+  returned JSON remains
+  untrusted and has no rewrite or semantic authority until a domain strategy parses
+  and validates it.
 
 MCP Streamable HTTP uses a documented custom loopback bearer profile for 1.0 rather
 than standard MCP OAuth authorization. Standard authorization conformance is

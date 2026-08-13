@@ -129,7 +129,8 @@ impl GroundedStrategy {
             .capabilities
             .roles
             .contains(&ArtifactRole::Generation)
-            || !discovery.capabilities.structured_output
+            || discovery.capabilities.validate().is_err()
+            || !discovery.capabilities.admits_output(&self.policy.output)
             || self.policy.sampling.seed.is_some() && !discovery.capabilities.seed
             || !discovery.capabilities.disable_reasoning
         {

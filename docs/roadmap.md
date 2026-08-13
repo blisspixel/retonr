@@ -61,9 +61,12 @@ proceeds in this exact order:
    application binds the lock capability to the exact pinned repository entry, and
    persistence records do not become a CLI or public inventory contract.
 4. Retain the completed rewrite-record v2, typed invariant summaries, typed claim
-   evidence, and deterministic comparison boundary. Add a separately cancellable,
-   error-aware extraction operation and independent evaluator qualification without
-   treating probabilistic extraction as proof.
+   evidence, deterministic comparison, exact output-contract discovery, and bounded
+   structured-completion boundary. Next add a distinct claim-extraction role, exact
+   effective extractor manifest, strict ephemeral wire contract, separately
+   cancellable pair operation, and two-phase engine evidence join. Calibrate it in
+   shadow mode before any semantic pass authority and never treat probabilistic
+   extraction as proof.
 5. Implement the versioned local evaluation plan, run the currently installed Gemma 4
    26B and Qwen3.6 27B packages, and add the previously observed Ministral 3 8B only
    after its local identity is revalidated or acquisition is separately approved.

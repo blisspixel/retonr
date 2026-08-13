@@ -35,7 +35,7 @@ pub struct GroundedPolicy {
     pub candidate_count: u8,
     /// Qualified maximum masked-source bytes.
     pub source_byte_limit: u64,
-    /// Maximum complete serialized backend-input bytes.
+    /// Maximum complete prompt text bytes before runtime request framing.
     pub input_byte_limit: u64,
     /// Explicit backend context setting.
     pub context_token_limit: u32,

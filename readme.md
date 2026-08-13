@@ -178,6 +178,15 @@ after explicit acquisition approval. See the [local model tiers](docs/research/2
 [evaluation protocol](docs/research/2026-08-13-local-model-evaluation.md), and
 [runtime matrix](docs/research/2026-08-13-local-runtime-matrix.md).
 
+Runtime discovery names the exact output-contract digests each adapter implements at
+its transport boundary. This is not model qualification. A generic JSON-mode flag or
+OpenAI-compatible transport is never treated as evidence that a Retonr schema is
+admitted or qualified. The provider-neutral inference port can
+return one bounded, terminal, syntactically valid JSON payload with observed runtime
+and rechecked artifact identity; adapters and orchestrators must compare the runtime
+with discovery. Domain strategies remain responsible for strict parsing and
+semantic authority. Claim extraction is not connected to this port yet.
+
 ## Installation direction
 
 Published builds will provide one PowerShell bootstrap command for Windows and one

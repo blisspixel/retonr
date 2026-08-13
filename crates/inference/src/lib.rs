@@ -6,6 +6,8 @@
 mod contract;
 mod error;
 mod port;
+mod schemas;
+mod structured;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod testing;
@@ -17,3 +19,8 @@ pub use contract::{
 };
 pub use error::{ContractError, InferenceError, InferenceErrorKind};
 pub use port::{InferenceBackend, OperationContext, PortFuture};
+pub use schemas::candidate_output_contract;
+pub use structured::{
+    STRUCTURED_COMPLETION_REQUEST_SCHEMA_VERSION, StructuredCompletionFinish,
+    StructuredCompletionRequest, StructuredCompletionResponse,
+};

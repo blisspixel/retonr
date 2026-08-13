@@ -2,7 +2,10 @@ use std::{future::Future, pin::Pin, time::Instant};
 
 use rewrite_types::CancellationToken;
 
-use crate::{BackendDiscovery, GenerationRequest, GenerationResponse, InferenceError};
+use crate::{
+    BackendDiscovery, GenerationRequest, GenerationResponse, InferenceError,
+    StructuredCompletionRequest, StructuredCompletionResponse,
+};
 
 /// Object-safe future returned by an inference port.
 pub type PortFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -65,4 +68,11 @@ pub trait InferenceBackend: Send + Sync {
         request: GenerationRequest,
         context: OperationContext<'a>,
     ) -> PortFuture<'a, Result<GenerationResponse, InferenceError>>;
+
+    /// Produces one bounded structured JSON payload without interpreting its domain.
+    fn complete_structured<'a>(
+        &'a self,
+        request: StructuredCompletionRequest,
+        context: OperationContext<'a>,
+    ) -> PortFuture<'a, Result<StructuredCompletionResponse, InferenceError>>;
 }

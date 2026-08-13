@@ -252,7 +252,8 @@ pub async fn run_baseline(
             .capabilities
             .roles
             .contains(&ArtifactRole::Generation)
-        || !discovery.capabilities.structured_output
+        || discovery.capabilities.validate().is_err()
+        || !discovery.capabilities.admits_output(&policy.output)
     {
         return Err(BaselineError::ArtifactUnavailable);
     }

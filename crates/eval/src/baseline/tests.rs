@@ -89,7 +89,15 @@ fn generative_fixtures() -> (BaselineDefinition, BackendDiscovery, GenerationRes
         runtime: runtime.clone(),
         capabilities: InferenceCapabilities {
             roles: vec![ArtifactRole::Generation],
-            structured_output: true,
+            admitted_output_contract_digests: vec![
+                definition
+                    .inference
+                    .as_ref()
+                    .expect("inference policy")
+                    .output
+                    .schema_digest
+                    .clone(),
+            ],
             seed: true,
             disable_reasoning: true,
         },

@@ -3,7 +3,9 @@ use std::{collections::BTreeSet, sync::Arc};
 use reqwest::Client;
 use rewrite_inference::{
     BackendDiscovery, BackendId, GenerationRequest, GenerationResponse, InferenceBackend,
-    InferenceCapabilities, InferenceError, OperationContext, PortFuture, UsageObservation,
+    InferenceCapabilities, InferenceError, OperationContext, PortFuture,
+    StructuredCompletionRequest, StructuredCompletionResponse, UsageObservation,
+    candidate_output_contract,
 };
 use rewrite_model::{ArtifactRole, RuntimeIdentity};
 use rewrite_types::Digest;
@@ -14,7 +16,7 @@ use crate::{
     OllamaEndpoint,
     contract::{
         BACKEND_ID, MAX_METADATA_BYTES, MAX_VERSION_BYTES, OllamaLimits, OllamaModelBinding,
-        OllamaModelDetails, candidate_output_contract,
+        OllamaModelDetails,
     },
     response::{
         await_context, check_context, compatibility_error, confirm_binding_in_tags,
@@ -125,7 +127,7 @@ impl OllamaBackend {
             runtime,
             capabilities: InferenceCapabilities {
                 roles: vec![ArtifactRole::Generation],
-                structured_output: true,
+                admitted_output_contract_digests: vec![candidate_output_contract().schema_digest],
                 seed: true,
                 disable_reasoning: true,
             },
@@ -231,6 +233,81 @@ impl OllamaBackend {
         })
     }
 
+    async fn complete_structured_inner(
+        &self,
+        request: StructuredCompletionRequest,
+        context: OperationContext<'_>,
+    ) -> Result<StructuredCompletionResponse, InferenceError> {
+        let _permit = self.operation_permit(context).await?;
+        check_context(context)?;
+        request
+            .validate()
+            .map_err(|_error| policy_error("invalid_structured_completion_request"))?;
+        if request.output != candidate_output_contract() {
+            return Err(compatibility_error("unsupported_output_contract"));
+        }
+        let binding = self
+            .bindings
+            .iter()
+            .find(|binding| binding.artifact_id == request.artifact_id)
+            .ok_or_else(|| policy_error("artifact_not_bound"))?;
+        if binding.artifact_digest != request.artifact_digest {
+            return Err(policy_error("artifact_digest_mismatch"));
+        }
+        self.confirm_binding(binding, context).await?;
+        let details = self.show_details(binding, context).await?;
+        if !details
+            .capabilities
+            .iter()
+            .any(|capability| capability == "completion")
+        {
+            return Err(compatibility_error("completion_not_supported"));
+        }
+        let runtime_before = self.runtime_identity(context).await?;
+        let schema = serde_json::from_str(&request.output.schema_json)
+            .map_err(|_error| policy_error("invalid_output_schema_json"))?;
+        let wire_request = WireGenerateRequest {
+            model: binding.reference(),
+            prompt: &request.input,
+            stream: false,
+            format: schema,
+            think: false,
+            raw: false,
+            options: GenerateOptions {
+                temperature: request.sampling.temperature,
+                top_p: request.sampling.top_p,
+                seed: request.sampling.seed,
+                num_ctx: request.context_token_limit,
+                num_predict: request.output_token_limit,
+                stop: Vec::new(),
+            },
+        };
+        let response: GenerateResponse = self
+            .send_json(
+                "api/generate",
+                &wire_request,
+                self.limits.generation_body_bytes,
+                context,
+            )
+            .await?;
+        let runtime_after = self.runtime_identity(context).await?;
+        if runtime_before != runtime_after {
+            return Err(compatibility_error("runtime_changed_during_generation"));
+        }
+        self.confirm_binding(binding, context).await?;
+        validate_generate_response(&response, binding)?;
+        let usage = usage_observation(&response);
+        StructuredCompletionResponse::complete(
+            &request,
+            runtime_after,
+            binding.artifact_id.clone(),
+            binding.artifact_digest.clone(),
+            response.response,
+            usage,
+        )
+        .map_err(|_error| malformed_error("invalid_structured_output"))
+    }
+
     async fn tags(&self, context: OperationContext<'_>) -> Result<TagsResponse, InferenceError> {
         self.get_json("api/tags", self.limits.discovery_body_bytes, context)
             .await
@@ -264,7 +341,9 @@ impl OllamaBackend {
             )
             .await?;
         let unique_capabilities = response.capabilities.iter().collect::<BTreeSet<_>>();
-        if !valid_text(&response.details.format, MAX_METADATA_BYTES)
+        if !response.remote_model.is_empty()
+            || !response.remote_host.is_empty()
+            || !valid_text(&response.details.format, MAX_METADATA_BYTES)
             || !valid_text(&response.details.family, MAX_METADATA_BYTES)
             || response.details.quantization_level.len() > MAX_METADATA_BYTES
             || response
@@ -351,5 +430,23 @@ impl InferenceBackend for OllamaBackend {
         context: OperationContext<'a>,
     ) -> PortFuture<'a, Result<GenerationResponse, InferenceError>> {
         Box::pin(self.generate_inner(request, context))
+    }
+
+    fn complete_structured<'a>(
+        &'a self,
+        request: StructuredCompletionRequest,
+        context: OperationContext<'a>,
+    ) -> PortFuture<'a, Result<StructuredCompletionResponse, InferenceError>> {
+        Box::pin(self.complete_structured_inner(request, context))
+    }
+}
+
+fn usage_observation(response: &GenerateResponse) -> UsageObservation {
+    UsageObservation {
+        input_tokens: response.prompt_eval_count,
+        output_tokens: response.eval_count,
+        generation_micros: response
+            .eval_duration
+            .and_then(|value| value.checked_div(1_000)),
     }
 }
