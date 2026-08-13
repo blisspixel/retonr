@@ -4,6 +4,7 @@ use super::{
 };
 
 const EDITORIAL_CORPUS: &str = include_str!("../../fixtures/editorial_quality_v1.json");
+const EDITORIAL_SLOP_CORPUS: &str = include_str!("../../fixtures/editorial_slop_v1.json");
 
 #[test]
 fn checked_in_editorial_corpus_is_valid_and_balanced() {
@@ -17,6 +18,31 @@ fn checked_in_editorial_corpus_is_valid_and_balanced() {
     assert!(corpus.cases.iter().any(|case| {
         case.kind == EditorialCaseKind::CleanControl && case.expected_source_findings.is_empty()
     }));
+}
+
+#[test]
+fn checked_in_slop_corpus_is_valid_and_balanced() {
+    let corpus = parse_editorial_corpus(EDITORIAL_SLOP_CORPUS).expect("checked-in corpus is valid");
+    let summary = corpus.summary();
+    assert_eq!(summary.schema_version, EDITORIAL_CORPUS_SCHEMA_VERSION);
+    assert_eq!(summary.total, 24);
+    assert_eq!(summary.finding_cases, 12);
+    assert_eq!(summary.clean_controls, 12);
+    assert_eq!(summary.targeted_rules, 12);
+
+    let findings = corpus
+        .cases
+        .iter()
+        .filter(|case| case.kind == EditorialCaseKind::Finding)
+        .flat_map(|case| case.target_rules.iter())
+        .collect::<std::collections::BTreeSet<_>>();
+    let controls = corpus
+        .cases
+        .iter()
+        .filter(|case| case.kind == EditorialCaseKind::CleanControl)
+        .flat_map(|case| case.target_rules.iter())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(findings, controls);
 }
 
 #[test]

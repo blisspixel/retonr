@@ -64,9 +64,9 @@ model-free slice includes versioned Rust contracts, plain-text parsing and
 reassembly, protected values, deterministic candidate gates, semantic assessment,
 lexicographic selection, document-atomic abstention, redacted records, a
 candidate-check CLI, and positive and hard-negative evaluation fixtures.
-The evaluation tool also validates an initial synthetic editorial-quality corpus
-with named findings and clean controls. No editorial-lint rule has product authority
-yet.
+The evaluation tool also validates two synthetic editorial-quality groups with named
+findings and clean controls, including a balanced 24-case current-slop group. No
+editorial-lint rule has product authority yet.
 
 [![Retonr CLI help and a successful candidate check on Linux](docs/screenshots/cli-check-linux.png)](docs/screenshots/cli-check-linux.md)
 
@@ -76,13 +76,14 @@ Run the current slice from the repository:
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --format text
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
+cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_slop_v1.json
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
-model. The second runs the checked-in fidelity suite. The third validates the
-synthetic editorial-quality corpus and emits only a content-free summary. The
-planned lint engine, rewrite, profile, model-management, service, and desktop
-workflows are not yet implemented.
+model. The second runs the checked-in fidelity suite. The final two validate the
+synthetic editorial-quality groups and emit only content-free summaries. The planned
+lint engine, rewrite, profile, model-management, service, and desktop workflows are
+not yet implemented.
 
 ## Product surfaces
 

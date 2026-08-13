@@ -81,9 +81,10 @@ bytes, tokenizer, template, effective parameters, execution class, logging polic
 or output policy. An endpoint remains experimental until a named identity and
 acquisition driver can establish those facts.
 
-LM Studio, vLLM, and MLX LM are later candidates with different platform and trust
-boundaries. Their presence in discovery does not imply qualification. The exact
-matrix and primary-source analysis are recorded in
+LM Studio, vLLM, and MLX LM are 0.x candidates with different platform and trust
+boundaries. Each receives an experimental native adapter and shared conformance
+evidence before 0.9. Their presence in discovery does not imply qualification. The
+exact matrix and primary-source analysis are recorded in
 [Provider-neutral, user-controlled model runtimes](research/2026-08-12-provider-neutral-runtimes.md).
 
 This is a rolling major-runtime ladder, not a closed vendor list. A new local runtime
@@ -141,27 +142,44 @@ can override an initial recommendation, but activation still requires a passing
 qualification for the requested contract. After activation, execution binds to that
 exact tuple and does not run the recommendation resolver as a fallback.
 
-## Hardware classes
+## Hardware and model candidate classes
 
 Public documentation uses measured classes rather than promising that one model is
 best everywhere:
 
 | Class | Intended path | Qualification focus |
 | --- | --- | --- |
-| Compact | CPU or low-memory integrated device | Small artifact, bounded context, useful coverage, acceptable wait time |
-| Balanced | Modern laptop or modest accelerator | Default interactive quality, memory headroom, sustained thermals |
-| Workstation | Larger local accelerator | Higher style quality or coverage without lowering fidelity |
+| Minimal | CPU or constrained integrated device | Lowest viable memory, bounded context, useful coverage, acceptable completion time |
+| Compact | Common laptop, 8 GB to 12 GB accelerator, or Apple unified memory | Small strong artifact, sustained operation, useful interactive quality |
+| Balanced | Modern laptop or modest accelerator | Default interactive quality, memory headroom, and longer context |
+| Workstation | Larger local accelerator or unified-memory system | Higher style quality or coverage without lowering fidelity |
 
 Exact memory, disk, context, and latency bounds are published from retained results.
 They are not inferred from model parameter count. A workstation option never becomes
 the universal default merely because it wins an aggregate quality score.
 
-The initial candidate tournament includes a 4B-class resource floor, a 9B-class
-balanced option, a cross-family control in the same resource class, and a larger
-quality tier. Qwen3.5 artifacts are candidates rather than defaults. Models smaller
-than the qualified resource floor may be used for runtime smoke tests, but never as
-an automatic rewriting fallback. A compact candidate that misses a critical
-fidelity gate raises the minimum supported hardware instead of lowering the bar.
+The August 2026 development tournament begins with the following candidate ladder.
+These are research candidates, not defaults or support claims:
+
+| Class | Initial artifact families | Comparison purpose |
+| --- | --- | --- |
+| Minimal | Current 2B to 4B Gemma 4, Mistral 3, and cross-family instruction artifacts | Find the lowest resource floor that preserves critical facts and structure. |
+| Compact | Mistral 3 8B plus a current cross-family control | Test common consumer devices and CPU-tolerant workflows. |
+| Balanced | Current 12B to 20B artifacts, including a cross-family control | Find the smallest strong default that passes clean-control and bounded-edit tests. |
+| Workstation | Gemma 4 26B and Qwen 3.6 27B plus a cross-family control | Measure whether more capacity improves coverage or personal style without increasing semantic risk. |
+
+The official candidate sources are [Gemma 4](https://deepmind.google/models/gemma/gemma-4/),
+[Mistral 3](https://mistral.ai/news/mistral-3/), and
+[Qwen 3.6](https://huggingface.co/Qwen/Qwen3.6-27B). Each exact artifact still needs
+license review, immutable source identity, conversion or import provenance, runtime
+identity, and retained qualification results. The catalog may add or replace a
+candidate when a newer generally available artifact is materially stronger.
+
+Models below the qualified resource floor may be used for runtime smoke tests, but
+never as an automatic rewriting fallback. If every smaller candidate misses a
+critical fidelity or clean-control requirement, Retonr raises the minimum supported
+hardware instead of lowering the quality bar. Slow generation remains valid when the
+declared workflow completes reliably within its documented operating envelope.
 
 ## Model commands
 

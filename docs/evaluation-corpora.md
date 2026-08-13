@@ -23,10 +23,43 @@ The editorial-quality corpus supports the anti-slop quality loop. Each case reco
 - An optional reference revision when a bounded correction is justified
 - Protected terms that must survive any later rewrite evaluation
 
-The first checked-in corpus is synthetic and redistributable under the repository
-license. It contains both positive findings and clean controls. It does not claim
-that the patterns identify model authorship, and its reference revisions are examples
-of acceptable editing rather than the only correct answer.
+The checked-in development groups are synthetic and redistributable under the
+repository license:
+
+- `editorial_quality_v1.json` covers basic residue, filler, attribution, repetition,
+  and punctuation findings.
+- `editorial_slop_v1.json` covers 12 denser current pattern families with one paired
+  clean control per rule.
+
+They do not claim that the patterns identify model authorship. Their reference
+revisions are examples of acceptable editing rather than the only correct answer.
+Every pattern is included because it can describe a concrete editorial defect in a
+declared context, not merely because it correlates with a model family.
+
+### Pattern evidence and limits
+
+The current slop group combines three evidence classes:
+
+- Population evidence that em dash use and other lexical markers changed in some
+  scientific corpora during widespread model adoption, while explicitly rejecting
+  per-document inference from that trend
+- Peer-reviewed evidence that model and hybrid text differs across sequence, phrase,
+  and lexical levels, without assuming one permanent universal model style
+- Repeated community reports of prefabricated scene setting, ornamental vocabulary,
+  contrastive reframing, promotional puffery, and stacked rhetorical structures
+
+Primary research also reports meaningful differences between model generations and
+individual model idiolects. The catalog is therefore versioned and revisable. A
+phrase never becomes a finding by vocabulary alone when a literal, quoted, cited,
+technical, or otherwise legitimate use is plausible. Each rule must state its
+applicability, density or context condition, exclusions, and neighboring clean case.
+
+Research basis:
+
+- [Em dash population study](https://arxiv.org/abs/2606.29540)
+- [Multi-level style preference optimization](https://ojs.aaai.org/index.php/AAAI/article/view/40665)
+- [Idiolectal model-output study](https://arxiv.org/abs/2608.06589)
+- [Human use of model writing styles](https://aclanthology.org/2025.acl-long.267/)
 
 Non-synthetic writing is not added to the repository merely because it is publicly
 visible. Licensed public data requires a source and redistribution decision.
@@ -77,7 +110,7 @@ There is no universal AI score and no `watermark_free` result.
 
 ## Logical order
 
-1. Land and validate the synthetic editorial corpus schema.
+1. Land and validate the synthetic editorial corpus schema and development groups.
 2. Implement transparent deterministic lint rules against positive and clean-control
    cases.
 3. Add adversarial near-matches, protected contexts, languages, and channels one

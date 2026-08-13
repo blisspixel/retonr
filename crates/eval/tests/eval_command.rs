@@ -35,6 +35,21 @@ fn checked_in_editorial_corpus_validates_as_a_process() {
 }
 
 #[test]
+fn checked_in_slop_corpus_validates_as_a_process() {
+    let corpus = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures/editorial_slop_v1.json");
+    Command::cargo_bin("rewrite-eval")
+        .expect("compiled evaluation runner")
+        .args(["--editorial-corpus"])
+        .arg(corpus)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total\": 24"))
+        .stdout(predicate::str::contains("\"finding_cases\": 12"))
+        .stdout(predicate::str::contains("\"clean_controls\": 12"))
+        .stdout(predicate::str::contains("rapidly evolving").not());
+}
+
+#[test]
 fn mismatch_fails_without_printing_fixture_content() {
     let directory = tempdir().expect("temporary directory");
     let suite = directory.path().join("suite.json");

@@ -35,6 +35,7 @@ These documents define the product direction and constrain implementation.
 | [Agent integration research](research/2026-08-12-agent-integrations.md) | Agent Plugins, Agent Skills, MCP, conformance, and packaging gates |
 | [Open Knowledge Format research](research/2026-08-12-open-knowledge-format.md) | OKF v0.2 knowledge bundles, trust, portability, attestation, and Retonr boundaries |
 | [Provider-neutral runtime research](research/2026-08-12-provider-neutral-runtimes.md) | Local runtime matrix, artifact identity, output policy, and long-input qualification |
+| [Local model smoke comparison](research/2026-08-12-local-model-smoke.md) | Three-family local editing smoke run, clean control, exact identities, and limitations |
 | [Local watermark assurance](research/2026-08-12-local-watermark-assurance.md) | Intentional insertion points, exact-stack evidence levels, bounded claims, and requalification |
 | [Text watermark science](research/2026-08-12-text-watermark-science.md) | Mechanisms, detectors, attacks, trade-offs, limits, and product implications |
 | [Watermark evaluation protocol](research/2026-08-12-watermark-evaluation-protocol.md) | Preregistered calibration, power, attacks, quality, isolation, and reproducibility |
@@ -44,13 +45,14 @@ These documents define the product direction and constrain implementation.
 | [Evaluation data policy](governance/data-policy.md) | Proposed authorization, retention, revocation, and deletion rules |
 | [User research protocol](governance/user-research.md) | Proposed research, consent, annotation, and adjudication workflow |
 | [0.1 refinement record](reviews/2026-08-12-0.1-refinement.md) | Evidence and open findings from the required refinement passes |
-| [Owner decision gate](reviews/2026-08-13-owner-decision-gate.md) | Exact approvals required to close 0.1 and activate 0.2, with explicit non-authorizations |
 
 ## Document status
 
-All decisions are provisional until their roadmap gate is passed. Decisions that
+Working decisions remain provisional through 0.8 and may be refined or superseded as
+evidence improves. The 0.9 phase freezes the compatibility surface. Decisions that
 affect public APIs, stored data, supported formats, security properties, or package
-names require an architecture decision record before implementation.
+names require an architecture decision record before release qualification, not
+before reversible exploration.
 
 The repository uses `Retonr` as its public project identity. Package and installer
 publication remain blocked on the release evidence and legal-review gates recorded
