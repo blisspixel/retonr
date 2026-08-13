@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, File, Metadata, OpenOptions, TryLockError},
+    fs::{self, File, Metadata, TryLockError},
     io::{self, Read as _},
     path::{Path, PathBuf},
 };
@@ -458,7 +458,7 @@ fn open_readonly_no_follow(path: &Path) -> io::Result<File> {
     use std::os::windows::fs::OpenOptionsExt as _;
 
     const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
-    OpenOptions::new()
+    fs::OpenOptions::new()
         .read(true)
         .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
         .open(path)
@@ -482,7 +482,7 @@ fn open_lock_file(path: &Path) -> io::Result<File> {
     use std::os::windows::fs::OpenOptionsExt as _;
 
     const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
-    OpenOptions::new()
+    fs::OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
