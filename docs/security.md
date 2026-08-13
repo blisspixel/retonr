@@ -240,6 +240,17 @@ Controls:
 - Use a separate output root by default and never delete a source tree as part of a
   rewrite.
 - Make document and selection atomicity explicit and retain staged recovery state.
+- Offline artifact-file import opens the final source entry without following a
+  symlink or Windows reparse point, accepts only a regular file, streams into a
+  reserved application staging directory, verifies manifest size and digest, and
+  commits without replacing an existing content-addressed file.
+- One exclusive storage lock serializes staging recovery and import. Recovery
+  removes only reserved staging names. The configured artifact root must be local,
+  application-owned storage; network filesystem semantics are not qualified.
+- Durable artifact state is registered only after the final file is synchronized.
+  A state failure can leave an unregistered content-addressed file, never a record
+  pointing to bytes that did not commit. A later reconciliation operation must
+  inspect and reclaim such orphans explicitly.
 
 ### Agent Plugin packages
 

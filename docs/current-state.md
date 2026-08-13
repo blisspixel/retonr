@@ -19,7 +19,7 @@ or stored-data contracts.
 | `rewrite-inference` | Backend-neutral bounded discovery and generation contracts, cancellation and deadlines, stable redacted errors, and deterministic fake |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
-| `rewrite-app` | Model-free candidate check plus provisional grounded application path through the same engine and adapter transaction |
+| `rewrite-app` | Model-free candidate check, provisional grounded path, and cancellable regular-file offline import with typed progress, no-follow source handling, bounded streaming verification, content-addressed no-clobber commit, and atomic state registration |
 | `retonr` | Provisional `check` command with bounded file reads, JSON or text reports, protected terms, and optional fatal abstention |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
@@ -30,7 +30,7 @@ placement, unsafe controls, protected values, or structure cannot.
 
 ## Verified locally
 
-The August 12, 2026 Windows development checkpoint passes:
+The August 13, 2026 Windows development checkpoint passes:
 
 ```console
 cargo fmt --all -- --check
@@ -50,9 +50,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 132 Rust unit, integration, and process tests pass. One process helper is
+All 142 Rust unit, integration, and process tests pass. One process helper is
 intentionally ignored by the ordinary runner and exercised by its isolated parent
-test. Documentation tests also pass. The measured Rust line coverage is 91.27
+test. Documentation tests also pass. The measured Rust line coverage is 91.29
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -62,14 +62,13 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed in the local environment, so this checkpoint used the documented
 `cargo test` fallback.
 
-Remote continuous integration for implementation closure revision `b2d41fc` passed
-in the exact-main
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31658435581)
-and the
-[dynamic review workflow](https://github.com/blisspixel/retonr/actions/runs/31658436624).
-The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
-Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
-concurrency, and the Ubuntu loopback-only network namespace.
+The latest exact-main remote evidence before this focused import branch is revision
+`e15aafb` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31665899962).
+Remote evidence for the import branch remains pending publication. The retained jobs
+cover Windows, macOS, and Linux Rust checks, repository policy, Markdown, coverage,
+dependency and supply-chain policy, fuzz smoke, proxy isolation, concurrency, and
+the Ubuntu loopback-only network namespace.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the 198-crate
@@ -85,9 +84,11 @@ convergence. Continuous integration uses its own clean runner database.
   implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
   implemented yet.
 - Only UTF-8 plain text up to 16 MiB is accepted.
-- Durable artifact lifecycle state and recovery are implemented behind an adapter.
-  Artifact acquisition, private byte staging, application-service wiring, and exact
-  real-artifact qualification are not implemented.
+- Durable artifact lifecycle state, recovery, and the first application-owned
+  offline-import slice are implemented. Import currently accepts one explicitly
+  selected regular file with an exact manifest. Artifact-set and folder import,
+  downloads, runtime-native pulls, orphan reconciliation, managed-byte removal, CLI
+  commands, and exact real-artifact qualification are not implemented.
 - The Ollama adapter is fake-server tested but has not been qualified against a real
   pinned runtime and model artifact on the three operating systems.
 - The grounded path can safely accept only literal-mode token-preserving changes
@@ -115,8 +116,8 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Wire durable artifact state into the headless application service, then implement
-   explicit offline import, private staging, byte verification, and recovery.
+1. Complete the headless artifact lifecycle around imported bytes: inspect, verify,
+   reconcile safe orphans, remove, and expose the explicit model commands.
 2. Link redacted generation provenance into the durable rewrite transaction schema.
 3. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.

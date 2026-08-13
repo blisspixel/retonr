@@ -10,4 +10,4 @@ mod schema;
 mod store;
 
 pub use error::{StoreError, StoreResult};
-pub use store::{ArtifactStateStore, WriteDisposition};
+pub use store::{ArtifactStateStore, InstallationWriteDisposition, WriteDisposition};

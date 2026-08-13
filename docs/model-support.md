@@ -203,6 +203,12 @@ retonr model remove <artifact>
 explicit, resumable, checksummed, cancellable, and license gated. Activation is an
 atomic pointer change from one verified and currently qualified artifact to another.
 
+Offline import copies from an explicit source into a configurable per-user managed
+artifact root. Neither code nor documentation assumes a developer drive, cache path,
+accelerator, or memory size. Exact artifact identity and qualification remain
+portable across Windows, macOS, and Linux; throughput is device evidence rather than
+a correctness requirement.
+
 ## Evaluation levels
 
 The command vocabulary separates a useful local comparison from project release

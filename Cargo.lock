@@ -1101,9 +1101,13 @@ dependencies = [
  "rewrite-grounded",
  "rewrite-inference",
  "rewrite-model",
+ "rewrite-model-store",
  "rewrite-text-adapter",
  "rewrite-types",
+ "rustix",
  "serde_json",
+ "sha2",
+ "tempfile",
  "thiserror",
 ]
 

@@ -27,6 +27,15 @@ pub enum WriteDisposition {
     AlreadyPresent,
 }
 
+/// Outcome of atomically registering one manifest and installed artifact.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InstallationWriteDisposition {
+    /// Manifest write outcome.
+    pub manifest: WriteDisposition,
+    /// Installed-artifact write outcome.
+    pub installed: WriteDisposition,
+}
+
 /// SQLite-backed artifact state repository.
 pub struct ArtifactStateStore {
     connection: Connection,
@@ -115,6 +124,56 @@ impl ArtifactStateStore {
             key,
             &encoded,
         )
+    }
+
+    /// Atomically stores a manifest and its verified installation state.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when either record is invalid, the records disagree,
+    /// an immutable identifier already names different state, or the transaction
+    /// cannot commit in full.
+    pub fn put_installation(
+        &mut self,
+        manifest: &ArtifactManifest,
+        installed: &InstalledArtifact,
+    ) -> StoreResult<InstallationWriteDisposition> {
+        manifest.validate().map_err(StoreError::InvalidManifest)?;
+        installed
+            .validate()
+            .map_err(StoreError::InvalidInstallation)?;
+        if manifest.artifact_id != installed.artifact_id
+            || manifest.artifact_digest != installed.artifact_digest
+            || manifest.byte_size != installed.byte_size
+        {
+            return Err(StoreError::ImmutableConflict);
+        }
+
+        let manifest_key = manifest.artifact_id.digest().as_str();
+        let manifest_record = encode_record(manifest)?;
+        let installed_record = encode_record(installed)?;
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let manifest_disposition = insert_immutable(
+            &transaction,
+            "artifact_manifests",
+            "artifact_id",
+            manifest_key,
+            &manifest_record,
+        )?;
+        let installed_disposition = insert_immutable(
+            &transaction,
+            "installed_artifacts",
+            "artifact_id",
+            manifest_key,
+            &installed_record,
+        )?;
+        transaction.commit()?;
+        Ok(InstallationWriteDisposition {
+            manifest: manifest_disposition,
+            installed: installed_disposition,
+        })
     }
 
     /// Stores one validated immutable qualification record.
