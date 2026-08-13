@@ -149,8 +149,9 @@ Uncertain routing selects the stricter strategy.
 A strategy emits a neutral bounded inference request. A backend returns an untrusted
 response plus generation provenance. The strategy parses complete masked candidates,
 and the engine alone restores protected values, validates candidates, and applies an
-accepted edit. Production grounded requests do not expose protected raw surfaces to
-the backend.
+accepted edit. The application maps completed generation provenance into the
+versioned rewrite record before returning the transaction. Production grounded
+requests do not expose protected raw surfaces to the backend.
 
 ## Document representation
 
@@ -625,9 +626,23 @@ A rewrite record includes:
 - Binary and configuration digests
 - Locale and timezone when parsing depends on them
 
+The implemented rewrite-record v2 slice now nests one optional versioned generation
+record containing stable strategy ID, exact runtime backend and version, optional
+runtime digest, content-derived artifact ID, artifact digest, prompt-template digest,
+complete backend-input digest, output-schema digest, candidate count, and optional
+runtime-reported token and duration observations. Model-free transactions omit the
+field. A v1 record without the field remains deserializable. Qualification identity,
+installed generation, sampling parameters, seed, adapter versions, profile version,
+validator versions, and binary or configuration digests remain planned rather than
+inferred.
+
 Default traces exclude raw input, output, candidates, profile samples, prompts, and
 model reasoning. Short plain hashes are vulnerable to guessing, so local equality
 tracking should use an installation-keyed identifier or remain opt-in.
+
+Generation provenance proves only what the selected adapter reported and what the
+strategy rechecked for that completed call. It does not prove semantic correctness,
+human authorship, ownership, compliance, model safety, or reproducibility.
 
 Replay is best effort unless model artifact, backend, quantization, prompt, runtime,
 and hardware behavior are all controlled.

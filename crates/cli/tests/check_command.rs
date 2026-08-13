@@ -19,8 +19,10 @@ fn reports_rewritten_candidate_as_json() {
         .arg(candidate)
         .assert()
         .success()
+        .stdout(predicate::str::contains("\"schema_version\": 2"))
         .stdout(predicate::str::contains("\"status\": \"rewritten\""))
-        .stdout(predicate::str::contains("\"assessments\""));
+        .stdout(predicate::str::contains("\"assessments\""))
+        .stdout(predicate::str::contains("\"generation\"").not());
 }
 
 #[test]

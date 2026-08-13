@@ -16,7 +16,10 @@ pub use document::{
     DocumentError, DocumentId, DocumentIr, IdentifierError, MediaType, RewriteUnit, RewriteUnitId,
     SourceSpan, SpanError, StructuralFingerprint,
 };
-pub use record::RewriteRecord;
+pub use record::{
+    GENERATION_PROVENANCE_SCHEMA_VERSION, GenerationProvenance, GenerationRuntimeProvenance,
+    GenerationUsageProvenance, REWRITE_RECORD_SCHEMA_VERSION, RewriteRecord,
+};
 pub use rewrite::{
     AcceptedEdit, Atomicity, CandidateId, CandidateIdError, CandidateRank, CandidateTextKind,
     GeneratedCandidate, PlannedUnit, ReasonCode, RewriteMode, RewriteOptions, RewriteStatus,

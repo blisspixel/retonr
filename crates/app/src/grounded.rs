@@ -10,7 +10,11 @@ use rewrite_grounded::{
 };
 use rewrite_inference::{InferenceBackend, InferenceErrorKind, OperationContext};
 use rewrite_text_adapter::TextAdapter;
-use rewrite_types::{CancellationToken, RewriteMode, RewriteOptions, RewriteRecord};
+use rewrite_types::{
+    CancellationToken, GENERATION_PROVENANCE_SCHEMA_VERSION, GenerationProvenance,
+    GenerationRuntimeProvenance, GenerationUsageProvenance, RewriteMode, RewriteOptions,
+    RewriteRecord,
+};
 
 use crate::{AppError, CandidateCheckResult, run_plain_text_transaction};
 
@@ -27,15 +31,13 @@ pub struct GroundedRewriteRequest {
     pub style_context: String,
 }
 
-/// Safe transaction result and redacted generation provenance.
+/// Safe transaction result with any redacted generation provenance in its record.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GroundedRewriteResult {
     /// Rewritten bytes, or the exact original bytes after abstention.
     pub output: Vec<u8>,
     /// Common versioned transaction record without raw content.
     pub record: RewriteRecord,
-    /// Generation provenance, absent when no backend call completed.
-    pub trace: Option<GroundedTrace>,
 }
 
 /// Application service joining grounded generation to the common validation path.
@@ -149,13 +151,38 @@ fn is_cancelled(error: &GroundedError) -> bool {
 }
 
 fn with_trace(
-    transaction: CandidateCheckResult,
+    mut transaction: CandidateCheckResult,
     trace: Option<GroundedTrace>,
 ) -> GroundedRewriteResult {
+    if let Some(trace) = trace {
+        transaction.record = transaction.record.with_generation(map_trace(trace));
+    }
     GroundedRewriteResult {
         output: transaction.output,
         record: transaction.record,
-        trace,
+    }
+}
+
+fn map_trace(trace: GroundedTrace) -> GenerationProvenance {
+    GenerationProvenance {
+        schema_version: GENERATION_PROVENANCE_SCHEMA_VERSION,
+        strategy_id: trace.strategy_id,
+        runtime: GenerationRuntimeProvenance {
+            backend: trace.runtime.backend,
+            version: trace.runtime.version,
+            digest: trace.runtime.digest,
+        },
+        artifact_id: trace.artifact_id.digest().clone(),
+        artifact_digest: trace.artifact_digest,
+        prompt_template_digest: trace.prompt_template_digest,
+        input_digest: trace.input_digest,
+        output_schema_digest: trace.output_schema_digest,
+        candidate_count: trace.candidate_count,
+        usage: GenerationUsageProvenance {
+            input_tokens: trace.usage.input_tokens,
+            output_tokens: trace.usage.output_tokens,
+            generation_micros: trace.usage.generation_micros,
+        },
     }
 }
 
