@@ -27,7 +27,7 @@ path. A popular package or compatible API shape is not enough.
 | CLI | clap 4.6.x | Chosen |
 | HTTP client | reqwest 0.13.x | Chosen for bounded loopback adapters |
 | Logging | tracing and tracing-subscriber | Chosen with content redaction |
-| Persistence | rusqlite 0.40.x with bundled SQLite | Planned profile store |
+| Persistence | rusqlite 0.40.2 with bundled SQLite | Artifact state implemented; profiles planned |
 | Markdown | pulldown-cmark 0.13.x with source offsets | Planned bounded adapter |
 | DOCX | zip 8.x plus quick-xml 0.41.x | Planned bounded adapter |
 | First attached runtime | Ollama native API | Implemented candidate |
@@ -112,10 +112,10 @@ Vulkan, and hybrid builds qualify independently.
 The process boundary preserves the safe Rust core and is preferred to in-process FFI
 unless measurements prove a product need that justifies a separate safety decision.
 
-### Later runtime candidates
+### Additional 0.x runtime candidates
 
-LM Studio, vLLM, MLX LM, and generic compatible endpoints are candidates, not 1.0
-defaults. Each requires a named driver and exact platform, license, identity,
+LM Studio, vLLM, MLX LM, and generic compatible endpoints are candidates, not
+qualified defaults. Each requires a named driver and exact platform, license, identity,
 offline, setting, output-policy, resource, and cancellation evidence.
 
 - LM Studio is an external proprietary application with native discovery but mutable
@@ -178,10 +178,19 @@ document verification, staging, and an exact report. The complete contract is in
 
 ## Persistence
 
-SQLite stores profiles, evidence metadata, rules, versions, feedback, migrations,
-artifact records, and redacted rewrite records. Domain types do not expose SQL rows.
-Migrations are forward-tested from every supported version with pre-migration backup,
-interruption, corruption, and verified recovery fixtures.
+SQLite is implemented first for artifact manifests, installed state, qualification
+and invalidation records, activation decisions, and active role pointers. The adapter
+uses bundled SQLite behind a dedicated crate; domain and application types do not
+expose SQL rows. Immediate transactions preserve the prior valid pointer when an
+activation cannot commit. Activation and recovery require caller-reverified artifact
+bytes before returning a binding. Qualification identifiers hash a versioned,
+length-delimited encoding of the complete record. Stored record content, indexed
+columns, and derived identities must agree before activation or recovery.
+
+Profiles, evidence metadata, rules, versions, feedback, and redacted rewrite records
+remain planned for the same bounded persistence layer. Migrations require forward
+tests from every supported version with pre-migration backup, interruption,
+corruption, and verified recovery fixtures before those stores freeze.
 
 Content-derived embeddings live in a qualified embedding space identified by exact
 artifact set, runtime, tokenizer, preprocessing, instruction, normalization,

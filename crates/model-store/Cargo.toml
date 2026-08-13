@@ -1,0 +1,23 @@
+[package]
+name = "rewrite-model-store"
+description = "SQLite adapter for durable artifact lifecycle state"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+rewrite-model = { path = "../model", version = "0.1.0" }
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+rewrite-types = { path = "../types", version = "0.1.0" }
+tempfile.workspace = true
+
+[lints]
+workspace = true
