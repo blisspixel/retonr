@@ -31,6 +31,8 @@ pub(crate) enum ModelCommand {
     Import(ImportArgs),
     /// Inspect managed artifact state and bytes without mutation.
     Inventory(InventoryArgs),
+    /// List exact interrupted operations without reading model bytes.
+    PendingOperations,
     /// Register one exact already-managed orphan without changing bytes.
     Reconcile(ReconcileArgs),
     /// Remove one exact inactive installation generation.
@@ -114,6 +116,7 @@ pub(crate) fn run(
     match command {
         ModelCommand::Import(args) => import(&repository, args, cancellation),
         ModelCommand::Inventory(args) => inventory(&repository, &args, cancellation),
+        ModelCommand::PendingOperations => pending_operations(&repository, cancellation),
         ModelCommand::Reconcile(args) => reconcile(&repository, &args, cancellation),
         ModelCommand::Remove(args) => remove(&repository, &args, cancellation),
         ModelCommand::RecoverRemoval(args) => recover_removal(&repository, &args),
@@ -125,11 +128,25 @@ impl ModelCommand {
         match self {
             Self::Import(_) => CommandName::ModelImport,
             Self::Inventory(_) => CommandName::ModelInventory,
+            Self::PendingOperations => CommandName::ModelPendingOperations,
             Self::Reconcile(_) => CommandName::ModelReconcile,
             Self::Remove(_) => CommandName::ModelRemove,
             Self::RecoverRemoval(_) => CommandName::ModelRecoverRemoval,
         }
     }
+}
+
+fn pending_operations(
+    repository: &ArtifactRepository,
+    cancellation: &CancellationToken,
+) -> Result<ModelSuccess, ModelFailure> {
+    let result = repository
+        .pending_operations(MAXIMUM_STATE_ENTRIES, cancellation)
+        .map_err(|error| ModelFailure::repository(CommandName::ModelPendingOperations, &error))?;
+    Ok(ModelSuccess {
+        output: ModelOutput::pending_operations(&result),
+        exit_code: ExitCode::SUCCESS,
+    })
 }
 
 fn import(

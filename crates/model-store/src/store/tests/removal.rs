@@ -249,6 +249,95 @@ fn inventory_retains_validated_pending_removal_state() {
 }
 
 #[test]
+fn pending_removal_inspection_is_bounded_sorted_and_excludes_history() {
+    let directory = tempdir().expect("temporary directory");
+    let mut store =
+        ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
+    let mut first = fixture();
+    let first_digest = Digest::sha256(b"first pending artifact");
+    first.manifest.artifact_id = rewrite_model::ArtifactId::from_digest(first_digest.clone());
+    first.manifest.artifact_digest = first_digest.clone();
+    first.installed.artifact_id = first.manifest.artifact_id.clone();
+    first.installed.artifact_digest = first_digest;
+    let mut second = fixture();
+    let second_digest = Digest::sha256(b"second pending artifact");
+    second.manifest.artifact_id = rewrite_model::ArtifactId::from_digest(second_digest.clone());
+    second.manifest.artifact_digest = second_digest.clone();
+    second.installed.artifact_id = second.manifest.artifact_id.clone();
+    second.installed.artifact_digest = second_digest;
+
+    for value in [&second, &first] {
+        let selection = store
+            .put_installation(&value.manifest, &value.installed)
+            .expect("register pending fixture")
+            .installation;
+        store
+            .prepare_artifact_removal(&selection)
+            .expect("prepare removal");
+    }
+    let pending = store
+        .pending_artifact_removals(2)
+        .expect("inspect prepared removals");
+    assert_eq!(pending.len(), 2);
+    assert!(
+        pending[0].installed.artifact_id.digest().as_str()
+            < pending[1].installed.artifact_id.digest().as_str()
+    );
+
+    store
+        .complete_artifact_removal(&pending[0])
+        .expect("complete one journal");
+    assert!(matches!(
+        store.pending_artifact_removals(1),
+        Err(StoreError::InventoryLimitExceeded)
+    ));
+    assert_eq!(
+        store
+            .pending_artifact_removals(2)
+            .expect("inspect remaining preparation"),
+        vec![pending[1].clone()]
+    );
+    assert!(matches!(
+        store.pending_artifact_removals(0),
+        Err(StoreError::InvalidLimit)
+    ));
+}
+
+#[test]
+fn pending_removal_inspection_fails_closed_on_a_dangling_journal() {
+    let directory = tempdir().expect("temporary directory");
+    let path = directory.path().join("state.db");
+    let mut store = ArtifactStateStore::open(&path).expect("open store");
+    let fixture = fixture();
+    let selection = store
+        .put_installation(&fixture.manifest, &fixture.installed)
+        .expect("register installation")
+        .installation;
+    store
+        .prepare_artifact_removal(&selection)
+        .expect("prepare removal");
+    drop(store);
+
+    let connection = Connection::open(&path).expect("open fixture database");
+    connection
+        .execute_batch("PRAGMA foreign_keys = OFF;")
+        .expect("disable fixture foreign keys");
+    connection
+        .execute(
+            "DELETE FROM artifact_manifests WHERE artifact_id = ?1",
+            [fixture.manifest.artifact_id.digest().as_str()],
+        )
+        .expect("inject dangling journal");
+    drop(connection);
+
+    let store = ArtifactStateStore::open_existing_read_only(&path).expect("reopen exact state");
+    assert!(matches!(
+        store.pending_artifact_removals(1),
+        Err(StoreError::CorruptRecord)
+    ));
+}
+
+#[test]
 fn epoch_overflow_fails_closed() {
     let directory = tempdir().expect("temporary directory");
     let mut store =

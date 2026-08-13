@@ -1,20 +1,30 @@
 # Retonr
 
-Local-first, fidelity-gated re-expression of generated and rough drafts in your own
-writing style.
+Own the final expression.
 
-Less remote exposure. Less editorial slop. More of your style. More control over
-the final expression.
+Retonr is a local-first editorial engine for turning generated, delegated, and rough
+drafts into cleaner writing that sounds more like you. In each qualified format, it
+treats facts, structure, formatting, formulas, links, protected terms, and other
+content that must remain intact as constraints, not disposable context.
 
-Retonr reconstructs eligible prose with a local model instead of carrying upstream
-wording forward unchanged. It uses authorized writing evidence and explicit rules to
-move a draft toward your voice, then rejects candidates that do not preserve the
-facts, protected content, structure, and formatting it can verify.
+The pitch is simple:
+
+- Bring a draft, document, or folder you are authorized to edit.
+- Use a local or explicitly selected model runtime under your control.
+- Make bounded editorial changes to eligible prose instead of blindly regenerating
+  the whole artifact.
+- Write to a separate destination, preserve the source, and report what changed.
+- Reject a candidate or leave a unit unchanged when the required fidelity checks do
+  not pass.
+
+Less remote exposure. Less generic model prose. More of your style. More control
+over the finished work.
 
 It treats generated, delegated, and rough text as drafts. The product applies the
 same kind of bounded editorial refinement a person might apply to an intern's draft,
-authorized notes, or an existing report, but does so consistently across larger
-inputs. The user remains the final editor.
+authorized notes, or an existing report, but makes that process inspectable and
+repeatable across larger inputs. Generation proposes. Retonr validates, selects, or
+abstains. The user remains the final editor.
 
 Model providers are tools in that process, not permanent governors or presumptive
 authors of the finished expression. Retonr is built to help a person turn authorized
@@ -72,9 +82,10 @@ match. Inactive removal uses an installation generation and durable journal so a
 interrupted operation can resume and an old retry cannot delete a deliberate
 reinstall. Runtime artifact leases hold the shared lifecycle lock for their full
 use lifetime, while removal requires the exclusive lock. A narrow offline CLI now
-exposes exact single-file import, read-only inventory, selected reconciliation,
-inactive removal, and explicit interrupted-removal recovery. It does not download,
-qualify, activate, or run a model.
+exposes exact single-file import, read-only inventory, read-only pending-operation
+inspection, selected reconciliation, inactive removal, and explicit
+interrupted-removal recovery. It does not download, qualify, activate, or run a
+model.
 
 The evaluation tool also validates two synthetic editorial-quality groups with named
 findings and clean controls, including a balanced 24-case current-slop group. No
@@ -103,17 +114,20 @@ The implemented model commands are intentionally narrow:
 ```console
 retonr --data-dir <DIRECTORY> model import <ARTIFACT> --manifest <MANIFEST_JSON>
 retonr --data-dir <DIRECTORY> model inventory [--fail-on-findings]
+retonr --data-dir <DIRECTORY> model pending-operations
 retonr --data-dir <DIRECTORY> model reconcile --manifest <MANIFEST_JSON>
 retonr --data-dir <DIRECTORY> model remove --artifact-id <SHA256> --installation-generation <N> --yes
 retonr --data-dir <DIRECTORY> model recover-removal --artifact-id <SHA256> --installation-generation <N> --yes
 ```
 
-These commands are offline and bounded. They never infer a data location, pull a
-model, follow a mutable model tag, activate an artifact, or treat a prior inventory
-report as mutation authority. First import creates one missing repository leaf or
-accepts one empty directory; it refuses a nonempty uninitialized directory and never
-changes permissions on a pre-existing root. JSON is the default machine format;
-`--format text` provides concise human output.
+These commands are offline and bounded. `pending-operations` reads only durable
+state and returns exact interrupted-removal recovery selections without reading or
+hashing model bytes. The commands never infer a data location, pull a model, follow
+a mutable model tag, activate an artifact, or treat a prior inventory report as
+mutation authority. First import creates one missing repository leaf or accepts one
+empty directory; it refuses a nonempty uninitialized directory and never changes
+permissions on a pre-existing root. JSON is the default machine format; `--format
+text` provides concise human output.
 
 ## Product surfaces
 

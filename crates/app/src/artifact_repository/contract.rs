@@ -164,6 +164,13 @@ pub struct ArtifactRepositoryRemovalResult {
     pub disposition: ArtifactRemovalDisposition,
 }
 
+/// Bounded read-only view of operations requiring explicit recovery.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArtifactRepositoryPendingOperations {
+    /// Exact prepared artifact-removal generations in artifact-identity order.
+    pub artifact_removals: Vec<ArtifactInstallationKey>,
+}
+
 impl From<ArtifactRemovalResult> for ArtifactRepositoryRemovalResult {
     fn from(value: ArtifactRemovalResult) -> Self {
         Self {
@@ -179,6 +186,12 @@ pub enum ArtifactRepositoryError {
     /// The installation generation was zero or outside the durable store range.
     #[error("artifact installation generation is invalid")]
     InvalidInstallationGeneration,
+    /// One or more caller-owned repository limits are invalid.
+    #[error("artifact repository limits are invalid")]
+    InvalidLimits,
+    /// Cancellation was observed during a read-only repository operation.
+    #[error("artifact repository operation was cancelled")]
+    Cancelled,
     /// No fixed application data directory has been initialized.
     #[error("artifact repository is not initialized")]
     NotInitialized,
@@ -237,7 +250,10 @@ impl ArtifactRepositoryError {
     #[must_use]
     pub fn kind(&self) -> ArtifactRepositoryErrorKind {
         match self {
-            Self::InvalidInstallationGeneration => ArtifactRepositoryErrorKind::InvalidInput,
+            Self::InvalidInstallationGeneration | Self::InvalidLimits => {
+                ArtifactRepositoryErrorKind::InvalidInput
+            }
+            Self::Cancelled => ArtifactRepositoryErrorKind::Cancelled,
             Self::NotInitialized => ArtifactRepositoryErrorKind::NotInitialized,
             Self::UnsafeDataDirectory => ArtifactRepositoryErrorKind::Conflict,
             Self::RepositoryInUse => ArtifactRepositoryErrorKind::InUse,

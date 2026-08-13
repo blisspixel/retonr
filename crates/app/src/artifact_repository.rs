@@ -29,7 +29,8 @@ mod contract;
 pub use contract::{
     ArtifactInstallationKey, ArtifactRepositoryError, ArtifactRepositoryErrorKind,
     ArtifactRepositoryImportDisposition, ArtifactRepositoryImportResult,
-    ArtifactRepositoryReconciliationResult, ArtifactRepositoryRemovalResult,
+    ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
+    ArtifactRepositoryRemovalResult,
 };
 
 /// Application-owned entry point for administrative artifact lifecycle operations.
@@ -116,6 +117,51 @@ impl ArtifactRepository {
             service
                 .inventory(cancellation, |_| {})
                 .map_err(ArtifactRepositoryError::Inventory)
+        })();
+        finish_operation(result, guard.recheck())
+    }
+
+    /// Inspects bounded durable state for operations requiring explicit recovery.
+    ///
+    /// This operation opens no managed artifact file, hashes no model bytes, creates
+    /// no repository state, and applies no schema migration.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArtifactRepositoryError`] when the repository is absent, busy,
+    /// incompatible, corrupt, changed during inspection, cancelled, or exceeds the
+    /// caller-owned state-entry ceiling.
+    pub fn pending_operations(
+        &self,
+        maximum_state_entries: usize,
+        cancellation: &CancellationToken,
+    ) -> Result<ArtifactRepositoryPendingOperations, ArtifactRepositoryError> {
+        if maximum_state_entries == 0
+            || maximum_state_entries
+                .checked_add(1)
+                .and_then(|value| i64::try_from(value).ok())
+                .is_none()
+        {
+            return Err(ArtifactRepositoryError::InvalidLimits);
+        }
+        ensure_repository_not_cancelled(cancellation)?;
+        self.require_data_directory()?;
+        let mut guard = self.pin_data_directory(RepositoryLockMode::ExistingShared)?;
+        guard.recheck()?;
+        let result = (|| {
+            ensure_repository_not_cancelled(cancellation)?;
+            guard.pin_state_database()?;
+            guard.recheck()?;
+            let store = ArtifactStateStore::open_existing_read_only(&self.state_database())?;
+            guard.recheck()?;
+            ensure_repository_not_cancelled(cancellation)?;
+            let artifact_removals = store
+                .pending_artifact_removals(maximum_state_entries)?
+                .iter()
+                .map(ArtifactInstallationKey::from)
+                .collect();
+            ensure_repository_not_cancelled(cancellation)?;
+            Ok(ArtifactRepositoryPendingOperations { artifact_removals })
         })();
         finish_operation(result, guard.recheck())
     }
@@ -511,6 +557,16 @@ fn finish_operation<T>(
         }
         (_, Err(error)) => Err(error),
         (result, Ok(())) => result,
+    }
+}
+
+fn ensure_repository_not_cancelled(
+    cancellation: &CancellationToken,
+) -> Result<(), ArtifactRepositoryError> {
+    if cancellation.is_cancelled() {
+        Err(ArtifactRepositoryError::Cancelled)
+    } else {
+        Ok(())
     }
 }
 

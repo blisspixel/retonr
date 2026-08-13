@@ -61,6 +61,9 @@ pub enum CommandName {
     /// Read-only managed artifact inventory.
     #[serde(rename = "model.inventory")]
     ModelInventory,
+    /// Read-only inspection of operations requiring recovery.
+    #[serde(rename = "model.pending_operations")]
+    ModelPendingOperations,
     /// Selected exact artifact reconciliation.
     #[serde(rename = "model.reconcile")]
     ModelReconcile,
