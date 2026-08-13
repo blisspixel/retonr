@@ -416,7 +416,11 @@ fn report_progress(
 }
 
 fn ensure_directory(path: &Path) -> Result<(), ArtifactImportError> {
-    fs::create_dir_all(path).map_err(ArtifactImportError::StorageIo)?;
+    match fs::create_dir_all(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+        Err(error) => return Err(ArtifactImportError::StorageIo(error)),
+    }
     let metadata = fs::symlink_metadata(path).map_err(ArtifactImportError::StorageIo)?;
     if !metadata.is_dir() || is_indirect(&metadata) {
         return Err(ArtifactImportError::UnsafeStorageLayout);

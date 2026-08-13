@@ -50,9 +50,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 145 Rust unit, integration, and process tests pass. One process helper is
+All 146 Rust unit, integration, and process tests pass. One process helper is
 intentionally ignored by the ordinary runner and exercised by its isolated parent
-test. Documentation tests also pass. The measured Rust line coverage is 91.07
+test. Documentation tests also pass. The measured Rust line coverage is 91.05
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
