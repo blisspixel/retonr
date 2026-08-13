@@ -14,6 +14,7 @@ use crate::StoreError;
 
 mod installation;
 mod integrity;
+mod inventory;
 
 struct Fixture {
     manifest: ArtifactManifest,

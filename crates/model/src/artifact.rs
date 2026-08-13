@@ -46,6 +46,18 @@ pub enum ArtifactRole {
     Voice,
 }
 
+impl ArtifactRole {
+    /// Complete supported role set in stable domain order.
+    pub const ALL: [Self; 6] = [
+        Self::Generation,
+        Self::Embedding,
+        Self::SpeechRecognition,
+        Self::VoiceActivityDetection,
+        Self::SpeechSynthesis,
+        Self::Voice,
+    ];
+}
+
 /// Immutable upstream origin recorded for an artifact.
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

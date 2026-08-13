@@ -36,6 +36,12 @@ pub enum StoreError {
     /// A serialized record exceeded the adapter's fixed bound.
     #[error("artifact state record exceeds the storage bound")]
     RecordTooLarge,
+    /// A caller-supplied state inventory ceiling was zero or not representable.
+    #[error("artifact state inventory limit is invalid")]
+    InvalidLimit,
+    /// Durable manifest state exceeded the caller-owned inventory ceiling.
+    #[error("artifact state inventory exceeds the configured entry limit")]
+    InventoryLimitExceeded,
     /// A durable record disagreed with its indexed identity or columns.
     #[error("persisted artifact state record failed integrity validation")]
     CorruptRecord,

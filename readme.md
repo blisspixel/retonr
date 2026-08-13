@@ -64,8 +64,9 @@ model-free slice includes versioned Rust contracts, plain-text parsing and
 reassembly, protected values, deterministic candidate gates, semantic assessment,
 lexicographic selection, document-atomic abstention, redacted records, a
 candidate-check CLI, durable artifact-state transactions, non-destructive offline
-artifact-file import, and positive and hard-negative evaluation fixtures. The import
-service is not exposed through the CLI yet.
+artifact-file import, read-only managed-artifact verification and reconciliation,
+and positive and hard-negative evaluation fixtures. The artifact services are not
+exposed through the CLI yet.
 The evaluation tool also validates two synthetic editorial-quality groups with named
 findings and clean controls, including a balanced 24-case current-slop group. No
 editorial-lint rule has product authority yet.
@@ -84,7 +85,7 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 The first command validates a caller-supplied complete candidate without invoking a
 model. The second runs the checked-in fidelity suite. The final two validate the
 synthetic editorial-quality groups and emit only content-free summaries. The planned
-lint engine, rewrite, profile, model-management, service, and desktop workflows are
+lint engine, rewrite, profile, model-management CLI, agent, and desktop workflows are
 not yet implemented.
 
 ## Product surfaces

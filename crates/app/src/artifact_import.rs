@@ -11,7 +11,7 @@ use sha2::{Digest as _, Sha256};
 use tempfile::{Builder as TemporaryFileBuilder, NamedTempFile};
 
 mod contract;
-mod platform;
+pub(crate) mod platform;
 
 pub use contract::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,

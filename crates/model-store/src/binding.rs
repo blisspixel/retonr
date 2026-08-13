@@ -11,6 +11,8 @@ struct StoredBindingRow {
     record_json: String,
 }
 
+const MAX_ACTIVE_BINDINGS: usize = ArtifactRole::ALL.len();
+
 pub(super) fn load_active_binding(
     connection: &Connection,
     role: ArtifactRole,
@@ -32,11 +34,16 @@ pub(super) fn load_active_bindings(
 ) -> StoreResult<Vec<ActiveArtifactBinding>> {
     let mut statement = connection.prepare(
         "SELECT role, artifact_id, qualification_id, record_json
-         FROM active_bindings ORDER BY role ASC",
+         FROM active_bindings ORDER BY role ASC LIMIT ?1",
     )?;
-    let rows = statement.query_map([], read_stored_binding)?;
+    let query_limit =
+        i64::try_from(MAX_ACTIVE_BINDINGS + 1).map_err(|_| StoreError::CorruptRecord)?;
+    let rows = statement.query_map([query_limit], read_stored_binding)?;
     let mut bindings = Vec::new();
     for row in rows {
+        if bindings.len() == MAX_ACTIVE_BINDINGS {
+            return Err(StoreError::CorruptRecord);
+        }
         bindings.push(decode_stored_binding(&row?)?);
     }
     Ok(bindings)
