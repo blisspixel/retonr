@@ -6,31 +6,24 @@
 2. Fidelity failures are visible and actionable.
 3. The original is always recoverable.
 4. Local and networked actions are visually and behaviorally distinct.
-5. Every important desktop workflow has a CLI or API equivalent.
-6. Voice is an optional input method, not a prerequisite.
+5. Every important desktop workflow is complete in the CLI first.
+6. Typed clarification is complete before optional voice input is considered.
 7. Accessibility and cross-platform behavior are release criteria.
 
 ## Core workflow
 
-```text
-Choose profile
-    |
-Provide text or document
-    |
-Select channel, refinement, and atomicity
-    |
-Review detected protected content and unsupported features
-    |
-Generate and validate candidates
-    |
-  +--------------------+
-  |                    |
-pass                abstain
-  |                    |
-Review diff       See exact reasons
-  |                    |
-Accept, copy,     Keep original or
-or save safely    adjust constraints
+```mermaid
+flowchart TD
+    Profile["Choose profile"] --> Input["Provide text or supported document"]
+    Input --> Brief["Confirm or skip high-value editorial questions"]
+    Brief --> Policy["Select channel, mode, language, and atomicity"]
+    Policy --> Review["Review protected content and unsupported features"]
+    Review --> Validate["Generate and validate complete candidates"]
+    Validate --> Decision{"Eligible candidate?"}
+    Decision -->|Yes| Diff["Review accessible diff"]
+    Diff --> Save["Accept, copy plain text, export, or save safely"]
+    Decision -->|No| Reasons["See exact abstention reasons"]
+    Reasons --> Original["Keep original or adjust constraints"]
 ```
 
 The default workflow does not overwrite source files. In-place replacement is an
@@ -75,32 +68,31 @@ It captures:
 The interview produces proposed evidence and declared rules. The user approves both
 before a new profile version is created.
 
-## Local voice interview
+## Guided editorial brief
 
-Voice uses the same interview state machine as typed input.
+Retonr can inspect a document and ask a small number of questions whose answers could
+materially change the rewrite or prevent an editorial mistake. Typical questions
+cover audience, main point, requested action, stance, non-negotiable language, and
+allowed edit level.
 
-Required behavior:
+The user may answer, edit, skip, or use safe defaults. Each question explains why it
+matters and shows the relevant source context. Answers belong to the document brief
+and do not become durable profile preferences without a separate preview and
+activation decision.
 
-- Microphone permission requested only when the user starts voice input
-- Push-to-talk by default
-- Clear recording, processing, and playback states
-- Input-device selection and level feedback
-- Local transcription
-- Editable transcript before it enters profile evidence
-- Local spoken prompts and responses with captions
-- Immediate removal from application-controlled raw-audio storage by default
-- A visible retention control when the user deliberately keeps audio
-- Full keyboard and typed alternatives
-- Cancellation during capture, transcription, generation, and playback
+The typed brief contract is available in the CLI and native desktop. Agents can
+present proposed questions and submit explicit answers through a bounded handle, but
+cannot answer on the user's behalf or infer consent from conversation state.
 
-The typed interview state machine chooses each evidence gap and remains the source of
-truth. A local conversational model may rephrase a question, but it cannot confirm a
-transcript, admit evidence, or mutate a profile. Version 1.0 has no always-listening,
-wake-word, simultaneous capture and speech output, speaker identification, or voice
-cloning path.
+The complete question, precedence, preference-ledger, evaluation, and later voice
+rules are defined in [Guided editorial brief](editorial-brief.md).
 
-Voice errors never block typed onboarding. Model size, language, license, disk use,
-and expected hardware requirements are visible before installation.
+## Post-1.0 local voice input
+
+Voice may later transcribe profile and document-brief answers into the same typed
+fields. The user reviews and confirms the transcript before it becomes an answer or
+evidence event. Voice adds no new authority and never becomes required for a complete
+workflow.
 
 ## CLI design
 
@@ -111,21 +103,30 @@ The CLI is a primary product, not a debug wrapper around the desktop application
 ```console
 retonr profile create <name>
 retonr profile ingest <path>... --profile <name>
-retonr profile interview --profile <name> [--voice]
+retonr profile interview --profile <name>
 retonr profile show --profile <name> [--format text|json]
 retonr profile edit --profile <name>
 retonr profile export --profile <name> --output <path>
 retonr profile import <path>
 retonr profile delete --profile <name>
 
-retonr rewrite [path|-] --profile <name>
+retonr brief <path> --profile <name> --interactive
+retonr plan <path|directory> --profile <name> --manifest <path>
+retonr lint <path|directory|-> --profile <name>
+retonr lint rules --profile <name>
+retonr lint explain <finding-id>
+retonr rewrite [path|directory|-] --profile <name>
 retonr check <path|-> --profile <name>
+retonr apply --manifest <path> --output-dir <directory>
+retonr report <path>
 
 retonr model list
+retonr model recommend --language auto --mode balanced --format text
 retonr model inspect <model>
 retonr model download <model>
 retonr model verify <model>
 retonr model qualify <model>
+retonr model eval <model> --suite device
 retonr model import <path>
 retonr model activate <model>
 retonr model deactivate <model>
@@ -140,6 +141,10 @@ retonr version --format text|json
 The final grammar is tested before it freezes. Common operations stay short while
 advanced policy remains explicit.
 
+Editorial lint returns named, explainable quality findings and never an AI-authorship
+verdict. Its full finding, ranking, report, and agent boundaries are defined in
+[Editorial lint and the anti-slop quality loop](editorial-lint.md).
+
 ### Rewrite controls
 
 ```text
@@ -151,6 +156,9 @@ advanced policy remains explicit.
 --trace <path>
 --format text|json
 --output <path>
+--output-dir <directory>
+--recursive
+--brief <path>
 --in-place
 --backup
 --fail-on-abstain
@@ -194,6 +202,13 @@ overwrites an ambiguous target.
 - Help includes examples and links to local documentation.
 - Shell completion and manual pages ship with releases.
 
+`rewrite -` reads multiline standard input to end of file without trimming. Path,
+standard-input, direct-text, and explicit clipboard sources are mutually exclusive.
+An interactive paste buffer treats bracketed paste as data and requires an explicit
+submit action. `--clipboard` reads plain text only after user action, and
+`--copy-output` writes only a completely validated result. Neither operation polls
+clipboard history or turns pasted text into profile evidence.
+
 An abstention can still produce a valid original document. Machine callers inspect
 the structured `status`. `--fail-on-abstain` converts it to a dedicated nonzero exit
 status for pipelines that require a rewrite.
@@ -219,18 +234,28 @@ Every nonzero category has a stable machine-readable error code in JSON mode.
 - Local-first explanation and network state
 - Model selection with disk, memory, license, and language details
 - Profile creation and corpus authorization
-- Typed or voice interview
+- Typed profile interview and document brief
 - First held-out preview
 
 ### Rewrite workbench
 
 - Source editor or document picker
+- Reviewed file or folder manifest with explicit destination and collision policy
 - Profile, channel, mode, and atomicity controls
 - Protected-content summary
 - Side-by-side and accessible linear diff
 - Validation result grouped by exact, structural, semantic, and style evidence
 - Clear rewritten, unchanged, abstained, and failed states
 - Copy, export, safe replace, undo, and trace export
+- Staged batch progress, recovery, and exact change report
+- Multiline plain-text paste that retains blank lines, tabs, and final-newline intent
+- Explicit plain-text clipboard read and write permissions scoped to this window
+
+Rich HTML or RTF clipboard data is never rendered. When a plain representation is
+available, the workbench labels it as plain-text import. Document formatting is kept
+through Save or Export using the owning Markdown or DOCX adapter, not through Copy.
+Editing after a completed rewrite invalidates its displayed validation result until
+the document is checked again.
 
 ### Profile lab
 
@@ -290,7 +315,8 @@ announcements without excessive repetition.
 
 ## Accessibility
 
-Version 1.0 targets WCAG 2.2 AA for desktop webview content.
+Version 1.0 targets WCAG 2.2 AA for the native desktop application where the
+criteria apply, plus platform-native accessibility semantics.
 
 Required checks:
 
@@ -302,11 +328,11 @@ Required checks:
 - High-contrast mode
 - Reduced-motion support
 - Minimum target sizes
-- Captions and editable transcripts for voice
 - No color-only or motion-only information
 - Screen-reader-friendly linear diff alternative
 - Accessible error summaries linked to affected controls
-- Automated axe checks plus manual keyboard and screen-reader passes
+- Toolkit and platform accessibility checks plus manual keyboard and screen-reader
+  passes
 
 The CLI uses plain-language diagnostics, stable ordering, a no-color mode, and output
 that remains understandable without terminal styling.
@@ -348,6 +374,9 @@ POST /v0/profiles/{id}/versions
 POST /v0/learning
 POST /v0/learning/{id}/responses
 DELETE /v0/learning/{id}
+POST /v0/operations
+GET  /v0/operations/{id}
+DELETE /v0/operations/{id}
 ```
 
 Mutation endpoints use conditional writes and client operation IDs. Long-running work
@@ -358,19 +387,28 @@ redacted RFC 9457 problems. Cancelled is a successful domain outcome only when a
 request or later operation lookup can return it. A disconnected client receives no
 later body. Failed never uses a successful HTTP envelope.
 
+Synchronous calls return only a complete validated outcome. Longer work returns an
+opaque principal-scoped operation ID, supports authenticated polling and explicit
+cancellation, and exposes only bounded phase and progress metadata before the final
+result. Candidate tokens, output fragments, prompts, and trace content are never
+streamed. API and MCP callers cannot supply an arbitrary local filesystem path.
+Inline JSON strings have logical text semantics; structured documents use a separate
+bounded byte-transfer or staged-document contract before `/v1` freezes.
+
 ## MCP design
 
-The MCP surface maps to the application service:
+The routine MCP surface maps to the application service:
 
 ```text
 rewrite
 check
-profile_get
-profile_update
-learning_start
-learning_continue
-learning_cancel
 ```
+
+Baseline MCP tools accept complete bounded TXT and supported Markdown content and
+return one schema-validated structured result. They do not accept arbitrary paths,
+clipboard authority, arbitrary paths, profile mutation, model lifecycle, or partial
+candidate streaming. Privileged profile tools require a separate package and
+server-enforced authority after their contracts stabilize.
 
 Names remain provisional until schemas are tested with clients. Learning handles are
 explicit because protocol sessions are not application state. MCP 2026-07-28 has no
@@ -383,8 +421,11 @@ Streamable HTTP uses a documented custom loopback bearer profile, not standard M
 OAuth authorization. Standard input remains preferred when a named client cannot
 inject the token.
 
-First-party skills use stable `SKILL.md` packages and call these tools or the local
-API. Skills over MCP remains experimental and does not gate 1.0.
+One first-party Agent Skill and standard-input MCP entry ship together in a pinned
+Agent Plugins 1.0.0 working-draft package. Agent Plugins format validity does not
+establish distribution trust, signatures, updates, permissions, sandboxing, or named
+client compatibility. Those are separate release gates. Skills over MCP remains
+experimental and does not gate 1.0.
 
 ## Screenshot policy
 
@@ -398,7 +439,7 @@ Required README images by 1.0:
 3. CLI JSON or trace inspection
 4. Desktop rewrite workbench
 5. Desktop profile lab
-6. Desktop local voice interview with editable transcript
+6. Desktop file or folder transaction report with exact change metrics
 
 Every image has concise alt text and a nearby textual explanation. Sensitive data is
 never used. When Windows, macOS, and Linux differ materially, the documentation shows

@@ -19,7 +19,7 @@ not freeze package, protocol, or stored-data contracts.
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
 | `rewrite-app` | Model-free candidate check plus provisional grounded application path through the same engine and adapter transaction |
 | `retonr` | Provisional `check` command with bounded file reads, JSON or text reports, protected terms, and optional fatal abstention |
-| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, and redacted aggregate reporting |
+| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, synthetic editorial-corpus validation, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
@@ -42,20 +42,29 @@ cargo deny check
 cargo audit --db target/advisory-db-clean
 npm run lint:markdown
 pwsh -NoProfile -File scripts/check-repository.ps1
-cargo check --locked --manifest-path fuzz/Cargo.toml --all-targets
-cargo build --locked --workspace --all-features --release
+cargo +nightly check --locked --manifest-path fuzz/Cargo.toml --bins
+cargo +nightly fuzz run protection_roundtrip -- -max_total_time=10
+cargo +nightly fuzz run text_adapter_identity -- -max_total_time=10
+cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
+cargo build --locked --workspace --release
 ```
 
-All 90 Rust unit, integration, process, and documentation tests pass. The measured
-Rust line coverage is 90.50 percent overall. Engine orchestration is 93.29 percent,
-sentinel protection is 97.14 percent, semantic validation is 100 percent, the
-grounded application path is 89.87 percent, the grounded strategy is 94.49 percent,
-the Ollama backend is 88.27 percent, and the text adapter is 91.21 percent.
+All 108 Rust unit, integration, and process tests pass. Documentation tests also
+pass. The measured Rust line coverage is 90.46 percent overall. The repository's 80 percent line
+coverage floor passes with margin.
 
-The local stable toolchain can type-check fuzz targets. Sanitizer-backed fuzz
-execution requires nightly and is configured as a Linux CI smoke job. Windows,
-macOS, and Linux jobs are configured, but this document does not describe remote CI
-as passing until an actual run confirms it.
+The local nightly toolchain can type-check and execute both fuzz targets. The two
+bounded smoke runs completed without a crash. Continuous integration retains the
+Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not installed in the local
+environment, so this checkpoint used the documented `cargo test` fallback.
+
+Remote continuous integration for revision `c671e7f` passed in both the
+[push workflow](https://github.com/blisspixel/retonr/actions/runs/31642737679) and
+[pull-request workflow](https://github.com/blisspixel/retonr/actions/runs/31642741108).
+The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
+Markdown, coverage, dependency and supply-chain policy, and fuzz smoke. Later
+documentation changes require their own passing revision before they inherit that
+claim.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the 188-crate
@@ -67,6 +76,8 @@ convergence. Continuous integration uses its own clean runner database.
 
 - The current CLI checks a supplied candidate. The grounded application path is not
   exposed as a CLI command yet.
+- The editorial corpus contract and 15 synthetic fixtures are implemented, but no
+  lint scanner, rule catalog, or live anti-slop ranking path is implemented yet.
 - Only UTF-8 plain text up to 16 MiB is accepted.
 - Artifact lifecycle contracts exist only in memory. Acquisition, durable storage,
   exact real-artifact qualification, and recovery are not implemented.
@@ -74,8 +85,9 @@ convergence. Continuous integration uses its own clean runner database.
   pinned runtime and model artifact on the three operating systems.
 - The grounded path can safely accept only literal-mode token-preserving changes
   under the current evaluator. Open-domain paraphrases and broader modes abstain.
-- UTF-16, Markdown, DOCX, profiles, persistence, API, MCP, skills, desktop, and voice
-  are not implemented yet.
+- UTF-16, Markdown, DOCX, profiles, persistence, document briefs, file and folder
+  transactions, API, MCP, Agent Skills, Agent Plugins, and native desktop are not
+  implemented yet.
 - The model-free evaluator does not assess open-domain paraphrases and must abstain
   on them.
 - No public API, schema, package, executable name, or configuration namespace is
@@ -83,8 +95,10 @@ convergence. Continuous integration uses its own clean runner database.
 - Rewrite records use unkeyed SHA-256 identity digests. These are not anonymization
   and can permit dictionary attacks on short predictable text. Stable local traces
   require an installation-keyed digest decision.
-- Screenshots remain gated on the complete release-build behaviors defined by the
-  screenshot policy.
+- The README includes one reproducible rendering of verbatim output from the current
+  release-optimized candidate-check binary. Model-backed rewrite, abstention, diff,
+  trace and native desktop screenshots remain gated on their complete release-build
+  behaviors under the screenshot policy.
 - Evaluation data and user-research policies are proposed, not approved. No
   non-synthetic collection is authorized.
 
@@ -96,8 +110,8 @@ is:
 
 1. Approve or revise the proposed data, consent, user-research, and adjudication
    governance before collecting non-synthetic data.
-2. Retain actual Windows, macOS, and Linux continuous-integration results and close
-   the open 0.1 refinement findings.
+2. Rerun Windows, macOS, and Linux continuous integration for the final 0.1 closure
+   revision and retain its exact evidence.
 3. Review the proposed artifact, inference, transport, and grounded-authority
    decision records at the 0.2 entry gate.
 4. Add partial-body, in-flight deadline, proxy-environment, socket-denial, and
@@ -110,7 +124,9 @@ is:
    raw-output policy before exposing grounded rewriting in the CLI.
 8. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-9. Capture real CLI screenshots only after the 0.2 exit gate passes.
+9. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+   after the 0.2 exit gate passes. The current candidate-check rendering is limited
+   to already implemented model-free behavior.
 
 Later work follows the dependency order in the
 [phase execution plan index](planning/README.md).

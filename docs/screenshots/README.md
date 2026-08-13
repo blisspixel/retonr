@@ -7,6 +7,11 @@ not present planned functionality as implemented.
 
 ## Required captures
 
+### Current candidate-check slice
+
+- Help and one successful candidate validation
+- Clear nearby wording that the command does not invoke a model
+
 ### CLI vertical slice
 
 - Successful rewrite with a readable diff
@@ -20,9 +25,10 @@ not present planned functionality as implemented.
 - Profile evidence and rule editor
 - Model manager
 
-### Voice release candidate
+### Document transactions
 
-- Local voice interview with editable transcript
+- File or folder transaction report with exact change and preservation evidence
+- Guided editorial brief with one document-specific clarification
 
 ## Capture requirements
 
@@ -37,16 +43,21 @@ not present planned functionality as implemented.
 - Provide useful alt text and a nearby textual explanation.
 - Keep text readable at the rendered README size.
 - Recapture an image when the documented behavior or layout changes.
+- A deterministic terminal rendering may be used when it contains verbatim output
+  from the recorded binary and fixture. Its metadata must distinguish added prompt
+  lines or presentation chrome from program output and retain the render source.
 
 ## File naming
 
 ```text
+cli-check-<platform>.png
 cli-rewrite-<platform>.png
 cli-abstain-<platform>.png
 cli-trace-<platform>.png
 desktop-workbench-<platform>.png
 desktop-profile-<platform>.png
-desktop-voice-interview-<platform>.png
+desktop-transaction-report-<platform>.png
+desktop-editorial-brief-<platform>.png
 ```
 
 Use `windows`, `macos`, or `linux` for the platform segment. A platform-neutral image

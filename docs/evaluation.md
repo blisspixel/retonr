@@ -19,6 +19,12 @@ optimized for detector scores, source classification, or watermark disruption.
 6. How do model, quantization, hardware, document type, channel, and mode affect the
    result?
 7. Are latency, memory, load time, disk use, and energy acceptable for local use?
+8. Which languages and mixed-language patterns meet the same published fidelity
+   floor without being hidden inside an aggregate score?
+9. Do document-specific clarification questions improve main-point, audience, and
+   owner-preference outcomes enough to justify their interruption cost?
+10. Does a time-aware preference representation improve prediction over an explicit
+    append-only ledger without weakening explainability, revocation, or deletion?
 
 ## Baselines
 
@@ -251,6 +257,46 @@ invalidates the affected qualification record.
 The same process qualifies an independent semantic evaluator. Generator and evaluator
 errors can be correlated, so using one model for both requires explicit evidence.
 
+### Runtime, backend, and quantization comparison
+
+A device capability probe does not grant support. Each CPU, Metal, CUDA, HIP,
+Vulkan, or hybrid execution class is compared through the same product cases. The
+report records effective context, memory, offload, driver, runtime build, and all
+settings that can change behavior.
+
+Lower-precision artifacts receive a predeclared non-inferiority comparison against
+Q8 or a higher-precision reference. Cross-runtime and cross-backend differential
+tests report changes in critical accept or abstain decisions, fidelity failures,
+structured-output validity, latency, and memory. Any critical divergence requires
+full independent qualification or a narrower support claim.
+
+### Multilingual and mixed-language qualification
+
+Version 1.0 requires English, at least one additional Latin-script language, and at
+least one non-Latin-script language to pass independently. Exact languages are
+selected after authorized data and fluent human review are available. Each supported
+language has native-authored or professionally curated cases for entities, roles,
+quantities, dates, negation, modality, conditions, attribution, quotation,
+coreference, formality, agreement, punctuation, Unicode, and prompt injection.
+
+Mixed-language suites cover intra-sentence and inter-sentence switches, quotations,
+technical terms, product names, code, URLs, identifiers, and left-to-right plus
+right-to-left transitions where advertised. The system may not translate or move a
+language boundary without an explicit transformation request. Ambiguous language is
+user-declared or causes abstention.
+
+Reports stratify every release measure by language, script, locale, mixed-language
+pattern, model, mode, and format. Pooled results cannot qualify a weak stratum.
+Machine-translated English cases may support diagnostics but cannot replace fluent
+human fidelity and preference review.
+
+Automatic language detection and routing receive calibrated per-language and
+per-script error, misrouting, uncertainty, and abstention bounds set before the
+locked run. Every qualified mixed-language pair or set must either pass its locked
+cases or deterministically abstain with exact original output. It may not translate,
+move a language boundary, or emit a partial result when that pair or set is not
+qualified.
+
 ## Document release gates
 
 ### Plain text
@@ -317,11 +363,69 @@ research suite to understand the effects of rerendering. These diagnostics:
 A lower source-classification score is not proof of human authorship, privacy, or
 provenance removal.
 
+The watermark research suite freezes the complete detector procedure, including
+normalization, tokenizer, repeated-event policy, eligibility, windows, keys,
+payloads, aggregation, thresholds, abstention, and runtime. It calibrates that
+complete procedure, controls every searched dimension, reports exact bounds for rare
+false positives, and keeps provider production keys outside the study. The full
+preregistration and noninterference contract is in
+[Text watermark evaluation protocol](research/2026-08-12-watermark-evaluation-protocol.md).
+
+## Editorial-lint evaluation
+
+Editorial lint is evaluated as an explainable quality system, separately from
+source classification and watermark research. Its findings may participate in the
+live quality loop only after all hard fidelity gates pass.
+
+The versioned corpus and the known-watermark research lane are defined in
+[Editorial-quality and watermark research corpora](evaluation-corpora.md). The
+checked-in development corpus is synthetic. Licensed public, participant, and locked
+data remain gated by their own manifests and governance decisions.
+
+For each rule, report:
+
+- Exact rule and policy version, language, channel, format, and profile scope
+- Positive fixtures, protected-context exclusions, and adversarial near-matches
+- Precision and recall where a complete labeled set is meaningful
+- False positives in human-written, quoted, technical, and accessibility content
+- User acceptance, rejection, and manual revision of proposed fixes
+- Source findings resolved, retained, introduced, suppressed, and uncertain
+- Fidelity, style preference, document-level repetition, latency, and abstention
+
+Compare a transparent user-editable rule baseline with any learned rule. A learned
+rule ships only if it improves a predeclared quality outcome without a material
+fidelity or false-positive regression. The report names reduced findings and never
+converts them into a probability of human or machine authorship.
+
+## Editorial brief and temporal preference evaluation
+
+Compare no clarification, fixed generic questions, adaptive document-derived
+questions, and a full user-authored brief. The adaptive system must improve over the
+strongest simpler condition without a material fidelity, usability, privacy, or
+resource regression.
+
+Report:
+
+- Main-point, audience, stance, requested-action, and protected-commitment adherence
+- Blind owner preference and edit distance to the owner's final revision
+- Questions asked, answered, skipped, revised, or marked irrelevant
+- Answer time, interruption burden, abandonment, and marginal value per question
+- Incorrect assumptions and incorrect promotion of situational answers to the profile
+- Deterministic active-profile reconstruction at historical timestamps and contexts
+- Supersession, conflict, revocation, deletion, and transitive invalidation behavior
+
+The baseline is an explicit append-only preference ledger with time, context,
+provenance, confidence, consent, supersession, conflict, and derivation edges. A graph
+database, temporal embedding, or learned Temporal Knowledge Graph is justified only
+by predeclared incremental value over that baseline. Recommendation or link-prediction
+results from unrelated datasets are not product evidence.
+
 ## Release report
 
 Every public release includes:
 
 - Supported model artifact matrix
+- Supported language, script, locale, mixed-language, runtime, backend, and hardware matrix
 - Supported format capability matrix
 - Selective-risk report
 - Style comparison with baselines

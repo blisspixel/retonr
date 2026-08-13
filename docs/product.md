@@ -10,13 +10,21 @@ general style imitator or detector bypass. It is a conservative control plane th
 combines personal style evidence, explicit output hygiene, fact checks, structural
 checks, declared constraints, format-aware reassembly, and abstention.
 
-That is a meaningful product if it can prove two things:
+The product treats generated, delegated, and rough text as drafts. Its role is
+comparable to applying ordinary editorial review, a house style, authorized notes,
+or the user's own prior examples at software scale. The user remains the final
+editor. Retonr reports what it changed but does not issue an authorship or legal
+compliance certificate.
 
-1. Users prefer its accepted output over a simple prompt with a few writing samples.
-2. It achieves that improvement without a material increase in semantic or
+That is a meaningful product if it can prove three things:
+
+1. Accepted output contains fewer named editorial defects than the source and the
+   strongest transparent baseline.
+2. Users prefer its accepted output over a simple prompt with a few writing samples.
+3. It achieves those improvements without a material increase in semantic or
    structural failures.
 
-The project should stop or simplify if it cannot pass both tests.
+The project should stop or simplify if it cannot pass all three tests.
 
 ## Initial users
 
@@ -48,6 +56,12 @@ human-review controls.
   long-form writing.
 - Keep my writing corpus and drafts off third-party services.
 - Show what changed and why a candidate passed or failed.
+- Find and reduce explainable editorial anti-patterns without pretending they prove
+  AI authorship.
+- Let me provide the audience, main point, desired action, and non-negotiables without
+  line-editing a long draft.
+- Ask only the few document-specific questions that can materially improve the
+  rewrite or prevent a wrong editorial assumption.
 - Return my original when a safe rewrite cannot be established.
 - Reuse one profile from the CLI, desktop app, scripts, editors, and local agents.
 - Talk through my preferences locally when typing an interview is inconvenient.
@@ -109,10 +123,34 @@ reports explain external backups, operating-system caches, crash dumps, swap, an
 storage-device limits. A generated output does not become new evidence merely
 because it was accepted.
 
+### Editorial sovereignty and viewpoint neutrality
+
+The user's work and final expression remain under the user's control. Core operation
+does not add mandatory provider attribution, generated-by labels, hidden source
+markers, content telemetry, or remote content-policy enforcement. The engine does
+not decide which lawful ideas a user may express.
+
+Retonr is not a compliance oracle. Users and deployers remain responsible for rules
+that apply to their work, while the project remains responsible for duties that
+apply to its own development and distribution. The complete boundary is defined in
+[Editorial sovereignty and legal responsibility](governance/editorial-sovereignty.md).
+
 ### Honest uncertainty
 
 The system distinguishes exact validation from learned assessment. It reports
 abstention and uncertainty with stable reason codes.
+
+### Explainable anti-slop quality
+
+Retonr identifies concrete editorial problems such as canned transitions, repeated
+conclusions, conversational residue, inflated sectioning, vague attribution, and
+punctuation habits that conflict with the selected profile. These findings can guide
+generation and rank candidates only after every fidelity gate passes.
+
+This is editorial lint, not an AI-authorship detector. Provider classifiers and
+published watermark tests remain isolated research diagnostics. The complete
+boundary and reporting contract are defined in
+[Editorial lint and the anti-slop quality loop](editorial-lint.md).
 
 ### Narrow support is better than false preservation
 
@@ -172,21 +210,31 @@ Before building the broad product surface:
 
 ## 1.0 product boundary
 
-Version 1.0 includes polished CLI and desktop applications, TXT and declared
-Markdown support, a bounded DOCX subset, local profiles, typed and voice-assisted
-interviews, MCP, agent skill packages, a stable local API, a documented text-only
-compatibility adapter, cross-platform installers, and published evaluation results.
+Version 1.0 includes a polished CLI and native desktop application, TXT and declared
+Markdown support, a bounded DOCX subset, non-destructive file and folder
+transactions, local profiles, typed interviews, MCP, Agent Skills, a portable Agent
+Plugin package, a stable local API, a documented text-only compatibility adapter,
+cross-platform installers, published model and hardware recommendations, and
+qualified rewriting for English, at least one additional Latin-script language, and
+at least one non-Latin-script language.
+
+Language and format support are independent claims. Mixed-language or unsupported
+units are preserved or cause abstention according to the selected atomicity policy.
+Formatted file preservation belongs to the owning document adapter. Plain-text
+clipboard and inline API content do not carry a rich-format preservation claim.
 
 Version 1.0 does not promise:
 
 - Formal semantic equivalence for unrestricted language
 - Perfect DOCX round-tripping for unsupported features
 - PDF round-trip editing
+- Spreadsheet rewriting, including XLSX prose cells
 - Mobile applications
 - Cloud synchronization or team profile management
 - Unrestricted imitation of third parties
 - Universal provenance or watermark removal
 - Support for every upstream API event type
+- Local voice acquisition, dictation, or speech output
 
 ## Primary product risks
 

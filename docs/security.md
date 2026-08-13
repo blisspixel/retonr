@@ -10,6 +10,13 @@ Local-first reduces disclosure to third-party services. It does not protect agai
 malware, insecure backups, shared-device access, compromised dependencies, or other
 authorized local processes.
 
+The security model does not include content surveillance for a provider, regulator,
+employer, or platform. Core operation adds no content telemetry, mandatory provider
+attribution, hidden source marker, remote content-policy check, or provider-controlled
+kill switch. Users remain responsible for obligations that apply to their work, and
+the project remains responsible for duties that apply to its own distribution. See
+[Editorial sovereignty](governance/editorial-sovereignty.md).
+
 ## Primary assets
 
 - Corpus text and metadata
@@ -28,18 +35,20 @@ present.
 
 ## Trust boundaries
 
-```text
-Untrusted document ------> Parser and adapter
-Untrusted corpus --------> Profile ingestion
-Document and evidence ---> Model prompt boundary
-Model output ------------> Schema and validation boundary
-Local model service -----> Runtime identity and response boundary
-Local client ------------> API or MCP authority boundary
-Desktop frontend --------> Tauri command and capability boundary
-Downloaded artifact -----> Model and update verification
-Filesystem path ---------> Read, write, and replacement boundary
-Imported profile --------> Migration and ownership boundary
-Microphone audio --------> Local speech boundary
+```mermaid
+flowchart LR
+    Document["Untrusted document"] --> Parser["Parser and adapter boundary"]
+    Corpus["Untrusted corpus"] --> Ingest["Profile ingestion boundary"]
+    Prompt["Document and evidence"] --> Model["Model prompt boundary"]
+    Output["Model output"] --> Validation["Schema and validation boundary"]
+    Runtime["Local model service"] --> Identity["Runtime identity and response boundary"]
+    Client["Local client"] --> Authority["API or MCP authority boundary"]
+    Frontend["Native desktop presentation"] --> Commands["Typed operation and authority boundary"]
+    Artifact["Downloaded artifact"] --> Verification["Model and update verification"]
+    Path["Filesystem path"] --> FileOps["Read, write, and replacement boundary"]
+    Import["Imported profile"] --> Migration["Migration and ownership boundary"]
+    Plugin["Agent Plugin package"] --> PluginCheck["Schema, containment, and release boundary"]
+    Audio["Post-1.0 microphone audio"] --> Speech["Local speech boundary"]
 ```
 
 Document text and profile samples are data, not instructions. The generation model
@@ -97,6 +106,25 @@ Controls:
 - Keep diagnostics structurally separate from rewritten data.
 - Test CSI, OSC 8 hyperlinks, OSC 52 clipboard operations, title changes, carriage
   return overwrites, C1 controls, and bidi isolates.
+
+### Clipboard authority and rich content
+
+Clipboard access is user initiated and limited to plain text. The desktop grants
+separate read-text and write-text authority only to the rewrite workbench window.
+The CLI requests clipboard access only through an explicit mutually exclusive flag.
+
+Required controls:
+
+- Never poll the clipboard, read it at startup, monitor history, or treat clipboard
+  content as profile evidence.
+- Never render or convert clipboard HTML or RTF under a preservation claim.
+- Prefer an available plain representation and visibly state that rich formatting
+  was not imported. Reject rich-only, image, and file-list content without mutation.
+- Write only a complete validated plain-text result.
+- Bound size and neutralize terminal, bidirectional, NUL, and control content through
+  the same input and presentation policies.
+- Denial, unavailable clipboard, and headless use return typed outcomes and leave the
+  editor and operating-system clipboard unchanged.
 
 ### Malicious DOCX and ZIP input
 
@@ -200,6 +228,34 @@ Controls:
 - Reject ambiguous symlink and case-collision situations.
 - Provide a recoverable backup policy.
 - Test Windows file locks and replacement behavior explicitly.
+- Freeze a directory manifest before work and reject traversal, escaping links,
+  recursive output inclusion, duplicate canonical paths, case collisions, and stale
+  source digests.
+- Use a separate output root by default and never delete a source tree as part of a
+  rewrite.
+- Make document and selection atomicity explicit and retain staged recovery state.
+
+### Agent Plugin packages
+
+Risks include manifest confusion, escaping package paths, shell command injection,
+ambient credentials, executable skew, untrusted updates, and authority implied by
+skill instructions.
+
+Controls:
+
+- Pin and locally validate Agent Plugins `plugin.json` and `mcp.json` schemas by
+  exact digest without fetching them during load.
+- Resolve manifests, skills, references, assets, commands, and working directories
+  inside the package root across symlinks, junctions, and reparse points.
+- Use one executable token plus separate arguments and no shell command string.
+- Keep credentials, profiles, models, user content, absolute user paths, remote
+  endpoints, and executable helper scripts out of the routine package.
+- Prove validation, discovery, inspection, and installation execute nothing and
+  access no network.
+- Treat format validity separately from source, signatures, updates, anti-rollback,
+  permissions, sandboxing, executable compatibility, and named-client behavior.
+- Enforce routine rewrite authority inside the server. Prompt text, skill metadata,
+  client consent presentation, and package installation grant no privileged scope.
 
 ### Model and update supply chain
 
@@ -225,21 +281,22 @@ Controls:
 
 Controls:
 
-- Explicitly list enabled Tauri capabilities and register every custom command.
-- Use least-privileged per-window capabilities and application-level scope checks.
-- Test every privileged command with allowed and denied identities, resources, and
-  window labels.
-- Expose no broad shell, process, HTTP, opener, or filesystem plugin.
-- Bundle local assets, enforce strict content security policy, and allow no remote
-  frame, inline script, eval, or untrusted HTML rendering.
-- Route external links through a narrow Rust allowlist and user confirmation.
+- Use an installed native Rust UI with no embedded browser, HTML or JavaScript
+  frontend, hosted application, or ordinary-operation local HTTP dependency.
+- Explicitly list presentation commands and enforce application-level scope checks.
+- Test every privileged operation with allowed and denied identities, resources, and
+  operation owners.
+- Expose no broad shell, process, HTTP, opener, or filesystem authority to views.
+- Bundle local presentation assets and render imported or generated content only as
+  untrusted text.
+- Route external links through a narrow typed allowlist and user confirmation.
 - Use operation IDs and monotonic event sequences to reject stale UI events.
-- Keep update checks explicit and Rust-owned.
+- Keep update checks explicit, separate from core operation, and application-owned.
 - Back up update signing keys offline and document rotation, loss, revocation, and
   recovery.
 - Verify every update signature and reject downgrade by default.
 
-### Voice privacy
+### Post-1.0 voice privacy
 
 Controls:
 
@@ -253,12 +310,13 @@ Controls:
 - Require the user to edit or confirm the transcript before it can become evidence.
 - Keep audio callbacks on preallocated bounded buffers with no allocation, blocking,
   logging, file I/O, IPC, or inference.
-- Send no PCM through WebView IPC.
+- Keep PCM inside the narrow native audio boundary and out of presentation event
+  channels.
 - Review runtime, model, voice, and phonemizer licenses independently.
 - Keep a complete typed path.
-- Do not use voice identity, speaker recognition, or voice cloning for 1.0.
+- Do not use voice identity, speaker recognition, or voice cloning.
 - Do not implement always-listening capture, wake words, or simultaneous microphone
-  and speech output for 1.0.
+  and speech output in the first voice capability.
 
 ## Impersonation and misuse
 
@@ -335,6 +393,13 @@ binding. The system should:
 6. Never claim that source provenance survived merely because visible text looks
    similar.
 
+The source remains unchanged. A recognized binding that would be invalidated blocks
+by default until the user selects a qualified derivative workflow. Invisible
+Unicode is classified before sanitation because a sequence can carry a C2PA text
+manifest, language shaping, directionality, accessibility state, or a security
+risk. The complete scanner, derivative, sanitation, and reporting requirements are
+defined in [Provenance, marking, and derivative handling](provenance.md).
+
 Source-form decorrelation research stays outside live ranking and product promises.
 
 ## Regulatory review
@@ -368,8 +433,8 @@ before that review.
 - Redaction tests for logs and errors
 - Profile import and migration tests
 - Atomic-write and symlink tests on all platforms
-- Desktop CSP and capability review
-- Voice permission and retention tests
+- Native desktop operation and authority review
+- Agent Plugin schema, containment, source, signature, and update tests
 - Signed-package and update verification tests
 
 A public security policy and private disclosure path are required before the first
@@ -381,5 +446,5 @@ public beta.
 - [European Commission Article 50 guidance](https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act)
 - [NIST synthetic content report](https://www.nist.gov/publications/reducing-risks-posed-synthetic-content-overview-technical-approaches-digital-content)
 - [C2PA 2.4](https://spec.c2pa.org/specifications/specifications/2.4/specs/C2PA_Specification.html)
-- [Tauri capabilities](https://v2.tauri.app/security/capabilities/)
-- [Tauri content security policy](https://v2.tauri.app/security/csp/)
+- [Agent Plugins specification](https://agent-plugins.org/specification)
+- [MCP security best practices](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices)

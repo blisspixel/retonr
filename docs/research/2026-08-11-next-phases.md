@@ -1,5 +1,13 @@
 # Next-phase research ledger
 
+> Historical note: the August 12, 2026 research and roadmap supersede this ledger's
+> MCP, Agent Skills packaging, Tauri desktop, runtime breadth, 1.0 voice, and phase
+> ordering recommendations. Retain this file as dated research evidence, not current
+> architecture. See [Agent integration research](2026-08-12-agent-integrations.md),
+> [provider-neutral runtime research](2026-08-12-provider-neutral-runtimes.md),
+> [Rust engineering research](2026-08-12-rust-engineering.md), and the
+> [current roadmap](../roadmap.md).
+
 ## Review status
 
 Reviewed: August 11, 2026.

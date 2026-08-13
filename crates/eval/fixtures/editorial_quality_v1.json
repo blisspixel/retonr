@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "corpus_id": "synthetic-editorial-quality-v1",
+  "rule_catalog_version": 1,
+  "content_origin": "synthetic",
+  "license_spdx": "Apache-2.0",
+  "cases": [
+    {
+      "id": "finding-conversational-opening",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Certainly! The proposal reduces review time.",
+      "reference_revision": "The proposal reduces review time.",
+      "target_rules": ["conversational_residue"],
+      "expected_source_findings": [
+        {"rule_id": "conversational_residue", "evidence": "Certainly!", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-conversational-closing",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The migration notes cover rollback and recovery. Let me know if you would like more detail.",
+      "reference_revision": "The migration notes cover rollback and recovery.",
+      "target_rules": ["conversational_residue"],
+      "expected_source_findings": [
+        {"rule_id": "conversational_residue", "evidence": "Let me know if you would like more detail.", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["rollback", "recovery"]
+    },
+    {
+      "id": "finding-throat-clearing",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "It is important to note that the service runs locally.",
+      "reference_revision": "The service runs locally.",
+      "target_rules": ["throat_clearing"],
+      "expected_source_findings": [
+        {"rule_id": "throat_clearing", "evidence": "It is important to note that", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["locally"]
+    },
+    {
+      "id": "finding-canned-transition",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "That said, the parser preserves line endings.",
+      "reference_revision": "The parser preserves line endings.",
+      "target_rules": ["canned_transition"],
+      "expected_source_findings": [
+        {"rule_id": "canned_transition", "evidence": "That said,", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["line endings"]
+    },
+    {
+      "id": "finding-repeated-conclusion",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "The tool preserves the source file. In conclusion, the tool preserves the source file.",
+      "reference_revision": "The tool preserves the source file.",
+      "target_rules": ["repeated_conclusion"],
+      "expected_source_findings": [
+        {"rule_id": "repeated_conclusion", "evidence": "In conclusion, the tool preserves the source file.", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["source file"]
+    },
+    {
+      "id": "finding-vague-attribution",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Experts agree that local processing improves privacy.",
+      "reference_revision": null,
+      "target_rules": ["vague_attribution"],
+      "expected_source_findings": [
+        {"rule_id": "vague_attribution", "evidence": "Experts agree", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-redundant-qualifier",
+      "kind": "finding",
+      "language": "en",
+      "channel": "email",
+      "source": "The decision was completely unanimous.",
+      "reference_revision": "The decision was unanimous.",
+      "target_rules": ["redundant_qualifier"],
+      "expected_source_findings": [
+        {"rule_id": "redundant_qualifier", "evidence": "completely unanimous", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-excessive-exclamation",
+      "kind": "finding",
+      "language": "en",
+      "channel": "email",
+      "source": "The plan is ready!!! Review it now!!!",
+      "reference_revision": "The plan is ready. Review it now.",
+      "target_rules": ["excessive_exclamation"],
+      "expected_source_findings": [
+        {"rule_id": "excessive_exclamation", "evidence": "!!!", "occurrence": 0},
+        {"rule_id": "excessive_exclamation", "evidence": "!!!", "occurrence": 1}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-excessive-dash-density",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "The plan\u2014which is final\u2014starts Monday\u2014without exception.",
+      "reference_revision": "The final plan starts Monday without exception.",
+      "target_rules": ["excessive_dash_density"],
+      "expected_source_findings": [
+        {"rule_id": "excessive_dash_density", "evidence": "\u2014", "occurrence": 0},
+        {"rule_id": "excessive_dash_density", "evidence": "\u2014", "occurrence": 1},
+        {"rule_id": "excessive_dash_density", "evidence": "\u2014", "occurrence": 2}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["Monday"]
+    },
+    {
+      "id": "finding-excessive-emoji-density",
+      "kind": "finding",
+      "language": "en",
+      "channel": "email",
+      "source": "The build passed \u2705\u2705\u2705. Release review starts now.",
+      "reference_revision": "The build passed. Release review starts now.",
+      "target_rules": ["excessive_emoji_density"],
+      "expected_source_findings": [
+        {"rule_id": "excessive_emoji_density", "evidence": "\u2705", "occurrence": 0},
+        {"rule_id": "excessive_emoji_density", "evidence": "\u2705", "occurrence": 1},
+        {"rule_id": "excessive_emoji_density", "evidence": "\u2705", "occurrence": 2}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-quoted-throat-clearing",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The witness wrote, \"It is important to note that timing matters.\"",
+      "reference_revision": null,
+      "target_rules": ["throat_clearing"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-cited-attribution",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The report by Chen and Patel states that latency fell by 12 percent.",
+      "reference_revision": null,
+      "target_rules": ["vague_attribution"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["12 percent"]
+    },
+    {
+      "id": "clean-literal-exclamation",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The CSS declaration uses the literal token !important.",
+      "reference_revision": null,
+      "target_rules": ["excessive_exclamation"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["!important"]
+    },
+    {
+      "id": "clean-quoted-transition",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The recorded reply begins with the words \"That said,\" before the decision.",
+      "reference_revision": null,
+      "target_rules": ["canned_transition"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-compact-technical",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The parser preserves CRLF, validates UTF-8, and returns the original on failure.",
+      "reference_revision": null,
+      "target_rules": ["conversational_residue", "throat_clearing", "repeated_conclusion", "redundant_qualifier"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["CRLF", "UTF-8"]
+    }
+  ]
+}

@@ -1,467 +1,561 @@
 # Versioned roadmap
 
-## Roadmap rules
+## Roadmap contract
 
-This roadmap is ordered by dependency and risk. It deliberately contains no calendar
-or duration estimates.
+This roadmap is a dependency order, not a calendar. It contains no duration or date
+estimates. Research may run ahead, but a production capability cannot skip its entry
+or exit gate.
 
-The [phase execution plans](planning/README.md) expand milestones 0.2 through 1.0
-into decisions, work packages, tests, qualification evidence, and handoff gates.
+The [product and engineering invariants](invariants.md) apply to every phase. A
+milestone may narrow scope or move work later. It may not weaken an invariant to
+preserve a version number. The [phase execution plans](planning/README.md) define the
+detailed work packages and evidence.
 
-A milestone begins only when its entry criteria are met and closes only when every
-exit gate passes. Features can move later if their evidence is weak. A version number
-does not excuse an incomplete quality gate.
+The [current-state document](current-state.md) is the only authority for implemented
+behavior. Roadmap content is planned until that document records exact verification
+evidence.
 
-Private evaluation work may continue under a codename with namespace-neutral
-internal identifiers. Public upload, package publication, and release remain blocked
-until the naming, licensing, and applicable clearance gates are complete.
+## Order of operations
+
+```mermaid
+flowchart LR
+    V01["0.1 deterministic core"] --> V02["0.2 excellent plain-text CLI"]
+    V02 --> V03["0.3 inspectable personal profiles"]
+    V03 --> V04["0.4 bounded Markdown"]
+    V04 --> V05["0.5 calibrated quality and runtime breadth"]
+    V05 --> V06["0.6 agent tool and portable plugins"]
+    V06 --> V07["0.7 bounded DOCX"]
+    V07 --> V08["0.8 native desktop"]
+    V08 --> V09["0.9 contract freeze and release qualification"]
+    V09 --> V10["1.0 reference product"]
+```
+
+This order encodes five deliberate choices:
+
+1. The CLI proves every core workflow before another presentation layer exists.
+2. Agent use builds on the CLI and application service before desktop work begins.
+3. Standard input MCP and portable Agent Plugin packages precede local HTTP.
+4. Document formats graduate by explicit preservation capability, never by file
+   extension alone.
+5. The native desktop application consumes proven contracts and contains no second
+   implementation of the product.
+
+## Current build queue
+
+The repository is still closing 0.1. Work proceeds in this exact order:
+
+1. Close the remaining 0.1 governance decisions, proxy and socket-denial evidence,
+   final cross-platform continuous integration, and refinement disposition.
+2. Complete the 0.2 plain-text transaction and CLI before adding profiles or another
+   document format.
+3. Establish the versioned editorial-quality corpus during evaluation work, but do
+   not give lint findings product authority until the 0.3 rule and profile contracts
+   pass qualification.
+4. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+5. Let editorial lint guide or rank generated candidates in 0.5 only after the
+   common fidelity cascade has accepted them.
+6. Add agent packaging, rich document formats, and native presentation layers only
+   after the underlying CLI and application contracts are proven.
+
+This sequencing makes three independent outcomes visible in every release report:
+
+- Fidelity: facts, literals, structure, formatting, and protected content remain
+  within the qualified contract.
+- Editorial quality: accepted output contains fewer named, explainable slop patterns
+  without introducing neighboring defects.
+- Personal fit: accepted output better follows authorized user evidence and explicit
+  preferences than the strongest simpler baseline.
+
+No blended score can trade fidelity for editorial quality or personal fit.
 
 ## Version policy
 
-- `0.x` versions can change internal and external contracts while evidence is being
-  gathered.
-- Breaking changes require migrations and release notes once users have stored data
-  or automated a surface.
-- `1.0` freezes the supported profile, rewrite-record, CLI JSON, first-party API, and
-  MCP compatibility contracts under semantic versioning.
-- Experimental format features, models, and compatibility modes are labeled and do
-  not silently become stable.
-- Every release identifies exact supported platforms, models, formats, and protocol
-  revisions.
+- `0.x` releases may change preview contracts with documented migrations.
+- Stable machine fields are removed only through an explicit compatibility policy.
+- `1.0` freezes the supported CLI JSON, profile, rewrite-record, MCP, Agent Plugin,
+  local API, and document capability contracts under semantic versioning.
+- Experimental models, runtimes, formats, languages, strategies, and protocol
+  revisions remain visibly labeled and outside stable claims.
+- Every release identifies exact supported platforms, artifacts, runtimes,
+  execution classes, formats, languages, schemas, and protocol revisions.
+- Every completed milestone is released from a clean passing main revision. Main is
+  kept releasable, and unfinished work remains disabled or experimental.
+- Shipping inputs use the newest reviewed stable or generally available versions
+  that pass qualification. Preview inputs require explicit isolation and never float.
+- Dependencies are added only for a necessary owned capability and removed when that
+  capability no longer justifies their supply-chain and maintenance cost.
 
 ## 0.0: Product and engineering foundation
 
-### Entry criteria
+### Outcome
 
-- High-level concept documented
-- Local workspace available
-- Repository standards accepted
+A reviewable Rust workspace and documented product contract exist before model or UI
+complexity is introduced.
 
-### Deliverables
+### Required evidence
 
-- Candid product definition and competitive baseline
-- Deferred-name policy and a contained future rename boundary
-- Architecture, design, technology, evaluation, security, and quality documents
-- Initial threat model
-- Supported-platform policy
-- Repository policy checks for prohibited content and oversized modules
-- Rust toolchain pin and workspace conventions
+- Product definition, exclusions, architecture, threat model, evaluation policy,
+  quality standard, and decision-record process
+- Pinned Rust toolchain and explicit workspace dependency direction
 - Windows, macOS, and Linux continuous-integration skeleton
-- Decision-record template
-- License policy and planned model manifest schema
+- Repository policy checks for prohibited attribution, emojis, dash characters,
+  warnings, oversized modules, and broken local documentation links
+- Deferred public-release gates for name, licenses, packages, and model artifacts
 
 ### Exit gate
 
-- Product thesis and exclusions are internally consistent.
-- The semantic claim is fidelity-gated rather than universal.
-- Internal prototype code uses namespace-neutral identifiers where practical.
-- The public project identity is recorded in ADR 0006. Formal legal review and a
-  fresh namespace check remain hard gates before package reservation or release.
+- The thesis is fidelity-gated and does not promise universal semantic equivalence,
+  detector evasion, human authorship, or provider-record deletion.
+- Local-first behavior and provider-neutral boundaries are explicit.
 - Documentation and repository policy checks pass.
-- Public source publication uses the selected `Retonr` identity.
 
 ## 0.1: Evaluation and deterministic contracts
 
-### Entry criteria
+### Outcome
 
-- 0.0 exit gate passes
-- Authorized data collection and deletion policy approved
-- Initial user-research protocol approved
+The complete rewrite transaction can be tested without a model, network, profile,
+or user interface.
 
-### Deliverables
+### Required evidence
 
-- Rust workspace with inward dependency rules
-- Versioned core types for documents, rewrite units, plans, candidates, gate results,
-  statuses, errors, and rewrite records
-- Plain-text adapter and byte-preservation contract
-- Mock generator and mock semantic evaluator
-- Deterministic orchestration with cancellation
-- Exact literal, protected-term, sentinel, and structure gates
-- Lexicographic candidate selection
-- Document-atomic abstention that returns the original byte-for-byte
-- Evaluation harness with positive paraphrases and semantic hard negatives
-- Baseline runners for no rewrite, direct prompt, style description, and retrieved
-  examples
-- Property tests, golden fixtures, initial fuzz targets, and coverage reporting
+- Versioned types for documents, units, plans, candidates, gates, outcomes, errors,
+  and redacted rewrite records
+- Plain-text parsing and byte-preserving reassembly
+- Protected values, sentinels, exact literal checks, structure gates, semantic
+  assessment port, and lexicographic candidate selection
+- Document-atomic abstention that returns the exact original
+- Positive paraphrases, semantic hard negatives, properties, golden fixtures, fuzz
+  targets, and coverage reporting
+- Deterministic fake generation and evaluation backends with cancellation
 
 ### Exit gate
 
-- No model is required to test the full transaction.
-- Every failure and abstention path has a stable status and reason.
-- Deterministic gate regression suites contain zero known critical failures.
-- Document-atomic abstention is byte-identical across Windows, macOS, and Linux.
-- Overall line coverage is at least 80 percent.
-- Validation and edit-application code meet the higher critical-path target.
-- All four refinement passes complete.
+- Every failure and abstention has a stable category and reason.
+- Deterministic regression suites contain no known critical failure.
+- Byte identity and process behavior pass on Windows, macOS, and Linux.
+- Overall implemented Rust line coverage is at least 80 percent and critical paths
+  meet their higher target.
 
-## 0.2: Grounded plain-text engine and CLI vertical slice
+## 0.2: Grounded engine and excellent plain-text CLI
 
-### Entry criteria
+### Outcome
 
-- 0.1 exit gate passes
-- Initial model artifacts and licenses reviewed
-- Qualification hardware tiers declared
+A user can install or select one qualified local generation path and complete every
+plain-text rewrite, inspection, model-management, and recovery workflow from a
+polished CLI.
 
-### Deliverables
+### Required work
 
-- Versioned smoke, development, calibration, locked, and red-team benchmark
-  governance
-- Neutral strategy, backend, installed-artifact, and qualification contracts
-- Pure inference fake and fake HTTP backend conformance suite
-- Native Ollama version, inventory, details, capability, and artifact-drift probing
-- Loopback-only model access with proxies and redirects disabled
-- Pinned artifact identification and model manifest
-- Headless model list, inspect, explicit download, offline import, verify, qualify,
-  activate, deactivate, and remove lifecycle
-- One `Grounded` generation strategy
-- Typed invariant and claim extraction
-- Protected sentinel generation and restoration
-- Independent semantic-evaluator port
-- Full shared validation cascade
-- Plain-text CLI with stdin, file input, text output, JSON output, diff, dry-run, trace,
-  cancellation, and `--fail-on-abstain`
-- Safe interactive rendering for ANSI, OSC, C0, C1, carriage-return, hyperlink,
-  clipboard, and bidi-control fixtures
-- Exact raw output limited to non-terminal streams, files, or the double opt-in
-  `--raw-terminal --yes`
-- Stable diagnostic categories and provisional machine schema
-- Local-only mode and automated no-network test
-- Qualification report for 4B, 9B, and larger candidate tiers where available
-- Real CLI screenshots for rewrite, abstention, and trace inspection
-
-### Exit gate
-
-- The CLI works from clean installations on Windows, macOS, and Linux.
-- Structured output and exit categories pass process-level compatibility tests.
-- Model failures never bypass validation or corrupt the original.
-- Selective risk, coverage, style, latency, and memory are reported together.
-- Predeclared fidelity, coverage, and resource thresholds pass for every artifact
-  called qualified.
-- A qualified model tier fits at least one documented laptop class.
-- CLI screenshots come from passing release builds.
-- Overall and critical-path coverage gates pass.
-- All four refinement passes complete.
-
-## 0.3: Style profile and excellent CLI alpha
-
-### Entry criteria
-
-- 0.2 exit gate passes
-- Product-validation participants and held-out data are available
-
-### Deliverables
-
-- SQLite migrations and immutable profile versions
-- Authorized evidence ingestion and provenance
-- Interpretable style features with confidence and sample counts
-- Declared rules, enforcement levels, and conflict detection
-- Channel overlays with sparse-data fallback
-- FTS5 plus filtered brute-force embedding retrieval
-- Exact embedding-space qualification with truncation disabled, artifact-drift
-  checks, task-specific retrieval baselines, and reindex invalidation
-- Per-source, per-session, and topic-diversity caps
-- Cross-corpus leakage checks
-- Typed interview and scenario acquisition
-- Explicit preference feedback without automatic corpus contamination
-- Profile inspect, edit, compare, export, import, restore, and delete commands
-- Shell completion, manual pages, stable non-interactive behavior, and diagnostics
-- Benchmark against the strongest simple profile baseline
+- Neutral inference, embedding, installed-artifact, qualification, and activation
+  ports with conformance fakes
+- Exact runtime, artifact, tokenizer, prompt-template, parameter, and execution-class
+  identity before and after generation
+- One qualified local adapter, selected from a user-managed Ollama service or pinned
+  llama.cpp sidecar based on retained bakeoff evidence
+- Explicit model list, inspect, recommend, download, import, verify, evaluate,
+  qualify, activate, deactivate, and remove commands
+- Hardware-aware recommendations that never silently activate or downgrade
+- Capability-specific open-weight recommendations for conservative editing,
+  personal style, editorial quality, long-document planning, supported languages,
+  structured output, and independent evaluation
+- One grounded generative strategy through the shared validation cascade
+- File and multiline standard input, files as output, human output, versioned JSON,
+  diff, dry-run, check, trace summary, cancellation, and fail-on-abstain behavior
+- Pre-model plain-text inventory for supported Content Credential wrappers,
+  byte-order marks, invisible controls, metadata sidecars, and external references,
+  with explicit derivative decisions and no blanket character stripping
+- Non-destructive file and directory discovery with a reviewable manifest, separate
+  destination root, source digests, collision rules, and document or selection
+  atomicity for the formats supported at this phase
+- Safe terminal rendering and exact raw output only to a non-terminal sink or an
+  explicit double opt-in
+- Shell completions, manual pages, stable diagnostics, and actionable recovery
+- Socket-level proof that core operation works with network access blocked after
+  explicit artifact setup
 
 ### Exit gate
 
-- Blind held-out evaluation shows meaningful owner preference over the strongest
-  simple baseline without a material fidelity regression.
-- Predeclared topic-confounding, cross-topic retrieval, topic-held-out preference,
-  rare-phrase copying, canary, and cross-profile extraction thresholds pass with
-  sufficient evidence.
-- Profile export, import, migration, rollback, and deletion pass cross-platform tests.
-- Generated candidates never become evidence.
-- The CLI completes all non-voice profile workflows without desktop code.
-- All four refinement passes complete.
+- Clean installations complete the documented workflows on Windows, macOS, and
+  Linux.
+- Structured output, exit categories, pipes, hostile controls, line endings, broken
+  pipes, cancellation, and recovery pass process-level compatibility fixtures.
+- The exact qualified model combination meets predeclared fidelity, coverage,
+  latency, memory, and artifact-drift gates on at least one documented laptop class.
+- A model failure cannot bypass validation, corrupt input, or activate an unqualified
+  fallback.
+- The CLI is complete enough to serve as the reference surface for later adapters.
 
-## 0.4: Markdown beta
+## 0.3: Inspectable personal profiles and CLI workflows
 
-### Entry criteria
+### Outcome
 
-- 0.3 exit gate passes
-- Markdown dialect and first supported feature set approved
+Authorized writing evidence and explicit preferences produce a reversible profile
+that improves owner preference over the strongest simple baseline.
 
-### Deliverables
+### Required work
 
-- Source-splice adapter using explicit UTF-8 byte ranges
-- Initial support for plain inline prose in paragraphs and headings
-- Preservation of code, raw HTML, links, destinations, autolinks, and unsupported
-  constructs
-- Reverse-order edit application
-- Context-aware escaping
-- Output reparse and structural fingerprint comparison
-- Byte-identity check outside approved spans
-- CommonMark, extension, malformed-input, LF, CRLF, Unicode, and final-newline fixtures
-- Property, differential, and fuzz tests
-- Capability reporting and actionable abstention for unsupported syntax
-- Feature-by-feature expansion only after fixture gates pass
+- SQLite migrations, immutable profile versions, provenance, consent, and deletion
+- Interpretable style observations with confidence and sample counts
+- User-declared rules, enforcement levels, conflict detection, and channel overlays
+- Versioned editorial-lint rules with exact findings, context exclusions, profile
+  overrides, explanations, and source versus output reports
+- A versioned editorial-quality corpus with positive findings, clean human-like
+  counterexamples, protected contexts, and no authorship labels
+- Bounded retrieval with exact embedding identity, eligibility filters, diversity
+  caps, topic controls, canaries, and cross-profile leakage checks
+- Typed interview and scenario acquisition using the same evidence schema as any
+  later input mode
+- Append-only time-aware preference events, immutable projections, valid-time and
+  conflict edges, and deterministic reconstruction without requiring a graph store
+- Explicit feedback that cannot contaminate the authorized evidence corpus
+- Complete profile create, inspect, edit, compare, ingest, export, import, restore,
+  reindex, revoke, and delete workflows through the CLI
+- Canonical versioned JSON export remains authoritative; define a content-minimized
+  projection boundary for later portable knowledge formats
+- Document analysis and a bounded typed editorial brief that asks only high-value,
+  answerable questions and never silently promotes document choices to the profile
 
 ### Exit gate
 
-- Supported fixtures preserve structure and non-target bytes exactly.
-- No supported test introduces executable Markdown or changes a protected target.
-- Unsupported syntax never receives a false preservation claim.
-- Markdown behavior passes on all three operating systems.
-- All four refinement passes complete.
+- Blind held-out evaluation shows a meaningful owner preference gain without a
+  material fidelity regression.
+- Topic-held-out, rare-phrase, canary, and cross-profile extraction thresholds pass
+  with sufficient evidence.
+- Generated candidates never become evidence implicitly.
+- Migration, rollback, export, import, revocation, deletion, and reindex pass on all
+  supported operating systems.
 
-## 0.5: Calibration, strategies, and quality hardening
+## 0.4: Bounded Markdown
 
-### Entry criteria
+### Outcome
 
-- 0.4 exit gate passes
-- Locked evaluation set and adjudication policy approved
+Retonr rewrites a deliberately small Markdown subset through source splicing while
+preserving structure and every non-target byte it claims to preserve.
 
-### Deliverables
+### Required work
 
-- Calibrated semantic evaluator ensemble
-- `Literal` deterministic strategy
-- `Constrained` generative strategy
-- Experimental `Render` strategy behind an explicit flag
-- Risk-based router that can only increase strictness
-- Candidate diversity and retry policy
-- Mode-specific edit-cost and divergence bands
+- Pinned CommonMark revision, parser, extensions, and versioned capability matrix
+- Explicit UTF-8 source ranges for eligible prose in paragraphs and headings
+- Protection of code, HTML, links, destinations, autolinks, reference definitions,
+  and unsupported constructs
+- Preflight and protection for supported structured-text provenance blocks,
+  signatures, external manifests, and unknown preservation-critical comments
+- Context-aware escaping, reverse-order edit application, output reparse, structural
+  fingerprint comparison, and untouched-byte verification
+- Official, malformed, Unicode, control, line-ending, final-newline, property,
+  differential, and fuzz fixtures
+- Feature graduation process that adds one syntax capability at a time
+
+### Exit gate
+
+- Every advertised fixture preserves structure and non-target bytes exactly.
+- No supported case introduces executable syntax or changes a protected target.
+- Unsupported syntax receives no false preservation claim.
+- Every fixed structure defect has a minimized regression fixture.
+
+## 0.5: Calibrated quality and provider-neutral runtime breadth
+
+### Outcome
+
+The engine has a measured fidelity envelope, more than one user-controlled execution
+path, and no dependency on a provider-specific output policy.
+
+### Required work
+
+- Calibrated semantic evaluator ensemble with false-acceptance, coverage, selective
+  risk, and confidence reporting
+- Literal and constrained strategies plus any higher-risk strategy behind an
+  explicit experimental capability
+- Router that can increase strictness but cannot bypass the shared cascade
 - Unit and region atomicity with consistency, cross-reference, reassembly, and
   partial-result fixtures
-- Human adjudication workflow
-- Confidence intervals by risk category
-- Scheduled fuzz and mutation testing
-- Performance and memory benchmarks on declared hardware tiers
-- Cancellation and resource-limit stress tests
-- Profile privacy and encryption decision completed
+- Exact controlled artifacts qualified across a pinned llama.cpp sidecar and at
+  least one independently managed local service where licenses permit
+- A narrow completed-response adapter for explicitly configured user-controlled
+  loopback endpoints, qualified independently from local process adapters
+- Cross-runtime, cross-backend, quantization, accelerator, language, and
+  mixed-language differential suites
+- Qualified editorial-lint rules and document-level repetition checks that can guide
+  eligible candidates only after every fidelity gate passes
+- Runtime capability records that disclose known source marking, provenance,
+  moderation, remote logging, or silent transformation behavior
+- Cumulative runtime assurance evidence that inventories every known insertion
+  point, proves offline local execution where claimed, captures output boundaries,
+  runs differential fixtures, and invalidates on artifact or configuration drift
+- No first-party watermark, provider attribution, hidden source marker, or detector
+  score objective in generated output
+- Scheduled fuzz, mutation, cancellation, resource, latency, and memory testing
+- Hierarchical long-document planning, bounded unit context, region consistency,
+  document verification, and measured context-window qualification as defined by
+  the [document transaction contract](document-transactions.md)
+- Evaluation of document-derived clarification against no-question, fixed-question,
+  and full-brief baselines under the
+  [guided editorial brief contract](editorial-brief.md)
 
 ### Exit gate
 
-- False acceptance and transformation coverage meet the thresholds set before the
-  locked evaluation run.
-- No strategy bypasses the shared cascade.
-- Adding a strategy improves coverage or style without weakening the risk bound.
-- Mutation testing demonstrates meaningful assertions in critical logic.
-- Encryption claims match implemented and tested behavior.
-- All four refinement passes complete.
+- Predeclared fidelity and transformation-coverage thresholds pass on the locked set.
+- At least two independently controlled runtime paths pass their exact qualification
+  matrices without silent fallback.
+- A loopback API-backed runtime path is opt-in, names its process and retention
+  boundary, and cannot become the default through discovery or failure recovery.
+- Adding a strategy or runtime improves a measured outcome without weakening the
+  fidelity floor.
+- Detector and source-signal diagnostics remain research-only and cannot rank live
+  candidates.
+- Editorial-lint improvements are reported by named rule and never presented as an
+  AI-authorship verdict.
+- Public watermark fixtures, synthetic keys, complete-procedure calibration, attack
+  studies, and local runtime audits are reproducible from frozen research bundles
+  with no callable edge into the live product.
 
-## 0.6: Preview local API, MCP, and agent skills
+## 0.6: Agent tool, MCP, and portable Agent Plugins
 
-### Entry criteria
+### Outcome
 
-- 0.5 exit gate passes
-- Application service and stored schemas are stable enough for external consumers
+Agents can use Retonr as a secure local tool through a stable machine contract,
+standard MCP, and a portable Agent Plugin package without duplicated product logic.
 
-### Deliverables
+### Ordered work
 
-- First-party preview `/v0` loopback API
-- Shared versioned wire DTOs and conformance fixtures across every interface
-- Capability discovery, RFC 9457 transport errors, domain outcome envelopes,
-  deadlines, cancellation, mutation operation IDs, and resource limits
-- Separate rewrite, profile-read, profile-write, and administration authority
-- MCP over standard input
-- MCP over Streamable HTTP
-- MCP 2026-07-28 metadata and `server/discover` lifecycle without an initialize
-  exchange or protocol session
-- Applicable official MCP conformance with the documented custom-authorization
-  exclusion, plus a named-client compatibility matrix
-- Explicit, scoped, expiring learning handles
-- Thin Agent Skills `SKILL.md` packages using MCP or `/v0`
-- Skills over MCP experimentation isolated from the 1.0 compatibility gate
-- Shared conformance fixtures for CLI, API, MCP, and skills
-- Narrow non-streaming text-only compatibility adapter that accepts completed
-  response payloads and makes no outbound request
-- Exact compatibility outcome mapping: no payload for malformed or oversized input,
-  original bytes for unsupported, abstained, or verification-failed valid input
-- Loopback-only service binding, authentication, Host and Origin checks, and redaction
-- API and MCP documentation with complete local examples
+1. Freeze and publish the CLI machine contract used by local agent subprocesses.
+2. Add MCP over standard input using an exact supported protocol revision.
+3. Publish narrow routine-rewrite and privileged profile-management Agent Skills.
+4. Package the skills and MCP server as a version-pinned Agent Plugins working-draft
+   package with canonical schemas and path-containment tests.
+5. Run official protocol validation and named-client compatibility fixtures.
+6. Spike exact Open Knowledge Format 0.2 export for research claims, support
+   matrices, and redacted profile-policy views without making OKF a storage or
+   authority dependency.
+7. Add the authenticated first-party loopback API only for consumers that cannot use
+   a subprocess.
+8. Add MCP Streamable HTTP only after standard input behavior is conformant and its
+   separate authorization and browser-origin risks are tested.
 
-### Exit gate
+### Required controls
 
-- All interfaces produce equivalent decisions and rewrite records for shared fixtures.
-- Skills contain no duplicated engine logic.
-- Supported MCP clients pass smoke and compatibility tests.
-- Every compatibility outcome returns exactly the documented payload and status.
-- No 1.0 service binds beyond loopback.
-- Security and resource-limit tests pass.
-- All four refinement passes complete.
-
-## 0.7: Bounded DOCX support
-
-### Entry criteria
-
-- 0.6 exit gate passes
-- DOCX subset and preservation definition approved
-- ZIP and XML security limits approved
-
-### Deliverables
-
-- OPC package reader and bounded transform
-- Initial support for unencrypted `.docx`, main-story paragraphs, table cells, and
-  homogeneous run formatting
-- Protection of hyperlink targets and non-text package content
-- Explicit rejection of macros, encryption, signatures, fields, tracked changes,
-  content controls, drawings, equations, and embedded objects in eligible units
-- Untouched-part hash verification
-- Relationship, content-type, and XML verification
-- Office compatibility fixture suite
-- ZIP bomb, XML depth, entity, external relationship, and resource-limit tests
-- Incremental capability matrix for later WordprocessingML features
+- One application service and shared versioned data transfer objects across CLI,
+  MCP, skills, plugins, and HTTP
+- Separate routine rewrite, profile read, profile mutation, learning, and
+  administration authority
+- Protocol-clean standard output, redacted standard error, bounded frames, queues,
+  schemas, results, deadlines, and cancellation
+- Current MCP request metadata, discovery, versioning, statelessness, and transport
+  behavior pinned to a reviewed specification revision
+- Agent Plugins `plugin.json`, `skills/`, and `mcp.json` fixed-location packaging
+  pinned to a reviewed schema version
+- Optional OKF bundles pinned to a reviewed specification revision, with inert
+  import, preservation of unknown fields, privacy review, and no authority inferred
+  from `generated`, `verified`, trust, executor, or attester fields
+- Package-root containment for symlinks, junctions, reparse points, commands,
+  working directories, references, assets, and scripts
+- No embedded credentials, automatic schema fetching, shell command strings, remote
+  dependency fetch, or authority inferred from package metadata
+- Shared success, unchanged, abstained, unsupported, cancelled, and failed fixtures
+- Thin packages that call the application service and contain no validation, profile,
+  model, or format implementation
 
 ### Exit gate
 
-- Every advertised feature passes structure, package, reopen, and fidelity fixtures.
-- Untouched parts remain semantically unmodified and match their required hashes.
-- Unsupported documents fail safely without partial corruption.
-- The source is never overwritten by default.
-- Cross-platform file and office-compatibility tests pass.
-- All four refinement passes complete.
+- Equivalent owned requests produce equivalent outcomes, reasons, digests, and
+  rewrite records through every advertised interface.
+- Official applicable conformance and named-client compatibility tests pass for the
+  exact pinned revisions.
+- Invalid plugin components fail at the narrowest specified boundary without
+  disabling independent valid components.
+- Routine agent installation grants no profile mutation or administration authority.
+- All examples work locally with outbound network access blocked.
 
-## 0.8: Desktop beta
+## 0.7: Bounded DOCX
 
-### Entry criteria
+### Outcome
 
-- 0.7 exit gate passes
-- First-party application service and profile contracts are stable
-- Desktop UX and accessible component spike passes
+A declared subset of unencrypted DOCX content can be rewritten without corrupting
+the package or making a broad formatting-preservation claim.
 
-### Deliverables
+### Required work
 
-- Tauri desktop shell on Windows, macOS, and Linux
-- Onboarding and explicit local or network state
-- Model manager with license, digest, size, hardware, import, qualification, and removal
+- Bounded OPC and XML reader, transform, and package verification
+- Initial eligibility for main-story paragraphs, table cells, and homogeneous run
+  formatting only
+- Protection or rejection for macros, encryption, signatures, fields, tracked
+  changes, content controls, drawings, equations, embedded objects, and external
+  relationships
+- Explicit inventory and derivative handling for supported OOXML signatures,
+  properties, package metadata, C2PA carriers, and unknown package parts
+- Untouched-part hashes, relationship and content-type checks, secure XML and ZIP
+  limits, and application reopen fixtures
+- Capability reporting and incremental WordprocessingML feature graduation
+- Agent and CLI byte-transfer contracts that never accept arbitrary local paths
+- Cross-format folder transactions with staged outputs, recovery manifests, exact
+  per-document outcomes, and machine-readable change reports
+
+### Exit gate
+
+- Every advertised feature passes package, structure, formatting, reopen, and
+  fidelity fixtures.
+- Unsupported documents fail safely with no partial output or source overwrite.
+- Every fixed package or formatting defect has a minimized regression fixture.
+- Cross-platform CLI and agent conformance remains equivalent.
+
+## 0.8: Native desktop application
+
+### Outcome
+
+A polished installed desktop application exposes the already-qualified rewrite,
+profile, format, and model workflows on Windows, macOS, and Linux without an embedded
+browser or hosted web application.
+
+### Required work
+
+- Architecture decision selecting a maintained native Rust UI stack after comparable
+  accessibility, text, visual, packaging, licensing, and platform spikes
+- Native application shell with no webview, HTML renderer, JavaScript frontend,
+  local web server, or ordinary-operation HTTP dependency
 - Rewrite workbench with accessible side-by-side and linear diffs
-- Rewritten, unchanged, abstained, unsupported, and failed states
-- Profile lab with evidence, rules, confidence, channels, conflicts, versions, and
-  deletion
-- Opt-in history and privacy-preserving diagnostics
-- Secure Tauri capabilities and content security policy
-- Explicit custom-command manifest, least-privileged per-window capabilities, and
-  negative authorization tests
-- Operation IDs and monotonic event sequences for cancellation and stale-event safety
-- Full keyboard support and WCAG 2.2 AA implementation
-- Native menus, dialogs, shortcuts, and platform packaging
-- Signed test builds and update-path spike
-- Real README screenshots for workbench and profile lab
+- Profile, model, artifact, capability, privacy, history, and diagnostics workflows
+- Explicit operation IDs, monotonic state transitions, cancellation, and stale-event
+  rejection across the native presentation boundary
+- Native menus, dialogs, shortcuts, drag and drop, file associations, clipboard,
+  theme, scale, input-method, international text, and platform packaging
+- Complete keyboard operation, screen-reader semantics, contrast, reduced-motion,
+  zoom, focus, and error-recovery testing
+- Signed test builds, update and recovery spike, visual regression fixtures, and real
+  screenshots from passing builds
 
 ### Exit gate
 
-- Core workflows pass automated and manual accessibility review.
-- Functional and visual tests pass on WebView2, WKWebView, and WebKitGTK.
-- The desktop contains no independent rewrite or profile implementation.
-- Generated or imported content is never rendered as untrusted HTML.
-- Install, upgrade, migration, platform-specific rollback or recovery, and removal
-  tests pass on supported systems.
-- Screenshots come from passing release builds and have useful alt text.
-- All four refinement passes complete.
+- The native application contains no independent product or validation logic.
+- Core workflows pass automated and named manual accessibility review on every
+  supported platform.
+- Functional, visual, installation, update, recovery, migration, offline, and removal
+  tests pass for the exact platform matrix.
+- Generated or imported content is rendered as untrusted text, never executable UI
+  markup.
 
-## 0.9: Local voice, compatibility freeze, and release candidate
+## 0.9: Contract freeze and release qualification
 
-### Entry criteria
+### Outcome
 
-- 0.8 exit gate passes
-- Speech runtime and model-license decisions approved
-- Profile interview state machine stable in typed mode
+The smallest complete product contract is frozen, packaged, independently
+reproducible, and supported by retained cross-platform evidence.
 
-### Deliverables
+### Required work
 
-- Cross-platform microphone discovery and push-to-talk capture
-- Local speech-to-text with visible model, language, size, license, and checksum
-- Editable transcript before profile ingestion
-- Local spoken prompts and responses with captions
-- Immediate removal from application-controlled raw-audio storage by default
-- Explicit audio-retention controls
-- Complete typed fallback
-- Voice permission, denial, cancellation, device-loss, and resource tests
-- Complete CLI voice interview acceptance suite on Windows, macOS, and Linux
-- Complete desktop voice interview acceptance suite on Windows, macOS, and Linux
-- Shared typed and voice evidence-schema conformance fixtures
-- No always-listening, wake-word, voice-cloning, or unconfirmed transcript admission
-- Signed CLI and desktop release candidates
-- Offline model import for generation, embeddings, speech recognition, and speech
-  output
-- Promotion of the preview `/v0` API to `/v1`
-- Frozen 1.0 profile, rewrite-record, CLI JSON, `/v1` API, and MCP schemas
-- Upgrade, downgrade, migration, recovery, and uninstall rehearsals
-- Public security policy and disclosure path
-- Complete user, administrator, API, MCP, and agent-skill documentation
-- Final real screenshots, recordings where useful, and accessibility descriptions
+- Promote proven preview schemas to stable versions and publish compatibility and
+  migration ranges
+- Freeze profile, evidence, rewrite-record, CLI JSON, MCP, Agent Plugin, local API,
+  model manifest, qualification, and document capability schemas
+- Clean-install, exact-version, offline import, offline operation, update,
+  interruption, migration, platform-specific recovery, rollback where supported,
+  uninstall, and residue rehearsals
+- Signed Windows artifacts, signed and notarized macOS artifacts, and verifiable
+  signed Linux artifacts for the declared architectures
+- Software bill of materials, licenses, checksums, attestations, support matrix,
+  security policy, disclosure path, and known limitations
+- Locked fidelity, style, leakage, latency, memory, accessibility, agent, document,
+  runtime, and platform qualification with exact release artifacts
+- Public documentation and screenshots that describe only implemented behavior
 
 ### Exit gate
 
-- Voice onboarding works locally on Windows, macOS, and Linux and produces the same
-  approved evidence schema as typed input.
-- No audio is persisted in application-controlled storage without explicit consent,
-  and operating-system limitations are documented.
-- The product remains fully usable without microphone or speech models.
-- All frozen contracts pass backward-compatibility suites.
-- Release candidates pass clean-install and offline-after-install tests.
-- Overall coverage is at least 80 percent and critical-path thresholds pass.
-- No open critical security, fidelity, data-loss, accessibility, license, or packaging
-  defect remains.
-- All four refinement passes complete.
+- No open critical security, fidelity, data-loss, privacy, accessibility, license,
+  packaging, migration, or compatibility defect remains.
+- All stable contracts pass backward-compatibility suites.
+- Every advertised combination has an exact qualification record.
+- Formatting, strict linting, repository policy, tests, coverage, documentation,
+  dependencies, advisories, licenses, fuzzing, mutation, packages, and platform jobs
+  pass for the release candidate.
 
-## 1.0: Complete cross-platform product
+## 1.0: Reference-grade local re-expression product
 
-Version 1.0 means the product works exceptionally well as a complete system, not that
-the first prototype runs.
+Version 1.0 is the first stable contract, not the point where the first useful build
+appears.
 
 ### Required capabilities
 
-- Polished, documented, scriptable CLI
-- Polished, accessible Tauri desktop application
-- Local profiles with inspectable evidence, declared rules, channels, versioning,
-  export, import, restore, and deletion
-- Typed and local voice-assisted style interviews
-- Qualified local generation and embedding models
-- Fidelity-gated TXT and supported Markdown rewriting
-- Bounded, explicitly qualified DOCX rewriting
-- Deterministic validation, calibrated semantic assessment, lexicographic ranking,
-  and honest abstention
+- Exceptional documented and scriptable CLI on Windows, macOS, and Linux
+- Accessible native desktop application built without a browser-based frontend
+- Inspectable, reversible, provenance-backed personal profiles
+- Qualified plain text, declared Markdown, and bounded DOCX rewriting
+- Non-destructive file and folder transactions with bounded long-document passes,
+  staged output, explicit atomicity, recovery, and exact change reports
+- Deterministic gates, calibrated semantic assessment, lexicographic selection, and
+  honest abstention
+- Explainable editorial lint with user-controlled rules, context exclusions, stable
+  findings, and no AI-authorship verdict
+- At least two independently controlled and qualified runtime paths, including a
+  pinned portable local path
+- Explicit user-controlled loopback runtime endpoint support behind a named adapter
+  and identity boundary
+- Hardware-aware recommendations with no silent artifact, runtime, quantization,
+  context, language, privacy, or execution-class downgrade
 - Stable rewrite records and privacy-preserving diagnostics
-- Stable first-party local API
-- MCP standard input and Streamable HTTP
-- MCP 2026-07-28 request metadata and discovery behavior plus explicitly qualified
-  named-client compatibility
-- Tested agent skill packages
-- Text-only compatibility adapter conformant to its published pinned subset
-- Signed Windows distribution, signed and notarized universal macOS distribution
-  with qualified aarch64 and x86_64 slices, and verifiable signed Linux artifacts or
-  repository metadata for every supported package
-- Offline operation after explicit model installation or offline import
-- Real CLI and desktop screenshots from passing builds
+- MCP over standard input, portable Agent Skills, and a validated Agent Plugin
+  package for exact documented revisions
+- Authenticated loopback API and qualified MCP Streamable HTTP where retained client
+  evidence justifies them
+- Signed cross-platform distributions and verified no-admin installation paths
+- Offline operation after explicit artifact setup or offline import
+- No first-party output watermark, provider attribution, generated-by marker, or
+  hidden detector optimization
 
 ### Release gates
 
-- Locked evaluation meets the published fidelity, coverage, style, and resource
-  thresholds.
-- All advertised models and formats have exact qualification reports.
-- CLI, desktop, API, MCP, and skills agree on shared conformance fixtures.
-- Every supported platform passes clean install, update, migration, platform-specific
-  rollback or recovery, cancellation, and removal testing.
-- WCAG 2.2 AA target passes automated and manual review.
-- Overall Rust line coverage is at least 80 percent, with higher critical-path
-  thresholds.
-- Formatting, strict linting, documentation, dependency, vulnerability, license,
-  property, fuzz, mutation, and package tests pass.
-- Threat model, legal review, provenance behavior, privacy documentation, security
-  policy, model manifests, and release attestations are complete.
-- Compatibility provenance includes original and rewritten digests, target schema,
-  eligible paths, adapter and validator versions, rewrite status, and labeling that
-  retained upstream IDs, usage, and fingerprints describe the original response.
-- No god files or unreviewed size exceptions exist.
-- All four refinement passes complete on the release candidate.
-- Name and public namespaces have formal clearance.
+- Locked evaluation meets published fidelity, coverage, style, leakage, latency,
+  memory, and resource thresholds.
+- CLI, desktop, MCP, Agent Skills, Agent Plugin, API, and document adapters agree on
+  shared conformance fixtures.
+- Every supported platform passes installation, operation, update, migration,
+  recovery, cancellation, and removal testing.
+- Accessibility passes automated checks and named manual keyboard and screen-reader
+  review on each supported platform.
+- Overall implemented Rust line coverage is at least 80 percent and critical paths
+  meet higher targets.
+- Threat model, legal review, privacy documentation, artifact manifests, security
+  policy, supply-chain evidence, and public limitations are complete.
+- Every invariant in [the invariant register](invariants.md) has retained release
+  evidence or an explicit not-applicable rationale.
 
-## Explicitly after 1.0
+## Beyond 1.0
 
-- Broader WordprocessingML features
-- PDF extraction and rewrite without perfect round trip
-- Additional languages after independent qualification
-- Browser extension
-- Mobile applications
-- Team profile collaboration and synchronization
-- Optional remote backends
-- Broader upstream API event compatibility
-- Custom per-user model training if baseline evaluation proves it worthwhile
-- Voice dictation outside the style-interview workflow
-- Voice cloning
+Post-1.0 work remains dependency ordered and must preserve the stable core:
+
+1. Broaden Markdown and WordprocessingML one qualified capability at a time.
+2. Add bounded SpreadsheetML prose-cell rewriting with formulas and workbook
+   structure protected exactly under the
+   [document transaction contract](document-transactions.md).
+3. Add languages and mixed-language sets only after independent data and fidelity
+   qualification.
+4. Add more local runtimes and user-controlled API adapters through the same exact
+   identity, network, and conformance boundaries.
+5. Deepen native desktop workflows without making the desktop the only path.
+6. Evaluate local voice-assisted profile and document-brief acquisition as optional
+   input modes after typed workflows, native accessibility, artifact licensing, and
+   deletion behavior are already proven.
+7. Evaluate PDF extraction and new-document export without claiming perfect source
+   round trip.
+8. Consider editor integrations, mobile applications, and team synchronization only
+   after a separate authority, privacy, and conflict-resolution design.
+9. Expand Open Knowledge Format import, export, and attested evaluation recipes only
+   if exact compatibility adds value over canonical JSON without weakening privacy,
+   consent, authorization, or reproducibility.
+
+The following do not become acceptable merely because 1.0 has shipped: weakening
+fidelity gates, hidden network use, silent provider fallback, detector-score
+optimization, unqualified format mutation, generated-output training by default, or
+a hosted web application replacing local operation.
+
+## Continuous external change watch
+
+Every phase and release maintains a dated watch over provider marking and retention,
+watermark research, provenance standards, transparency law, local runtimes, model
+artifacts, agent protocols, Rust, dependencies, security advisories, and operating
+system requirements.
+
+An external change opens a review and can invalidate or narrow support. It cannot
+silently change generation, profiles, network behavior, document policy, or public
+claims. Release freeze requires resolution or explicit acceptance of every material
+contradiction and invalidation, exact requalification where identities changed, and
+publication of remaining unknowns. The complete process is defined in
+[External change watch and revalidation](external-change-watch.md).
