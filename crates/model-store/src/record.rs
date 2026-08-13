@@ -1,4 +1,4 @@
-use rusqlite::{Connection, OptionalExtension as _, Transaction, params};
+use rusqlite::{Connection, OptionalExtension as _, params};
 use serde::{Serialize, de::DeserializeOwned};
 
 use rewrite_model::{ArtifactManifest, InstalledArtifact};
@@ -68,15 +68,6 @@ pub(super) fn load_record<T: DeserializeOwned>(
         .query_row(&sql, [key], |row| row.get::<_, String>(0))
         .optional()?;
     encoded.map(|value| decode_record(&value)).transpose()
-}
-
-pub(super) fn load_required<T: DeserializeOwned>(
-    transaction: &Transaction<'_>,
-    table: &str,
-    key_column: &str,
-    key: &str,
-) -> StoreResult<T> {
-    load_record(transaction, table, key_column, key)?.ok_or(StoreError::MissingRecord)
 }
 
 pub(super) fn validate_existing_installation(

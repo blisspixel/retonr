@@ -6,10 +6,16 @@
 mod binding;
 mod error;
 mod record;
+mod removal;
 mod schema;
 mod store;
 
 pub use error::{StoreError, StoreResult};
+pub use removal::{
+    ArtifactInstallationEpoch, ArtifactRemovalPhase, StoredArtifactInstallation,
+    StoredArtifactRemoval,
+};
 pub use store::{
-    ArtifactStateStore, InstallationWriteDisposition, StoredArtifactState, WriteDisposition,
+    ArtifactStateStore, InstallationWriteDisposition, RemovalCompletionDisposition,
+    RemovalPreparationDisposition, StoredArtifactState, WriteDisposition,
 };

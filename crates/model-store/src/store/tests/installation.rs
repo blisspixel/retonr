@@ -20,6 +20,10 @@ fn registers_manifest_and_installation_atomically_and_idempotently() {
         InstallationWriteDisposition {
             manifest: WriteDisposition::Inserted,
             installed: WriteDisposition::Inserted,
+            installation: crate::StoredArtifactInstallation {
+                installed: fixture.installed.clone(),
+                epoch: crate::ArtifactInstallationEpoch::for_test(1).expect("first epoch"),
+            },
         }
     );
     assert_eq!(
@@ -29,6 +33,10 @@ fn registers_manifest_and_installation_atomically_and_idempotently() {
         InstallationWriteDisposition {
             manifest: WriteDisposition::AlreadyPresent,
             installed: WriteDisposition::AlreadyPresent,
+            installation: crate::StoredArtifactInstallation {
+                installed: fixture.installed.clone(),
+                epoch: crate::ArtifactInstallationEpoch::for_test(1).expect("first epoch"),
+            },
         }
     );
 }
@@ -100,7 +108,8 @@ fn refuses_dangling_installed_state_instead_of_healing_it() {
     store
         .connection
         .execute(
-            "INSERT INTO installed_artifacts (artifact_id, record_json) VALUES (?1, ?2)",
+            "INSERT INTO installed_artifacts
+                 (artifact_id, installation_epoch, record_json) VALUES (?1, 1, ?2)",
             rusqlite::params![fixture.manifest.artifact_id.digest().as_str(), installed],
         )
         .expect("insert dangling installation");
@@ -127,7 +136,7 @@ fn refuses_to_resurrect_a_dangling_active_binding() {
     let path = directory.path().join("artifacts.sqlite3");
     let fixture = fixture();
     let mut store = ArtifactStateStore::open(&path).expect("open store");
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     store
         .activate(
             ActivationId::from_digest(Digest::sha256(b"dangling activation")),

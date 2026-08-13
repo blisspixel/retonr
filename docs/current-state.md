@@ -19,7 +19,7 @@ or stored-data contracts.
 | `rewrite-inference` | Backend-neutral bounded discovery and generation contracts, cancellation and deadlines, stable redacted errors, and deterministic fake |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
-| `rewrite-app` | Model-free candidate check, provisional grounded path, and pinned, source-preserving regular-file offline import; read-only inventory adds shared locking and deterministic classifications; selected orphan reconciliation exclusively reverifies one canonical file, then atomically inserts missing exact state or confirms exact existing state without changing bytes or activating it |
+| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory, selected orphan reconciliation, crash-recoverable inactive removal, and verified runtime artifact lease groundwork |
 | `retonr` | Provisional `check` command with bounded file reads, JSON or text reports, protected terms, and optional fatal abstention |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
@@ -50,9 +50,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 220 Rust unit, integration, and process tests pass. One process helper is
-intentionally ignored by the ordinary runner and exercised by its isolated parent
-test. Documentation tests also pass. The measured Rust line coverage is 91.80
+All 246 Rust unit, integration, and process tests pass. Two process helpers are
+intentionally ignored by the ordinary runner and exercised by isolated parent tests.
+Documentation tests also pass. The measured Rust line coverage is 91.49
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -68,10 +68,11 @@ The selected reconciliation implementation is retained at exact-main revision
 The retained jobs cover Windows, macOS, and Linux Rust checks, repository policy,
 Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy isolation,
 concurrency, and the Ubuntu loopback-only network namespace.
+Remote cross-platform evidence for the current inactive-removal branch is pending.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
-230-crate graph passed. Dependency sources and licenses pass policy. Reviewed
+237-crate graph passed. Dependency sources and licenses pass policy. Reviewed
 duplicate-version warnings now include the target-only capability filesystem
 dependency tree and the two transitive `syn` major versions. Continuous integration
 uses its own clean runner database.
@@ -85,19 +86,32 @@ uses its own clean runner database.
   implemented yet.
 - Only UTF-8 plain text up to 16 MiB is accepted.
 - Durable artifact lifecycle state, bounded staging recovery, pinned single-file
-  offline import, read-only managed-byte inventory, and selected single-artifact
-  orphan reconciliation are implemented. Inventory verifies registered files,
+  offline import, read-only managed-byte inventory, selected single-artifact orphan
+  reconciliation, crash-recoverable inactive removal, and runtime artifact leases
+  are implemented. Inventory verifies registered files,
   reports manifest-only state, and identifies orphan candidates and conflicts without
   mutation. Reconciliation requires one exact manifest, ignores earlier inventory
   evidence as authority, reacquires the exclusive lifecycle lock, and reverifies the
   current canonical file before atomically inserting any missing exact manifest and
-  installation records or confirming that both existing records match. Artifact-set
-  and folder import, downloads, runtime-native pulls, bulk
-  reconciliation, orphan deletion, inactive managed-byte removal, CLI commands, and
-  exact real-artifact qualification are not implemented. Only local,
-  application-owned storage on the tested platform and filesystem configurations is
+  installation records or confirming that both existing records match. Removal
+  selects one exact installation generation, rejects active or aliased
+  bytes, journals preparation before deletion, resumes after interruption, and uses
+  generation ordering so an old retry cannot delete a reinstall. The runtime lease
+  boundary verifies current durable state and bytes, then retains the shared
+  lifecycle lock and file handle until use ends. No real runtime consumer uses that
+  lease yet. Artifact-set and folder import, downloads,
+  runtime-native pulls, bulk reconciliation, orphan deletion, CLI commands, and
+  exact real-artifact qualification are not implemented. Removal is not secure
+  erasure and does not affect external copies, caches, backups, or provider records.
+  Only local, application-owned storage on the tested platform and filesystem
+  configurations is
   within the current boundary; network filesystem semantics and other Windows
   filesystem drivers are not qualified.
+- The unpublished model-store removal transitions have a documented exclusive-lock
+  precondition but do not yet require an opaque lock authority in their Rust types.
+  Current product code reaches them only through the application removal service.
+  Narrowing this internal API is required before a stable artifact API or another
+  runtime consumer is exposed.
 - The Ollama adapter is fake-server tested but has not been qualified against a real
   pinned runtime and model artifact on the three operating systems.
 - The grounded path can safely accept only literal-mode token-preserving changes
@@ -125,10 +139,9 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Implement crash-recoverable inactive managed-byte removal on the shared pinned
-   boundary, with exclusive locking and current-byte revalidation.
-2. Expose offline import, read-only inventory, selected reconciliation, and inactive
+1. Expose offline import, read-only inventory, selected reconciliation, and inactive
    removal through explicit model commands.
+2. Add explicit pending-operation inspection and recovery output to those commands.
 3. Link redacted generation provenance into the durable rewrite transaction schema.
 4. Add typed claim and invariant evidence without describing it as semantic proof,
    then calibrate an independent semantic evaluator.

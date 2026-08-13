@@ -4,7 +4,7 @@ use rusqlite::{Connection, TransactionBehavior};
 
 use crate::{StoreError, StoreResult};
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 1;
+pub(super) const STORE_SCHEMA_VERSION: i64 = 2;
 
 pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
     connection.busy_timeout(Duration::from_secs(5))?;
@@ -23,8 +23,9 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
     }
 
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    transaction.execute_batch(
-        "CREATE TABLE artifact_manifests (
+    if version == 0 {
+        transaction.execute_batch(
+            "CREATE TABLE artifact_manifests (
              artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
              record_json TEXT NOT NULL
                  CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
@@ -32,6 +33,8 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
 
          CREATE TABLE installed_artifacts (
              artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
+             installation_epoch INTEGER NOT NULL
+                 CHECK(installation_epoch BETWEEN 1 AND 9223372036854775807),
              record_json TEXT NOT NULL
                  CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
              FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
@@ -76,8 +79,37 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
                  REFERENCES qualification_records(qualification_id)
          ) STRICT;
 
-         PRAGMA user_version = 1;",
-    )?;
+         CREATE TABLE artifact_removals (
+             artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
+             installation_epoch INTEGER NOT NULL
+                 CHECK(installation_epoch BETWEEN 1 AND 9223372036854775807),
+             phase TEXT NOT NULL CHECK(phase IN ('prepared', 'completed')),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+             FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
+         ) STRICT;
+
+         PRAGMA user_version = 2;",
+        )?;
+    } else if version == 1 {
+        transaction.execute_batch(
+            "ALTER TABLE installed_artifacts
+                 ADD COLUMN installation_epoch INTEGER NOT NULL DEFAULT 1
+                 CHECK(installation_epoch BETWEEN 1 AND 9223372036854775807);
+
+             CREATE TABLE artifact_removals (
+                 artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
+                 installation_epoch INTEGER NOT NULL
+                     CHECK(installation_epoch BETWEEN 1 AND 9223372036854775807),
+                 phase TEXT NOT NULL CHECK(phase IN ('prepared', 'completed')),
+                 record_json TEXT NOT NULL
+                     CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+                 FOREIGN KEY(artifact_id) REFERENCES artifact_manifests(artifact_id)
+             ) STRICT;
+
+             PRAGMA user_version = 2;",
+        )?;
+    }
     transaction.commit()?;
     Ok(())
 }

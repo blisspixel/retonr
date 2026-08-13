@@ -5,7 +5,9 @@ use std::{
 };
 
 use rewrite_model::{ArtifactId, ArtifactManifest, InstalledArtifact};
-use rewrite_model_store::{ArtifactStateStore, StoreError, StoredArtifactState};
+use rewrite_model_store::{
+    ArtifactRemovalPhase, ArtifactStateStore, StoreError, StoredArtifactState,
+};
 use rewrite_types::{CancellationToken, Digest};
 
 mod contract;
@@ -16,8 +18,9 @@ use crate::artifact_storage::{
 pub use contract::{
     ArtifactInventoryError, ArtifactInventoryLimits, ArtifactInventoryProgress,
     ArtifactInventoryReport, ArtifactInventoryStage, ContentAddressConflict,
-    OrphanManifestAssociation, OversizedArtifactFile, RegisteredArtifactBytes,
-    RegisteredArtifactInspection, UnexpectedArtifactEntryCounts, VerifiedArtifactOrphan,
+    OrphanManifestAssociation, OversizedArtifactFile, PendingArtifactRemovalInspection,
+    RegisteredArtifactBytes, RegisteredArtifactInspection, UnexpectedArtifactEntryCounts,
+    VerifiedArtifactOrphan,
 };
 
 /// Read-only, point-in-time inspection of application-owned artifact storage.
@@ -130,6 +133,7 @@ struct InventoryBuilder<'a> {
     manifests: BTreeMap<String, ArtifactManifest>,
     installed: BTreeSet<String>,
     registered: Vec<RegisteredArtifactInspection>,
+    pending_removals: Vec<PendingArtifactRemovalInspection>,
     manifest_only: Vec<ArtifactManifest>,
     verified_orphans: Vec<VerifiedArtifactOrphan>,
     content_address_conflicts: Vec<ContentAddressConflict>,
@@ -156,11 +160,19 @@ impl<'a> InventoryBuilder<'a> {
             .collect();
         let installed = states
             .iter()
-            .filter_map(|state| state.installed.as_ref())
-            .filter(|item| {
-                item.storage_key == format!("artifacts/{}", item.artifact_digest.as_str())
+            .filter_map(|state| {
+                state.installed.as_ref().or_else(|| {
+                    state.removal.as_ref().and_then(|removal| {
+                        (removal.phase == ArtifactRemovalPhase::Prepared)
+                            .then_some(&removal.selection)
+                    })
+                })
             })
-            .map(|item| item.artifact_digest.as_str().to_owned())
+            .filter(|selection| {
+                selection.installed.storage_key
+                    == format!("artifacts/{}", selection.installed.artifact_digest.as_str())
+            })
+            .map(|selection| selection.installed.artifact_digest.as_str().to_owned())
             .collect();
         Self {
             states,
@@ -169,6 +181,7 @@ impl<'a> InventoryBuilder<'a> {
             manifests,
             installed,
             registered: Vec::new(),
+            pending_removals: Vec::new(),
             manifest_only: Vec::new(),
             verified_orphans: Vec::new(),
             content_address_conflicts: Vec::new(),
@@ -190,15 +203,36 @@ impl<'a> InventoryBuilder<'a> {
     {
         for state in self.states {
             ensure_not_cancelled(cancellation)?;
+            if let Some(removal) = state
+                .removal
+                .as_ref()
+                .filter(|value| value.phase == ArtifactRemovalPhase::Prepared)
+            {
+                if state.installed.is_some() {
+                    return Err(ArtifactInventoryError::State(StoreError::CorruptRecord));
+                }
+                let bytes = self.classify_registered(
+                    artifacts,
+                    &removal.selection.installed,
+                    cancellation,
+                )?;
+                self.pending_removals
+                    .push(PendingArtifactRemovalInspection {
+                        selection: removal.selection.clone(),
+                        bytes,
+                    });
+                self.complete_registered(progress);
+                continue;
+            }
             let Some(installed) = state.installed.as_ref() else {
                 self.manifest_only.push(state.manifest.clone());
                 self.complete_registered(progress);
                 continue;
             };
-            let bytes = self.classify_registered(artifacts, installed, cancellation)?;
+            let bytes = self.classify_registered(artifacts, &installed.installed, cancellation)?;
             self.registered.push(RegisteredArtifactInspection {
                 manifest: state.manifest.clone(),
-                installed: installed.clone(),
+                installation: installed.clone(),
                 active_bindings: state.active_bindings.clone(),
                 bytes,
             });
@@ -370,6 +404,7 @@ impl<'a> InventoryBuilder<'a> {
     fn finish(&mut self, storage_entry_count: u64) -> ArtifactInventoryReport {
         ArtifactInventoryReport {
             registered: std::mem::take(&mut self.registered),
+            pending_removals: std::mem::take(&mut self.pending_removals),
             manifest_only: std::mem::take(&mut self.manifest_only),
             verified_orphans: std::mem::take(&mut self.verified_orphans),
             content_address_conflicts: std::mem::take(&mut self.content_address_conflicts),

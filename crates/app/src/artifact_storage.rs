@@ -21,7 +21,8 @@ pub(crate) use existing::{ExistingArtifactStorage, LIFECYCLE_LOCK_FILE, Lifecycl
 pub(crate) use mutation::ExactEntryCapacity;
 pub(crate) use verification::{
     ExactArtifactExpectation, ExactArtifactSync, ExactArtifactVerificationError,
-    VerifiedManagedArtifact, verify_exact_artifact,
+    VerifiedManagedArtifact, verify_exact_artifact, verify_exact_artifact_for_removal,
+    verify_exact_artifact_for_runtime,
 };
 
 #[cfg(test)]
@@ -307,12 +308,19 @@ impl PinnedDirectory {
 
         const FILE_SHARE_READ: u32 = 0x0000_0001;
         const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+        const FILE_SHARE_DELETE: u32 = 0x0000_0004;
         let share_mode = match share {
             FileShare::Lifecycle => FILE_SHARE_READ | FILE_SHARE_WRITE,
             FileShare::Verification | FileShare::Sync => FILE_SHARE_READ,
+            FileShare::Removal => FILE_SHARE_READ | FILE_SHARE_DELETE,
         };
         let mut options = OpenOptions::new();
         options.read(true).share_mode(share_mode);
+        if matches!(share, FileShare::Removal) {
+            use winx::file::AccessMode;
+
+            options.access_mode((AccessMode::GENERIC_READ | AccessMode::DELETE).bits());
+        }
         if matches!(share, FileShare::Sync) {
             options.write(true);
         }
@@ -409,6 +417,7 @@ pub(super) enum FileShare {
     Lifecycle,
     Verification,
     Sync,
+    Removal,
 }
 
 pub(crate) fn fingerprint_std_file(

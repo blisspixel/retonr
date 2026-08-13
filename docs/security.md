@@ -291,6 +291,32 @@ Controls:
   while retaining the verified file handle. It never changes or deletes managed
   bytes, qualifies or activates the artifact, or accesses the network. Cancellation
   or state failure before commit leaves the orphan unchanged.
+- Inactive removal accepts one exact store-issued installation generation and holds
+  the lifecycle lock exclusively. It reverifies canonical size, SHA-256, stable
+  identity, exact lowercase name, and single-name status, and refuses any active
+  binding before durable preparation.
+- The state store writes a prepared removal journal and revokes installed-state
+  authority in one immediate transaction before byte deletion. Only after exact
+  absence, artifact-directory synchronization, and held-layout revalidation does it
+  mark the operation completed. A prepared operation is resumed rather than
+  cancelled, and generation ordering prevents an old retry from deleting a later
+  reinstall.
+- Unix removal uses the pinned artifact-directory descriptor and the cooperating
+  Retonr lifecycle lock. It does not yet claim identity-bound protection against a
+  non-cooperating same-user process that swaps the final name. Windows removal uses
+  delete authority on the already-verified file and the reviewed safe `fs_at`
+  delete-by-handle wrapper. This target-only Apache-2.0 dependency is retained for
+  that narrow capability; its internal Windows disposition implementation,
+  read-only handling, and transitive `windows-sys` 0.52 tree remain explicit
+  supply-chain review items. Every runtime
+  use of managed bytes must retain a verified shared lifecycle lease; removal takes
+  the exclusive lock. The operation is not secure erasure and cannot remove external
+  copies, backups, caches, loaded runtime memory, or provider data.
+- The unpublished store journal transitions currently enforce state invariants but
+  accept the application's exclusive lifecycle lock as a documented precondition,
+  not a typed opaque authority. Product code calls them only through the removal
+  service. A stable artifact API and any additional runtime consumer are blocked on
+  making that lock authority unforgeable.
 
 ### Agent Plugin packages
 

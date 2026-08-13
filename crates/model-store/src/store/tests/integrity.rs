@@ -12,7 +12,7 @@ fn indexed_binding_corruption_blocks_reads_recovery_and_removal() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");
     let fixture = fixture();
-    populate(&store, &fixture);
+    populate(&mut store, &fixture);
     store
         .activate(
             ActivationId::from_digest(Digest::sha256(b"activation")),
@@ -45,8 +45,12 @@ fn indexed_binding_corruption_blocks_reads_recovery_and_removal() {
         store.recover_active_bindings(|_| true),
         Err(StoreError::CorruptRecord)
     ));
+    let selection = crate::StoredArtifactInstallation {
+        installed: fixture.installed.clone(),
+        epoch: crate::ArtifactInstallationEpoch::for_test(1).expect("first epoch"),
+    };
     assert!(matches!(
-        store.remove_installed(&fixture.installed.artifact_id),
+        store.prepare_artifact_removal(&selection),
         Err(StoreError::CorruptRecord)
     ));
     assert!(matches!(

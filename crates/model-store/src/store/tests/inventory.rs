@@ -37,10 +37,12 @@ fn lists_validated_installations_in_identity_order() {
             < installed[1].manifest.artifact_id.digest().as_str()
     );
     assert!(installed.iter().any(|item| {
-        item.manifest == first.manifest && item.installed.as_ref() == Some(&first.installed)
+        item.manifest == first.manifest
+            && item.installed.as_ref().map(|value| &value.installed) == Some(&first.installed)
     }));
     assert!(installed.iter().any(|item| {
-        item.manifest == second.manifest && item.installed.as_ref() == Some(&second.installed)
+        item.manifest == second.manifest
+            && item.installed.as_ref().map(|value| &value.installed) == Some(&second.installed)
     }));
 }
 
@@ -127,7 +129,7 @@ fn includes_only_fully_validated_active_bindings() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open artifact state");
     let value = fixture();
-    populate(&store, &value);
+    populate(&mut store, &value);
     let binding = store
         .activate(
             ActivationId::from_digest(Digest::sha256(b"inventory activation")),
@@ -150,7 +152,7 @@ fn returns_multiple_bindings_in_domain_role_order() {
     value.manifest.declared_capabilities.roles =
         vec![ArtifactRole::Generation, ArtifactRole::Embedding];
     value.qualification.supported_roles = vec![ArtifactRole::Generation, ArtifactRole::Embedding];
-    populate(&store, &value);
+    populate(&mut store, &value);
     for (role, label) in [
         (ArtifactRole::Embedding, b"embedding".as_slice()),
         (ArtifactRole::Generation, b"generation".as_slice()),
@@ -183,7 +185,7 @@ fn any_invalidation_rejects_inventory_binding_with_bounded_lookup() {
     let mut store =
         ArtifactStateStore::open(&directory.path().join("state.db")).expect("open artifact state");
     let value = fixture();
-    populate(&store, &value);
+    populate(&mut store, &value);
     let binding = store
         .activate(
             ActivationId::from_digest(Digest::sha256(b"bounded invalidation activation")),

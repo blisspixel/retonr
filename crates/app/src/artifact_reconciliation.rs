@@ -226,6 +226,7 @@ fn map_verification_error(error: ExactArtifactVerificationError) -> ArtifactReco
 fn map_store_error(error: StoreError) -> ArtifactReconciliationError {
     match error {
         StoreError::ImmutableConflict => ArtifactReconciliationError::StateConflict,
+        StoreError::RemovalPending => ArtifactReconciliationError::RemovalPending,
         error @ (StoreError::Serialization(_)
         | StoreError::InvalidManifest(_)
         | StoreError::InvalidInstallation(_)

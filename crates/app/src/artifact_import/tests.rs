@@ -141,6 +141,57 @@ fn imports_without_mutating_source_and_repeats_idempotently() {
 }
 
 #[test]
+fn pending_removal_is_rejected_before_source_copy_or_canonical_recreation() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.gguf");
+    let storage = directory.path().join("managed");
+    fs::write(&source, ARTIFACT_BYTES).expect("write source fixture");
+    let value = manifest(ARTIFACT_BYTES);
+    let installed = rewrite_model::InstalledArtifact {
+        artifact_id: value.artifact_id.clone(),
+        artifact_digest: value.artifact_digest.clone(),
+        byte_size: value.byte_size,
+        storage_key: storage_key(&value.artifact_digest),
+    };
+    let mut store = ArtifactStateStore::open(&directory.path().join("state.sqlite3"))
+        .expect("open artifact state");
+    let selection = store
+        .put_installation(&value, &installed)
+        .expect("register state")
+        .installation;
+    store
+        .prepare_artifact_removal(&selection)
+        .expect("prepare removal");
+    let mut service = OfflineArtifactImportService::open(&storage, &mut store, limits())
+        .expect("open import service");
+    let mut progress = Vec::new();
+    let error = service
+        .import(
+            &OfflineArtifactImportRequest {
+                source,
+                manifest: value.clone(),
+            },
+            &CancellationToken::new(),
+            |event| progress.push(event),
+        )
+        .expect_err("pending removal blocks import before copying");
+    assert!(matches!(error, ArtifactImportError::RemovalPending));
+    assert!(progress.is_empty());
+    assert!(
+        !storage
+            .join("artifacts")
+            .join(value.artifact_digest.as_str())
+            .exists()
+    );
+    assert_eq!(
+        fs::read_dir(storage.join(".staging"))
+            .expect("read staging")
+            .count(),
+        0
+    );
+}
+
+#[test]
 fn rejects_wrong_size_and_digest_without_changing_source() {
     let directory = tempdir().expect("temporary directory");
     let source = directory.path().join("source.gguf");

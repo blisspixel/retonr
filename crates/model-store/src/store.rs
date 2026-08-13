@@ -13,7 +13,11 @@ use crate::{
     binding::{load_active_binding, load_active_bindings, role_key},
     record::{
         decode_record, encode_record, immutable_disposition, insert_immutable, load_record,
-        load_required, validate_existing_installation,
+        validate_existing_installation,
+    },
+    removal::{
+        ArtifactInstallationEpoch, ArtifactRemovalPhase, StoredArtifactInstallation,
+        load_installation, load_removal,
     },
     schema,
 };
@@ -28,17 +32,21 @@ pub enum WriteDisposition {
 }
 
 /// Outcome of atomically registering one manifest and installed artifact.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InstallationWriteDisposition {
     /// Manifest write outcome.
     pub manifest: WriteDisposition,
     /// Installed-artifact write outcome.
     pub installed: WriteDisposition,
+    /// Exact durable installation generation selected or inserted.
+    pub installation: StoredArtifactInstallation,
 }
 
 mod inventory;
+mod removal;
 
 pub use inventory::StoredArtifactState;
+pub use removal::{RemovalCompletionDisposition, RemovalPreparationDisposition};
 
 /// SQLite-backed artifact state repository.
 pub struct ArtifactStateStore {
@@ -101,35 +109,6 @@ impl ArtifactStateStore {
             .transpose()
     }
 
-    /// Stores verified installation state after confirming the matching manifest.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`StoreError`] for invalid, missing, mismatched, conflicting, or
-    /// non-durable state.
-    pub fn put_installed(&self, installed: &InstalledArtifact) -> StoreResult<WriteDisposition> {
-        installed
-            .validate()
-            .map_err(StoreError::InvalidInstallation)?;
-        let manifest = self
-            .manifest(&installed.artifact_id)?
-            .ok_or(StoreError::MissingRecord)?;
-        if manifest.artifact_digest != installed.artifact_digest
-            || manifest.byte_size != installed.byte_size
-        {
-            return Err(StoreError::ImmutableConflict);
-        }
-        let key = installed.artifact_id.digest().as_str();
-        let encoded = encode_record(installed)?;
-        insert_immutable(
-            &self.connection,
-            "installed_artifacts",
-            "artifact_id",
-            key,
-            &encoded,
-        )
-    }
-
     /// Atomically stores a manifest and its verified installation state.
     ///
     /// # Errors
@@ -142,16 +121,7 @@ impl ArtifactStateStore {
         manifest: &ArtifactManifest,
         installed: &InstalledArtifact,
     ) -> StoreResult<InstallationWriteDisposition> {
-        manifest.validate().map_err(StoreError::InvalidManifest)?;
-        installed
-            .validate()
-            .map_err(StoreError::InvalidInstallation)?;
-        if manifest.artifact_id != installed.artifact_id
-            || manifest.artifact_digest != installed.artifact_digest
-            || manifest.byte_size != installed.byte_size
-        {
-            return Err(StoreError::ImmutableConflict);
-        }
+        removal::validate_installation_input(manifest, installed)?;
 
         let manifest_key = manifest.artifact_id.digest().as_str();
         let manifest_record = encode_record(manifest)?;
@@ -165,12 +135,31 @@ impl ArtifactStateStore {
             "artifact_id",
             manifest_key,
         )?;
-        let existing_installed = load_record::<InstalledArtifact>(
-            &transaction,
-            "installed_artifacts",
-            "artifact_id",
+        let existing_installation = load_installation(&transaction, &manifest.artifact_id)?;
+        let existing_installed = existing_installation
+            .as_ref()
+            .map(|selection| selection.installed.clone());
+        let removal = load_removal(&transaction, &manifest.artifact_id)?;
+        removal::validate_removal_state(
             manifest_key,
+            existing_manifest.as_ref(),
+            existing_installation.as_ref(),
+            removal.as_ref(),
         )?;
+        if removal
+            .as_ref()
+            .is_some_and(|record| record.phase == ArtifactRemovalPhase::Prepared)
+        {
+            if existing_installation.is_some() {
+                return Err(StoreError::CorruptRecord);
+            }
+            return Err(StoreError::RemovalPending);
+        }
+        if let (Some(existing), Some(removal)) = (&existing_installation, &removal)
+            && existing.epoch <= removal.selection.epoch
+        {
+            return Err(StoreError::CorruptRecord);
+        }
         validate_existing_installation(
             manifest_key,
             existing_manifest.as_ref(),
@@ -202,20 +191,29 @@ impl ArtifactStateStore {
                 &manifest_record,
             )?,
         };
-        let installed_disposition = match existing_installed {
-            Some(_) => WriteDisposition::AlreadyPresent,
-            None => insert_immutable(
-                &transaction,
-                "installed_artifacts",
-                "artifact_id",
-                manifest_key,
-                &installed_record,
-            )?,
+        let (installed_disposition, epoch) = if let Some(existing) = existing_installation {
+            (WriteDisposition::AlreadyPresent, existing.epoch)
+        } else {
+            let epoch = removal
+                .map(|record| record.selection.epoch.next())
+                .transpose()?
+                .unwrap_or_else(ArtifactInstallationEpoch::first);
+            transaction.execute(
+                "INSERT INTO installed_artifacts
+                     (artifact_id, installation_epoch, record_json)
+                 VALUES (?1, ?2, ?3)",
+                params![manifest_key, epoch.database_value()?, installed_record],
+            )?;
+            (WriteDisposition::Inserted, epoch)
         };
         transaction.commit()?;
         Ok(InstallationWriteDisposition {
             manifest: manifest_disposition,
             installed: installed_disposition,
+            installation: StoredArtifactInstallation {
+                installed: installed.clone(),
+                epoch,
+            },
         })
     }
 
@@ -316,12 +314,27 @@ impl ArtifactStateStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         require_absent_activation(&transaction, &activation_id)?;
-        let installed: InstalledArtifact = load_required(
+        let indexed_id = verified_installed.artifact_id.digest().as_str();
+        let manifest = load_record::<ArtifactManifest>(
             &transaction,
-            "installed_artifacts",
+            "artifact_manifests",
             "artifact_id",
-            verified_installed.artifact_id.digest().as_str(),
+            indexed_id,
         )?;
+        let installation = load_installation(&transaction, &verified_installed.artifact_id)?;
+        let removal = load_removal(&transaction, &verified_installed.artifact_id)?;
+        removal::validate_removal_state(
+            indexed_id,
+            manifest.as_ref(),
+            installation.as_ref(),
+            removal.as_ref(),
+        )?;
+        if removal.is_some_and(|record| record.phase == ArtifactRemovalPhase::Prepared) {
+            return Err(StoreError::RemovalPending);
+        }
+        let installed = installation
+            .map(|value| value.installed)
+            .ok_or(StoreError::MissingRecord)?;
         if &installed != verified_installed {
             return Err(StoreError::VerificationFailed);
         }
@@ -374,7 +387,7 @@ impl ArtifactStateStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         require_absent_activation(&transaction, &activation_id)?;
-        require_record(&transaction, "active_bindings", "role", role_key(role))?;
+        removal::require_record(&transaction, "active_bindings", "role", role_key(role))?;
         let decision = ActivationDecision {
             activation_id,
             action: ActivationAction::Deactivate,
@@ -437,52 +450,9 @@ impl ArtifactStateStore {
         Ok(recovered)
     }
 
-    /// Removes verified installation state only when no active role points at it.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`StoreError`] when the installation is active, absent, or cannot be
-    /// removed atomically.
-    pub fn remove_installed(&mut self, artifact_id: &ArtifactId) -> StoreResult<()> {
-        let transaction = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let active_bindings = load_active_bindings(&transaction)?;
-        if active_bindings
-            .iter()
-            .any(|binding| &binding.artifact_id == artifact_id)
-        {
-            return Err(StoreError::ActiveArtifact);
-        }
-        let changed = transaction.execute(
-            "DELETE FROM installed_artifacts WHERE artifact_id = ?1",
-            [artifact_id.digest().as_str()],
-        )?;
-        if changed == 0 {
-            return Err(StoreError::MissingRecord);
-        }
-        transaction.commit()?;
-        Ok(())
-    }
-
     #[cfg(test)]
     pub(super) fn connection(&self) -> &Connection {
         &self.connection
-    }
-}
-
-fn require_record(
-    transaction: &Transaction<'_>,
-    table: &str,
-    key_column: &str,
-    key: &str,
-) -> StoreResult<()> {
-    let sql = format!("SELECT EXISTS(SELECT 1 FROM {table} WHERE {key_column} = ?1)");
-    let exists: bool = transaction.query_row(&sql, [key], |row| row.get(0))?;
-    if exists {
-        Ok(())
-    } else {
-        Err(StoreError::MissingRecord)
     }
 }
 
@@ -585,13 +555,24 @@ fn validate_binding<F>(
 where
     F: FnMut(&InstalledArtifact) -> bool,
 {
-    let installed = load_record::<InstalledArtifact>(
+    let indexed_id = binding.artifact_id.digest().as_str();
+    let manifest = load_record::<ArtifactManifest>(
         connection,
-        "installed_artifacts",
+        "artifact_manifests",
         "artifact_id",
-        binding.artifact_id.digest().as_str(),
-    )?
-    .ok_or(StoreError::InvalidActiveBinding)?;
+        indexed_id,
+    )?;
+    let installation = load_installation(connection, &binding.artifact_id)?;
+    let removal = load_removal(connection, &binding.artifact_id)?;
+    removal::validate_removal_state(
+        indexed_id,
+        manifest.as_ref(),
+        installation.as_ref(),
+        removal.as_ref(),
+    )?;
+    let installed = installation
+        .map(|value| value.installed)
+        .ok_or(StoreError::InvalidActiveBinding)?;
     if !verify_installed(&installed) {
         return Err(StoreError::VerificationFailed);
     }
