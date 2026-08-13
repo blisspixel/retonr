@@ -334,9 +334,10 @@ Controls:
 - The implemented model commands are offline and content-redacted. They expose no
   implicit home-directory repository, remote URL, download, runtime pull,
   qualification, activation, or model execution. The current CLI installs a Ctrl-C
-  handler that requests cooperative cancellation for cancellable pre-commit work.
-  Prepared-removal recovery remains non-cancellable and process termination still
-  relies on crash-safe state plus explicit recovery.
+  handler, and process-level fixtures on Windows, macOS, and Linux prove that an
+  interrupt requests cooperative cancellation and returns the typed cancellation
+  exit before import registration. Prepared-removal recovery remains non-cancellable
+  and process termination still relies on crash-safe state plus explicit recovery.
 
 ### Agent Plugin packages
 

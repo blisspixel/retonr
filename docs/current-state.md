@@ -19,8 +19,8 @@ or stored-data contracts.
 | `rewrite-inference` | Backend-neutral bounded discovery and generation contracts, cancellation and deadlines, stable redacted errors, and deterministic fake |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, concurrency, cancellation, and pre-call and post-call identity checks |
-| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory, selected orphan reconciliation, crash-recoverable inactive removal, and verified runtime artifact lease groundwork |
-| `retonr` | Provisional `check` command plus an explicit-root offline model-artifact CLI for import, inventory, selected reconciliation, inactive removal, and exact removal recovery |
+| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, read-only managed inventory and pending-operation inspection, selected orphan reconciliation, crash-recoverable inactive removal, and verified runtime artifact lease groundwork |
+| `retonr` | Provisional `check` command plus an explicit-root offline model-artifact CLI for import, inventory, pending-operation inspection, selected reconciliation, inactive removal, and exact removal recovery |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
@@ -50,9 +50,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 279 Rust unit, integration, and process tests pass. Two process helpers are
+All 285 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.69
+Documentation tests also pass. The measured Rust line coverage is 90.86
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -101,8 +101,10 @@ uses its own clean runner database.
   lease yet. Artifact-set and folder import, downloads,
   runtime-native pulls, bulk reconciliation, orphan deletion, runtime commands, and
   exact real-artifact qualification are not implemented. The CLI requires one
-  explicit `--data-dir`; its five artifact commands do not use the network or apply
-  schema migrations. The current product ceilings are 256 GiB per artifact, 4,096
+  explicit `--data-dir`; its six artifact commands do not use the network or apply
+  schema migrations. `pending-operations` reads only bounded durable state and
+  returns exact prepared-removal generations without opening or hashing model
+  bytes. The current product ceilings are 256 GiB per artifact, 4,096
   durable or storage entries, 512 GiB of aggregate inventory verification, and
   1 MiB per manifest. Removal is not secure
   erasure and does not affect external copies, caches, backups, or provider records.
@@ -142,8 +144,8 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Add a non-mutating pending-operation inspection command and process-level signal
-   cancellation fixtures across Windows, macOS, and Linux.
+1. Retain the completed non-mutating pending-operation inspection and process-level
+   signal cancellation evidence across Windows, macOS, and Linux.
 2. Before a stable artifact API, require an opaque lifecycle authority for the
    model-store removal transitions and wrap store-owned inventory records in
    application DTOs.

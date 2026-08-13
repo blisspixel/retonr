@@ -218,6 +218,44 @@ fn prepared_removal_requires_explicit_exact_recovery() {
 }
 
 #[test]
+fn pending_operation_inspection_is_read_only_bounded_and_cancellable() {
+    let (_directory, repository, imported) = imported_repository();
+    let mut store = ArtifactStateStore::open_existing_and_migrate(&repository.state_database())
+        .expect("open state to prepare removal");
+    let (selection, _) = store
+        .artifact_removal_state(imported.key.artifact_id())
+        .expect("load installed selection");
+    store
+        .prepare_artifact_removal(&selection.expect("installed selection"))
+        .expect("prepare removal");
+    drop(store);
+    fs::remove_file(
+        repository
+            .managed_storage()
+            .join("artifacts")
+            .join(imported.key.artifact_id().digest().as_str()),
+    )
+    .expect("remove artifact bytes before state-only inspection");
+    let data_before = directory_snapshot(&repository.data_directory);
+
+    let pending = repository
+        .pending_operations(1, &CancellationToken::new())
+        .expect("inspect pending operations");
+    assert_eq!(pending.artifact_removals, vec![imported.key.clone()]);
+    assert_eq!(directory_snapshot(&repository.data_directory), data_before);
+    assert!(matches!(
+        repository.pending_operations(0, &CancellationToken::new()),
+        Err(ArtifactRepositoryError::InvalidLimits)
+    ));
+    let cancelled = CancellationToken::new();
+    cancelled.cancel();
+    assert!(matches!(
+        repository.pending_operations(1, &cancelled),
+        Err(ArtifactRepositoryError::Cancelled)
+    ));
+}
+
+#[test]
 fn installation_key_rejects_nonpositive_and_unrepresentable_generations() {
     let artifact_id = manifest().artifact_id;
     assert!(matches!(

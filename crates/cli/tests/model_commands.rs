@@ -212,12 +212,39 @@ fn help_lists_only_the_implemented_offline_model_surface() {
         .success()
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("inventory"))
+        .stdout(predicate::str::contains("pending-operations"))
         .stdout(predicate::str::contains("reconcile"))
         .stdout(predicate::str::contains("remove"))
         .stdout(predicate::str::contains("recover-removal"))
         .stdout(predicate::str::contains("download").not())
         .stdout(predicate::str::contains("activate").not())
         .stdout(predicate::str::contains("qualify").not());
+}
+
+#[test]
+fn pending_operations_is_empty_and_read_only_for_a_healthy_repository() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, _) = write_fixture(directory.path());
+    import(&data, &source, &manifest_path);
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "pending-operations"])
+        .assert()
+        .success()
+        .stderr(predicate::str::is_empty())
+        .stdout(predicate::str::contains("\"artifact_removals\": []"));
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "--data-dir"])
+        .arg(&data)
+        .args(["model", "pending-operations"])
+        .assert()
+        .success()
+        .stdout(predicate::eq("pending_artifact_removals: 0\n"));
 }
 
 #[test]

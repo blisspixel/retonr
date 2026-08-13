@@ -1,7 +1,7 @@
 use rewrite_app::{
     ArtifactInventoryReport, ArtifactRepositoryImportDisposition, ArtifactRepositoryImportResult,
-    ArtifactRepositoryReconciliationResult, ArtifactRepositoryRemovalResult,
-    OrphanManifestAssociation, RegisteredArtifactBytes,
+    ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
+    ArtifactRepositoryRemovalResult, OrphanManifestAssociation, RegisteredArtifactBytes,
 };
 use rewrite_model::{ArtifactManifest, ArtifactRole};
 use serde::Serialize;
@@ -92,6 +92,31 @@ impl ModelOutput {
         }
     }
 
+    pub(crate) fn pending_operations(result: &ArtifactRepositoryPendingOperations) -> Self {
+        let artifact_removals: Vec<_> = result
+            .artifact_removals
+            .iter()
+            .map(ArtifactSelectionDto::from)
+            .collect();
+        let mut text = format!("pending_artifact_removals: {}\n", artifact_removals.len());
+        for selection in &artifact_removals {
+            use std::fmt::Write as _;
+            writeln!(
+                text,
+                "artifact_removal {} generation={}",
+                selection.artifact_id, selection.installation_generation
+            )
+            .expect("writing to a String cannot fail");
+        }
+        let value = serde_json::to_value(PendingOperationsResult { artifact_removals })
+            .expect("pending-operations DTO serialization is infallible");
+        Self {
+            value,
+            text,
+            findings: false,
+        }
+    }
+
     pub(crate) const fn has_findings(&self) -> bool {
         self.findings
     }
@@ -118,6 +143,11 @@ impl ModelOutput {
 struct SelectionResult {
     selection: ArtifactSelectionDto,
     disposition: &'static str,
+}
+
+#[derive(Serialize)]
+struct PendingOperationsResult {
+    artifact_removals: Vec<ArtifactSelectionDto>,
 }
 
 #[derive(Serialize)]
@@ -441,5 +471,25 @@ mod tests {
                 "voice",
             ]
         );
+    }
+
+    #[test]
+    fn pending_operation_output_is_actionable_and_redacted() {
+        let key = rewrite_app::ArtifactInstallationKey::new(
+            rewrite_model::ArtifactId::from_digest(rewrite_types::Digest::sha256(b"artifact")),
+            7,
+        )
+        .expect("valid fixture key");
+        let output = ModelOutput::pending_operations(&ArtifactRepositoryPendingOperations {
+            artifact_removals: vec![key],
+        });
+        assert!(output.text.contains("pending_artifact_removals: 1"));
+        assert!(output.text.contains("generation=7"));
+        assert_eq!(
+            output.value["artifact_removals"][0]["installation_generation"],
+            "7"
+        );
+        assert!(!output.text.contains("artifact-storage"));
+        assert!(!output.value.to_string().contains("artifact-storage"));
     }
 }

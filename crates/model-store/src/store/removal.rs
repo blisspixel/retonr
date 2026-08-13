@@ -32,6 +32,82 @@ pub enum RemovalCompletionDisposition {
 }
 
 impl ArtifactStateStore {
+    /// Returns every durably prepared removal in deterministic artifact order.
+    ///
+    /// This bounded read transaction validates every retained removal journal
+    /// against its manifest and installation generation, then returns only prepared
+    /// selections after active-binding exclusion. It reads no managed artifact bytes
+    /// and returns no completed removal history.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when the caller limit is invalid or exceeded, or when
+    /// persisted removal state is missing, malformed, or inconsistent.
+    pub fn pending_artifact_removals(
+        &self,
+        maximum_entries: usize,
+    ) -> StoreResult<Vec<StoredArtifactInstallation>> {
+        if maximum_entries == 0 {
+            return Err(StoreError::InvalidLimit);
+        }
+        let query_limit = maximum_entries
+            .checked_add(1)
+            .and_then(|value| i64::try_from(value).ok())
+            .ok_or(StoreError::InvalidLimit)?;
+        let transaction = self.connection.unchecked_transaction()?;
+        let mut statement = transaction.prepare(
+            "SELECT artifact_id, installation_epoch, phase, record_json
+             FROM artifact_removals
+             ORDER BY artifact_id ASC
+             LIMIT ?1",
+        )?;
+        let rows = statement.query_map([query_limit], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        })?;
+        let mut pending = Vec::new();
+        for (inspected, row) in rows.enumerate() {
+            if inspected == maximum_entries {
+                return Err(StoreError::InventoryLimitExceeded);
+            }
+            let (indexed_id, indexed_epoch, indexed_phase, encoded) = row?;
+            let removal = crate::removal::decode_removal(
+                &indexed_id,
+                indexed_epoch,
+                &indexed_phase,
+                &encoded,
+            )?;
+            let manifest = load_record::<ArtifactManifest>(
+                &transaction,
+                "artifact_manifests",
+                "artifact_id",
+                &indexed_id,
+            )?;
+            let installation =
+                load_installation(&transaction, &removal.selection.installed.artifact_id)?;
+            validate_removal_state(
+                &indexed_id,
+                manifest.as_ref(),
+                installation.as_ref(),
+                Some(&removal),
+            )?;
+            if removal.phase == ArtifactRemovalPhase::Prepared {
+                if installation.is_some() {
+                    return Err(StoreError::CorruptRecord);
+                }
+                validate_no_active_binding(&transaction, &removal.selection)?;
+                pending.push(removal.selection);
+            }
+        }
+        drop(statement);
+        transaction.commit()?;
+        Ok(pending)
+    }
+
     /// Loads the integrity-validated current installation selection and latest
     /// removal journal for one artifact.
     ///

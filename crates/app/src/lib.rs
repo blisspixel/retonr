@@ -50,8 +50,8 @@ pub use artifact_removal::{
 pub use artifact_repository::{
     ArtifactInstallationKey, ArtifactRepository, ArtifactRepositoryError,
     ArtifactRepositoryErrorKind, ArtifactRepositoryImportDisposition,
-    ArtifactRepositoryImportResult, ArtifactRepositoryReconciliationResult,
-    ArtifactRepositoryRemovalResult,
+    ArtifactRepositoryImportResult, ArtifactRepositoryPendingOperations,
+    ArtifactRepositoryReconciliationResult, ArtifactRepositoryRemovalResult,
 };
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
 pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};

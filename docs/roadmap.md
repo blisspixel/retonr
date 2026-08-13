@@ -51,8 +51,9 @@ Milestone 0.1 technical evidence is complete, and 0.2 implementation is active. 
 proceeds in this exact order:
 
 1. With offline import, read-only inventory, selected reconciliation, inactive
-   removal, and exact removal recovery exposed through the narrow model CLI, add
-   non-mutating pending-operation inspection and cross-platform signal fixtures.
+   removal, exact removal recovery, non-mutating pending-operation inspection, and
+   cross-platform signal cancellation exposed or proven through the narrow model
+   CLI, retain the complete 0.2 lifecycle evidence.
 2. Keep runtime use behind verified shared leases before wiring a real model
    consumer. Do not add network acquisition to the current administrative slice.
 3. Before a stable public artifact API, replace the unpublished store's low-level
@@ -168,9 +169,9 @@ polished CLI.
   identity before and after generation
 - One qualified local adapter, selected from a user-managed Ollama service or pinned
   llama.cpp sidecar based on retained bakeoff evidence
-- Existing offline import, inventory, reconcile, remove, and recover-removal
-  commands, followed by explicit model list, inspect, recommend, download, verify,
-  evaluate,
+- Existing offline import, inventory, pending-operations, reconcile, remove, and
+  recover-removal commands, followed by explicit model list, inspect, recommend,
+  download, verify, evaluate,
   qualify, activate, deactivate, and remove commands
 - Hardware-aware recommendations that never silently activate or downgrade
 - Capability-specific open-weight recommendations for conservative editing,
