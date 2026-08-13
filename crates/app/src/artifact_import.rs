@@ -126,7 +126,7 @@ impl<'a> OfflineArtifactImportService<'a> {
             return Err(ArtifactImportError::SizeMismatch);
         }
 
-        let storage_key = storage_key(&request.manifest.artifact_digest);
+        let installed_storage_key = storage_key(&request.manifest.artifact_digest);
         ensure_directory(&self.artifacts)?;
         let destination = self
             .artifacts
@@ -176,7 +176,7 @@ impl<'a> OfflineArtifactImportService<'a> {
             artifact_id: request.manifest.artifact_id.clone(),
             artifact_digest: request.manifest.artifact_digest.clone(),
             byte_size: request.manifest.byte_size,
-            storage_key,
+            storage_key: installed_storage_key,
         };
         report_progress(
             &mut progress,
