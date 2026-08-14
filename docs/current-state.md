@@ -14,7 +14,7 @@ or stored-data contracts.
 | `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, and content-redacted typed claim-evidence contracts |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
-| `rewrite-model` | Separate immutable artifact, qualification, invalidation, activation-decision, and active-binding contracts, including an inert claim-extraction role that qualification schema v1 cannot authorize |
+| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities, content-addressed runtime-build and effective-state records, qualification, invalidation, activation-decision, and active-binding contracts, including an inert claim-extraction role that qualification schema v1 cannot authorize |
 | `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, opaque exclusive-lock capability requirements for removal transitions, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
@@ -42,8 +42,15 @@ one bounded complete JSON value after exact artifact checks; its request and res
 debug views omit prompt and generated content. The model domain now has a distinct,
 inert claim-extraction artifact role. The current Ollama implementation still admits
 only generation and the existing candidate schema. No claim-extraction schema,
-effective manifest, strategy, qualifying identity, activation, or application evidence
+effective manifest, qualifying v2 record, strategy, activation, or application evidence
 join is implemented. Qualification schema v1 explicitly rejects claim extraction.
+
+The model domain now also represents a canonical, path-bounded artifact set and
+content-addressed runtime-build and effective-state records. Their private fields,
+byte-bounded validated decoding, closed platform enums, fixed canonical encodings, and
+frozen digests make identity comparisons portable across Windows, macOS, and Linux.
+These records are inert evidence vocabulary. They do not attest a live process,
+prove that a manifest is complete, authorize a role, or upgrade a v1 qualification.
 
 ## Verified locally
 
@@ -68,9 +75,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 327 Rust unit, integration, and process tests pass. Two process helpers are
+All 345 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.98
+Documentation tests also pass. The measured Rust line coverage is 90.99
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -88,6 +95,8 @@ in the passing
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
+Remote cross-platform evidence for the focused artifact-set and runtime-identity
+branch is pending publication and is not included in that exact-main claim.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current

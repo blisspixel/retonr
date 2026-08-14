@@ -119,9 +119,12 @@ names are discovery hints, not identities.
 
 Artifact or runtime drift invalidates the active binding and discards the complete
 candidate batch. Qualification records never imply formal semantic guarantees.
-The claim-extraction role requires a content-complete runtime-build, artifact-set,
-and effective-state identity. Qualification schema v1 is observational and cannot
-authorize that role.
+The claim-extraction role requires versioned runtime-build, artifact-set, and
+effective-state identities whose truth and completeness are independently established.
+Qualification schema v1 is observational and cannot authorize that role. The domain
+can now represent those three identities, but their structural validity grants no
+authority. Qualification v2 must bind them, and the application must independently
+attest and recheck the live tuple before and after use.
 
 Probabilistic claim extraction and deterministic comparison are separate evidence
 stages. Retained comparison evidence binds to the exact extractor manifest, unit,

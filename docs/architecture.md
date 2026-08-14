@@ -171,6 +171,20 @@ future claim extractor receives its own schema, effective manifest, application
 orchestrator, and stronger qualification identity. It will not be hidden behind the
 synchronous semantic port or silently reuse a generation binding.
 
+The model layer defines inert content identities before granting any new authority.
+An artifact-set manifest contains a strictly ordered, bounded list of immutable file
+digests, byte lengths, and portable logical paths. It rejects ambiguous case aliases,
+platform device names, traversal, path-prefix collisions, and unbounded membership.
+A separate runtime-build record binds a managed or locally attested package,
+entrypoint, dependency manifest, build configuration, and exact native target. An
+effective-state record binds that build to a provider snapshot, loaded components,
+resolved configuration, platform evidence, execution class, isolation policy, and
+effective context. All three use domain-separated, versioned canonical identity
+material and byte-bounded validated JSON decoding. None is proof that the supplied
+evidence is true or complete.
+Qualification v2 and the application runtime join remain responsible for that claim.
+Attached observed-only Ollama metadata cannot construct a runtime-build identity.
+
 ## Document representation
 
 The semantic document and adapter reconstruction state are separate. Core code can
