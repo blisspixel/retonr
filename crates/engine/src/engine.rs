@@ -1,25 +1,24 @@
 use rewrite_types::{
     AcceptedEdit, Atomicity, CandidateAssessment, CandidateTextKind, DocumentError, DocumentIr,
-    GateEvidence, GateEvidenceDetails, GateResult, GateStatus, GeneratedCandidate,
-    InvariantEvidenceSummary, ReasonCode, RewriteOptions, RewriteStatus, RewriteUnit,
-    RewriteUnitId, Severity,
+    GateResult, GateStatus, GeneratedCandidate, ReasonCode, RewriteOptions, RewriteStatus,
+    RewriteUnit, RewriteUnitId, Severity,
 };
 use thiserror::Error;
 
-use crate::policy::{
-    candidate_batch_reason, candidate_contract_is_valid, preferred_reason, validate_rewrite_options,
-};
+use crate::policy::{candidate_batch_reason, preferred_reason, validate_rewrite_options};
 use crate::selection::compare_candidates;
 use crate::{
     CancellationToken, CandidateGenerator, GenerationError, GenerationRequest, ProtectionError,
     ProtectionPlan, SemanticEvaluator, StructureAssessment, StructureValidator,
 };
 
-const UNIT_GATE: &str = "candidate_unit";
-const CANDIDATE_GATE: &str = "candidate_contract";
-const SENTINEL_GATE: &str = "sentinel_integrity";
-const PROTECTED_GATE: &str = "protected_values";
-const SEMANTIC_GATE: &str = "semantic_fidelity";
+mod support;
+
+use support::{
+    EligibleCandidate, EvaluatedCandidate, PROTECTED_GATE, SEMANTIC_GATE, SENTINEL_GATE,
+    UnitProgress, ineligible, invalid_semantic_gate, protected_values_pass, protection_failure,
+    protection_reason, semantic_evidence, surface_edit_cost, validate_candidate_metadata,
+};
 
 /// Maximum candidates accepted from one generation request.
 pub const MAX_GENERATED_CANDIDATES: usize = 16;
@@ -133,69 +132,23 @@ impl<'a> RewriteEngine<'a> {
         let mut selected_candidates = Vec::with_capacity(document.rewrite_units.len());
 
         for unit in &document.rewrite_units {
-            if cancellation.is_cancelled() {
-                return Ok(EngineOutcome::abstained(ReasonCode::Cancelled, assessments));
-            }
-
-            let protection = match ProtectionPlan::build(&unit.text, &options.protected_terms) {
-                Ok(protection) => protection,
-                Err(
-                    ProtectionError::ReservedTokenInSource
-                    | ProtectionError::AmbiguousSurfaceMapping,
-                ) => {
-                    return Ok(EngineOutcome::abstained(
-                        ReasonCode::SentinelIntegrity,
-                        assessments,
-                    ));
+            match self.evaluate_unit(unit, options, cancellation, assessments)? {
+                Err(outcome) => return Ok(outcome),
+                Ok(progress) => {
+                    assessments = progress.assessments;
+                    if let Some(replacement) = progress.replacement {
+                        edits.push(AcceptedEdit {
+                            unit_id: unit.id.clone(),
+                            replacement,
+                        });
+                    }
+                    selected_candidates.push(progress.selected);
                 }
-                Err(error) => return Err(error.into()),
-            };
-            let request = GenerationRequest {
-                unit_id: unit.id.clone(),
-                masked_source: protection.masked_source().to_owned(),
-                protected_values: protection.values().to_vec(),
-                mode: options.mode,
-            };
-            let candidates = match self.generator.generate(&request, cancellation) {
-                Ok(candidates) => candidates,
-                Err(GenerationError::Cancelled) => {
-                    return Ok(EngineOutcome::abstained(ReasonCode::Cancelled, assessments));
-                }
-                Err(error) => return Err(error.into()),
-            };
-            if let Some(reason) = candidate_batch_reason(&unit.id, &candidates) {
-                return Ok(EngineOutcome::abstained(reason, assessments));
             }
+        }
 
-            let mut eligible = Vec::new();
-            let mut unit_reason = None;
-            for candidate in candidates {
-                let evaluated = self.assess_candidate(unit, candidate, &protection, options);
-                if evaluated.assessment.eligible {
-                    eligible.push(evaluated.candidate);
-                } else if let Some(reason) = evaluated.reason {
-                    unit_reason = Some(preferred_reason(unit_reason, reason));
-                }
-                assessments.push(evaluated.assessment);
-            }
-
-            let Some(selected_item) = eligible
-                .iter()
-                .max_by(|left, right| compare_candidates(&left.generated, &right.generated))
-            else {
-                return Ok(EngineOutcome::abstained(
-                    unit_reason.unwrap_or(ReasonCode::NoCandidate),
-                    assessments,
-                ));
-            };
-            let selected_id = selected_item.generated.id.clone();
-            if selected_item.restored != unit.text {
-                edits.push(AcceptedEdit {
-                    unit_id: unit.id.clone(),
-                    replacement: selected_item.restored.clone(),
-                });
-            }
-            selected_candidates.push(selected_id);
+        if cancellation.is_cancelled() {
+            return Ok(EngineOutcome::abstained(ReasonCode::Cancelled, assessments));
         }
 
         let status = if edits.is_empty() {
@@ -210,6 +163,99 @@ impl<'a> RewriteEngine<'a> {
             assessments,
             selected_candidates,
         })
+    }
+
+    fn evaluate_unit(
+        &self,
+        unit: &RewriteUnit,
+        options: &RewriteOptions,
+        cancellation: &CancellationToken,
+        mut assessments: Vec<CandidateAssessment>,
+    ) -> Result<Result<UnitProgress, EngineOutcome>, EngineError> {
+        if cancellation.is_cancelled() {
+            return Ok(Err(EngineOutcome::abstained(
+                ReasonCode::Cancelled,
+                assessments,
+            )));
+        }
+
+        let protection = match ProtectionPlan::build(&unit.text, &options.protected_terms) {
+            Ok(protection) => protection,
+            Err(
+                ProtectionError::ReservedTokenInSource | ProtectionError::AmbiguousSurfaceMapping,
+            ) => {
+                return Ok(Err(EngineOutcome::abstained(
+                    ReasonCode::SentinelIntegrity,
+                    assessments,
+                )));
+            }
+            Err(error) => return Err(error.into()),
+        };
+        if cancellation.is_cancelled() {
+            return Ok(Err(EngineOutcome::abstained(
+                ReasonCode::Cancelled,
+                assessments,
+            )));
+        }
+        let request = GenerationRequest {
+            unit_id: unit.id.clone(),
+            masked_source: protection.masked_source().to_owned(),
+            protected_values: protection.values().to_vec(),
+            mode: options.mode,
+        };
+        let candidates = match self.generator.generate(&request, cancellation) {
+            Ok(candidates) => candidates,
+            Err(GenerationError::Cancelled) => {
+                return Ok(Err(EngineOutcome::abstained(
+                    ReasonCode::Cancelled,
+                    assessments,
+                )));
+            }
+            Err(error) => return Err(error.into()),
+        };
+        if cancellation.is_cancelled() {
+            return Ok(Err(EngineOutcome::abstained(
+                ReasonCode::Cancelled,
+                assessments,
+            )));
+        }
+        if let Some(reason) = candidate_batch_reason(&unit.id, &candidates) {
+            return Ok(Err(EngineOutcome::abstained(reason, assessments)));
+        }
+
+        let mut eligible = Vec::new();
+        let mut unit_reason = None;
+        for candidate in candidates {
+            let evaluated = self.assess_candidate(unit, candidate, &protection, options);
+            if evaluated.assessment.eligible {
+                eligible.push(evaluated.candidate);
+            } else if let Some(reason) = evaluated.reason {
+                unit_reason = Some(preferred_reason(unit_reason, reason));
+            }
+            assessments.push(evaluated.assessment);
+            if cancellation.is_cancelled() {
+                return Ok(Err(EngineOutcome::abstained(
+                    ReasonCode::Cancelled,
+                    assessments,
+                )));
+            }
+        }
+
+        let Some(selected_item) = eligible
+            .iter()
+            .max_by(|left, right| compare_candidates(&left.generated, &right.generated))
+        else {
+            return Ok(Err(EngineOutcome::abstained(
+                unit_reason.unwrap_or(ReasonCode::NoCandidate),
+                assessments,
+            )));
+        };
+        Ok(Ok(UnitProgress {
+            selected: selected_item.generated.id.clone(),
+            replacement: (selected_item.restored != unit.text)
+                .then(|| selected_item.restored.clone()),
+            assessments,
+        }))
     }
 
     fn assess_candidate(
@@ -347,200 +393,4 @@ impl<'a> RewriteEngine<'a> {
             (gate, passed, reason)
         }
     }
-}
-
-fn semantic_evidence(evidence: rewrite_types::SemanticEvidence) -> GateEvidence {
-    use rewrite_types::{SemanticEvidenceCode, SemanticEvidenceDetails};
-    let message = match evidence.code {
-        SemanticEvidenceCode::LiteralTokensEqual => "literal token sequence was preserved",
-        SemanticEvidenceCode::LiteralTokensChanged => "literal token sequence changed",
-        SemanticEvidenceCode::UnsupportedMode => "semantic evaluator does not support this mode",
-        SemanticEvidenceCode::ClaimComparisonPreserved => {
-            "typed claim comparison found no conflict"
-        }
-        SemanticEvidenceCode::ClaimComparisonConflict => "typed claim comparison found a conflict",
-        SemanticEvidenceCode::ClaimComparisonUncertain => {
-            "typed claim comparison retained uncertainty"
-        }
-    };
-    GateEvidence {
-        code: evidence.code.as_str().to_owned(),
-        message: message.to_owned(),
-        details: evidence.details.map(|details| match details {
-            SemanticEvidenceDetails::ClaimComparison(comparison) => {
-                GateEvidenceDetails::ClaimComparison(Box::new(comparison))
-            }
-        }),
-    }
-}
-
-fn invalid_semantic_gate() -> (GateResult, bool, ReasonCode) {
-    (
-        GateResult {
-            gate_id: SEMANTIC_GATE.to_owned(),
-            gate_version: "semantic-evidence-contract-v1".to_owned(),
-            status: GateStatus::Uncertain,
-            severity: Severity::Error,
-            evidence: vec![GateEvidence {
-                code: "invalid_evaluator_evidence".to_owned(),
-                message: "semantic evaluator returned malformed or unbounded evidence".to_owned(),
-                details: None,
-            }],
-            confidence: None,
-        },
-        false,
-        ReasonCode::SemanticUncertain,
-    )
-}
-
-fn protected_values_pass(protection: &ProtectionPlan) -> GateResult {
-    let mut summary = InvariantEvidenceSummary {
-        declared_terms: 0,
-        urls: 0,
-        emails: 0,
-        numbers: 0,
-        total: 0,
-    };
-    for value in protection.values() {
-        let count = match value.kind {
-            crate::ProtectedKind::DeclaredTerm => &mut summary.declared_terms,
-            crate::ProtectedKind::Url => &mut summary.urls,
-            crate::ProtectedKind::Email => &mut summary.emails,
-            crate::ProtectedKind::Number => &mut summary.numbers,
-        };
-        *count = count.saturating_add(1);
-        summary.total = summary.total.saturating_add(1);
-    }
-    GateResult {
-        gate_id: PROTECTED_GATE.to_owned(),
-        gate_version: "1".to_owned(),
-        status: GateStatus::Pass,
-        severity: Severity::Error,
-        evidence: vec![GateEvidence {
-            code: "invariant_counts".to_owned(),
-            message: "exact protected invariant counts were preserved".to_owned(),
-            details: Some(GateEvidenceDetails::InvariantSummary(summary)),
-        }],
-        confidence: None,
-    }
-}
-
-struct EligibleCandidate {
-    generated: GeneratedCandidate,
-    restored: String,
-}
-
-struct EvaluatedCandidate {
-    assessment: CandidateAssessment,
-    candidate: EligibleCandidate,
-    reason: Option<ReasonCode>,
-}
-
-fn validate_candidate_metadata(
-    unit: &RewriteUnit,
-    candidate: GeneratedCandidate,
-    gates: &mut Vec<GateResult>,
-) -> Result<GeneratedCandidate, Box<EvaluatedCandidate>> {
-    if candidate.unit_id != unit.id {
-        gates.push(GateResult::fail(
-            UNIT_GATE,
-            "unit_mismatch",
-            "candidate targets a different rewrite unit",
-        ));
-        return Err(Box::new(ineligible(
-            candidate,
-            unit.id.clone(),
-            String::new(),
-            core::mem::take(gates),
-            ReasonCode::StructureChanged,
-        )));
-    }
-    gates.push(GateResult::pass(UNIT_GATE));
-    if !candidate_contract_is_valid(&candidate) {
-        gates.push(GateResult::fail(
-            CANDIDATE_GATE,
-            "invalid_candidate_contract",
-            "candidate size, identity, or ranking metadata violates engine limits",
-        ));
-        return Err(Box::new(ineligible(
-            candidate,
-            unit.id.clone(),
-            String::new(),
-            core::mem::take(gates),
-            ReasonCode::InvalidCandidate,
-        )));
-    }
-    gates.push(GateResult::pass(CANDIDATE_GATE));
-    Ok(candidate)
-}
-
-fn ineligible(
-    candidate: GeneratedCandidate,
-    assessed_unit_id: RewriteUnitId,
-    restored: String,
-    gates: Vec<GateResult>,
-    reason: ReasonCode,
-) -> EvaluatedCandidate {
-    let assessment = CandidateAssessment {
-        candidate_id: candidate.id.clone(),
-        unit_id: assessed_unit_id,
-        eligible: false,
-        gates,
-    };
-    EvaluatedCandidate {
-        assessment,
-        candidate: EligibleCandidate {
-            generated: candidate,
-            restored,
-        },
-        reason: Some(reason),
-    }
-}
-
-fn protection_failure(gate_id: &str, error: &ProtectionError) -> GateResult {
-    let code = match error {
-        ProtectionError::ReservedTokenInSource => "reserved_token",
-        ProtectionError::ProtectedOccurrenceCount => "protected_occurrence_count",
-        ProtectionError::SentinelOccurrenceCount => "sentinel_occurrence_count",
-        ProtectionError::UnknownSentinel => "unknown_sentinel",
-        ProtectionError::MatcherBuild => "matcher_build",
-        ProtectionError::ResourceLimit => "protection_resource_limit",
-        ProtectionError::InvalidDeclaredTerms => "invalid_declared_terms",
-        ProtectionError::AmbiguousSurfaceMapping => "ambiguous_surface_mapping",
-    };
-    GateResult {
-        gate_id: gate_id.to_owned(),
-        gate_version: "1".to_owned(),
-        status: GateStatus::Fail,
-        severity: Severity::Error,
-        evidence: vec![GateEvidence {
-            code: code.to_owned(),
-            message: "candidate did not preserve protected-value integrity".to_owned(),
-            details: None,
-        }],
-        confidence: None,
-    }
-}
-
-const fn protection_reason(error: &ProtectionError) -> ReasonCode {
-    match error {
-        ProtectionError::ProtectedOccurrenceCount => ReasonCode::ProtectedValueChanged,
-        ProtectionError::ReservedTokenInSource
-        | ProtectionError::SentinelOccurrenceCount
-        | ProtectionError::UnknownSentinel
-        | ProtectionError::MatcherBuild
-        | ProtectionError::ResourceLimit
-        | ProtectionError::InvalidDeclaredTerms
-        | ProtectionError::AmbiguousSurfaceMapping => ReasonCode::SentinelIntegrity,
-    }
-}
-
-fn surface_edit_cost(source: &str, candidate: &str) -> u64 {
-    let substitutions = source
-        .chars()
-        .zip(candidate.chars())
-        .filter(|(left, right)| left != right)
-        .count();
-    let length_delta = source.chars().count().abs_diff(candidate.chars().count());
-    u64::try_from(substitutions.saturating_add(length_delta)).unwrap_or(u64::MAX)
 }

@@ -4,8 +4,8 @@
 #![deny(missing_docs)]
 
 use rewrite_engine::{
-    CancellationToken, CandidateGenerator, EngineError, LiteralSemanticEvaluator, ProtectionError,
-    ProvidedCandidateGenerator, RewriteEngine, StructureAssessment, StructureValidator,
+    CancellationToken, CandidateGenerator, LiteralSemanticEvaluator, ProvidedCandidateGenerator,
+    RewriteEngine, StructureAssessment, StructureValidator,
 };
 use rewrite_text_adapter::{
     MAX_PLAIN_TEXT_BYTES, ParsedTextDocument, TextAdapter, TextAdapterError,
@@ -61,6 +61,7 @@ pub use artifact_set_import::{
     OfflineArtifactSetImportRequest,
 };
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
+pub use rewrite_engine::{EngineError, ProtectionError};
 pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};
 
 /// Maximum accepted source or candidate size for the plain-text check service.
@@ -299,6 +300,52 @@ mod tests {
             .expect("unsafe candidate is a policy rejection");
         assert_eq!(result.record.reason, Some(ReasonCode::UnsafeText));
         assert_eq!(result.output, source);
+    }
+
+    #[test]
+    fn protected_literals_reject_extensions_and_leading_decimal_changes() {
+        let cases = [
+            (
+                "See https://example.com now",
+                "See https://example.com/ now",
+            ),
+            ("Pay 10 now", "Pay $10 now"),
+            ("Rate 50 now", "Rate 50% now"),
+            ("Value is .5.", "Value is 5."),
+            ("Pay 10 now", "Pay 10.0 now"),
+        ];
+        for (source, candidate) in cases {
+            let result = CandidateCheckService::check(request(source.as_bytes(), candidate))
+                .expect("policy rejection is not an operational error");
+            assert_eq!(
+                result.record.reason,
+                Some(ReasonCode::ProtectedValueChanged),
+                "{source} -> {candidate}"
+            );
+            assert_eq!(result.output, source.as_bytes());
+        }
+    }
+
+    #[test]
+    fn trailing_url_punctuation_may_change() {
+        let source = b"See https://example.com.";
+        let result = CandidateCheckService::check(request(source, "See https://example.com!"))
+            .expect("URL wrapper punctuation is eligible");
+        assert_eq!(result.record.status, RewriteStatus::Rewritten);
+        assert_eq!(result.output, b"See https://example.com!");
+    }
+
+    #[test]
+    fn protection_occurrence_overflow_is_a_limit_error() {
+        use rewrite_engine::{EngineError, MAX_PROTECTED_OCCURRENCES, ProtectionError};
+
+        let source = "1 ".repeat(MAX_PROTECTED_OCCURRENCES + 1);
+        let error = CandidateCheckService::check(request(source.as_bytes(), &source))
+            .expect_err("occurrence overflow must not enter a rewrite decision");
+        assert!(matches!(
+            error,
+            AppError::Engine(EngineError::Protection(ProtectionError::ResourceLimit))
+        ));
     }
 
     #[test]

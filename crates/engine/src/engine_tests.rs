@@ -4,10 +4,9 @@ use rewrite_types::{
 
 use crate::RewriteEngine;
 use crate::engine_test_support::{
-    CancellingGenerator, DuplicateCandidateIdGenerator, EmptyGenerator, ErrorGenerator,
-    FixedSemantic, InvalidRankGenerator, MaskedEchoGenerator, MismatchedCandidateIdGenerator,
+    DuplicateCandidateIdGenerator, EmptyGenerator, ErrorGenerator, FixedSemantic,
+    InvalidRankGenerator, MaskedEchoGenerator, MismatchedCandidateIdGenerator,
     MismatchedUnitGenerator, NoNewlineChange, PassStructure, document, literal_options,
-    two_unit_document,
 };
 use crate::{
     CancellationToken, GenerationError, LiteralSemanticEvaluator, ProvidedCandidateGenerator,
@@ -440,23 +439,6 @@ fn malformed_semantic_evidence_fails_closed_without_retaining_supplied_findings(
     let encoded = serde_json::to_string(&outcome.assessments).expect("assessment serializes");
     assert!(!encoded.contains("literal_tokens_equal"));
     assert!(gate.validate().is_ok());
-}
-
-#[test]
-fn cancellation_after_partial_work_discards_all_edits() {
-    let outcome = RewriteEngine::new(
-        &CancellingGenerator,
-        &LiteralSemanticEvaluator,
-        &PassStructure,
-    )
-    .run(
-        &two_unit_document(),
-        &literal_options(),
-        &CancellationToken::new(),
-    )
-    .expect("cooperative cancellation is an outcome");
-    assert_eq!(outcome.reason, Some(rewrite_types::ReasonCode::Cancelled));
-    assert!(outcome.edits.is_empty());
 }
 
 #[test]

@@ -40,6 +40,76 @@ fn grouped_thousands_remain_one_number() {
 }
 
 #[test]
+fn leading_decimal_is_a_distinct_quantity() {
+    let plan = ProtectionPlan::build("Value is .5.", &[]).expect("valid fixture");
+    assert_eq!(plan.values().len(), 1);
+    assert_eq!(plan.values()[0].surface, ".5");
+    assert_eq!(
+        plan.mask_raw_candidate("Value is 5."),
+        Err(ProtectionError::ProtectedOccurrenceCount)
+    );
+}
+
+#[test]
+fn rejects_currency_percent_and_decimal_wrappers() {
+    let plan = ProtectionPlan::build("Pay 10 now.", &[]).expect("valid fixture");
+    assert_eq!(plan.values()[0].surface, "10");
+    assert_eq!(
+        plan.mask_raw_candidate("Pay $10 now."),
+        Err(ProtectionError::ProtectedOccurrenceCount)
+    );
+    assert_eq!(
+        plan.mask_raw_candidate("Pay 10% now."),
+        Err(ProtectionError::ProtectedOccurrenceCount)
+    );
+    assert_eq!(
+        plan.mask_raw_candidate("Pay 10.0 now."),
+        Err(ProtectionError::ProtectedOccurrenceCount)
+    );
+}
+
+#[test]
+fn rejects_url_path_query_and_fragment_extension() {
+    let plan = ProtectionPlan::build("See https://example.com now.", &[]).expect("valid fixture");
+    assert_eq!(plan.values()[0].surface, "https://example.com");
+    for candidate in [
+        "See https://example.com/ now.",
+        "See https://example.com?x=1 now.",
+        "See https://example.com#frag now.",
+    ] {
+        assert_eq!(
+            plan.mask_raw_candidate(candidate),
+            Err(ProtectionError::ProtectedOccurrenceCount)
+        );
+    }
+}
+
+#[test]
+fn trailing_sentence_punctuation_is_not_part_of_a_url() {
+    let source = "See https://example.com.";
+    let plan = ProtectionPlan::build(source, &[]).expect("valid fixture");
+    assert_eq!(plan.values()[0].surface, "https://example.com");
+    let rewritten = "See https://example.com!";
+    let masked = plan
+        .mask_raw_candidate(rewritten)
+        .expect("URL wrapper punctuation is not a new URL");
+    assert_eq!(plan.restore(&masked).expect("issued sentinels"), rewritten);
+}
+
+#[test]
+fn balanced_url_parentheses_stay_in_the_surface() {
+    let source = "See https://en.wikipedia.org/wiki/Foo_(bar) now.";
+    let plan = ProtectionPlan::build(source, &[]).expect("valid fixture");
+    assert_eq!(
+        plan.values()[0].surface,
+        "https://en.wikipedia.org/wiki/Foo_(bar)"
+    );
+    let wrapped = "See (https://example.com) now.";
+    let wrapped_plan = ProtectionPlan::build(wrapped, &[]).expect("valid fixture");
+    assert_eq!(wrapped_plan.values()[0].surface, "https://example.com");
+}
+
+#[test]
 fn raw_candidate_round_trips_exact_values() {
     let source = "Version 2 costs $10 at https://example.com.";
     let plan = ProtectionPlan::build(source, &[]).expect("valid fixture");

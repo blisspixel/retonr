@@ -178,6 +178,21 @@ impl CandidateGenerator for InvalidRankGenerator {
     }
 }
 
+pub(super) struct CancelOnEvaluate {
+    pub token: CancellationToken,
+}
+
+impl SemanticEvaluator for CancelOnEvaluate {
+    fn id(&self) -> &'static str {
+        "cancel-on-evaluate-fixture"
+    }
+
+    fn evaluate(&self, source: &str, candidate: &str, mode: RewriteMode) -> SemanticAssessment {
+        self.token.cancel();
+        crate::LiteralSemanticEvaluator.evaluate(source, candidate, mode)
+    }
+}
+
 pub(super) struct CancellingGenerator;
 
 impl CandidateGenerator for CancellingGenerator {
