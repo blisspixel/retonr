@@ -386,6 +386,12 @@ Controls:
   must reload and cross-check all three referenced records, exact member-purpose
   coverage, and managed or attached-attested mode. A digest does not prove a retained
   receipt is truthful or complete.
+- Treat qualification v2 as inert evidence. Its bounded decoder must reload and
+  cross-check the artifact set, effective-package evidence, runtime build, and effective
+  state. Its distinct identifier and lack of an authorization operation keep it outside
+  v1 activation. Future persistence must repeat the relationship checks, and future use
+  must hold application-owned live attestation and lease authority through post-call
+  drift checks.
 - Verify checksums before activation.
 - Treat runtime model listings, templates, license text, and capabilities as untrusted
   discovery data rather than qualification evidence.

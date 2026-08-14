@@ -64,10 +64,10 @@ proceeds in this exact order:
    evidence, deterministic comparison, exact output-contract discovery, bounded
    structured-completion boundary, distinct inert claim-extraction role, canonical
    artifact-set manifest, runtime-build and effective-state identities, and
-   relationship-checked effective-package evidence. Next add a separate inert
-   qualification v2 that binds all four identities without rewriting v1 evidence.
-   Persist and cross-check those records before adding live attestation and artifact-set
-   leases. Only then add the
+   relationship-checked effective-package evidence. Preserve the separate inert
+   qualification v2 that binds all four identities and exact qualification policy
+   without rewriting v1 evidence. Next persist and cross-check those records before
+   adding live attestation and artifact-set leases. Only then add the
    exact effective extractor manifest, strict ephemeral wire contract, separately
    cancellable pair operation, and two-phase engine evidence join. Calibrate it in
    shadow mode before any semantic pass authority and never treat probabilistic

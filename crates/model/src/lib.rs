@@ -8,6 +8,7 @@ mod artifact;
 mod artifact_set;
 mod effective_package;
 mod qualification;
+mod qualification_v2;
 mod runtime_identity;
 
 pub use activation::{
@@ -37,6 +38,11 @@ pub use effective_package::{
 pub use qualification::{
     HardwareTier, LicenseDecision, QUALIFICATION_SCHEMA_VERSION, QualificationId,
     QualificationRecord, QualificationRecordError, QualificationStatus, RuntimeIdentity,
+};
+pub use qualification_v2::{
+    MAX_QUALIFICATION_V2_CANONICAL_BYTES, MAX_QUALIFICATION_V2_JSON_BYTES,
+    QUALIFICATION_V2_SCHEMA_VERSION, QualificationRecordV2, QualificationRecordV2Error,
+    QualificationRecordV2Input, QualificationV2Id,
 };
 pub use runtime_identity::{
     ComputeBackend, EFFECTIVE_RUNTIME_STATE_SCHEMA_VERSION, EffectiveRuntimeState,

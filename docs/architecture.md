@@ -189,8 +189,14 @@ transformation disposition, runtime load closure, and exclusion and isolation. I
 managed or attached-attested mode must match the runtime-build mode. Decoding reloads
 the referenced records and rechecks the complete relationship rather than admitting
 three unrelated identifiers. The record is still evidence vocabulary, not authority.
-Qualification v2 and the application runtime join remain responsible for authorization
-and live truth.
+The implemented qualification v2 record binds that four-part subject for exactly the
+claim-extraction role. It also binds source and context ceilings, prompt, claim-output
+and claim-operation contracts, request and threshold policies, language policy,
+hardware envelope, qualification suite, result evidence, license decision, and
+qualification outcome. Its identifier and type are distinct from qualification v1; it
+has no authorization operation and cannot enter the v1 activation path. Persistence,
+live attestation, operation leases, pre-call checks, and post-call checks remain the
+responsibility of a later application runtime join.
 Attached observed-only Ollama metadata cannot construct a runtime-build identity.
 
 ## Document representation

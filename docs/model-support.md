@@ -253,6 +253,14 @@ and exclusion and isolation evidence. Relationship-aware decoding rejects stale 
 cross-product references. Structural validity does not qualify a model, attest a live
 runtime, or grant claim-extraction authority.
 
+The separate qualification v2 record binds the artifact set, effective-package
+evidence, runtime build, and effective state for exactly the claim-extraction role. It
+also binds the claim-output and operation contracts and the complete qualification
+policy and result identity. Its relationship-aware bounded decoder reloads every exact
+subject record. It has a distinct identifier, no authorization operation, no persistence
+path, and no route into qualification v1 activation. Live claim extraction remains
+unavailable until the application can attest, lease, and recheck the complete tuple.
+
 ## Selection and fallback rules
 
 - Filter by privacy mode, runtime, language, format, strategy, context, and resource
