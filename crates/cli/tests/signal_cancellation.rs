@@ -16,7 +16,7 @@ use tempfile::tempdir;
 
 const SOURCE_BYTES: u64 = 512 * 1024 * 1024;
 #[cfg(windows)]
-const WINDOWS_SENDER_SETUP_TIMEOUT: Duration = Duration::from_mins(2);
+const WINDOWS_SENDER_SETUP_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[test]
 fn interrupt_requests_typed_import_cancellation_before_registration() {
@@ -185,8 +185,8 @@ impl InterruptSender {
     fn prepare(directory: &Path) -> Self {
         let ready = directory.join("signal-sender-ready");
         let request = directory.join("signal-sender-request");
-        let script = "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class RetonrSignal { [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool FreeConsole(); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool AttachConsole(uint p); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool SetConsoleCtrlHandler(IntPtr h, bool a); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g); }'; Set-Content -LiteralPath $env:RETONR_SIGNAL_READY -Value ready -NoNewline; $deadline = [DateTime]::UtcNow.AddSeconds(120); while (-not (Test-Path -LiteralPath $env:RETONR_SIGNAL_REQUEST)) { if ([DateTime]::UtcNow -ge $deadline) { exit 2 }; Start-Sleep -Milliseconds 5 }; $target = [uint32](Get-Content -LiteralPath $env:RETONR_SIGNAL_REQUEST -Raw); [RetonrSignal]::FreeConsole() | Out-Null; if (-not [RetonrSignal]::AttachConsole($target)) { exit 3 }; if (-not [RetonrSignal]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)) { exit 4 }; if (-not [RetonrSignal]::GenerateConsoleCtrlEvent(1, $target)) { exit 5 }; Start-Sleep -Milliseconds 100";
-        let mut child = Command::new("powershell.exe")
+        let script = "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class RetonrSignal { [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool FreeConsole(); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool AttachConsole(uint p); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool SetConsoleCtrlHandler(IntPtr h, bool a); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g); }'; Set-Content -LiteralPath $env:RETONR_SIGNAL_READY -Value ready -NoNewline; $deadline = [DateTime]::UtcNow.AddSeconds(30); while (-not (Test-Path -LiteralPath $env:RETONR_SIGNAL_REQUEST)) { if ([DateTime]::UtcNow -ge $deadline) { exit 2 }; Start-Sleep -Milliseconds 5 }; $target = [uint32](Get-Content -LiteralPath $env:RETONR_SIGNAL_REQUEST -Raw); [RetonrSignal]::FreeConsole() | Out-Null; if (-not [RetonrSignal]::AttachConsole($target)) { exit 3 }; if (-not [RetonrSignal]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)) { exit 4 }; if (-not [RetonrSignal]::GenerateConsoleCtrlEvent(1, $target)) { exit 5 }; Start-Sleep -Milliseconds 100";
+        let child = Command::new("powershell.exe")
             .args(["-NoProfile", "-NonInteractive", "-Command", script])
             .env("RETONR_SIGNAL_READY", &ready)
             .env("RETONR_SIGNAL_REQUEST", &request)
@@ -194,7 +194,7 @@ impl InterruptSender {
             .stderr(Stdio::piped())
             .spawn()
             .expect("prepare Windows console interrupt sender");
-        wait_for_sender(&mut child, &ready);
+        let child = wait_for_sender(child, &ready);
         Self { child, request }
     }
 
@@ -215,20 +215,40 @@ impl InterruptSender {
 }
 
 #[cfg(windows)]
-fn wait_for_sender(child: &mut Child, path: &Path) {
+fn wait_for_sender(mut child: Child, path: &Path) -> Child {
     let deadline = Instant::now() + WINDOWS_SENDER_SETUP_TIMEOUT;
-    while !path.is_file() {
-        assert!(
+    loop {
+        if path.is_file() {
+            return child;
+        }
+        if child
+            .try_wait()
+            .expect("poll Windows interrupt sender")
+            .is_some()
+        {
+            let output = child
+                .wait_with_output()
+                .expect("collect failed Windows interrupt sender");
+            panic!(
+                "Windows interrupt sender exited before becoming ready with status {:?}\nstdout:\n{}\nstderr:\n{}",
+                output.status.code(),
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        if Instant::now() >= deadline {
             child
-                .try_wait()
-                .expect("poll Windows interrupt sender")
-                .is_none(),
-            "Windows interrupt sender exited before becoming ready"
-        );
-        assert!(
-            Instant::now() < deadline,
-            "Windows interrupt sender did not become ready"
-        );
+                .kill()
+                .expect("terminate unresponsive Windows interrupt sender");
+            let output = child
+                .wait_with_output()
+                .expect("collect unresponsive Windows interrupt sender");
+            panic!(
+                "Windows interrupt sender did not become ready\nstdout:\n{}\nstderr:\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
         thread::sleep(Duration::from_millis(5));
     }
 }

@@ -54,6 +54,7 @@ cargo fmt --all -- --check
 cargo check --locked --workspace --all-targets --all-features
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo test --locked --workspace --all-features
+cargo nextest run --locked --workspace --all-features --no-fail-fast
 cargo llvm-cov --locked --workspace --all-features --fail-under-lines 80
 cargo test --locked --workspace --all-features --doc
 cargo doc --locked --workspace --all-features --no-deps
@@ -75,9 +76,10 @@ percent overall. The repository's 80 percent line coverage floor passes with mar
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
 supports its libFuzzer execution path on Unix-like targets, so Windows is not
 reported as a local fuzz-execution result. Continuous integration runs both bounded
-targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
-installed in the local environment, so this checkpoint used the documented
-`cargo test` fallback.
+targets under the Linux sanitizer-backed fuzz smoke job. The pinned `cargo-nextest`
+0.9.143 run also passes. Its Windows-only override gives the console-interrupt
+integration test exclusive test-thread capacity because the helper owns process-wide
+console state; the test remains concurrent with the full suite on macOS and Linux.
 
 The provider-neutral structured-completion slice passed at exact-main revision
 `35ed2cdd43afa99a3cca51fed0b2f0e43c693a9a` in the passing
