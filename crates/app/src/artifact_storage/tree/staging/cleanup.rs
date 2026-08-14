@@ -87,7 +87,7 @@ impl OwnedStagingTree {
             let current = file_parent.child_file_fingerprint(OsStr::new(file_name))?;
             let named_exact =
                 current.same_identity(&retained.fingerprint) && current.has_single_link();
-            drop(current);
+            current.release();
             if !named_exact {
                 return Err(ArtifactInventoryError::ConcurrentModification);
             }
@@ -120,7 +120,7 @@ impl OwnedStagingTree {
             let directory_parent = directory_for_parent(&root, &directories, parent_path.as_ref())?;
             let named = directory_parent.child_directory_fingerprint(OsStr::new(directory_name))?;
             let named_exact = named.same_identity(&retained.fingerprint);
-            drop(named);
+            named.release();
             if !named_exact || !retained.directory.is_empty()? {
                 return Err(ArtifactInventoryError::ConcurrentModification);
             }
@@ -136,8 +136,8 @@ impl OwnedStagingTree {
             if !exact {
                 return Err(ArtifactInventoryError::ConcurrentModification);
             }
-            drop(cleanup_fingerprint);
-            drop(retained.fingerprint);
+            cleanup_fingerprint.release();
+            retained.fingerprint.release();
             drop(retained.directory);
             platform::remove_verified_directory(
                 &directory_parent.handle,
@@ -148,7 +148,7 @@ impl OwnedStagingTree {
         }
         let named = parent.child_directory_fingerprint(&name)?;
         let named_exact = named.same_identity(&root_fingerprint);
-        drop(named);
+        named.release();
         if !named_exact || !root.is_empty()? {
             return Err(ArtifactInventoryError::ConcurrentModification);
         }
@@ -161,8 +161,8 @@ impl OwnedStagingTree {
         if !exact {
             return Err(ArtifactInventoryError::ConcurrentModification);
         }
-        drop(cleanup_fingerprint);
-        drop(root_fingerprint);
+        cleanup_fingerprint.release();
+        root_fingerprint.release();
         drop(root);
         platform::remove_verified_directory(&parent.handle, &name, cleanup)
             .map_err(super::super::map_active_error)?;
@@ -324,7 +324,7 @@ fn remove_closed_directory(
     if !expected.same_identity(&fingerprint) {
         return Err(ArtifactInventoryError::ConcurrentModification);
     }
-    drop(fingerprint);
+    fingerprint.release();
     let directory = super::PinnedDirectory { handle: cleanup };
     if !directory.is_empty()? {
         return Err(ArtifactInventoryError::ConcurrentModification);
@@ -343,7 +343,7 @@ fn remove_root(
     if !expected.same_identity(&root.fingerprint()?) {
         return Err(ArtifactInventoryError::ConcurrentModification);
     }
-    drop(root_fingerprint);
+    root_fingerprint.release();
     drop(root);
     remove_closed_directory(
         parent,

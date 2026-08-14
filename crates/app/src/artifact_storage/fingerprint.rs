@@ -157,6 +157,13 @@ impl MetadataFingerprint {
             link_count: self.link_count,
         }
     }
+
+    pub(super) fn release(self) {
+        #[cfg(windows)]
+        drop(self);
+        #[cfg(not(windows))]
+        let _ = self;
+    }
 }
 
 impl StableMetadataFingerprint {

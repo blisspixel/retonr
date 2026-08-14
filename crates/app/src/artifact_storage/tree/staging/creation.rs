@@ -64,7 +64,7 @@ fn establish_created_directory(
     if !shared_fingerprint.same_identity(&created_fingerprint) {
         return Err(ArtifactInventoryError::ConcurrentModification);
     }
-    drop(created_fingerprint);
+    created_fingerprint.release();
     drop(created);
     Ok(RetainedDirectory {
         directory: shared,
@@ -81,7 +81,7 @@ fn cleanup_created_directory(
     if !named.same_identity(&retained.fingerprint) || !retained.directory.is_empty()? {
         return Err(ArtifactInventoryError::ConcurrentModification);
     }
-    drop(named);
+    named.release();
     let handle =
         platform::open_directory_for_cleanup(&parent.handle, name).map_err(map_active_error)?;
     validate_directory_handle(&handle, false)?;
@@ -90,8 +90,8 @@ fn cleanup_created_directory(
     if !cleanup_fingerprint.same_identity(&retained.fingerprint) {
         return Err(ArtifactInventoryError::ConcurrentModification);
     }
-    drop(cleanup_fingerprint);
-    drop(retained.fingerprint);
+    cleanup_fingerprint.release();
+    retained.fingerprint.release();
     drop(retained.directory);
     platform::remove_verified_directory(&parent.handle, name, handle).map_err(map_active_error)?;
     parent.sync()
