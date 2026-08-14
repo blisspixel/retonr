@@ -11,7 +11,7 @@ use crate::GroundedError;
 pub const GROUNDED_POLICY_SCHEMA_VERSION: u32 = 1;
 pub(crate) const MAX_PROMPT_TEMPLATE_BYTES: usize = 16 * 1024;
 pub(crate) const MAX_STYLE_CONTEXT_BYTES: usize = 16 * 1024;
-const MAX_SENTINELS: usize = 128;
+const MAX_SENTINELS: usize = 4_096;
 const MAX_SENTINEL_TOKEN_BYTES: usize = 96;
 const MAX_GROUNDED_CANDIDATES: u8 = 16;
 const MAX_OUTPUT_SCHEMA_BYTES: usize = 64 * 1024;

@@ -11,19 +11,18 @@ use std::{
 };
 
 use clap::{Parser, Subcommand, error::ErrorKind};
-use rewrite_app::{
-    AppError, CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES,
-};
+use rewrite_app::{CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES};
 use rewrite_types::{CancellationToken, ReasonCode, RewriteRecord, RewriteStatus};
 
 use crate::contract::{
-    CommandName, EXIT_CANCELLED, EXIT_COMPATIBILITY, EXIT_OPERATIONAL, EXIT_POLICY, EXIT_USAGE,
-    ErrorBody, ErrorCategory, ErrorCode, ErrorEnvelope, ReportFormat, SuccessEnvelope,
+    CommandName, EXIT_CANCELLED, EXIT_POLICY, ErrorEnvelope, ReportFormat, SuccessEnvelope,
     open_regular_file,
 };
+use crate::failure::RunFailure;
 use crate::model::{ModelCommand, ModelFailure};
 
 pub mod contract;
+mod failure;
 mod model;
 
 /// Fidelity-gated rewriting prototype.
@@ -129,6 +128,9 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 &cancellation,
             )
             .map_err(|error| (RunFailure::check_app(&error), format))?;
+            if result.record.reason == Some(ReasonCode::Cancelled) {
+                return Err((RunFailure::cancelled(CommandName::Check), format));
+            }
             write_report(&result.record, format)
                 .map_err(|_| (RunFailure::operational(CommandName::Check), format))?;
             Ok(exit_code(&result.record, fail_on_abstain))
@@ -219,112 +221,6 @@ fn write_model_report(
         ReportFormat::Text => output.text.as_bytes().to_vec(),
     };
     io::stdout().lock().write_all(&bytes)
-}
-
-struct RunFailure {
-    command: CommandName,
-    body: ErrorBody,
-    exit_code: ExitCode,
-    message: &'static str,
-}
-
-impl RunFailure {
-    fn usage() -> Self {
-        Self::usage_for(CommandName::Cli)
-    }
-
-    fn usage_for(command: CommandName) -> Self {
-        Self {
-            command,
-            body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InvalidInvocation, false),
-            exit_code: ExitCode::from(crate::contract::EXIT_USAGE),
-            message: "command input is invalid",
-        }
-    }
-
-    fn operational(command: CommandName) -> Self {
-        Self {
-            command,
-            body: ErrorBody::new(
-                ErrorCategory::Operational,
-                ErrorCode::OperationalFailure,
-                true,
-            ),
-            exit_code: ExitCode::from(EXIT_OPERATIONAL),
-            message: "operation failed",
-        }
-    }
-
-    fn check_read(error: &io::Error) -> Self {
-        if error.kind() == io::ErrorKind::InvalidInput {
-            return Self {
-                command: CommandName::Check,
-                body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InputUnreadable, false),
-                exit_code: ExitCode::from(EXIT_USAGE),
-                message: "input must be a regular file",
-            };
-        }
-        if error.kind() == io::ErrorKind::InvalidData {
-            Self {
-                command: CommandName::Check,
-                body: ErrorBody::new(
-                    ErrorCategory::Compatibility,
-                    ErrorCode::ResourceLimitExceeded,
-                    false,
-                ),
-                exit_code: ExitCode::from(EXIT_COMPATIBILITY),
-                message: "input exceeds the supported byte limit",
-            }
-        } else {
-            Self {
-                command: CommandName::Check,
-                body: ErrorBody::new(
-                    ErrorCategory::Operational,
-                    ErrorCode::InputUnreadable,
-                    false,
-                ),
-                exit_code: ExitCode::from(EXIT_OPERATIONAL),
-                message: "input could not be read",
-            }
-        }
-    }
-
-    fn check_app(error: &AppError) -> Self {
-        match error {
-            AppError::CandidateTooLarge { .. } => Self {
-                command: CommandName::Check,
-                body: ErrorBody::new(
-                    ErrorCategory::Compatibility,
-                    ErrorCode::ResourceLimitExceeded,
-                    false,
-                ),
-                exit_code: ExitCode::from(EXIT_COMPATIBILITY),
-                message: "input exceeds the supported byte limit",
-            },
-            AppError::TextAdapter(_) => Self {
-                command: CommandName::Check,
-                body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InputUnreadable, false),
-                exit_code: ExitCode::from(EXIT_USAGE),
-                message: "source text is not a supported UTF-8 document",
-            },
-            AppError::Engine(_) | AppError::Protection(_) => Self {
-                command: CommandName::Check,
-                body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InvalidInvocation, false),
-                exit_code: ExitCode::from(EXIT_USAGE),
-                message: "command input is invalid",
-            },
-            AppError::Grounded(_) => Self::operational(CommandName::Check),
-        }
-    }
-
-    fn from_model(error: ModelFailure) -> Self {
-        Self {
-            command: error.command,
-            body: error.body,
-            exit_code: error.exit_code,
-            message: error.message,
-        }
-    }
 }
 
 fn write_failure(error: &RunFailure, format: ReportFormat) -> io::Result<()> {
@@ -446,39 +342,6 @@ mod tests {
         assert_eq!(
             reason_name(ReasonCode::ProtectedValueChanged),
             "protected_value_changed"
-        );
-    }
-
-    #[test]
-    fn check_read_classifies_limit_and_missing_inputs() {
-        use super::RunFailure;
-        use crate::contract::{CommandName, ErrorBody, ErrorCategory, ErrorCode};
-
-        let limit = RunFailure::check_read(&std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "input exceeds the supported byte limit",
-        ));
-        assert_eq!(limit.command, CommandName::Check);
-        assert_eq!(
-            limit.body,
-            ErrorBody::new(
-                ErrorCategory::Compatibility,
-                ErrorCode::ResourceLimitExceeded,
-                false
-            )
-        );
-
-        let missing = RunFailure::check_read(&std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "missing",
-        ));
-        assert_eq!(
-            missing.body,
-            ErrorBody::new(
-                ErrorCategory::Operational,
-                ErrorCode::InputUnreadable,
-                false
-            )
         );
     }
 

@@ -85,6 +85,13 @@ fn lexical_tokens(text: &str) -> Vec<String> {
             current.extend(character.to_lowercase());
             continue;
         }
+        if character == '.'
+            && current.is_empty()
+            && characters.peek().is_some_and(char::is_ascii_digit)
+        {
+            current.push('.');
+            continue;
+        }
         if !current.is_empty() {
             tokens.push(core::mem::take(&mut current));
         }
@@ -128,5 +135,9 @@ mod tests {
         let moved_newline =
             evaluator.evaluate("Hello\nworld\n", "Hello world\n\n", RewriteMode::Literal);
         assert_eq!(moved_newline.status, GateStatus::Uncertain);
+
+        let leading_decimal =
+            evaluator.evaluate("Value is .5.", "Value is 5.", RewriteMode::Literal);
+        assert_eq!(leading_decimal.status, GateStatus::Uncertain);
     }
 }

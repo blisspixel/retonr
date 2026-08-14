@@ -7,16 +7,13 @@ use aho_corasick::{AhoCorasickBuilder, MatchKind};
 use regex::Regex;
 use thiserror::Error;
 
-static URL_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"https?://[^\s<>\"']+"#).expect("static URL regex must compile"));
-static EMAIL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-        .expect("static email regex must compile")
-});
-static NUMBER_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[$€£]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?")
-        .expect("static number regex must compile")
-});
+mod extract;
+
+use extract::{
+    collect_source_spans, is_exact_typed_span, select_non_overlapping, selected_typed_spans,
+    typed_counts,
+};
+
 static SENTINEL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\{\{PROTECTED_[A-Z_]+_\d{4}\}\}").expect("static sentinel regex must compile")
 });
@@ -31,7 +28,6 @@ pub const MAX_PROTECTED_TERMS: usize = 32;
 pub const MAX_PROTECTED_TERM_BYTES: usize = 256;
 /// Maximum combined UTF-8 bytes across protected terms.
 pub const MAX_PROTECTED_TERM_TOTAL_BYTES: usize = 2 * 1024;
-const MAX_PROTECTION_MATCH_SPANS: usize = MAX_PROTECTED_OCCURRENCES * 4;
 
 /// Category assigned to a protected source value.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -75,6 +71,8 @@ pub struct ProtectionPlan {
     masked_source: String,
     /// Protected values in source order.
     values: Vec<ProtectedValue>,
+    /// Independent typed-literal multiset extracted from the source.
+    typed_counts: BTreeMap<(ProtectedKind, String), usize>,
 }
 
 /// Protected-sentinel planning or restoration failure.
@@ -104,13 +102,6 @@ pub enum ProtectionError {
     /// Selected protected surfaces cannot map uniquely to their source occurrences.
     #[error("protected source surfaces have an ambiguous occurrence mapping")]
     AmbiguousSurfaceMapping,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct MatchSpan {
-    start: usize,
-    end: usize,
-    kind: ProtectedKind,
 }
 
 impl ProtectionPlan {
@@ -149,41 +140,8 @@ impl ProtectionPlan {
             return Err(ProtectionError::ReservedTokenInSource);
         }
 
-        let mut spans = Vec::new();
-        for term in declared_terms.iter().filter(|term| !term.is_empty()) {
-            for (start, value) in source.match_indices(term) {
-                add_match_span(
-                    &mut spans,
-                    MatchSpan {
-                        start,
-                        end: start + value.len(),
-                        kind: ProtectedKind::DeclaredTerm,
-                    },
-                )?;
-            }
-        }
-        add_regex_matches(&mut spans, source, &URL_PATTERN, ProtectedKind::Url)?;
-        add_regex_matches(&mut spans, source, &EMAIL_PATTERN, ProtectedKind::Email)?;
-        add_regex_matches(&mut spans, source, &NUMBER_PATTERN, ProtectedKind::Number)?;
-
-        spans.sort_by(|left, right| {
-            left.start
-                .cmp(&right.start)
-                .then_with(|| right.end.cmp(&left.end))
-                .then_with(|| left.kind.cmp(&right.kind))
-        });
-        let mut selected = Vec::new();
-        for span in spans {
-            if selected
-                .last()
-                .is_none_or(|previous: &MatchSpan| span.start >= previous.end)
-            {
-                if selected.len() == MAX_PROTECTED_OCCURRENCES {
-                    return Err(ProtectionError::ResourceLimit);
-                }
-                selected.push(span);
-            }
-        }
+        let selected = select_non_overlapping(collect_source_spans(source, declared_terms)?)?;
+        let typed_counts = typed_counts(source)?;
 
         let mut masked = String::with_capacity(source.len());
         let mut values = Vec::with_capacity(selected.len());
@@ -211,6 +169,7 @@ impl ProtectionPlan {
         let plan = Self {
             masked_source: masked,
             values,
+            typed_counts,
         };
         match plan.mask_raw_candidate(source) {
             Ok(remasked) if remasked == plan.masked_source => Ok(plan),
@@ -235,6 +194,16 @@ impl ProtectionPlan {
         }
         if SENTINEL_PATTERN.is_match(candidate) {
             return Err(ProtectionError::UnknownSentinel);
+        }
+        let typed_spans = selected_typed_spans(candidate)?;
+        let mut candidate_counts = BTreeMap::new();
+        for span in &typed_spans {
+            *candidate_counts
+                .entry((span.kind, candidate[span.start..span.end].to_owned()))
+                .or_default() += 1;
+        }
+        if candidate_counts != self.typed_counts {
+            return Err(ProtectionError::ProtectedOccurrenceCount);
         }
         let mut grouped: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
         for value in &self.values {
@@ -269,6 +238,17 @@ impl ProtectionPlan {
             let Some(token) = tokens.get(token_index) else {
                 return Err(ProtectionError::ProtectedOccurrenceCount);
             };
+            let kind = self
+                .values
+                .iter()
+                .find(|value| value.token == *token)
+                .map(|value| value.kind)
+                .ok_or(ProtectionError::MatcherBuild)?;
+            if kind != ProtectedKind::DeclaredTerm
+                && !is_exact_typed_span(&typed_spans, matched.start(), matched.end(), kind)
+            {
+                return Err(ProtectionError::ProtectedOccurrenceCount);
+            }
             replacements.push((matched.start(), matched.end(), *token));
             *matched_count += 1;
         }
@@ -413,31 +393,4 @@ fn is_disallowed_policy_character(character: char) -> bool {
                 | 0x2060..=0x206F
                 | 0xFEFF
         )
-}
-
-fn add_regex_matches(
-    spans: &mut Vec<MatchSpan>,
-    source: &str,
-    pattern: &Regex,
-    kind: ProtectedKind,
-) -> Result<(), ProtectionError> {
-    for matched in pattern.find_iter(source) {
-        add_match_span(
-            spans,
-            MatchSpan {
-                start: matched.start(),
-                end: matched.end(),
-                kind,
-            },
-        )?;
-    }
-    Ok(())
-}
-
-fn add_match_span(spans: &mut Vec<MatchSpan>, span: MatchSpan) -> Result<(), ProtectionError> {
-    if spans.len() == MAX_PROTECTION_MATCH_SPANS {
-        return Err(ProtectionError::ResourceLimit);
-    }
-    spans.push(span);
-    Ok(())
 }

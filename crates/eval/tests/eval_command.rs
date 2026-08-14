@@ -12,9 +12,9 @@ fn checked_in_suite_passes_as_a_process() {
         .arg(suite)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"passed\": 20"))
-        .stdout(predicate::str::contains("\"acceptable\": 8"))
-        .stdout(predicate::str::contains("\"rewritten\": 3"))
+        .stdout(predicate::str::contains("\"passed\": 25"))
+        .stdout(predicate::str::contains("\"acceptable\": 9"))
+        .stdout(predicate::str::contains("\"rewritten\": 4"))
         .stdout(predicate::str::contains("\"failures\": []"));
 }
 

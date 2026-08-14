@@ -6,6 +6,9 @@
 mod claim_comparison;
 mod engine;
 #[cfg(test)]
+#[path = "engine_cancellation_tests.rs"]
+mod engine_cancellation_tests;
+#[cfg(test)]
 #[path = "engine_test_support.rs"]
 mod engine_test_support;
 #[cfg(test)]

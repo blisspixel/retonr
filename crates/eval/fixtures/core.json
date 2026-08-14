@@ -72,6 +72,56 @@
       "expected_output": "source"
     },
     {
+      "id": "url-path-extension",
+      "category": "protected_value_negative",
+      "source": "See https://example.com now.",
+      "candidate": "See https://example.com/ now.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "protected_value_changed",
+      "expected_output": "source"
+    },
+    {
+      "id": "number-currency-prefix",
+      "category": "protected_value_negative",
+      "source": "Pay 10 now.",
+      "candidate": "Pay $10 now.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "protected_value_changed",
+      "expected_output": "source"
+    },
+    {
+      "id": "number-percent-suffix",
+      "category": "protected_value_negative",
+      "source": "Rate 50 now.",
+      "candidate": "Rate 50% now.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "protected_value_changed",
+      "expected_output": "source"
+    },
+    {
+      "id": "leading-decimal-magnitude",
+      "category": "protected_value_negative",
+      "source": "Value is .5.",
+      "candidate": "Value is 5.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "protected_value_changed",
+      "expected_output": "source"
+    },
+    {
+      "id": "url-trailing-punctuation",
+      "category": "positive_literal",
+      "source": "See https://example.com.",
+      "candidate": "See https://example.com!",
+      "reference_judgment": "acceptable",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_output": "candidate"
+    },
+    {
       "id": "declared-term-removal",
       "category": "protected_value_negative",
       "source": "Project Atlas is ready.",
