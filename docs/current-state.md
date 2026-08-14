@@ -125,11 +125,12 @@ console state; the test remains concurrent with the full suite on macOS and Linu
 
 The editorial-pattern research package, portable artifact-set and runtime-identity
 slice, distinct inert claim-extraction role, Windows nextest isolation repair,
-effective-package evidence, qualification v2, schema-v3 evidence persistence, and the
-explicit backup-backed repository migration passed at exact-main revision
-`30699bddc7ae130c07f0c5ca7c2d28e774af87e0`
+effective-package evidence, qualification v2, schema-v4 artifact-set installation
+persistence, and the explicit backup-backed repository migration passed at exact-main
+revision
+`6c311adf85f2c41ada84f051dbc18aafa89aa0f2`
 in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31776961007).
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31781037998).
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
