@@ -199,13 +199,18 @@ attestation, operation leases, pre-call checks, and post-call checks remain the
 responsibility of a later application runtime join.
 Attached observed-only Ollama metadata cannot construct a runtime-build identity.
 
-The model store persists these five inert records under SQLite schema v3 in separate,
-immutable tables. Higher-level writes begin an immediate transaction, reload every
+The model store persists these five inert records under SQLite schema v4 in separate,
+immutable tables. Schema v4 also adds a separate artifact-set installation record
+with a unique portable set-root key and a distinct positive generation. Migration
+creates that table empty and does not infer installed state from evidence or legacy
+single-file records. Higher-level writes begin an immediate transaction, reload every
 referenced lower-level record, require canonical serialized bytes and matching indexed
 identity columns, and rerun the domain relationship checks before commit. Reads repeat
 the recursive validation. The migration adds evidence tables without rewriting the v1
 manifest, qualification, invalidation, decision, binding, installation, or removal
-records. No v2 evidence table is consulted by v1 activation or recovery.
+records. The set installation record is structural state only: it does not prove that
+member bytes exist, grant a lease, or authorize a role. No v2 evidence table or set
+installation is consulted by v1 activation or recovery.
 
 ## Document representation
 

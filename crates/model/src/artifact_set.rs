@@ -359,7 +359,7 @@ fn validate_path(value: &str) -> Result<(), ArtifactSetPathError> {
     Ok(())
 }
 
-fn reserved_windows_basename(value: &str) -> bool {
+pub(crate) fn reserved_windows_basename(value: &str) -> bool {
     value.eq_ignore_ascii_case("con")
         || value.eq_ignore_ascii_case("prn")
         || value.eq_ignore_ascii_case("aux")

@@ -4,7 +4,13 @@ use rusqlite::{Connection, TransactionBehavior};
 
 use crate::{StoreError, StoreResult};
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 3;
+mod shape;
+
+pub(super) use shape::{
+    validate_schema_one, validate_schema_shape, validate_schema_three, validate_schema_two,
+};
+
+pub(super) const STORE_SCHEMA_VERSION: i64 = 4;
 
 pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
     configure(connection, true)?;
@@ -56,10 +62,18 @@ fn migrate_supported_schema(
             migrate_schema_one(connection)?;
             validate_schema_two(connection)?;
             migrate_schema_two(connection)?;
+            validate_schema_three(connection)?;
+            migrate_schema_three(connection)?;
         }
         2 => {
             validate_schema_two(connection)?;
             migrate_schema_two(connection)?;
+            validate_schema_three(connection)?;
+            migrate_schema_three(connection)?;
+        }
+        3 => {
+            validate_schema_three(connection)?;
+            migrate_schema_three(connection)?;
         }
         STORE_SCHEMA_VERSION => validate_schema_shape(connection)?,
         value if !(0..=STORE_SCHEMA_VERSION).contains(&value) => {
@@ -77,7 +91,8 @@ fn migrate_supported_schema(
 
 fn create_current_schema(connection: &Connection) -> StoreResult<()> {
     create_schema_two(connection)?;
-    migrate_schema_two(connection)
+    migrate_schema_two(connection)?;
+    migrate_schema_three(connection)
 }
 
 fn create_schema_two(connection: &Connection) -> StoreResult<()> {
@@ -219,6 +234,31 @@ fn migrate_schema_two(connection: &Connection) -> StoreResult<()> {
          ) STRICT;
 
          PRAGMA user_version = 3;",
+    )?;
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_three_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_two(connection)?;
+    migrate_schema_two(connection)
+}
+
+fn migrate_schema_three(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(
+        "CREATE TABLE installed_artifact_sets (
+             artifact_set_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_set_id) = 64),
+             storage_key TEXT NOT NULL COLLATE NOCASE UNIQUE
+                 CHECK(length(storage_key) BETWEEN 1 AND 128),
+             installation_epoch INTEGER NOT NULL
+                 CHECK(installation_epoch BETWEEN 1 AND 9223372036854775807),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1024),
+             FOREIGN KEY(artifact_set_id)
+                 REFERENCES artifact_set_manifests(artifact_set_id)
+         ) STRICT;
+
+         PRAGMA user_version = 4;",
     )?;
     Ok(())
 }
@@ -374,130 +414,6 @@ fn validate_exact_version(connection: &Connection) -> StoreResult<()> {
         return Err(StoreError::UnsupportedSchema(version));
     }
     validate_schema_shape(connection)
-}
-
-pub(super) fn validate_schema_shape(connection: &Connection) -> StoreResult<()> {
-    let actual = schema_objects(connection)?;
-    let current = canonical_current_objects()?;
-    if actual == current || actual == canonical_migrated_current_objects()? {
-        Ok(())
-    } else {
-        Err(StoreError::CorruptRecord)
-    }
-}
-
-pub(super) fn validate_schema_two(connection: &Connection) -> StoreResult<()> {
-    let actual = schema_objects(connection)?;
-    if actual == canonical_schema_two_objects()?
-        || actual == canonical_migrated_schema_two_objects()?
-    {
-        Ok(())
-    } else {
-        Err(StoreError::CorruptRecord)
-    }
-}
-
-pub(super) fn validate_schema_one(connection: &Connection) -> StoreResult<()> {
-    if schema_objects(connection)? == canonical_schema_one_objects()? {
-        Ok(())
-    } else {
-        Err(StoreError::CorruptRecord)
-    }
-}
-
-#[derive(Debug, Eq, PartialEq)]
-struct SchemaObject {
-    kind: String,
-    name: String,
-    table: String,
-    sql: Option<String>,
-}
-
-fn schema_objects(connection: &Connection) -> StoreResult<Vec<SchemaObject>> {
-    let mut statement = connection.prepare(
-        "SELECT type, name, tbl_name, sql
-         FROM sqlite_schema
-         ORDER BY type, name",
-    )?;
-    statement
-        .query_map([], |row| {
-            Ok(SchemaObject {
-                kind: row.get(0)?,
-                name: row.get(1)?,
-                table: row.get(2)?,
-                sql: row
-                    .get::<_, Option<String>>(3)?
-                    .map(|sql| normalize_sql(&sql)),
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(StoreError::Database)
-}
-
-fn canonical_current_objects() -> StoreResult<Vec<SchemaObject>> {
-    let connection = Connection::open_in_memory()?;
-    create_current_schema(&connection)?;
-    schema_objects(&connection)
-}
-
-fn canonical_schema_two_objects() -> StoreResult<Vec<SchemaObject>> {
-    let connection = Connection::open_in_memory()?;
-    create_schema_two(&connection)?;
-    schema_objects(&connection)
-}
-
-fn canonical_schema_one_objects() -> StoreResult<Vec<SchemaObject>> {
-    let connection = Connection::open_in_memory()?;
-    create_schema_one(&connection)?;
-    schema_objects(&connection)
-}
-
-fn canonical_migrated_schema_two_objects() -> StoreResult<Vec<SchemaObject>> {
-    let connection = Connection::open_in_memory()?;
-    create_schema_one(&connection)?;
-    migrate_schema_one(&connection)?;
-    schema_objects(&connection)
-}
-
-fn canonical_migrated_current_objects() -> StoreResult<Vec<SchemaObject>> {
-    let connection = Connection::open_in_memory()?;
-    create_schema_one(&connection)?;
-    migrate_schema_one(&connection)?;
-    migrate_schema_two(&connection)?;
-    schema_objects(&connection)
-}
-
-fn normalize_sql(sql: &str) -> String {
-    let mut normalized = String::with_capacity(sql.len());
-    let mut characters = sql.chars().peekable();
-    let mut quote = None;
-    let mut pending_space = false;
-    while let Some(character) = characters.next() {
-        if let Some(terminator) = quote {
-            normalized.push(character);
-            if character == terminator {
-                if terminator != ']' && characters.peek() == Some(&terminator) {
-                    if let Some(escaped) = characters.next() {
-                        normalized.push(escaped);
-                    }
-                } else {
-                    quote = None;
-                }
-            }
-        } else if character.is_ascii_whitespace() {
-            pending_space = !normalized.is_empty();
-        } else {
-            if pending_space {
-                normalized.push(' ');
-                pending_space = false;
-            }
-            normalized.push(character.to_ascii_lowercase());
-            if matches!(character, '\'' | '"' | '`' | '[') {
-                quote = Some(if character == '[' { ']' } else { character });
-            }
-        }
-    }
-    normalized
 }
 
 pub(super) fn configure(connection: &Connection, writable: bool) -> StoreResult<()> {

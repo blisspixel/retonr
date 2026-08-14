@@ -7,21 +7,6 @@ use super::{ArtifactStateStore, fixture};
 use crate::StoreError;
 
 #[test]
-fn newer_schema_is_rejected_without_migration() {
-    let directory = tempdir().expect("temporary directory");
-    let path = directory.path().join("future.db");
-    let connection = Connection::open(&path).expect("create database");
-    connection
-        .pragma_update(None, "user_version", 4)
-        .expect("set future version");
-    drop(connection);
-    assert!(matches!(
-        ArtifactStateStore::open(&path),
-        Err(StoreError::UnsupportedSchema(4))
-    ));
-}
-
-#[test]
 fn explicit_existing_opens_never_create_missing_state() {
     let directory = tempdir().expect("temporary directory");
     let path = directory.path().join("missing.db");
@@ -79,7 +64,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 1,
-                    current: 3
+                    current: 4
                 }
             )
         },
@@ -92,19 +77,32 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 2,
-                    current: 3
+                    current: 4
                 }
             )
         },
         "schema-two-read-only.db",
+    );
+    assert_read_only_schema_rejection(
+        3,
+        |error| {
+            matches!(
+                error,
+                StoreError::MigrationRequired {
+                    found: 3,
+                    current: 4
+                }
+            )
+        },
+        "schema-three-read-only.db",
     );
 }
 
 #[test]
 fn read_only_open_rejects_future_schema_without_mutation() {
     assert_read_only_schema_rejection(
-        4,
-        |error| matches!(error, StoreError::UnsupportedSchema(4)),
+        5,
+        |error| matches!(error, StoreError::UnsupportedSchema(5)),
         "future-read-only.db",
     );
 }
@@ -147,7 +145,7 @@ fn exact_schema_writable_open_never_migrates_legacy_state() {
         ArtifactStateStore::open_existing_writable_exact(&path),
         Err(StoreError::MigrationRequired {
             found: 1,
-            current: 3
+            current: 4
         })
     ));
     assert_eq!(fs::read(&path).expect("reread legacy state"), before);
@@ -237,7 +235,7 @@ fn migrates_schema_two_without_rewriting_v1_records() {
         .connection()
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .expect("read migrated version");
-    assert_eq!(version, 3);
+    assert_eq!(version, 4);
     let stored_qualification: String = store
         .connection()
         .query_row(
@@ -293,7 +291,7 @@ fn current_version_with_missing_or_altered_schema_is_corrupt() {
     let missing = directory.path().join("missing-schema.db");
     let connection = Connection::open(&missing).expect("create database");
     connection
-        .pragma_update(None, "user_version", 3)
+        .pragma_update(None, "user_version", 4)
         .expect("set current version");
     drop(connection);
     assert!(matches!(
@@ -337,7 +335,7 @@ fn current_version_with_missing_or_altered_schema_is_corrupt() {
                  artifact_id TEXT,
                  record_json TEXT
              );
-             PRAGMA user_version = 3;",
+             PRAGMA user_version = 4;",
         )
         .expect("create lax current-version state");
     drop(connection);

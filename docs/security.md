@@ -402,8 +402,12 @@ Controls:
 - Treat qualification v2 as inert evidence. Its bounded decoder must reload and
   cross-check the artifact set, effective-package evidence, runtime build, and effective
   state. Its distinct identifier and lack of an authorization operation keep it outside
-  v1 activation. Schema-v3 persistence repeats those relationship checks on every
-  dependent write and read, preserves v1 records unchanged, and grants no authority.
+  v1 activation. Schema-v4 persistence repeats those relationship checks on every
+  dependent write and read, preserves v1 and schema-v3 evidence records unchanged,
+  and grants no authority. Its separate installed-set record cross-checks the indexed
+  set identity, unique portable root key, positive generation, canonical record, and
+  exact manifest join. That structural record does not prove that files exist or
+  authorize their use.
   Future use must hold application-owned live attestation and lease authority through
   post-call drift checks.
 - Verify checksums before activation.

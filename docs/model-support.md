@@ -263,9 +263,11 @@ evidence, runtime build, and effective state for exactly the claim-extraction ro
 also binds the claim-output and operation contracts and the complete qualification
 policy and result identity. Its relationship-aware bounded decoder reloads every exact
 subject record. It has a distinct identifier, no authorization operation, and no route
-into qualification v1 activation. The SQLite schema-v3 evidence
-tables persist and recursively revalidate the complete immutable subject without
-creating an active binding. Live claim extraction remains
+into qualification v1 activation. The SQLite schema-v4 tables persist and recursively
+revalidate the complete immutable subject without creating an active binding. A
+separate installed-set record binds a unique portable root key and generation to the
+exact artifact-set manifest, but does not verify member bytes or activate
+qualification v2. Live claim extraction remains
 unavailable until the application can attest, lease, and recheck the complete tuple.
 
 ## Selection and fallback rules

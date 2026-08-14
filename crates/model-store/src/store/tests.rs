@@ -11,12 +11,14 @@ use rewrite_types::Digest;
 use super::{ArtifactStateStore, WriteDisposition};
 use crate::{ExclusiveArtifactLifecycleLock, StoreError};
 
+mod artifact_set;
 mod evidence;
 mod installation;
 mod integrity;
 mod inventory;
 mod open;
 mod removal;
+mod schema_open;
 
 struct Fixture {
     manifest: ArtifactManifest,

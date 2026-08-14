@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod artifact_set_installation;
 mod binding;
 mod error;
 mod integrity;
@@ -13,6 +14,10 @@ mod removal;
 mod schema;
 mod store;
 
+pub use artifact_set_installation::{
+    ArtifactSetInstallationEpoch, ArtifactSetInstallationWriteDisposition,
+    StoredArtifactSetInstallation,
+};
 pub use error::{StoreError, StoreResult};
 pub use lifecycle::ExclusiveArtifactLifecycleLock;
 pub use migration::{
