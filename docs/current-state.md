@@ -105,11 +105,11 @@ integration test exclusive test-thread capacity because the helper owns process-
 console state; the test remains concurrent with the full suite on macOS and Linux.
 
 The editorial-pattern research package, portable artifact-set and runtime-identity
-slice, distinct inert claim-extraction role, Windows nextest isolation repair, and
-effective-package evidence slice passed at exact-main revision
-`f9bf10a488c967de8405c346de2a7062487787c9`
+slice, distinct inert claim-extraction role, Windows nextest isolation repair,
+effective-package evidence, and qualification v2 slice passed at exact-main revision
+`ce04d09fc02a92b4a4691a4e84097ef2f25cb4a8`
 in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31767299911).
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31768836972).
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
