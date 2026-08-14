@@ -378,6 +378,15 @@ Article 50(2). Article 50 creates distinct provider and deployer duties:
 - The open-source exclusion in Article 2(12) does not exclude a system that falls
   under Article 50.
 
+This creates a credible openness asymmetry without establishing that the Act bans
+open weights. The Act states that an AI model does not constitute an AI system on its
+own. A controlled service can retain operational control over its decoder, runtime,
+and marking implementation, while an independently operated open-weight system can
+change those components. Durable marking may therefore be harder to implement and
+assure across open downstream workflows. This is a technical and policy inference,
+not a conclusion that an original model publisher remains responsible for every
+separately provided downstream system.
+
 Article 50 does not state a general downstream prohibition on editing or removing a
 mark from an existing output. The final Commission guidelines say mere disseminators
 that are not providers or deployers are not responsible or liable under the AI Act on

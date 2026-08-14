@@ -54,12 +54,28 @@ phrase never becomes a finding by vocabulary alone when a literal, quoted, cited
 technical, or otherwise legitimate use is plausible. Each rule must state its
 applicability, density or context condition, exclusions, and neighboring clean case.
 
+Kobak et al. provide strong population evidence for excess vocabulary in a specific
+biomedical corpus, not an individual-document authorship test. Their 2024 ratios of
+28.0 for `delves`, 13.8 for `underscores`, and 10.7 for `showcasing` are useful
+research observations, but they do not become product weights or word bans. Juzek
+and Ward identify a related set of focal words while leaving the causal mechanism
+unresolved. Community and commercial pattern lists are discovery inputs only until
+their methods, rights, fixtures, and false-positive behavior pass Retonr's admission
+and qualification process.
+
 Research basis:
 
+- [Excess vocabulary in 15.1 million PubMed abstracts](https://www.science.org/doi/10.1126/sciadv.adt3813)
+- [Reproducibility materials for the excess-vocabulary study](https://github.com/berenslab/llm-excess-vocab)
+- [Lexical overrepresentation study](https://aclanthology.org/2025.coling-main.426/)
 - [Em dash population study](https://arxiv.org/abs/2606.29540)
 - [Multi-level style preference optimization](https://ojs.aaai.org/index.php/AAAI/article/view/40665)
 - [Idiolectal model-output study](https://arxiv.org/abs/2608.06589)
 - [Human use of model writing styles](https://aclanthology.org/2025.acl-long.267/)
+
+The architecture decision that separates qualified editorial relationships from
+source-signal research is documented in the
+[editorial pattern graph review](research/2026-08-13-editorial-pattern-graph.md).
 
 Non-synthetic writing is not added to the repository merely because it is publicly
 visible. Licensed public data requires a source and redistribution decision.

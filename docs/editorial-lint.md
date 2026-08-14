@@ -66,6 +66,25 @@ on context, density, repetition, channel, and the user's explicit preferences. A
 technical term, quotation, accessibility annotation, or intentional rhetorical
 choice must not be rewritten merely because it matches a surface pattern.
 
+## Relationship model
+
+Some findings reinforce, exclude, precede, or form part of other findings. Retonr
+will represent those relationships in a bounded, versioned editorial pattern graph
+rather than a flat word ban list. The product graph contains only independently
+qualified editorial rules. It does not contain model-family labels, detector scores,
+watermark outcomes, or AI-authorship probabilities.
+
+The scanner returns named findings and an activation vector, not one universal slop
+score. A graph relationship earns product use only if it improves a predeclared
+editorial outcome over the simpler flat-rule baseline without a material fidelity or
+false-positive regression. Population excess ratios and source-style correlations
+remain in a separate research graph that cannot guide live rewriting.
+
+The detailed evidence and qualification order are recorded in the
+[editorial pattern graph research decision](research/2026-08-13-editorial-pattern-graph.md)
+and its [mathematical specification](research/2026-08-13-editorial-pattern-mathematics.md)
+and [evaluation preregistration](research/2026-08-13-editorial-pattern-evaluation.md).
+
 ## Quality loop
 
 1. Scan the eligible source and record its lint baseline.

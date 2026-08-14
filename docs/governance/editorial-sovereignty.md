@@ -27,6 +27,37 @@ employment, education, contract, or sector-specific rules never apply. It means 
 application does not pretend to determine those obligations for every person and
 jurisdiction.
 
+## Open development and marking mandates
+
+The project's normative position is not neutral. Retonr opposes mandatory invisible
+marking of ordinary text when it gives an upstream provider continuing technical
+influence over lawfully editable expression. It especially opposes policy designs
+that burden open weights and local runtimes more heavily than centrally controlled
+services. Transparency should address deception and accountable publication, not
+turn a tool vendor's statistical signature into a permanent claim on user-edited
+prose.
+
+Retonr considers the asymmetry between controlled services and open-weight systems
+a legitimate policy concern. A service provider can control one hosted decoder,
+runtime, and marking implementation. A downloadable model can be modified,
+quantized, fine-tuned, merged, or run under a different decoder by independent
+downstream providers where its license and applicable law permit. A rule that
+expects durable provider-controlled marking can therefore burden open distribution
+differently even when its text is technology-neutral.
+
+That concern is a policy and engineering judgment, not a claim that the EU AI Act
+bans open weights or makes one model publisher responsible for every downstream
+system. The Act distinguishes a model from an AI system. The Article 50(2) marking
+duty attaches to the provider of the AI system in scope; separate Article 50 duties
+can attach to deployers. Retonr is not a compliance workaround. If the project, a
+distributor, or another operator places or puts into service an in-scope Retonr AI
+system under its own name or trademark and thereby qualifies as its provider, that
+provider must meet its own duty, obtain qualified advice, narrow the affected
+function, or withhold that distribution.
+
+The legal and technical source analysis supporting this boundary is recorded in
+[Text provenance, marking, and editorial control](../research/2026-08-12-provenance-policy.md).
+
 ## Editorial model
 
 Retonr treats generated or delegated text as a draft, not as an untouchable final

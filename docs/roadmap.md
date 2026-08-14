@@ -64,10 +64,15 @@ proceeds in this exact order:
    evidence, deterministic comparison, exact output-contract discovery, bounded
    structured-completion boundary, distinct inert claim-extraction role, canonical
    artifact-set manifest, and runtime-build and effective-state identities. Next add
-   qualification v2 without rewriting v1 evidence. Then add the exact effective
-   extractor manifest, strict ephemeral wire contract, separately cancellable pair
-   operation, and two-phase engine evidence join. Calibrate it in shadow mode before
-   any semantic pass authority and never treat probabilistic extraction as proof.
+   inert effective-package evidence that binds the exact artifact set, runtime build,
+   effective state, package coverage, origin, transformation, load closure, and
+   isolation evidence without granting authority. Then add a separate inert
+   qualification v2 without rewriting v1 evidence. Persist and cross-check those
+   records before adding live attestation and artifact-set leases. Only then add the
+   exact effective extractor manifest, strict ephemeral wire contract, separately
+   cancellable pair operation, and two-phase engine evidence join. Calibrate it in
+   shadow mode before any semantic pass authority and never treat probabilistic
+   extraction as proof.
 5. Implement the versioned local evaluation plan, run the currently installed Gemma 4
    26B and Qwen3.6 27B packages, and add the previously observed Ministral 3 8B only
    after its local identity is revalidated or acquisition is separately approved.
@@ -75,9 +80,11 @@ proceeds in this exact order:
 6. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
    qualify one exact local runtime and artifact combination and retain complete
    cross-platform release evidence before adding profiles or another format.
-7. Establish the versioned editorial-quality corpus during evaluation work, but do
-   not give lint findings product authority until the 0.3 rule and profile contracts
-   pass qualification.
+7. Establish the versioned editorial-quality corpus and the bounded editorial
+   pattern graph during evaluation work. Keep model-family and population
+   source-signal relationships in a separate research graph with no live rewrite
+   authority. Do not give lint findings product authority until the 0.3 rule and
+   profile contracts pass qualification.
 8. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
 9. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
@@ -229,7 +236,9 @@ that improves owner preference over the strongest simple baseline.
 - User-declared rules, enforcement levels, conflict detection, and channel overlays
 - Versioned editorial-lint rules with exact findings, context exclusions, profile
   overrides, explanations, and source versus output reports
-- A versioned editorial-quality corpus with positive findings, clean human-like
+- A bounded editorial pattern graph with stable relationship IDs, canonical ordering,
+  explicit exclusions, and no detector, watermark, model-family, or authorship fields
+- A versioned editorial-quality corpus with positive findings, clean contextual
   counterexamples, protected contexts, and no authorship labels
 - Bounded retrieval with exact embedding identity, eligibility filters, diversity
   caps, topic controls, canaries, and cross-profile leakage checks
@@ -305,8 +314,9 @@ path, and no dependency on a provider-specific output policy.
   loopback endpoints, qualified independently from local process adapters
 - Cross-runtime, cross-backend, quantization, accelerator, language, and
   mixed-language differential suites
-- Qualified editorial-lint rules and document-level repetition checks that can guide
-  eligible candidates only after every fidelity gate passes
+- Qualified editorial-lint rules, pattern relationships, and document-level
+  repetition checks that can guide eligible candidates only after every fidelity
+  gate passes and only after beating the simpler flat-rule baseline
 - Runtime capability records that disclose known source marking, provenance,
   moderation, remote logging, or silent transformation behavior
 - Experimental native adapters and shared conformance results for the current major

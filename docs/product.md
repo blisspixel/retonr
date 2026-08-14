@@ -8,8 +8,8 @@ in the user's own voice while protecting meaning, structure, and declared constr
 Upstream wording and supported artifacts are inputs to inspect, not permanent claims
 on the finished draft. The strongest product is not a general style imitator or
 detector bypass. It is a conservative control plane that combines personal style
-evidence, explicit output hygiene, fact checks, structural checks, format-aware
-reassembly, and abstention.
+evidence, explicit output hygiene, source-claim comparison, structural checks,
+format-aware reassembly, and abstention.
 
 The product treats generated, delegated, and rough text as drafts. Its role is
 comparable to applying ordinary editorial review, a house style, authorized notes,
@@ -71,9 +71,14 @@ human-review controls.
 Public description:
 
 > A local-first re-expression engine that turns machine-generated and rough drafts
-> into your voice while protecting facts, structure, and user-defined rules. It
-> makes bounded, inspectable editorial changes and returns the original when it
+> into your voice while preserving source claims, structure, and user-defined rules.
+> It makes bounded, inspectable editorial changes and returns the original when it
 > cannot validate a rewrite.
+
+Source fidelity is not external fact verification. If the source says `50,143.65`,
+the default contract preserves that quantity. A separately declared style policy may
+authorize a reported transformation such as `about 50,000`, but Retonr does not infer
+that `51,000` is a truer or better value.
 
 Developer description:
 
@@ -169,15 +174,15 @@ to use. The project does not ship third-party or public-figure imitation presets
 
 ## Source form and provenance
 
-Reducing retained upstream source form is a primary product motivation. It is also
-a bounded technical property, not a promise of untraceability.
+Taking editorial control of eligible source form is a primary product motivation.
+It is a bounded editorial operation, not a promise of untraceability.
 
 The product distinguishes four signal locations:
 
 | Location | Product action | Claim boundary |
 | --- | --- | --- |
-| Token-selection and statistical watermark signals in the source wording | Generate new wording with a qualified local model and report controlled source-form diagnostics in research | No universal watermark-removal guarantee |
-| Characteristic model phrasing and source classification signals | Move eligible prose toward an evidence-backed personal profile | A lower classifier score does not prove human authorship |
+| Token-selection and statistical watermark signals in the source wording | Keep detection outside live rewriting; report controlled diagnostics only in separately authorized research | No universal watermark-removal guarantee |
+| Characteristic model phrasing and source classification signals | Keep source classification outside live rewriting; evaluate eligible prose against independent editorial rules and the authorized personal profile | A lower classifier score does not prove human authorship |
 | Invisible Unicode, clipboard residue, and supported document metadata | Inspect, report, reject, preserve, or remove through an explicit format policy | Legitimate language and accessibility data must not be stripped blindly |
 | Upstream prompts, outputs, account records, and service logs | Keep the reconstruction path local and avoid creating new remote copies by default | The product cannot inspect or delete data retained by another service |
 
