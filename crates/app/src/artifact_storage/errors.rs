@@ -31,7 +31,7 @@ fn is_link_error(error: &io::Error) -> bool {
     }
     #[cfg(windows)]
     {
-        error.raw_os_error() == Some(4390)
+        matches!(error.raw_os_error(), Some(1921 | 4390))
     }
 }
 

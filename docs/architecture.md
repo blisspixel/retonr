@@ -563,9 +563,26 @@ contains only lifecycle stage and byte counts. After the last callback and
 cancellation check, the service silently reverifies the final canonical bytes and
 every held storage boundary before committing state. Successful return is
 completion. A state failure can retain a verified orphan, while an observed
-cancellation before final registration never creates durable state. Artifact-set
-manifests, folder import, runtime-native pulls, downloads, and repair remain later
-operations.
+cancellation before final registration never creates durable state.
+
+The application also accepts one exact canonical artifact-set manifest with a local
+source directory. It requires exactly the declared regular files and their implied
+directories, streams and checks every member digest and size, and copies only those
+members into a random application-owned staging tree. Source hard links are readable
+input, but every managed member must have exactly one link. Staging files and
+directories are synchronized bottom-up, rehashed, and published as one no-replace
+tree under `sets/set-v1-<artifact-set-id>`. The service retains and rechecks the
+repository parent, exact managed-storage name, storage root, lifecycle lock, staging
+root, and destination root before structural installation state commits.
+Cancellation before publication removes only entries proven to belong to the current
+operation. Pre-existing staging roots are counted but not descended into. Unexpected
+entries within the current operation cause failure and retention rather than recursive
+deletion. A state failure after publication leaves an inert exact orphan that a later
+identical import can verify and register. The operation does not inspect
+package-completeness evidence, grant a set lease, qualify a runtime, activate a role,
+execute code, or use the network. No artifact-set import CLI exists yet.
+Runtime-native pulls, downloads, stale-root recovery, managed-set removal, set
+inventory and reconciliation, and repair remain later operations.
 
 A separate read-only artifact inventory uses the same pinned storage boundary,
 acquires the lifecycle lock in shared mode, and opens only existing storage. It

@@ -20,6 +20,7 @@ mod artifact_inventory;
 mod artifact_reconciliation;
 mod artifact_removal;
 mod artifact_repository;
+mod artifact_set_import;
 mod artifact_storage;
 mod grounded;
 mod runtime_artifact_lease;
@@ -52,7 +53,12 @@ pub use artifact_repository::{
     ArtifactRepositoryImportResult, ArtifactRepositoryMigrationDisposition,
     ArtifactRepositoryMigrationLimits, ArtifactRepositoryMigrationResult,
     ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
-    ArtifactRepositoryRemovalResult,
+    ArtifactRepositoryRemovalResult, ArtifactRepositorySetImportResult, ArtifactSetInstallationKey,
+};
+pub use artifact_set_import::{
+    ArtifactSetImportDisposition, ArtifactSetImportError, ArtifactSetImportLimits,
+    ArtifactSetImportProgress, ArtifactSetImportResult, ArtifactSetImportStage,
+    OfflineArtifactSetImportRequest,
 };
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
 pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};

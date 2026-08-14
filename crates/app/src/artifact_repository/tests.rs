@@ -18,6 +18,7 @@ use crate::{
 const ARTIFACT_BYTES: &[u8] = b"repository facade artifact";
 
 mod migration;
+mod set_import;
 
 fn manifest() -> ArtifactManifest {
     let digest = Digest::sha256(ARTIFACT_BYTES);

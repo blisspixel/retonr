@@ -1,14 +1,17 @@
 use std::io;
 
-use rewrite_model::ArtifactId;
-use rewrite_model_store::{StoreError, StoredArtifactInstallation, WriteDisposition};
+use rewrite_model::{ArtifactId, ArtifactSetId};
+use rewrite_model_store::{
+    StoreError, StoredArtifactInstallation, StoredArtifactSetInstallation, WriteDisposition,
+};
 use thiserror::Error;
 
 use crate::{
     ArtifactImportError, ArtifactImportResult, ArtifactInventoryError,
     ArtifactOrphanReconciliationResult, ArtifactReconciliationDisposition,
     ArtifactReconciliationError, ArtifactRemovalDisposition, ArtifactRemovalError,
-    ArtifactRemovalResult,
+    ArtifactRemovalResult, ArtifactSetImportDisposition, ArtifactSetImportError,
+    ArtifactSetImportResult,
 };
 
 /// Stable application-level classification for repository failures.
@@ -150,6 +153,36 @@ impl ArtifactInstallationKey {
     }
 }
 
+/// Persistence-neutral identity for one exact installed artifact-set generation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArtifactSetInstallationKey {
+    /// Content-derived artifact-set identity.
+    artifact_set_id: ArtifactSetId,
+    /// Positive generation preventing a stale operation from targeting a reinstall.
+    installation_generation: u64,
+}
+
+impl ArtifactSetInstallationKey {
+    /// Returns the content-derived artifact-set identity.
+    #[must_use]
+    pub const fn artifact_set_id(&self) -> &ArtifactSetId {
+        &self.artifact_set_id
+    }
+
+    /// Returns the exact positive installation generation.
+    #[must_use]
+    pub const fn installation_generation(&self) -> u64 {
+        self.installation_generation
+    }
+
+    fn from_stored(value: &StoredArtifactSetInstallation) -> Self {
+        Self {
+            artifact_set_id: value.installed.artifact_set_id().clone(),
+            installation_generation: value.epoch.get(),
+        }
+    }
+}
+
 /// Repository-level disposition for one offline import.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ArtifactRepositoryImportDisposition {
@@ -178,6 +211,24 @@ impl From<ArtifactImportResult> for ArtifactRepositoryImportResult {
         Self {
             key: ArtifactInstallationKey::from_stored(&value.state.installation),
             disposition,
+        }
+    }
+}
+
+/// Successful repository-level offline artifact-set import result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArtifactRepositorySetImportResult {
+    /// Exact store-issued artifact-set installation key.
+    pub key: ArtifactSetInstallationKey,
+    /// Whether this call imported or confirmed exact prior state.
+    pub disposition: ArtifactSetImportDisposition,
+}
+
+impl From<ArtifactSetImportResult> for ArtifactRepositorySetImportResult {
+    fn from(value: ArtifactSetImportResult) -> Self {
+        Self {
+            key: ArtifactSetInstallationKey::from_stored(&value.state.installation),
+            disposition: value.disposition,
         }
     }
 }
@@ -267,6 +318,9 @@ pub enum ArtifactRepositoryError {
     /// Offline artifact import failed.
     #[error(transparent)]
     Import(#[from] ArtifactImportError),
+    /// Offline artifact-set import failed.
+    #[error(transparent)]
+    SetImport(#[from] ArtifactSetImportError),
     /// Read-only artifact inventory failed.
     #[error(transparent)]
     Inventory(#[from] ArtifactInventoryError),
@@ -319,6 +373,7 @@ impl ArtifactRepositoryError {
             Self::MigrationFailed { source, .. } => source.kind(),
             Self::State(error) => store_error_kind(error),
             Self::Import(error) => import_error_kind(error),
+            Self::SetImport(error) => set_import_error_kind(error),
             Self::Inventory(error) => inventory_error_kind(error),
             Self::Reconciliation(error) => reconciliation_error_kind(error),
             Self::Removal(error) => removal_error_kind(error),
@@ -350,6 +405,34 @@ impl ArtifactRepositoryError {
             Self::MigrationFailed { backup_key, .. } => Some(backup_key),
             _ => None,
         }
+    }
+}
+
+fn set_import_error_kind(error: &ArtifactSetImportError) -> ArtifactRepositoryErrorKind {
+    use ArtifactRepositoryErrorKind as Kind;
+    use ArtifactSetImportError as Error;
+    match error {
+        Error::InvalidLimits | Error::InvalidManifest(_) => Kind::InvalidInput,
+        Error::InvalidInstallation(_) | Error::StateStorageMismatch => Kind::CorruptState,
+        Error::TooManyMembers { .. }
+        | Error::MemberTooLarge { .. }
+        | Error::ArtifactSetTooLarge { .. }
+        | Error::TreeEntryLimitExceeded
+        | Error::StagingEntryLimitExceeded
+        | Error::StorageEntryLimitExceeded => Kind::ResourceLimit,
+        Error::Cancelled => Kind::Cancelled,
+        Error::StorageInUse => Kind::InUse,
+        Error::StorageChanged => Kind::ConcurrentModification,
+        Error::IndirectSource
+        | Error::SourceNotDirectory
+        | Error::UnsafeSourceTree
+        | Error::SourceTreeMismatch
+        | Error::SizeMismatch
+        | Error::DigestMismatch
+        | Error::UnsafeStorageLayout
+        | Error::StorageConflict => Kind::Conflict,
+        Error::SourceIo(_) | Error::StorageIo(_) => Kind::Operational,
+        Error::State(error) => store_error_kind(error),
     }
 }
 

@@ -13,9 +13,10 @@ use super::{
 mod platform;
 mod sync;
 use platform::{
-    create_directory, create_directory_exclusive, create_new_file, hard_link, inspect_entry,
-    open_or_create_file, random_staging_name, remove_file, remove_verified_file,
+    create_directory, hard_link, inspect_entry, open_or_create_file, remove_file,
+    remove_verified_file,
 };
+pub(super) use platform::{create_directory_exclusive, create_new_file, random_staging_name};
 use sync::sync_directory;
 
 #[cfg(unix)]
@@ -51,8 +52,7 @@ impl PinnedDirectory {
         &self,
         name: &OsStr,
     ) -> Result<Self, ArtifactInventoryError> {
-        create_directory_exclusive(&self.handle, name)?;
-        let directory = self.open_directory(name).map_err(map_initial_error)?;
+        let directory = create_directory_exclusive(&self.handle, name)?;
         validate_directory_handle(&directory, true)?;
         Ok(Self { handle: directory })
     }

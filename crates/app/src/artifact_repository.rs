@@ -26,6 +26,7 @@ const REPOSITORY_LOCK_FILE: &str = ".artifact-repository.lock";
 
 mod contract;
 mod migration;
+mod set_import;
 
 pub use contract::{
     ArtifactInstallationKey, ArtifactRepositoryBackupKey, ArtifactRepositoryError,
@@ -33,7 +34,7 @@ pub use contract::{
     ArtifactRepositoryImportResult, ArtifactRepositoryMigrationDisposition,
     ArtifactRepositoryMigrationLimits, ArtifactRepositoryMigrationResult,
     ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
-    ArtifactRepositoryRemovalResult,
+    ArtifactRepositoryRemovalResult, ArtifactRepositorySetImportResult, ArtifactSetInstallationKey,
 };
 
 /// Application-owned entry point for administrative artifact lifecycle operations.
@@ -61,8 +62,8 @@ impl ArtifactRepository {
 
     /// Imports one caller-selected file into initialized or new managed storage.
     ///
-    /// This is the only repository operation that initializes the fixed data layout.
-    /// The returned state disposition includes the exact durable installation epoch.
+    /// This operation can initialize the fixed data layout. The returned state
+    /// disposition includes the exact durable installation epoch.
     ///
     /// # Errors
     ///
