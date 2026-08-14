@@ -242,14 +242,10 @@ fn cleanup_failed_backup<T>(
     file: &File,
     original: ArtifactRepositoryError,
 ) -> Result<T, ArtifactRepositoryError> {
-    guard
+    let _cleanup = guard
         .pinned
         .remove_file_if_same_identity(name, file)
-        .map_err(map_data_directory_boundary_error)?;
-    guard
-        .pinned
-        .sync()
-        .map_err(map_data_directory_boundary_error)?;
+        .and_then(|()| guard.pinned.sync());
     Err(original)
 }
 

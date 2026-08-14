@@ -410,6 +410,13 @@ Controls:
   authorize their use.
   Future use must hold application-owned live attestation and lease authority through
   post-call drift checks.
+- Import a managed artifact set only from an exact caller-supplied canonical manifest
+  and a local source tree containing no undeclared, indirect, or special entries.
+  Hash every member, synchronize and rehash the staged tree, publish the complete tree
+  without replacement, and register structural state only after the repository,
+  storage root, exact tree, and state relationships are rechecked. Never descend into
+  stale staging roots or recursively delete unknown entries. A published tree without
+  state is an inert orphan, not runtime authority.
 - Verify checksums before activation.
 - Treat runtime model listings, templates, license text, and capabilities as untrusted
   discovery data rather than qualification evidence.

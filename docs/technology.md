@@ -180,10 +180,20 @@ an active binding.
 
 Current one-file offline import inspects without execution, rejects indirect and
 special files, copies one regular file into private staging, hashes it, and registers
-it without activation. A later artifact-set import must inspect and hash every member,
-join reviewed license evidence, and require network-denied qualification before any
-activation. Hard links, symbolic links, mutable tags, plugin code, pickle weights, and
-unreviewed remote code are not active artifact identity.
+it without activation. The application artifact-set import takes an exact canonical
+manifest and local source directory; rejects undeclared, indirect, special,
+noncanonical path spellings, or missing entries; hashes every member; and publishes
+one synchronized no-replace tree under a content-derived set-root key. Source hard
+links may be copied, while managed members must be single-link regular files.
+Structural installation commits only after final bytes and the pinned
+repository-to-storage relationship are
+rechecked. Prepublication cancellation cleans only the exact current-operation ledger.
+Pre-existing staging roots are not descended into, and unexpected current-operation
+entries are retained rather than recursively deleted. A postpublication state failure
+leaves a retryable inert orphan. Import does not itself establish artifact-set
+completeness evidence, license approval, runtime load closure, qualification, or
+activation. Hard links in managed storage, symbolic links, mutable tags, plugin code,
+pickle weights, and unreviewed remote code are not active artifact identity.
 
 Rewriting never downloads a missing runtime, model, tokenizer, template, adapter, or
 plugin. Drift before or after a generation batch discards every candidate and

@@ -179,7 +179,10 @@ fn pending_removal_is_rejected_before_source_copy_or_canonical_recreation() {
             |event| progress.push(event),
         )
         .expect_err("pending removal blocks import before copying");
-    assert!(matches!(error, ArtifactImportError::RemovalPending));
+    assert!(matches!(
+        error,
+        ArtifactImportError::RemovalPending { selection: Some(_) }
+    ));
     assert!(progress.is_empty());
     assert!(
         !storage

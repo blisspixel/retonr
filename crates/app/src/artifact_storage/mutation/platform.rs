@@ -20,6 +20,11 @@ pub(super) fn remove_verified_file(
     name: &OsStr,
     held: File,
 ) -> Result<(), ArtifactInventoryError> {
+    let expected = crate::artifact_storage::fingerprint_std_file(&held)?;
+    let current = directory.child_file_fingerprint(name)?;
+    if !current.same_identity(&expected) {
+        return Err(ArtifactInventoryError::ConcurrentModification);
+    }
     directory.remove_file(name)?;
     drop(held);
     Ok(())
@@ -78,7 +83,9 @@ pub(super) fn inspect_entry(
     }))
 }
 
-pub(super) fn random_staging_name(prefix: &str) -> Result<OsString, ArtifactInventoryError> {
+pub(in crate::artifact_storage) fn random_staging_name(
+    prefix: &str,
+) -> Result<OsString, ArtifactInventoryError> {
     let mut random = [0_u8; 16];
     getrandom::fill(&mut random).map_err(|_| {
         ArtifactInventoryError::StorageIo(io::Error::other(
@@ -108,15 +115,48 @@ pub(super) fn create_directory(parent: &File, name: &OsStr) -> Result<(), Artifa
 }
 
 #[cfg(unix)]
-pub(super) fn create_directory_exclusive(
+pub(in crate::artifact_storage) fn create_directory_exclusive(
     parent: &File,
     name: &OsStr,
-) -> Result<(), ArtifactInventoryError> {
-    use rustix::fs::Mode;
+) -> Result<File, ArtifactInventoryError> {
+    use rustix::fs::{Mode, OFlags};
 
     rustix::fs::mkdirat(parent, name, Mode::RUSR | Mode::WUSR | Mode::XUSR)
         .map_err(io::Error::from)
-        .map_err(map_initial_error)
+        .map_err(map_initial_error)?;
+    let file = match rustix::fs::openat(
+        parent,
+        name,
+        OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        Mode::empty(),
+    ) {
+        Ok(file) => File::from(file),
+        Err(error) => {
+            let _ = rustix::fs::unlinkat(parent, name, rustix::fs::AtFlags::REMOVEDIR);
+            return Err(map_initial_error(io::Error::from(error)));
+        }
+    };
+    if directory_handle_is_empty(&file)? {
+        Ok(file)
+    } else {
+        Err(ArtifactInventoryError::ConcurrentModification)
+    }
+}
+
+#[cfg(unix)]
+fn directory_handle_is_empty(file: &File) -> Result<bool, ArtifactInventoryError> {
+    use rustix::fs::Dir;
+
+    let mut directory = Dir::read_from(file)
+        .map_err(io::Error::from)
+        .map_err(map_initial_error)?;
+    for entry in &mut directory {
+        let entry = entry.map_err(io::Error::from).map_err(map_initial_error)?;
+        if !matches!(entry.file_name().to_bytes(), b"." | b"..") {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 #[cfg(windows)]
@@ -130,12 +170,23 @@ pub(super) fn create_directory(parent: &File, name: &OsStr) -> Result<(), Artifa
 }
 
 #[cfg(windows)]
-pub(super) fn create_directory_exclusive(
+pub(in crate::artifact_storage) fn create_directory_exclusive(
     parent: &File,
     name: &OsStr,
-) -> Result<(), ArtifactInventoryError> {
-    let options = cap_primitives::fs::DirOptions::new();
-    cap_primitives::fs::create_dir(parent, Path::new(name), &options).map_err(map_initial_error)
+) -> Result<File, ArtifactInventoryError> {
+    use fs_at::os::windows::OpenOptionsExt as _;
+
+    const FILE_DIRECTORY_FILE: u32 = 0x0000_0001;
+    const FILE_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    let mut options = fs_at::OpenOptions::default();
+    options
+        .read(true)
+        .write(fs_at::OpenOptionsWriteMode::Write)
+        .create_new(true)
+        .follow(false)
+        .create_options(FILE_DIRECTORY_FILE | FILE_OPEN_REPARSE_POINT)
+        .open_dir_at(parent, Path::new(name))
+        .map_err(map_initial_error)
 }
 
 #[cfg(unix)]
@@ -175,7 +226,10 @@ pub(super) fn open_or_create_file(parent: &File, name: &OsStr) -> io::Result<Fil
 }
 
 #[cfg(unix)]
-pub(super) fn create_new_file(parent: &File, name: &OsStr) -> io::Result<File> {
+pub(in crate::artifact_storage) fn create_new_file(
+    parent: &File,
+    name: &OsStr,
+) -> io::Result<File> {
     use rustix::fs::{Mode, OFlags};
     rustix::fs::openat(
         parent,
@@ -188,7 +242,10 @@ pub(super) fn create_new_file(parent: &File, name: &OsStr) -> io::Result<File> {
 }
 
 #[cfg(windows)]
-pub(super) fn create_new_file(parent: &File, name: &OsStr) -> io::Result<File> {
+pub(in crate::artifact_storage) fn create_new_file(
+    parent: &File,
+    name: &OsStr,
+) -> io::Result<File> {
     use cap_fs_ext::OpenOptionsFollowExt as _;
     use cap_primitives::fs::{FollowSymlinks, OpenOptions, OpenOptionsExt as _};
     let mut options = OpenOptions::new();

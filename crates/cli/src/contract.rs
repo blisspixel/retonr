@@ -3,7 +3,7 @@
 use std::{
     error::Error,
     fmt,
-    fs::File,
+    fs::{self, File},
     io::{self, Read},
     num::NonZeroU64,
     path::Path,
@@ -427,8 +427,25 @@ pub fn read_manifest_bounded(
     path: &Path,
     maximum_bytes: usize,
 ) -> Result<ArtifactManifest, ManifestInputError> {
-    let file = File::open(path).map_err(|error| ManifestInputError::Io(error.kind()))?;
+    let file = open_regular_file(path).map_err(|error| ManifestInputError::Io(error.kind()))?;
     parse_manifest_bounded(file, maximum_bytes)
+}
+
+pub(crate) fn open_regular_file(path: &Path) -> io::Result<File> {
+    let listed = fs::symlink_metadata(path)?;
+    let metadata = if listed.file_type().is_symlink() {
+        fs::metadata(path)?
+    } else {
+        listed
+    };
+    if metadata.is_file() {
+        File::open(path)
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "input must be a regular file",
+        ))
+    }
 }
 
 /// Parses one strict artifact manifest from a bounded byte stream.

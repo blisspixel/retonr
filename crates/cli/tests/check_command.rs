@@ -5,6 +5,24 @@ use predicates::prelude::*;
 use tempfile::tempdir;
 
 #[test]
+fn accepts_utf8_bom_on_both_source_and_candidate_files() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, b"\xEF\xBB\xBFHello world\n").expect("write source with BOM");
+    fs::write(&candidate, b"\xEF\xBB\xBFHello, world!\n").expect("write candidate with BOM");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(source)
+        .arg(candidate)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"rewritten\""));
+}
+
+#[test]
 fn reports_rewritten_candidate_as_json() {
     let directory = tempdir().expect("temporary directory");
     let source = directory.path().join("source.txt");
@@ -88,4 +106,80 @@ fn text_report_never_contains_raw_document_content() {
         .success()
         .stdout(predicate::str::contains("status: rewritten"))
         .stdout(predicate::str::contains("private phrase").not());
+}
+
+#[test]
+fn directory_source_is_rejected_as_unreadable() {
+    let directory = tempdir().expect("temporary directory");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&candidate, "Hello\n").expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(directory.path())
+        .arg(candidate)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"category\": \"usage\""))
+        .stderr(predicate::str::contains("\"code\": \"input_unreadable\""));
+}
+
+#[test]
+fn missing_source_is_an_unreadable_input_not_a_retryable_failure() {
+    let directory = tempdir().expect("temporary directory");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&candidate, "Hello\n").expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(directory.path().join("missing.txt"))
+        .arg(candidate)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("\"category\": \"operational\""))
+        .stderr(predicate::str::contains("\"code\": \"input_unreadable\""))
+        .stderr(predicate::str::contains("\"retryable\": false"));
+}
+
+#[test]
+fn oversized_candidate_is_a_resource_limit() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, "short\n").expect("write source fixture");
+    fs::write(&candidate, "a".repeat(16 * 1024 * 1024 + 1)).expect("write oversized candidate");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(source)
+        .arg(candidate)
+        .assert()
+        .code(4)
+        .stderr(predicate::str::contains("\"category\": \"compatibility\""))
+        .stderr(predicate::str::contains(
+            "\"code\": \"resource_limit_exceeded\"",
+        ))
+        .stderr(predicate::str::contains("\"retryable\": false"));
+}
+
+#[test]
+fn invalid_utf8_source_is_usage() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, b"a\xFF").expect("write invalid source");
+    fs::write(&candidate, "a\n").expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(source)
+        .arg(candidate)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"category\": \"usage\""))
+        .stderr(predicate::str::contains("\"code\": \"input_unreadable\""));
 }

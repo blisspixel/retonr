@@ -267,7 +267,9 @@ into qualification v1 activation. The SQLite schema-v4 tables persist and recurs
 revalidate the complete immutable subject without creating an active binding. A
 separate installed-set record binds a unique portable root key and generation to the
 exact artifact-set manifest, but does not verify member bytes or activate
-qualification v2. Live claim extraction remains
+qualification v2. The application now creates that record only after an exact local
+folder import verifies and publishes the complete manifest tree. Reading the record
+later still does not reverify bytes or grant use authority. Live claim extraction remains
 unavailable until the application can attest, lease, and recheck the complete tuple.
 
 ## Selection and fallback rules

@@ -115,5 +115,8 @@ pub enum ArtifactReconciliationError {
     State(#[source] StoreError),
     /// The selected identity has a durably prepared removal to recover first.
     #[error("artifact removal is pending recovery")]
-    RemovalPending,
+    RemovalPending {
+        /// Exact prepared generation when it was observed before this failure.
+        selection: Option<StoredArtifactInstallation>,
+    },
 }

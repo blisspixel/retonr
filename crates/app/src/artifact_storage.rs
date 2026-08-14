@@ -1,6 +1,6 @@
 use std::{
     ffi::{OsStr, OsString},
-    fs::{File, Metadata, TryLockError},
+    fs::{File, TryLockError},
     io::{self, Read as _},
     path::Path,
 };
@@ -13,16 +13,22 @@ use crate::artifact_inventory::ArtifactInventoryError;
 mod entry;
 mod errors;
 mod existing;
+mod fingerprint;
 mod mutation;
 #[cfg(test)]
 pub(crate) mod test_support;
+mod tree;
 mod verification;
 pub(crate) use entry::is_indirect;
 use errors::{map_active_error, map_initial_error};
 pub(crate) use existing::{ExistingArtifactStorage, LIFECYCLE_LOCK_FILE, LifecycleLockMode};
+pub(crate) use fingerprint::{MetadataFingerprint, StableMetadataFingerprint};
 pub(crate) use mutation::ExactEntryCapacity;
 #[cfg(unix)]
 pub(crate) use mutation::set_private_directory_permissions;
+pub(crate) use tree::{
+    ManagedTreeEntryKind, ManagedTreeLimits, ManagedTreeSnapshot, OwnedStagingTree,
+};
 pub(crate) use verification::{
     ExactArtifactExpectation, ExactArtifactSync, ExactArtifactVerificationError,
     VerifiedManagedArtifact, verify_exact_artifact, verify_exact_artifact_for_removal,
@@ -56,88 +62,6 @@ impl DirectoryEntrySnapshot {
     }
 }
 
-#[cfg_attr(unix, derive(Clone, Copy))]
-#[derive(Debug, Eq, PartialEq)]
-pub(crate) struct MetadataFingerprint {
-    file_type: FileTypeFingerprint,
-    length: u64,
-    #[cfg(unix)]
-    device: u64,
-    #[cfg(unix)]
-    inode: u64,
-    #[cfg(unix)]
-    modified_seconds: i64,
-    #[cfg(unix)]
-    modified_nanoseconds: i64,
-    #[cfg(unix)]
-    changed_seconds: i64,
-    #[cfg(unix)]
-    changed_nanoseconds: i64,
-    #[cfg(windows)]
-    identity: same_file::Handle,
-    #[cfg(windows)]
-    creation_time: u64,
-    #[cfg(windows)]
-    last_write_time: u64,
-    link_count: u64,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum FileTypeFingerprint {
-    File,
-    Directory,
-    Symlink,
-    Other,
-}
-
-impl MetadataFingerprint {
-    fn from_file(file: &File) -> io::Result<Self> {
-        let metadata = file.metadata()?;
-        let file_type = file_type(&metadata);
-        Ok(Self {
-            file_type,
-            length: metadata.len(),
-            #[cfg(unix)]
-            device: std::os::unix::fs::MetadataExt::dev(&metadata),
-            #[cfg(unix)]
-            inode: std::os::unix::fs::MetadataExt::ino(&metadata),
-            #[cfg(unix)]
-            modified_seconds: std::os::unix::fs::MetadataExt::mtime(&metadata),
-            #[cfg(unix)]
-            modified_nanoseconds: std::os::unix::fs::MetadataExt::mtime_nsec(&metadata),
-            #[cfg(unix)]
-            changed_seconds: std::os::unix::fs::MetadataExt::ctime(&metadata),
-            #[cfg(unix)]
-            changed_nanoseconds: std::os::unix::fs::MetadataExt::ctime_nsec(&metadata),
-            #[cfg(windows)]
-            identity: same_file::Handle::from_file(file.try_clone()?)?,
-            #[cfg(windows)]
-            creation_time: std::os::windows::fs::MetadataExt::creation_time(&metadata),
-            #[cfg(windows)]
-            last_write_time: std::os::windows::fs::MetadataExt::last_write_time(&metadata),
-            #[cfg(unix)]
-            link_count: std::os::unix::fs::MetadataExt::nlink(&metadata),
-            #[cfg(windows)]
-            link_count: winx::winapi_util::file::information(file)?.number_of_links(),
-        })
-    }
-
-    pub(crate) fn has_single_link(&self) -> bool {
-        self.link_count == 1
-    }
-
-    pub(crate) fn same_identity(&self, other: &Self) -> bool {
-        #[cfg(unix)]
-        {
-            self.device == other.device && self.inode == other.inode
-        }
-        #[cfg(windows)]
-        {
-            self.identity == other.identity
-        }
-    }
-}
-
 pub(crate) struct PinnedDirectory {
     handle: File,
 }
@@ -162,6 +86,7 @@ impl PinnedDirectory {
         &self,
         name: &OsStr,
     ) -> Result<Self, ArtifactInventoryError> {
+        self.require_direct_directory_name(name)?;
         let directory = self.open_directory(name).map_err(map_initial_error)?;
         validate_directory_handle(&directory, true)?;
         Ok(Self { handle: directory })
@@ -287,7 +212,11 @@ impl PinnedDirectory {
 
     #[cfg(windows)]
     pub(super) fn open_directory(&self, name: &OsStr) -> io::Result<File> {
-        cap_primitives::fs::open_dir_nofollow(&self.handle, Path::new(name))
+        let mut options = fs_at::OpenOptions::default();
+        options
+            .read(true)
+            .follow(false)
+            .open_dir_at(&self.handle, Path::new(name))
     }
 
     #[cfg(unix)]
@@ -320,7 +249,9 @@ impl PinnedDirectory {
         let share_mode = match share {
             FileShare::Lifecycle => FILE_SHARE_READ | FILE_SHARE_WRITE,
             FileShare::Verification | FileShare::Sync => FILE_SHARE_READ,
-            FileShare::Removal => FILE_SHARE_READ | FILE_SHARE_DELETE,
+            FileShare::Sealed | FileShare::Removal => {
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+            }
         };
         let mut options = OpenOptions::new();
         options.read(true).share_mode(share_mode);
@@ -424,6 +355,7 @@ pub(super) struct RawDirectoryEntry {
 pub(super) enum FileShare {
     Lifecycle,
     Verification,
+    Sealed,
     Sync,
     Removal,
 }
@@ -525,20 +457,16 @@ fn hash_exact_bytes(
             .ok_or(ArtifactInventoryError::ConcurrentModification)?;
         hasher.update(&buffer[..count]);
     }
+    let mut trailing = [0u8; 1];
+    if file
+        .read(&mut trailing)
+        .map_err(ArtifactInventoryError::StorageIo)?
+        != 0
+    {
+        return Err(ArtifactInventoryError::ConcurrentModification);
+    }
     Digest::from_sha256_hex(format!("{:x}", hasher.finalize()))
         .map_err(|_| ArtifactInventoryError::ConcurrentModification)
-}
-
-fn file_type(metadata: &Metadata) -> FileTypeFingerprint {
-    if is_indirect(metadata) {
-        FileTypeFingerprint::Symlink
-    } else if metadata.is_file() {
-        FileTypeFingerprint::File
-    } else if metadata.is_dir() {
-        FileTypeFingerprint::Directory
-    } else {
-        FileTypeFingerprint::Other
-    }
 }
 
 fn ensure_not_cancelled(cancellation: &CancellationToken) -> Result<(), ArtifactInventoryError> {

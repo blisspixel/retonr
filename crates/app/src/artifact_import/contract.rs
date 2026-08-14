@@ -1,7 +1,7 @@
 use std::{io, path::PathBuf};
 
 use rewrite_model::{ArtifactManifest, InstalledArtifact, ManifestError};
-use rewrite_model_store::{InstallationWriteDisposition, StoreError};
+use rewrite_model_store::{InstallationWriteDisposition, StoreError, StoredArtifactInstallation};
 use thiserror::Error;
 
 /// Explicit request to import one immutable local artifact file.
@@ -118,5 +118,8 @@ pub enum ArtifactImportError {
     State(#[source] StoreError),
     /// The selected identity has a durably prepared removal to recover first.
     #[error("artifact removal is pending recovery")]
-    RemovalPending,
+    RemovalPending {
+        /// Exact prepared generation when it was observed before this failure.
+        selection: Option<StoredArtifactInstallation>,
+    },
 }

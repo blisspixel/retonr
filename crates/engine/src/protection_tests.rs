@@ -20,6 +20,26 @@ fn masks_typed_literals_and_declared_terms() {
 }
 
 #[test]
+fn trailing_list_commas_are_not_part_of_a_number() {
+    let source = "It costs $10, which is fair.";
+    let plan = ProtectionPlan::build(source, &[]).expect("valid fixture");
+    assert_eq!(plan.values().len(), 1);
+    assert_eq!(plan.values()[0].surface, "$10");
+    let rewritten = "It costs $10 which is fair.";
+    let masked = plan
+        .mask_raw_candidate(rewritten)
+        .expect("removing a list comma must not count as changing $10");
+    assert_eq!(plan.restore(&masked).expect("issued sentinels"), rewritten);
+}
+
+#[test]
+fn grouped_thousands_remain_one_number() {
+    let plan = ProtectionPlan::build("Pay 1,234.50 now.", &[]).expect("valid fixture");
+    assert_eq!(plan.values().len(), 1);
+    assert_eq!(plan.values()[0].surface, "1,234.50");
+}
+
+#[test]
 fn raw_candidate_round_trips_exact_values() {
     let source = "Version 2 costs $10 at https://example.com.";
     let plan = ProtectionPlan::build(source, &[]).expect("valid fixture");

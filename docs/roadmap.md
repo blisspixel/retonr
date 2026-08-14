@@ -69,8 +69,8 @@ proceeds in this exact order:
    qualification v2 that binds all four identities and exact qualification policy
    without rewriting v1 evidence. Preserve the completed schema-v4 persistence,
    recursive relationship checks, distinct inert artifact-set installation
-   generations, and explicit v1/v2/v3 repository migration path. Next add bounded
-   folder import and repository-owned artifact-set leases. Then add live attestation without
+   generations, bounded exact folder import, and explicit v1/v2/v3 repository
+   migration path. Next add repository-owned artifact-set leases. Then add live attestation without
    enabling claim extraction. Only after those boundaries add the
    exact effective extractor manifest, strict ephemeral wire contract, separately
    cancellable pair operation, and two-phase engine evidence join. Calibrate it in
