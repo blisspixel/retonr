@@ -81,9 +81,10 @@ targets under the Linux sanitizer-backed fuzz smoke job. The pinned `cargo-nexte
 integration test exclusive test-thread capacity because the helper owns process-wide
 console state; the test remains concurrent with the full suite on macOS and Linux.
 
-The provider-neutral structured-completion slice passed at exact-main revision
-`35ed2cdd43afa99a3cca51fed0b2f0e43c693a9a` in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31755221203).
+The distinct claim-extraction authority slice and Windows nextest isolation repair
+passed at exact-main revision `e03b2b76225bb59d0e15db9b9050f29f8d58bcbc`
+in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31758152635).
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
