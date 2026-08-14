@@ -1,8 +1,9 @@
 use thiserror::Error;
 
 use rewrite_model::{
-    ActivationDecisionError, InstallationError, ManifestError, QualificationInvalidationError,
-    QualificationRecordError,
+    ActivationDecisionError, ArtifactSetManifestError, EffectivePackageEvidenceError,
+    EffectiveRuntimeStateError, InstallationError, ManifestError, QualificationInvalidationError,
+    QualificationRecordError, QualificationRecordV2Error, RuntimeBuildIdentityError,
 };
 
 /// Result returned by the durable artifact state adapter.
@@ -27,6 +28,21 @@ pub enum StoreError {
     /// A qualification record failed domain validation.
     #[error("qualification record is invalid")]
     InvalidQualification(#[source] QualificationRecordError),
+    /// An artifact-set manifest failed domain validation.
+    #[error("artifact-set manifest is invalid")]
+    InvalidArtifactSet(#[source] ArtifactSetManifestError),
+    /// A runtime-build identity failed domain validation.
+    #[error("runtime-build identity is invalid")]
+    InvalidRuntimeBuild(#[source] RuntimeBuildIdentityError),
+    /// An effective runtime-state record failed domain validation.
+    #[error("effective runtime state is invalid")]
+    InvalidRuntimeState(#[source] EffectiveRuntimeStateError),
+    /// Effective-package evidence failed domain validation.
+    #[error("effective package evidence is invalid")]
+    InvalidEffectivePackage(#[source] EffectivePackageEvidenceError),
+    /// A qualification-v2 evidence record failed domain validation.
+    #[error("qualification v2 record is invalid")]
+    InvalidQualificationV2(#[source] QualificationRecordV2Error),
     /// A qualification invalidation failed domain validation.
     #[error("qualification invalidation is invalid")]
     InvalidInvalidation(#[source] QualificationInvalidationError),

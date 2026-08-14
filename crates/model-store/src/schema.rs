@@ -4,7 +4,7 @@ use rusqlite::{Connection, TransactionBehavior};
 
 use crate::{StoreError, StoreResult};
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 2;
+pub(super) const STORE_SCHEMA_VERSION: i64 = 3;
 
 pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
     configure(connection, true)?;
@@ -18,6 +18,12 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
         1 => {
             validate_schema_one(&transaction)?;
             migrate_schema_one(&transaction)?;
+            validate_schema_two(&transaction)?;
+            migrate_schema_two(&transaction)?;
+        }
+        2 => {
+            validate_schema_two(&transaction)?;
+            migrate_schema_two(&transaction)?;
         }
         STORE_SCHEMA_VERSION => validate_schema_shape(&transaction)?,
         value if !(0..=STORE_SCHEMA_VERSION).contains(&value) => {
@@ -36,6 +42,11 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
 }
 
 fn create_current_schema(connection: &Connection) -> StoreResult<()> {
+    create_schema_two(connection)?;
+    migrate_schema_two(connection)
+}
+
+fn create_schema_two(connection: &Connection) -> StoreResult<()> {
     connection.execute_batch(
         "CREATE TABLE artifact_manifests (
              artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
@@ -102,6 +113,78 @@ fn create_current_schema(connection: &Connection) -> StoreResult<()> {
          ) STRICT;
 
          PRAGMA user_version = 2;",
+    )?;
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_two_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_two(connection)
+}
+
+fn migrate_schema_two(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(
+        "CREATE TABLE artifact_set_manifests (
+             artifact_set_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_set_id) = 64),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
+         ) STRICT;
+
+         CREATE TABLE runtime_build_identities (
+             runtime_build_id TEXT PRIMARY KEY NOT NULL CHECK(length(runtime_build_id) = 64),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576)
+         ) STRICT;
+
+         CREATE TABLE effective_runtime_states (
+             effective_runtime_state_id TEXT PRIMARY KEY NOT NULL
+                 CHECK(length(effective_runtime_state_id) = 64),
+             runtime_build_id TEXT NOT NULL CHECK(length(runtime_build_id) = 64),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+             FOREIGN KEY(runtime_build_id)
+                 REFERENCES runtime_build_identities(runtime_build_id)
+         ) STRICT;
+
+         CREATE TABLE effective_package_evidence (
+             effective_package_evidence_id TEXT PRIMARY KEY NOT NULL
+                 CHECK(length(effective_package_evidence_id) = 64),
+             artifact_set_id TEXT NOT NULL CHECK(length(artifact_set_id) = 64),
+             runtime_build_id TEXT NOT NULL CHECK(length(runtime_build_id) = 64),
+             effective_runtime_state_id TEXT NOT NULL
+                 CHECK(length(effective_runtime_state_id) = 64),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+             FOREIGN KEY(artifact_set_id)
+                 REFERENCES artifact_set_manifests(artifact_set_id),
+             FOREIGN KEY(runtime_build_id)
+                 REFERENCES runtime_build_identities(runtime_build_id),
+             FOREIGN KEY(effective_runtime_state_id)
+                 REFERENCES effective_runtime_states(effective_runtime_state_id)
+         ) STRICT;
+
+         CREATE TABLE qualification_v2_records (
+             qualification_v2_id TEXT PRIMARY KEY NOT NULL
+                 CHECK(length(qualification_v2_id) = 64),
+             artifact_set_id TEXT NOT NULL CHECK(length(artifact_set_id) = 64),
+             effective_package_evidence_id TEXT NOT NULL
+                 CHECK(length(effective_package_evidence_id) = 64),
+             runtime_build_id TEXT NOT NULL CHECK(length(runtime_build_id) = 64),
+             effective_runtime_state_id TEXT NOT NULL
+                 CHECK(length(effective_runtime_state_id) = 64),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+             FOREIGN KEY(artifact_set_id)
+                 REFERENCES artifact_set_manifests(artifact_set_id),
+             FOREIGN KEY(effective_package_evidence_id)
+                 REFERENCES effective_package_evidence(effective_package_evidence_id),
+             FOREIGN KEY(runtime_build_id)
+                 REFERENCES runtime_build_identities(runtime_build_id),
+             FOREIGN KEY(effective_runtime_state_id)
+                 REFERENCES effective_runtime_states(effective_runtime_state_id)
+         ) STRICT;
+
+         PRAGMA user_version = 3;",
     )?;
     Ok(())
 }
@@ -257,7 +340,18 @@ fn validate_exact_version(connection: &Connection) -> StoreResult<()> {
 fn validate_schema_shape(connection: &Connection) -> StoreResult<()> {
     let actual = schema_objects(connection)?;
     let current = canonical_current_objects()?;
-    if actual == current || actual == canonical_migrated_objects()? {
+    if actual == current || actual == canonical_migrated_current_objects()? {
+        Ok(())
+    } else {
+        Err(StoreError::CorruptRecord)
+    }
+}
+
+fn validate_schema_two(connection: &Connection) -> StoreResult<()> {
+    let actual = schema_objects(connection)?;
+    if actual == canonical_schema_two_objects()?
+        || actual == canonical_migrated_schema_two_objects()?
+    {
         Ok(())
     } else {
         Err(StoreError::CorruptRecord)
@@ -307,16 +401,30 @@ fn canonical_current_objects() -> StoreResult<Vec<SchemaObject>> {
     schema_objects(&connection)
 }
 
+fn canonical_schema_two_objects() -> StoreResult<Vec<SchemaObject>> {
+    let connection = Connection::open_in_memory()?;
+    create_schema_two(&connection)?;
+    schema_objects(&connection)
+}
+
 fn canonical_schema_one_objects() -> StoreResult<Vec<SchemaObject>> {
     let connection = Connection::open_in_memory()?;
     create_schema_one(&connection)?;
     schema_objects(&connection)
 }
 
-fn canonical_migrated_objects() -> StoreResult<Vec<SchemaObject>> {
+fn canonical_migrated_schema_two_objects() -> StoreResult<Vec<SchemaObject>> {
     let connection = Connection::open_in_memory()?;
     create_schema_one(&connection)?;
     migrate_schema_one(&connection)?;
+    schema_objects(&connection)
+}
+
+fn canonical_migrated_current_objects() -> StoreResult<Vec<SchemaObject>> {
+    let connection = Connection::open_in_memory()?;
+    create_schema_one(&connection)?;
+    migrate_schema_one(&connection)?;
+    migrate_schema_two(&connection)?;
     schema_objects(&connection)
 }
 

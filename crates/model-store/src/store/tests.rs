@@ -11,6 +11,7 @@ use rewrite_types::Digest;
 use super::{ArtifactStateStore, WriteDisposition};
 use crate::{ExclusiveArtifactLifecycleLock, StoreError};
 
+mod evidence;
 mod installation;
 mod integrity;
 mod inventory;
