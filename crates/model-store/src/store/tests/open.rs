@@ -12,12 +12,12 @@ fn newer_schema_is_rejected_without_migration() {
     let path = directory.path().join("future.db");
     let connection = Connection::open(&path).expect("create database");
     connection
-        .pragma_update(None, "user_version", 3)
+        .pragma_update(None, "user_version", 4)
         .expect("set future version");
     drop(connection);
     assert!(matches!(
         ArtifactStateStore::open(&path),
-        Err(StoreError::UnsupportedSchema(3))
+        Err(StoreError::UnsupportedSchema(4))
     ));
 }
 
@@ -79,19 +79,32 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 1,
-                    current: 2
+                    current: 3
                 }
             )
         },
         "legacy.db",
+    );
+    assert_read_only_schema_rejection(
+        2,
+        |error| {
+            matches!(
+                error,
+                StoreError::MigrationRequired {
+                    found: 2,
+                    current: 3
+                }
+            )
+        },
+        "schema-two-read-only.db",
     );
 }
 
 #[test]
 fn read_only_open_rejects_future_schema_without_mutation() {
     assert_read_only_schema_rejection(
-        3,
-        |error| matches!(error, StoreError::UnsupportedSchema(3)),
+        4,
+        |error| matches!(error, StoreError::UnsupportedSchema(4)),
         "future-read-only.db",
     );
 }
@@ -134,7 +147,7 @@ fn exact_schema_writable_open_never_migrates_legacy_state() {
         ArtifactStateStore::open_existing_writable_exact(&path),
         Err(StoreError::MigrationRequired {
             found: 1,
-            current: 2
+            current: 3
         })
     ));
     assert_eq!(fs::read(&path).expect("reread legacy state"), before);
@@ -178,12 +191,109 @@ fn interrupted_empty_initialization_can_resume_but_arbitrary_version_zero_cannot
 }
 
 #[test]
+fn migrates_schema_two_without_rewriting_v1_records() {
+    let directory = tempdir().expect("temporary directory");
+    let path = directory.path().join("schema-two.db");
+    let fixture = fixture();
+    let qualification_id = fixture
+        .qualification
+        .qualification_id()
+        .expect("qualification id");
+    let manifest_json = serde_json::to_string(&fixture.manifest).expect("manifest JSON");
+    let qualification_json =
+        serde_json::to_string(&fixture.qualification).expect("qualification JSON");
+    let connection = Connection::open(&path).expect("create schema-two fixture");
+    crate::schema::create_schema_two_fixture(&connection).expect("create schema two");
+    connection
+        .execute(
+            "INSERT INTO artifact_manifests (artifact_id, record_json) VALUES (?1, ?2)",
+            rusqlite::params![
+                fixture.manifest.artifact_id.digest().as_str(),
+                manifest_json
+            ],
+        )
+        .expect("insert legacy manifest");
+    connection
+        .execute(
+            "INSERT INTO qualification_records
+                 (qualification_id, artifact_id, record_json) VALUES (?1, ?2, ?3)",
+            rusqlite::params![
+                qualification_id.digest().as_str(),
+                fixture.manifest.artifact_id.digest().as_str(),
+                qualification_json
+            ],
+        )
+        .expect("insert legacy qualification");
+    drop(connection);
+
+    let store = ArtifactStateStore::open_existing_and_migrate(&path).expect("migrate schema two");
+    assert_eq!(
+        store
+            .manifest(&fixture.manifest.artifact_id)
+            .expect("load manifest"),
+        Some(fixture.manifest.clone())
+    );
+    let version: i64 = store
+        .connection()
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .expect("read migrated version");
+    assert_eq!(version, 3);
+    let stored_qualification: String = store
+        .connection()
+        .query_row(
+            "SELECT record_json FROM qualification_records WHERE qualification_id = ?1",
+            [qualification_id.digest().as_str()],
+            |row| row.get(0),
+        )
+        .expect("load unchanged qualification bytes");
+    assert_eq!(stored_qualification, qualification_json);
+}
+
+#[test]
+fn corrupt_schema_two_is_rejected_without_partial_migration() {
+    let directory = tempdir().expect("temporary directory");
+    let path = directory.path().join("corrupt-schema-two.db");
+    let connection = Connection::open(&path).expect("create schema-two fixture");
+    crate::schema::create_schema_two_fixture(&connection).expect("create schema two");
+    connection
+        .execute_batch(
+            "CREATE TRIGGER unexpected_v2_trigger
+             AFTER INSERT ON artifact_manifests
+             BEGIN
+                 DELETE FROM artifact_manifests WHERE artifact_id = NEW.artifact_id;
+             END;",
+        )
+        .expect("corrupt schema two");
+    drop(connection);
+
+    assert!(matches!(
+        ArtifactStateStore::open_existing_and_migrate(&path),
+        Err(StoreError::CorruptRecord)
+    ));
+    let connection = Connection::open(&path).expect("reopen rejected schema");
+    let version: i64 = connection
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .expect("read unchanged version");
+    assert_eq!(version, 2);
+    let v3_table_exists: bool = connection
+        .query_row(
+            "SELECT EXISTS(
+                 SELECT 1 FROM sqlite_schema WHERE name = 'artifact_set_manifests'
+             )",
+            [],
+            |row| row.get(0),
+        )
+        .expect("inspect rejected migration");
+    assert!(!v3_table_exists);
+}
+
+#[test]
 fn current_version_with_missing_or_altered_schema_is_corrupt() {
     let directory = tempdir().expect("temporary directory");
     let missing = directory.path().join("missing-schema.db");
     let connection = Connection::open(&missing).expect("create database");
     connection
-        .pragma_update(None, "user_version", 2)
+        .pragma_update(None, "user_version", 3)
         .expect("set current version");
     drop(connection);
     assert!(matches!(
@@ -227,7 +337,7 @@ fn current_version_with_missing_or_altered_schema_is_corrupt() {
                  artifact_id TEXT,
                  record_json TEXT
              );
-             PRAGMA user_version = 2;",
+             PRAGMA user_version = 3;",
         )
         .expect("create lax current-version state");
     drop(connection);
@@ -259,6 +369,16 @@ fn current_schema_rejects_spoofed_constraints_and_unexpected_objects() {
         "REFERENCES artifact_manifests(artifact_id) ON DELETE CASCADE",
     );
     assert_corrupt(&changed_foreign_key);
+
+    let changed_v3_foreign_key = directory.path().join("changed-v3-foreign-key.db");
+    drop(ArtifactStateStore::open(&changed_v3_foreign_key).expect("create current state"));
+    rewrite_schema_sql(
+        &changed_v3_foreign_key,
+        "effective_runtime_states",
+        "REFERENCES runtime_build_identities(runtime_build_id)",
+        "REFERENCES runtime_build_identities(runtime_build_id) ON DELETE CASCADE",
+    );
+    assert_corrupt(&changed_v3_foreign_key);
 
     let changed_literal = directory.path().join("changed-literal.db");
     drop(ArtifactStateStore::open(&changed_literal).expect("create current state"));

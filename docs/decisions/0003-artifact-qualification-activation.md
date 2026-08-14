@@ -1,9 +1,9 @@
 # ADR 0003: Artifact, qualification, and activation identity
 
-- Status: proposed
+- Status: accepted
 - Decision owners: project maintainers
 - Decision checkpoint: roadmap milestone 0.2 implementation
-- Last reviewed: 2026-08-12
+- Last reviewed: 2026-08-13
 
 ## Context
 
@@ -65,6 +65,13 @@ Activation verifies installed identity, current qualification, invalidation stat
 role, and safe storage key before changing the active binding. A rewrite never
 downloads, pulls, qualifies, or activates an artifact implicitly.
 
+Qualification v1 remains the frozen single-file authority contract. Claim extraction
+uses a separate inert qualification-v2 evidence type because it requires a complete
+artifact set, an attested runtime build, an effective runtime state, and
+effective-package evidence. SQLite schema v3 persists those records in separate
+immutable tables and recursively revalidates canonical bytes, indexed identities, and
+relationships. It does not project v2 evidence into v1 or create an active binding.
+
 ## Consequences
 
 ### Positive
@@ -83,7 +90,8 @@ downloads, pulls, qualifies, or activates an artifact implicitly.
 ### Follow-up
 
 - Decide acquisition and staged-download policy in a separate record.
-- Add durable transactional storage and recovery fixtures.
+- Add application-owned live attestation and artifact-set lease authority before any
+  claim-extraction activation.
 - Add invalidation inputs for runtime, prompt, threshold, license, and platform
   changes.
 - Prove that removal cannot orphan an active or in-use binding.

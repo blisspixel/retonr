@@ -15,7 +15,7 @@ or stored-data contracts.
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
 | `rewrite-model` | Separate immutable single-file and canonical artifact-set identities; content-addressed runtime-build, effective-state, and effective-package evidence; frozen qualification v1 authority; and a distinct inert claim-extraction qualification v2 record and ID that cannot enter v1 activation |
-| `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, opaque exclusive-lock capability requirements for removal transitions, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
+| `rewrite-model-store` | Durable SQLite schema v3 for legacy artifact authority plus inert artifact-set, runtime-build, effective-state, effective-package, and qualification-v2 evidence; transactional relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
@@ -43,7 +43,7 @@ debug views omit prompt and generated content. The model domain now has a distin
 inert claim-extraction artifact role. The current Ollama implementation still admits
 only generation and the existing candidate schema. The model domain now has a distinct
 qualification v2 evidence type for claim extraction, but no claim-extraction output
-schema, effective extractor manifest, persistence, strategy, activation, or application
+schema, effective extractor manifest, strategy, activation, or application
 evidence join is implemented. Qualification schema v1 explicitly rejects claim
 extraction, and its activation APIs cannot accept the separate v2 identifier or record.
 
@@ -56,8 +56,7 @@ isolation evidence. Its private fields, byte-bounded relationship-aware decoding
 closed vocabularies, fixed canonical encoding, and frozen digest make identity
 comparisons portable across Windows, macOS, and Linux. These records are inert
 evidence vocabulary. They do not attest a live process, prove that supplied evidence
-is true or complete, authorize a role, persist a qualification, or upgrade a v1
-qualification.
+is true or complete, authorize a role, or upgrade a v1 qualification.
 
 Qualification v2 is a separate, inert, content-addressed record for exactly the
 claim-extraction role. It binds the artifact set, effective-package evidence, runtime
@@ -65,8 +64,11 @@ build, effective state, source and context ceilings, prompt, claim-output and
 claim-operation contracts, request and threshold policies, language policy, hardware
 envelope, qualification suite, retained result evidence, license decision, and
 qualification outcome. Its bounded decoder reloads and rechecks all four subject
-records. It has no `authorizes` method, is not persisted, and cannot enter existing v1
-activation or recovery.
+records. It has no `authorizes` method and cannot enter existing v1 activation or
+recovery. SQLite schema v3 persists the five immutable evidence records
+in separate tables. Every dependent write and read reloads canonical record bytes,
+recomputes indexed identities, and recursively cross-checks the complete subject. The
+v1 tables and serialized records remain unchanged, and migration grants no authority.
 
 ## Verified locally
 
@@ -91,9 +93,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 366 Rust unit, integration, and process tests pass. Two process helpers are
+All 373 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 91.31
+Documentation tests also pass. The measured Rust line coverage is 91.50
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -146,8 +148,8 @@ uses its own clean runner database.
   lease yet. Artifact-set and folder import, downloads,
   runtime-native pulls, bulk reconciliation, orphan deletion, runtime commands, and
   exact real-artifact qualification are not implemented. Effective-package evidence
-  and qualification v2 have no persistence or production attestor yet and cannot be
-  activated. The CLI requires one
+  and qualification v2 have durable inert persistence but no production evidence
+  producer, live attestor, artifact-set lease, activation path, or CLI surface. The CLI requires one
   explicit `--data-dir`; its six artifact commands do not use the network or apply
   schema migrations. `pending-operations` reads only bounded durable state and
   returns exact prepared-removal generations without opening or hashing model
@@ -199,9 +201,10 @@ is:
    evidence, and deterministic comparison boundary.
 3. Preserve the distinct inert claim-extraction role, canonical artifact-set
    manifest, runtime-build and effective-state identities, relationship-checked
-   effective-package evidence, and separate inert qualification v2. Persist and
-   cross-check those records without rewriting v1 evidence before live attestation
-   and artifact-set leases.
+   effective-package evidence, separate inert qualification v2, and schema-v3
+   relationship-checked persistence without rewriting v1 evidence. Next add live
+   attestation and artifact-set installation and lease authority without enabling
+   claim extraction.
 4. Add the exact extractor manifest and strict ephemeral wire contract, followed by
    an application-level cancellable pair operation. Join evidence to a two-phase
    engine path only after fake-backend conformance passes, then calibrate it

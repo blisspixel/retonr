@@ -1,4 +1,4 @@
-//! Durable `SQLite` storage for artifact lifecycle records and active bindings.
+//! Durable `SQLite` storage for artifact lifecycle authority and inert model evidence.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]

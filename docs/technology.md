@@ -164,8 +164,16 @@ rechecks every referenced object and relationship. A separate inert qualificatio
 record now consumes and rechecks the exact four-part subject for claim extraction. It
 also binds the prompt, claim-output and claim-operation contracts, request and threshold
 policies, language, hardware, suite, result evidence, license decision, and outcome. Its
-distinct identifier cannot enter v1 activation. No evidence producer, persistence path,
+distinct identifier cannot enter v1 activation. No production evidence producer,
 active binding, live attestor, or runtime authority consumes either record yet.
+
+The SQLite adapter now persists the artifact-set manifest, runtime-build identity,
+effective runtime state, effective-package evidence, and qualification-v2 record as an
+inert dependency chain. Schema v3 leaves all v1 authority records byte-for-byte
+unchanged. Writes and reads recompute every content identity, require canonical JSON,
+compare duplicated indexed references, reload the complete subject, and fail closed on
+missing or cross-product state. Persistence is not attestation and creates no active
+binding.
 
 Current one-file offline import inspects without execution, rejects indirect and
 special files, copies one regular file into private staging, hashes it, and registers
@@ -196,8 +204,9 @@ document verification, staging, and an exact report. The complete contract is in
 
 ## Persistence
 
-SQLite is implemented first for artifact manifests, installed state, qualification
-and invalidation records, activation decisions, and active role pointers. The adapter
+SQLite is implemented for artifact manifests, installed state, v1 qualification and
+invalidation records, activation decisions, active role pointers, and the five inert
+evidence records required by qualification v2. The adapter
 uses bundled SQLite behind a dedicated crate; domain and application types do not
 expose SQL rows. Immediate transactions preserve the prior valid pointer when an
 activation cannot commit. Activation and recovery require caller-reverified artifact

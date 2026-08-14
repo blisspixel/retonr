@@ -66,8 +66,9 @@ proceeds in this exact order:
    artifact-set manifest, runtime-build and effective-state identities, and
    relationship-checked effective-package evidence. Preserve the separate inert
    qualification v2 that binds all four identities and exact qualification policy
-   without rewriting v1 evidence. Next persist and cross-check those records before
-   adding live attestation and artifact-set leases. Only then add the
+   without rewriting v1 evidence. Preserve the completed schema-v3 persistence and
+   recursive relationship checks. Next add live attestation and artifact-set leases
+   without enabling claim extraction. Only then add the
    exact effective extractor manifest, strict ephemeral wire contract, separately
    cancellable pair operation, and two-phase engine evidence join. Calibrate it in
    shadow mode before any semantic pass authority and never treat probabilistic

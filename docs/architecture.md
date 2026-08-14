@@ -194,10 +194,18 @@ claim-extraction role. It also binds source and context ceilings, prompt, claim-
 and claim-operation contracts, request and threshold policies, language policy,
 hardware envelope, qualification suite, result evidence, license decision, and
 qualification outcome. Its identifier and type are distinct from qualification v1; it
-has no authorization operation and cannot enter the v1 activation path. Persistence,
-live attestation, operation leases, pre-call checks, and post-call checks remain the
+has no authorization operation and cannot enter the v1 activation path. Live
+attestation, operation leases, pre-call checks, and post-call checks remain the
 responsibility of a later application runtime join.
 Attached observed-only Ollama metadata cannot construct a runtime-build identity.
+
+The model store persists these five inert records under SQLite schema v3 in separate,
+immutable tables. Higher-level writes begin an immediate transaction, reload every
+referenced lower-level record, require canonical serialized bytes and matching indexed
+identity columns, and rerun the domain relationship checks before commit. Reads repeat
+the recursive validation. The migration adds evidence tables without rewriting the v1
+manifest, qualification, invalidation, decision, binding, installation, or removal
+records. No v2 evidence table is consulted by v1 activation or recovery.
 
 ## Document representation
 

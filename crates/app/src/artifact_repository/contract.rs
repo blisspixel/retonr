@@ -291,6 +291,11 @@ fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKind {
         | StoreError::InvalidManifest(_)
         | StoreError::InvalidInstallation(_)
         | StoreError::InvalidQualification(_)
+        | StoreError::InvalidArtifactSet(_)
+        | StoreError::InvalidRuntimeBuild(_)
+        | StoreError::InvalidRuntimeState(_)
+        | StoreError::InvalidEffectivePackage(_)
+        | StoreError::InvalidQualificationV2(_)
         | StoreError::InvalidInvalidation(_)
         | StoreError::InvalidDecision(_)
         | StoreError::CorruptRecord
