@@ -83,12 +83,12 @@ new eligible spans.
 
 For long inputs, Retonr constructs a bounded map containing section roles, declared
 audience, terminology, protected claims, defined abbreviations, cross-references,
-style rules, and unit relationships. Deterministic facts remain linked to source
-anchors.
+style rules, and unit relationships. Deterministically preserved source values remain
+linked to source anchors.
 
 A qualified local model may propose high-level guidance such as tone consistency,
 repetition to reduce, or transitions to smooth. That guidance is untrusted. It
-cannot introduce facts or serve as the source of truth for fidelity checks.
+cannot introduce claims or replace the source as the fidelity reference.
 
 When a document exceeds a model context window, the map is built hierarchically from
 bounded regions. Retonr records what source each summary covers and its digest. It

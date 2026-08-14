@@ -4,9 +4,9 @@ Own the final expression.
 
 Retonr is a local-first editorial engine for reclaiming generated, delegated, and
 rough drafts. It makes bounded changes to eligible prose so the result is less
-generic and more recognizably yours. In each qualified format, facts, structure,
-formatting, formulas, links, protected terms, and other content that must remain
-intact are constraints, not disposable context.
+generic and more recognizably yours. In each qualified format, source claims,
+quantities, structure, formatting, formulas, links, protected terms, and other
+content that must remain intact are constraints, not disposable context.
 
 The pitch is simple:
 
@@ -18,8 +18,8 @@ The pitch is simple:
 - Reject a candidate or leave a unit unchanged when the required fidelity checks do
   not pass.
 
-Less remote exposure. Less generic model prose. More of your style. The finished
-expression stays under your control.
+Less remote exposure. Less generic model prose. More of your style. The final
+editorial decision stays under your control.
 
 Retonr treats generated, delegated, and rough text as drafts, not declarations of
 ownership by a model provider. It applies bounded editorial refinement like a careful
@@ -34,8 +34,9 @@ It does not convert copied material into owned material or decide legal authorsh
 
 Upstream wording signals and provider-added artifacts do not gain editorial authority
 merely because a tool produced the draft. Retonr handles supported signals explicitly
-while preserving facts and document integrity. It cannot erase provider logs, prove
-human authorship, or guarantee a detector or classifier result.
+while preserving source claims and document integrity. It cannot establish that a
+source claim is true, erase provider logs, prove human authorship, or guarantee a
+detector or classifier result.
 
 ## Opinionated by design
 
@@ -48,6 +49,13 @@ downstream expression.
 Retonr does not treat a provider's statistical signal as an ownership claim or a
 preservation requirement. Detector results do not guide live editing. Fidelity to the
 user's meaning, constraints, and document integrity does.
+
+Retonr opposes policy designs that make invisible provider marking a condition of
+ordinary local expression or that disadvantage open weights and user-controlled
+runtimes. People should be free to revise text they are authorized to edit into their
+own voice. A provider's statistical signal is not a fidelity target for eligible
+prose, and Retonr neither optimizes against that signal nor promises a detector
+result.
 
 This is a product position, not a claim that source rights, contracts, disclosure
 duties, or applicable law disappear. Retonr states what it changes, preserves the

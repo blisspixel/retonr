@@ -396,7 +396,8 @@ For each rule, report:
 - Exact rule and policy version, language, channel, format, and profile scope
 - Positive fixtures, protected-context exclusions, and adversarial near-matches
 - Precision and recall where a complete labeled set is meaningful
-- False positives in human-written, quoted, technical, and accessibility content
+- False positives in independently adjudicated clean, quoted, technical, and
+  accessibility content
 - User acceptance, rejection, and manual revision of proposed fixes
 - Source findings resolved, retained, introduced, suppressed, and uncertain
 - Fidelity, style preference, document-level repetition, latency, and abstention

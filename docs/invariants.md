@@ -171,10 +171,18 @@ document plan and style context. Generation proposes edits only for explicit uni
 through bounded context packets. Unit, region, document, and batch verification run
 before any output is committed.
 
-High-level plans and summaries are untrusted guidance. They cannot add facts, expand
+High-level plans and summaries are untrusted guidance. They cannot add claims, expand
 eligible spans, weaken protected content, or replace source text as the fidelity
 reference. Context-window size advertised by a runtime does not establish long-input
 quality.
+
+Fidelity compares a candidate with the source and declared constraints. It is not a
+general fact-checking service. A source assertion, name, date, or exact quantity is
+preserved unless an explicit typed policy authorizes a bounded transformation. An
+approximation policy may permit `50,143.65` to become `about 50,000`; without that
+authority, changing it to `51,000` fails closed. A separate external-evidence service
+would need its own sources, trust model, and qualification before making any claim
+about truth.
 
 A file or folder rewrite writes to a separate destination by default. It uses source
 digests, a staged manifest, collision rules, atomic file commits where supported,

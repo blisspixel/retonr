@@ -772,8 +772,8 @@ Keep these interfaces separate:
    elects to retain.
 2. **Editorial generation:** use the authorized style profile, explicit brief, and
    local model to propose complete rewrites of eligible units.
-3. **Deterministic fidelity gates:** protect facts, entities, quantities, structure,
-   formatting, and excluded spans.
+3. **Deterministic fidelity gates:** preserve source claims, entities, quantities,
+   structure, formatting, and excluded spans within each declared check.
 4. **Semantic assessment:** measure bounded fidelity properties without claiming a
    proof of meaning preservation.
 5. **Rewrite record:** identify changed, unchanged, and abstained units plus model

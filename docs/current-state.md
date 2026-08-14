@@ -88,15 +88,13 @@ targets under the Linux sanitizer-backed fuzz smoke job. The pinned `cargo-nexte
 integration test exclusive test-thread capacity because the helper owns process-wide
 console state; the test remains concurrent with the full suite on macOS and Linux.
 
-The distinct claim-extraction authority slice and Windows nextest isolation repair
-passed at exact-main revision `e03b2b76225bb59d0e15db9b9050f29f8d58bcbc`
-in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31758152635).
+The portable artifact-set and runtime-identity slice, distinct claim-extraction
+authority, and Windows nextest isolation repair passed at exact-main revision
+`cc510fcb1e0fcbed398b749a45fb8126c8e3ca64` in the passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31763086134).
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
-Remote cross-platform evidence for the focused artifact-set and runtime-identity
-branch is pending publication and is not included in that exact-main claim.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
@@ -179,19 +177,23 @@ is:
    cancellation evidence as new consumers are added.
 2. Preserve the completed rewrite-record v2, typed invariant summaries, typed claim
    evidence, and deterministic comparison boundary.
-3. Preserve the distinct inert claim-extraction role. Next add the exact extractor
-   manifest and strict ephemeral wire contract, followed by an application-level
-   cancellable pair operation. Join evidence to a two-phase engine path only after
-   fake-backend conformance passes, then calibrate it independently from generators
-   in shadow mode.
-4. Add the local evaluation plan, run the currently installed 26B and 27B packages,
+3. Preserve the distinct inert claim-extraction role, canonical artifact-set
+   manifest, and runtime-build and effective-state identities. Next add inert
+   effective-package evidence, then a separate qualification v2 without rewriting
+   v1 evidence. Persist and cross-check those records before live attestation and
+   artifact-set leases.
+4. Add the exact extractor manifest and strict ephemeral wire contract, followed by
+   an application-level cancellable pair operation. Join evidence to a two-phase
+   engine path only after fake-backend conformance passes, then calibrate it
+   independently from generators in shadow mode.
+5. Add the local evaluation plan, run the currently installed 26B and 27B packages,
    and add the previously observed 8B package only after revalidation or separately
    approved acquisition. Start only after product-path evidence joins are complete.
-5. Complete stdin, safe diff, dry-run, trace, terminal safety, and
+6. Complete stdin, safe diff, dry-run, trace, terminal safety, and
    raw-output policy before exposing grounded rewriting in the CLI.
-6. Run exact artifact qualification and selective-risk reporting on declared
+7. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
-7. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
+8. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
    after the 0.2 completion evidence passes. The current candidate-check rendering is
    limited to already implemented model-free behavior.
 

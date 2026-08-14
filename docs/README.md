@@ -38,6 +38,9 @@ These documents define the product direction and constrain implementation.
 | [Current local runtime matrix](research/2026-08-13-local-runtime-matrix.md) | Dated cross-platform runtime status, exact identity requirements, and Agent Plugin and MCP boundary |
 | [Local model tiers](research/2026-08-13-local-model-tiers.md) | Small, medium, and workstation candidates, exact revisions, local inventory, and qualification gates |
 | [Local model evaluation protocol](research/2026-08-13-local-model-evaluation.md) | Zero-download bakeoff, hardware strata, metrics, execution limits, and logical implementation order |
+| [Editorial pattern graph decision](research/2026-08-13-editorial-pattern-graph.md) | Separate product editorial relationships, personal profiles, and source-signal research |
+| [Editorial pattern mathematics](research/2026-08-13-editorial-pattern-mathematics.md) | Ledger-first graph math, fixed-point scoring, statistical boundaries, and deterministic Rust direction |
+| [Editorial pattern evaluation](research/2026-08-13-editorial-pattern-evaluation.md) | Preregistered matcher, actionability, flat-versus-graph, fidelity, preference, and drift protocol |
 | [Local model smoke comparison](research/2026-08-12-local-model-smoke.md) | Three-family local editing smoke run, clean control, exact identities, and limitations |
 | [Local watermark assurance](research/2026-08-12-local-watermark-assurance.md) | Intentional insertion points, exact-stack evidence levels, bounded claims, and requalification |
 | [Text watermark science](research/2026-08-12-text-watermark-science.md) | Mechanisms, detectors, attacks, trade-offs, limits, and product implications |
