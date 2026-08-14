@@ -29,6 +29,41 @@ fn fixture() -> (ArtifactSetManifest, Vec<(&'static str, &'static [u8])>) {
     )
 }
 
+fn sibling_file_manifest(bytes: &[u8]) -> (rewrite_model::ArtifactManifest, rewrite_types::Digest) {
+    use rewrite_model::{
+        ARTIFACT_MANIFEST_SCHEMA_VERSION, ArtifactId as FileArtifactId, ArtifactManifest,
+        ArtifactRole, ArtifactSource, DeclaredCapabilities, LicenseRecord,
+    };
+
+    let digest = Digest::sha256(bytes);
+    let manifest = ArtifactManifest {
+        schema_version: ARTIFACT_MANIFEST_SCHEMA_VERSION,
+        artifact_id: FileArtifactId::from_digest(digest.clone()),
+        source: ArtifactSource {
+            origin: "fixture/sibling".to_owned(),
+            revision: "fixture-revision".to_owned(),
+        },
+        artifact_digest: digest.clone(),
+        byte_size: u64::try_from(bytes.len()).expect("fixture size"),
+        format: "gguf".to_owned(),
+        family: "fixture".to_owned(),
+        architecture: Some("transformer".to_owned()),
+        quantization: Some("q4".to_owned()),
+        tokenizer: None,
+        licenses: vec![LicenseRecord {
+            component: "weights".to_owned(),
+            identifier: "Apache-2.0".to_owned(),
+            text_digest: Digest::sha256(b"license"),
+        }],
+        declared_capabilities: DeclaredCapabilities {
+            roles: vec![ArtifactRole::Generation],
+            languages: vec!["en".to_owned()],
+            context_tokens: Some(8_192),
+        },
+    };
+    (manifest, digest)
+}
+
 const fn limits() -> ArtifactSetImportLimits {
     ArtifactSetImportLimits {
         maximum_members: 8,
@@ -230,5 +265,110 @@ fn repository_never_adopts_wrong_case_managed_storage_root() {
             .artifact_set_installation(&changed_manifest.artifact_set_id())
             .expect("changed set installation")
             .is_none()
+    );
+}
+
+#[test]
+fn set_import_coexists_with_single_file_import_and_inventory() {
+    use crate::{
+        ArtifactImportLimits, ArtifactInventoryLimits, OfflineArtifactImportRequest,
+        RegisteredArtifactBytes,
+    };
+
+    let directory = tempdir().expect("temporary directory");
+    let set_source = directory.path().join("set-source");
+    fs::create_dir(&set_source).expect("set source root");
+    fs::create_dir(set_source.join("model")).expect("set nested root");
+    let (set_manifest, files) = fixture();
+    for (path, bytes) in &files {
+        fs::write(set_source.join(path), bytes).expect("set source member");
+    }
+    let file_bytes = b"single-file sibling";
+    let file_source = directory.path().join("sibling.gguf");
+    fs::write(&file_source, file_bytes).expect("single-file source");
+    let (file_manifest, file_digest) = sibling_file_manifest(file_bytes);
+    let data = directory.path().join("data");
+    let repository = ArtifactRepository::new(&data).expect("repository");
+
+    let set_result = repository
+        .import_set(
+            &OfflineArtifactSetImportRequest {
+                source_root: set_source,
+                manifest: set_manifest.clone(),
+            },
+            limits(),
+            &CancellationToken::new(),
+        )
+        .expect("set import");
+    let file_result = repository
+        .import(
+            &OfflineArtifactImportRequest {
+                source: file_source,
+                manifest: file_manifest,
+            },
+            ArtifactImportLimits {
+                maximum_artifact_bytes: 1024,
+                maximum_storage_entries: 16,
+            },
+            &CancellationToken::new(),
+        )
+        .expect("single-file import after set import");
+    let inventory = repository
+        .inventory(
+            ArtifactInventoryLimits {
+                maximum_state_entries: 16,
+                maximum_storage_entries: 16,
+                maximum_artifact_bytes: 1024,
+                maximum_total_verification_bytes: 4096,
+            },
+            &CancellationToken::new(),
+        )
+        .expect("inventory after mixed imports");
+
+    assert_eq!(
+        set_result.disposition,
+        ArtifactSetImportDisposition::Imported
+    );
+    assert_eq!(
+        file_result.disposition,
+        crate::ArtifactRepositoryImportDisposition::Imported
+    );
+    assert_eq!(inventory.registered.len(), 1);
+    assert_eq!(
+        inventory.registered[0].bytes,
+        RegisteredArtifactBytes::Verified
+    );
+    assert_eq!(
+        inventory.registered[0].installation.artifact_id().digest(),
+        &file_digest
+    );
+    assert!(inventory.verified_orphans.is_empty());
+    assert_eq!(
+        fs::read(
+            data.join("artifact-storage/artifacts")
+                .join(file_digest.as_str())
+        )
+        .expect("read single-file bytes"),
+        file_bytes
+    );
+    assert_eq!(
+        fs::read(
+            data.join("artifact-storage/sets")
+                .join(format!(
+                    "set-v1-{}",
+                    set_result.key.artifact_set_id().digest().as_str()
+                ))
+                .join("config.json")
+        )
+        .expect("read set member"),
+        b"{}"
+    );
+    let store = ArtifactStateStore::open_existing_read_only(&data.join("artifact-state.sqlite3"))
+        .expect("read repository state");
+    assert!(
+        store
+            .artifact_set_installation(&set_manifest.artifact_set_id())
+            .expect("set installation after sibling import")
+            .is_some()
     );
 }

@@ -86,6 +86,7 @@ impl PinnedDirectory {
         &self,
         name: &OsStr,
     ) -> Result<Self, ArtifactInventoryError> {
+        self.require_direct_directory_name(name)?;
         let directory = self.open_directory(name).map_err(map_initial_error)?;
         validate_directory_handle(&directory, true)?;
         Ok(Self { handle: directory })
@@ -214,6 +215,7 @@ impl PinnedDirectory {
         let mut options = fs_at::OpenOptions::default();
         options
             .read(true)
+            .follow(false)
             .open_dir_at(&self.handle, Path::new(name))
     }
 
@@ -454,6 +456,14 @@ fn hash_exact_bytes(
             )
             .ok_or(ArtifactInventoryError::ConcurrentModification)?;
         hasher.update(&buffer[..count]);
+    }
+    let mut trailing = [0u8; 1];
+    if file
+        .read(&mut trailing)
+        .map_err(ArtifactInventoryError::StorageIo)?
+        != 0
+    {
+        return Err(ArtifactInventoryError::ConcurrentModification);
     }
     Digest::from_sha256_hex(format!("{:x}", hasher.finalize()))
         .map_err(|_| ArtifactInventoryError::ConcurrentModification)

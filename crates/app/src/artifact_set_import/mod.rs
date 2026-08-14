@@ -2,6 +2,7 @@ mod boundary;
 mod contract;
 mod manifest;
 mod service;
+mod source;
 mod verify;
 
 pub(crate) use service::OfflineArtifactSetImportService;

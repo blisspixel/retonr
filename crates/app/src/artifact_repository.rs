@@ -91,7 +91,7 @@ impl ArtifactRepository {
             service
                 .import(request, cancellation, |_| {})
                 .map(ArtifactRepositoryImportResult::from)
-                .map_err(ArtifactRepositoryError::Import)
+                .map_err(crate::artifact_repository::contract::map_import_error)
         })();
         finish_operation(result, guard.recheck())
     }
@@ -206,7 +206,7 @@ impl ArtifactRepository {
                     |_| {},
                 )
                 .map(ArtifactRepositoryReconciliationResult::from)
-                .map_err(ArtifactRepositoryError::Reconciliation)
+                .map_err(crate::artifact_repository::contract::map_reconciliation_error)
         })();
         finish_operation(result, guard.recheck())
     }

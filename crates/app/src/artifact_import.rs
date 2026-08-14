@@ -141,11 +141,12 @@ impl<'a> OfflineArtifactImportService<'a> {
             .artifact_removal_state(&request.manifest.artifact_id)
             .map_err(ArtifactImportError::State)?;
         if current.is_none()
-            && removal.is_some_and(|value| {
-                value.phase == rewrite_model_store::ArtifactRemovalPhase::Prepared
-            })
+            && let Some(value) = removal
+                .filter(|value| value.phase == rewrite_model_store::ArtifactRemovalPhase::Prepared)
         {
-            return Err(ArtifactImportError::RemovalPending);
+            return Err(ArtifactImportError::RemovalPending {
+                selection: Some(value.selection),
+            });
         }
         report_progress(
             &mut progress,
@@ -353,7 +354,9 @@ impl<'a> OfflineArtifactImportService<'a> {
 
 fn map_state_error(error: rewrite_model_store::StoreError) -> ArtifactImportError {
     match error {
-        rewrite_model_store::StoreError::RemovalPending => ArtifactImportError::RemovalPending,
+        rewrite_model_store::StoreError::RemovalPending => {
+            ArtifactImportError::RemovalPending { selection: None }
+        }
         other => ArtifactImportError::State(other),
     }
 }

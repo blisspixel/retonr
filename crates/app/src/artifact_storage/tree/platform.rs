@@ -20,7 +20,10 @@ pub(super) fn open_directory_for_publish(parent: &File, name: &OsStr) -> io::Res
 #[cfg(windows)]
 pub(super) fn open_directory_for_publish(parent: &File, name: &OsStr) -> io::Result<File> {
     let mut options = fs_at::OpenOptions::default();
-    options.read(true).open_dir_at(parent, Path::new(name))
+    options
+        .read(true)
+        .follow(false)
+        .open_dir_at(parent, Path::new(name))
 }
 
 #[cfg(unix)]

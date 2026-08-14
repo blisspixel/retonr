@@ -20,6 +20,11 @@ pub(super) fn remove_verified_file(
     name: &OsStr,
     held: File,
 ) -> Result<(), ArtifactInventoryError> {
+    let expected = crate::artifact_storage::fingerprint_std_file(&held)?;
+    let current = directory.child_file_fingerprint(name)?;
+    if !current.same_identity(&expected) {
+        return Err(ArtifactInventoryError::ConcurrentModification);
+    }
     directory.remove_file(name)?;
     drop(held);
     Ok(())
@@ -119,15 +124,39 @@ pub(in crate::artifact_storage) fn create_directory_exclusive(
     rustix::fs::mkdirat(parent, name, Mode::RUSR | Mode::WUSR | Mode::XUSR)
         .map_err(io::Error::from)
         .map_err(map_initial_error)?;
-    rustix::fs::openat(
+    let file = match rustix::fs::openat(
         parent,
         name,
         OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
         Mode::empty(),
-    )
-    .map(File::from)
-    .map_err(io::Error::from)
-    .map_err(map_initial_error)
+    ) {
+        Ok(file) => File::from(file),
+        Err(error) => {
+            let _ = rustix::fs::unlinkat(parent, name, rustix::fs::AtFlags::REMOVEDIR);
+            return Err(map_initial_error(io::Error::from(error)));
+        }
+    };
+    if directory_handle_is_empty(&file)? {
+        Ok(file)
+    } else {
+        Err(ArtifactInventoryError::ConcurrentModification)
+    }
+}
+
+#[cfg(unix)]
+fn directory_handle_is_empty(file: &File) -> Result<bool, ArtifactInventoryError> {
+    use rustix::fs::Dir;
+
+    let mut directory = Dir::read_from(file)
+        .map_err(io::Error::from)
+        .map_err(map_initial_error)?;
+    for entry in &mut directory {
+        let entry = entry.map_err(io::Error::from).map_err(map_initial_error)?;
+        if !matches!(entry.file_name().to_bytes(), b"." | b"..") {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 #[cfg(windows)]

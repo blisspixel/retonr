@@ -1,7 +1,8 @@
+#[cfg(test)]
+use std::path::Path;
 use std::{
     ffi::{OsStr, OsString},
-    fs::{self, File, TryLockError},
-    path::{Path, PathBuf},
+    fs::{File, TryLockError},
 };
 
 use rewrite_model::ArtifactSetManifest;
@@ -10,7 +11,7 @@ use rewrite_types::CancellationToken;
 
 use crate::artifact_storage::{
     ExactEntryCapacity, LIFECYCLE_LOCK_FILE, ManagedTreeLimits, OwnedStagingTree, PinnedDirectory,
-    fingerprint_std_file, is_indirect,
+    fingerprint_std_file,
 };
 
 use super::{
@@ -20,6 +21,7 @@ use super::{
     boundary::{map_managed_tree, map_set_capacity, map_staging, map_storage_open},
     manifest::validate_manifest_and_limits,
     report_progress,
+    source::{PinnedSourceTree, fail_with_cleanup, validate_limit_shape},
     verify::{copy_and_verify_source, validate_staged_snapshot, verify_final_tree},
 };
 
@@ -200,7 +202,13 @@ impl<'a> OfflineArtifactSetImportService<'a> {
             )?,
         };
 
-        verify_final_tree(&final_root, &request.manifest, &plan, tree_limits)?;
+        verify_final_tree(
+            &final_root,
+            &request.manifest,
+            &plan,
+            tree_limits,
+            &CancellationToken::new(),
+        )?;
         self.recheck_final_root(&final_name, &final_root)?;
         self.validate_storage_layout()?;
         let state = self
@@ -279,7 +287,9 @@ impl<'a> OfflineArtifactSetImportService<'a> {
         }
         drop(snapshot);
         let synced = staging.into_synced().map_err(map_managed_tree)?;
-        if let Err(error) = verify_final_tree(synced.root(), manifest, plan, tree_limits) {
+        if let Err(error) =
+            verify_final_tree(synced.root(), manifest, plan, tree_limits, cancellation)
+        {
             return match synced.cleanup() {
                 Ok(()) => Err(error),
                 Err(cleanup) => Err(map_managed_tree(cleanup)),
@@ -440,77 +450,6 @@ impl<'a> OfflineArtifactSetImportService<'a> {
         } else {
             Err(ArtifactSetImportError::StorageChanged)
         }
-    }
-}
-
-struct PinnedSourceTree {
-    path: PathBuf,
-    directory: PinnedDirectory,
-}
-
-impl PinnedSourceTree {
-    fn open(path: &Path) -> Result<Self, ArtifactSetImportError> {
-        let path = std::path::absolute(path).map_err(ArtifactSetImportError::SourceIo)?;
-        let metadata = fs::symlink_metadata(&path).map_err(ArtifactSetImportError::SourceIo)?;
-        if is_indirect(&metadata) {
-            return Err(ArtifactSetImportError::IndirectSource);
-        }
-        if !metadata.is_dir() {
-            return Err(ArtifactSetImportError::SourceNotDirectory);
-        }
-        let directory = PinnedDirectory::open_existing(&path).map_err(|error| match error {
-            crate::ArtifactInventoryError::StorageIo(error) => {
-                ArtifactSetImportError::SourceIo(error)
-            }
-            _ => ArtifactSetImportError::UnsafeSourceTree,
-        })?;
-        let source = Self { path, directory };
-        source.recheck()?;
-        Ok(source)
-    }
-
-    fn recheck(&self) -> Result<(), ArtifactSetImportError> {
-        let held = self.directory.fingerprint().map_err(map_source_boundary)?;
-        let current = PinnedDirectory::fingerprint_path(&self.path).map_err(map_source_boundary)?;
-        if held == current {
-            Ok(())
-        } else {
-            Err(ArtifactSetImportError::StorageChanged)
-        }
-    }
-}
-
-fn fail_with_cleanup<T>(
-    staging: OwnedStagingTree,
-    original: ArtifactSetImportError,
-) -> Result<T, ArtifactSetImportError> {
-    match staging.cleanup() {
-        Ok(()) => Err(original),
-        Err(error) => Err(map_managed_tree(error)),
-    }
-}
-
-fn map_source_boundary(error: crate::ArtifactInventoryError) -> ArtifactSetImportError {
-    match error {
-        crate::ArtifactInventoryError::StorageIo(error) => ArtifactSetImportError::SourceIo(error),
-        crate::ArtifactInventoryError::ConcurrentModification => {
-            ArtifactSetImportError::StorageChanged
-        }
-        _ => ArtifactSetImportError::UnsafeSourceTree,
-    }
-}
-
-fn validate_limit_shape(limits: ArtifactSetImportLimits) -> Result<(), ArtifactSetImportError> {
-    if limits.maximum_members == 0
-        || limits.maximum_member_bytes == 0
-        || limits.maximum_total_bytes == 0
-        || limits.maximum_tree_entries == 0
-        || limits.maximum_storage_entries == 0
-        || limits.maximum_staging_entries == 0
-    {
-        Err(ArtifactSetImportError::InvalidLimits)
-    } else {
-        Ok(())
     }
 }
 

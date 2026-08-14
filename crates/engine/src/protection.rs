@@ -14,7 +14,8 @@ static EMAIL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
         .expect("static email regex must compile")
 });
 static NUMBER_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[$€£]?\d[\d,]*(?:\.\d+)?%?").expect("static number regex must compile")
+    Regex::new(r"[$€£]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?")
+        .expect("static number regex must compile")
 });
 static SENTINEL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\{\{PROTECTED_[A-Z_]+_\d{4}\}\}").expect("static sentinel regex must compile")

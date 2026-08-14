@@ -75,6 +75,18 @@ impl<'a> ArtifactOrphanReconciliationService<'a> {
         ensure_not_cancelled(cancellation)?;
         validate_manifest(&request.manifest, self.limits)?;
         self.storage.validate_layout().map_err(map_storage_error)?;
+        let (current, removal) = self
+            .store
+            .artifact_removal_state(&request.manifest.artifact_id)
+            .map_err(map_store_error)?;
+        if current.is_none()
+            && let Some(value) = removal
+                .filter(|value| value.phase == rewrite_model_store::ArtifactRemovalPhase::Prepared)
+        {
+            return Err(ArtifactReconciliationError::RemovalPending {
+                selection: Some(value.selection),
+            });
+        }
         let total = request.manifest.byte_size;
         report_progress(
             &mut progress,
@@ -227,7 +239,9 @@ fn map_verification_error(error: ExactArtifactVerificationError) -> ArtifactReco
 fn map_store_error(error: StoreError) -> ArtifactReconciliationError {
     match error {
         StoreError::ImmutableConflict => ArtifactReconciliationError::StateConflict,
-        StoreError::RemovalPending => ArtifactReconciliationError::RemovalPending,
+        StoreError::RemovalPending => {
+            ArtifactReconciliationError::RemovalPending { selection: None }
+        }
         error @ (StoreError::Serialization(_)
         | StoreError::InvalidManifest(_)
         | StoreError::InvalidInstallation(_)

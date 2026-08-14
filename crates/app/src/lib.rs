@@ -126,21 +126,42 @@ impl CandidateCheckService {
     /// Returns [`AppError`] for unsupported input or an operational engine
     /// failure. Candidate policy rejection is returned as a successful abstention.
     pub fn check(request: CandidateCheckRequest) -> Result<CandidateCheckResult, AppError> {
-        if request.candidate.len() > MAX_CANDIDATE_CHECK_BYTES {
+        Self::check_with_cancellation(request, &CancellationToken::new())
+    }
+
+    /// Checks one candidate and observes cancellation before engine work.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError`] for unsupported input or an operational engine
+    /// failure. Cancellation is a successful abstention.
+    pub fn check_with_cancellation(
+        request: CandidateCheckRequest,
+        cancellation: &CancellationToken,
+    ) -> Result<CandidateCheckResult, AppError> {
+        let candidate = strip_utf8_bom_prefix(&request.candidate);
+        if candidate.len() > MAX_CANDIDATE_CHECK_BYTES {
             return Err(AppError::CandidateTooLarge {
-                actual: request.candidate.len(),
+                actual: candidate.len(),
                 maximum: MAX_CANDIDATE_CHECK_BYTES,
             });
         }
         let parsed = TextAdapter::parse(&request.source)?;
-        let generator = ProvidedCandidateGenerator::new(vec![request.candidate]);
+        let generator = ProvidedCandidateGenerator::new(vec![candidate]);
         let options = RewriteOptions {
             mode: RewriteMode::Literal,
             protected_terms: request.protected_terms,
             ..RewriteOptions::default()
         };
-        run_plain_text_transaction(&parsed, &generator, &options, &CancellationToken::new())
+        run_plain_text_transaction(&parsed, &generator, &options, cancellation)
     }
+}
+
+fn strip_utf8_bom_prefix(candidate: &str) -> String {
+    candidate
+        .strip_prefix('\u{FEFF}')
+        .unwrap_or(candidate)
+        .to_owned()
 }
 
 fn run_plain_text_transaction(
@@ -219,7 +240,7 @@ mod tests {
     fn accepts_punctuation_and_preserves_bom_and_newline() {
         let result = CandidateCheckService::check(request(
             b"\xEF\xBB\xBFHello world\r\n",
-            "Hello, world!\r\n",
+            "\u{feff}Hello, world!\r\n",
         ))
         .expect("valid deterministic request");
         assert_eq!(result.record.status, RewriteStatus::Rewritten);
@@ -278,6 +299,22 @@ mod tests {
             .expect("unsafe candidate is a policy rejection");
         assert_eq!(result.record.reason, Some(ReasonCode::UnsafeText));
         assert_eq!(result.output, source);
+    }
+
+    #[test]
+    fn cancelled_check_abstains_without_rewriting() {
+        use rewrite_types::CancellationToken;
+
+        let cancellation = CancellationToken::new();
+        cancellation.cancel();
+        let result = CandidateCheckService::check_with_cancellation(
+            request(b"Hello world", "Hello, world!"),
+            &cancellation,
+        )
+        .expect("cancellation is a policy outcome");
+        assert_eq!(result.record.status, RewriteStatus::Abstained);
+        assert_eq!(result.record.reason, Some(ReasonCode::Cancelled));
+        assert_eq!(result.output, b"Hello world");
     }
 
     #[test]

@@ -496,7 +496,7 @@ fn import_error_kind(error: &ArtifactImportError) -> ArtifactRepositoryErrorKind
         | Error::StorageConflict => Kind::Conflict,
         Error::SourceIo(_) | Error::StorageIo(_) => Kind::Operational,
         Error::State(error) => store_error_kind(error),
-        Error::RemovalPending => Kind::RecoveryRequired,
+        Error::RemovalPending { .. } => Kind::RecoveryRequired,
     }
 }
 
@@ -534,7 +534,7 @@ fn reconciliation_error_kind(error: &ArtifactReconciliationError) -> ArtifactRep
         }
         Error::StorageIo(_) | Error::State(_) => Kind::Operational,
         Error::StateCorrupt(_) => Kind::CorruptState,
-        Error::RemovalPending => Kind::RecoveryRequired,
+        Error::RemovalPending { .. } => Kind::RecoveryRequired,
     }
 }
 
@@ -555,5 +555,29 @@ fn removal_error_kind(error: &ArtifactRemovalError) -> ArtifactRepositoryErrorKi
         Error::StorageIo(_) | Error::State(_) => Kind::Operational,
         Error::StateCorrupt(_) => Kind::CorruptState,
         Error::RecoveryRequired(_) => Kind::RecoveryRequired,
+    }
+}
+
+pub(super) fn map_import_error(error: crate::ArtifactImportError) -> ArtifactRepositoryError {
+    match error {
+        crate::ArtifactImportError::RemovalPending {
+            selection: Some(selection),
+        } => ArtifactRepositoryError::RemovalRecoveryPending {
+            key: ArtifactInstallationKey::from_stored(&selection),
+        },
+        other => ArtifactRepositoryError::Import(other),
+    }
+}
+
+pub(super) fn map_reconciliation_error(
+    error: crate::ArtifactReconciliationError,
+) -> ArtifactRepositoryError {
+    match error {
+        crate::ArtifactReconciliationError::RemovalPending {
+            selection: Some(selection),
+        } => ArtifactRepositoryError::RemovalRecoveryPending {
+            key: ArtifactInstallationKey::from_stored(&selection),
+        },
+        other => ArtifactRepositoryError::Reconciliation(other),
     }
 }

@@ -12,6 +12,8 @@ use super::{
 
 #[path = "service_tests/adversarial.rs"]
 mod adversarial;
+#[path = "service_tests/source_and_layout.rs"]
+mod source_and_layout;
 
 fn member(path: &str, bytes: &[u8]) -> ArtifactSetMember {
     ArtifactSetMember::new(
@@ -28,6 +30,26 @@ fn manifest() -> ArtifactSetManifest {
         member("model/weights.bin", b"weights"),
     ])
     .expect("fixture manifest")
+}
+
+fn request(source_root: &std::path::Path) -> OfflineArtifactSetImportRequest {
+    OfflineArtifactSetImportRequest {
+        source_root: source_root.to_path_buf(),
+        manifest: manifest(),
+    }
+}
+
+fn storage_key(manifest: &ArtifactSetManifest) -> String {
+    format!("set-v1-{}", manifest.artifact_set_id().digest().as_str())
+}
+
+fn assert_no_state(store: &ArtifactStateStore, manifest: &ArtifactSetManifest) {
+    assert!(
+        store
+            .artifact_set_installation(&manifest.artifact_set_id())
+            .expect("read artifact-set installation")
+            .is_none()
+    );
 }
 
 fn write_source(root: &std::path::Path) {
@@ -142,6 +164,23 @@ fn registers_an_exact_published_orphan_without_recopying() {
         ArtifactSetImportDisposition::RegisteredExisting
     );
     assert_eq!(result.state.installed, WriteDisposition::Inserted);
+    assert_eq!(
+        fs::read(
+            storage
+                .join("sets")
+                .join(result.installed.storage_key())
+                .join("model/weights.bin")
+        )
+        .expect("read unrecreated orphan member"),
+        b"weights"
+    );
+    assert!(
+        fs::read_dir(storage.join(".set-staging"))
+            .expect("staging directory")
+            .next()
+            .is_none(),
+        "orphan registration must not restage the published tree"
+    );
 }
 
 #[test]
@@ -247,6 +286,69 @@ fn final_callback_cancellation_cleans_the_owned_stage_before_publication() {
             .expect("read state")
             .is_none()
     );
+}
+
+#[test]
+fn source_root_must_be_a_direct_directory() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.bin");
+    fs::write(&source, b"not-a-directory").expect("write file source");
+    let mut store =
+        ArtifactStateStore::open(&directory.path().join("state.sqlite3")).expect("state store");
+    let mut service = OfflineArtifactSetImportService::open(
+        directory.path().join("storage"),
+        &mut store,
+        limits(),
+    )
+    .expect("service");
+
+    assert!(matches!(
+        service.import(
+            &OfflineArtifactSetImportRequest {
+                source_root: source,
+                manifest: manifest(),
+            },
+            &CancellationToken::new(),
+            |_| {},
+        ),
+        Err(ArtifactSetImportError::SourceNotDirectory)
+    ));
+}
+
+#[cfg(windows)]
+#[test]
+fn source_root_junction_is_rejected() {
+    use std::os::windows::fs::symlink_dir;
+
+    let directory = tempdir().expect("temporary directory");
+    let real_source = directory.path().join("real-source");
+    let linked = directory.path().join("linked-source");
+    write_source(&real_source);
+    match symlink_dir(&real_source, &linked) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => return,
+        Err(error) => panic!("create source-root junction: {error}"),
+    }
+    let mut store =
+        ArtifactStateStore::open(&directory.path().join("state.sqlite3")).expect("state store");
+    let mut service = OfflineArtifactSetImportService::open(
+        directory.path().join("storage"),
+        &mut store,
+        limits(),
+    )
+    .expect("service");
+
+    assert!(matches!(
+        service.import(
+            &OfflineArtifactSetImportRequest {
+                source_root: linked,
+                manifest: manifest(),
+            },
+            &CancellationToken::new(),
+            |_| {},
+        ),
+        Err(ArtifactSetImportError::IndirectSource)
+    ));
 }
 
 #[cfg(unix)]

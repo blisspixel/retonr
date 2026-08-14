@@ -13,7 +13,7 @@ pub(super) fn map_storage_open(error: ArtifactInventoryError) -> ArtifactSetImpo
         ArtifactInventoryError::StorageEntryLimitExceeded
         | ArtifactInventoryError::StateEntryLimitExceeded
         | ArtifactInventoryError::TotalVerificationLimitExceeded => {
-            ArtifactSetImportError::StorageConflict
+            ArtifactSetImportError::StorageEntryLimitExceeded
         }
         ArtifactInventoryError::Cancelled => ArtifactSetImportError::Cancelled,
         ArtifactInventoryError::ConcurrentModification => ArtifactSetImportError::StorageChanged,

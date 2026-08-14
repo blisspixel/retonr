@@ -1,30 +1,10 @@
-use std::{fs, path::Path};
+use std::fs;
 
 use rusqlite::Connection;
 use tempfile::tempdir;
 
 use super::*;
 use crate::artifact_storage::{ManagedTreeLimits, PinnedDirectory};
-
-fn request(source_root: &Path) -> OfflineArtifactSetImportRequest {
-    OfflineArtifactSetImportRequest {
-        source_root: source_root.to_path_buf(),
-        manifest: manifest(),
-    }
-}
-
-fn storage_key(manifest: &ArtifactSetManifest) -> String {
-    format!("set-v1-{}", manifest.artifact_set_id().digest().as_str())
-}
-
-fn assert_no_state(store: &ArtifactStateStore, manifest: &ArtifactSetManifest) {
-    assert!(
-        store
-            .artifact_set_installation(&manifest.artifact_set_id())
-            .expect("read artifact-set installation")
-            .is_none()
-    );
-}
 
 #[test]
 fn destination_race_never_replaces_the_winner_or_registers_state() {

@@ -102,13 +102,14 @@ pub(super) fn verify_final_tree(
     manifest: &ArtifactSetManifest,
     plan: &ValidatedSetPlan,
     limits: ManagedTreeLimits,
+    cancellation: &CancellationToken,
 ) -> Result<(), ArtifactSetImportError> {
-    let cancellation = CancellationToken::new();
     let before = root
-        .enumerate_tree(limits, &cancellation)
+        .enumerate_tree(limits, cancellation)
         .map_err(map_managed_tree)?;
     validate_tree_shape(&before, manifest, plan, true, false)?;
     for member in manifest.members() {
+        ensure_not_cancelled(cancellation)?;
         let mut opened = root
             .open_relative_regular_file(member.relative_path())
             .map_err(map_managed_tree)?;
@@ -119,7 +120,7 @@ pub(super) fn verify_final_tree(
             &mut opened.file,
             None,
             member.byte_size(),
-            &cancellation,
+            cancellation,
             ReadContext::Managed,
         )?;
         if &observed != member.artifact_id().digest() {
@@ -132,7 +133,7 @@ pub(super) fn verify_final_tree(
             .map_err(map_managed_tree)?;
     }
     let after = root
-        .enumerate_tree(limits, &cancellation)
+        .enumerate_tree(limits, cancellation)
         .map_err(map_managed_tree)?;
     if before == after {
         Ok(())
@@ -219,6 +220,15 @@ fn hash_exact_member(
             .checked_add(u64::try_from(count).map_err(|_| context.size_error())?)
             .ok_or_else(|| context.size_error())?;
         hasher.update(&buffer[..count]);
+    }
+    if let Some(destination) = destination {
+        let written = destination
+            .metadata()
+            .map_err(ArtifactSetImportError::StorageIo)?
+            .len();
+        if written != expected_size {
+            return Err(ArtifactSetImportError::StorageChanged);
+        }
     }
     let mut trailing = [0u8; 1];
     if source

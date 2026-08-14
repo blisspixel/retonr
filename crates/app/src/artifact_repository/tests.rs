@@ -234,6 +234,38 @@ fn prepared_removal_requires_explicit_exact_recovery() {
 }
 
 #[test]
+fn prepared_removal_blocks_import_with_the_recovery_key() {
+    let (directory, repository, imported) = imported_repository();
+    let mut store = ArtifactStateStore::open_existing_and_migrate(&repository.state_database())
+        .expect("open state to simulate abrupt exit after preparation");
+    let (selection, _) = store
+        .artifact_removal_state(imported.key.artifact_id())
+        .expect("load installation selection");
+    crate::artifact_storage::test_support::prepare_artifact_removal(
+        &repository.managed_storage(),
+        &mut store,
+        &selection.expect("installed selection"),
+    )
+    .expect("prepare removal");
+    drop(store);
+
+    let source = directory.path().join("retry.gguf");
+    fs::write(&source, ARTIFACT_BYTES).expect("write retry source");
+    let error = repository
+        .import(
+            &OfflineArtifactImportRequest {
+                source,
+                manifest: manifest(),
+            },
+            import_limits(),
+            &CancellationToken::new(),
+        )
+        .expect_err("import must not hide a prepared removal");
+    assert_eq!(error.recovery_key(), Some(&imported.key));
+    assert_eq!(error.kind(), ArtifactRepositoryErrorKind::RecoveryRequired);
+}
+
+#[test]
 fn pending_operation_inspection_is_read_only_bounded_and_cancellable() {
     let (_directory, repository, imported) = imported_repository();
     let mut store = ArtifactStateStore::open_existing_and_migrate(&repository.state_database())

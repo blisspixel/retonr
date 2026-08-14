@@ -73,11 +73,23 @@ impl PinnedDirectory {
             .is_some_and(|entry| entry.direct_regular_file && !entry.indirect))
     }
 
+    pub(crate) fn require_direct_directory_name(
+        &self,
+        name: &OsStr,
+    ) -> Result<(), ArtifactInventoryError> {
+        match inspect_entry(&self.handle, name)? {
+            None => Ok(()),
+            Some(entry) if !entry.indirect && !entry.direct_regular_file => Ok(()),
+            Some(_) => Err(ArtifactInventoryError::UnsafeStorageLayout),
+        }
+    }
+
     pub(crate) fn ensure_child_directory(
         &self,
         name: &OsStr,
     ) -> Result<Self, ArtifactInventoryError> {
         create_directory(&self.handle, name)?;
+        self.require_direct_directory_name(name)?;
         let directory = self.open_directory(name).map_err(map_initial_error)?;
         validate_directory_handle(&directory, true)?;
         #[cfg(unix)]

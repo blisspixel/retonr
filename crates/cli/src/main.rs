@@ -5,19 +5,21 @@
 
 use std::{
     ffi::OsString,
-    fs::File,
     io::{self, Read, Write},
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use clap::{Parser, Subcommand, error::ErrorKind};
-use rewrite_app::{CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES};
+use rewrite_app::{
+    AppError, CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES,
+};
 use rewrite_types::{CancellationToken, ReasonCode, RewriteRecord, RewriteStatus};
 
 use crate::contract::{
-    CommandName, EXIT_OPERATIONAL, EXIT_POLICY, ErrorBody, ErrorCategory, ErrorCode, ErrorEnvelope,
-    ReportFormat, SuccessEnvelope,
+    CommandName, EXIT_CANCELLED, EXIT_COMPATIBILITY, EXIT_OPERATIONAL, EXIT_POLICY, EXIT_USAGE,
+    ErrorBody, ErrorCategory, ErrorCode, ErrorEnvelope, ReportFormat, SuccessEnvelope,
+    open_regular_file,
 };
 use crate::model::{ModelCommand, ModelFailure};
 
@@ -108,21 +110,28 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             protected_terms,
             fail_on_abstain,
         } => {
+            let cancellation = CancellationToken::new();
+            let signal_cancellation = cancellation.clone();
+            ctrlc::try_set_handler(move || signal_cancellation.cancel())
+                .map_err(|_| (RunFailure::operational(CommandName::Check), format))?;
             let source_bytes = read_file_bounded(&source, MAX_CANDIDATE_CHECK_BYTES)
-                .map_err(|_| (RunFailure::operational(CommandName::Check), format))?;
+                .map_err(|error| (RunFailure::check_read(&error), format))?;
             let candidate_bytes = read_file_bounded(&candidate, MAX_CANDIDATE_CHECK_BYTES)
-                .map_err(|_| (RunFailure::operational(CommandName::Check), format))?;
+                .map_err(|error| (RunFailure::check_read(&error), format))?;
             let candidate_text = String::from_utf8(candidate_bytes)
                 .map_err(|_| (RunFailure::usage_for(CommandName::Check), format))?;
-            let result = CandidateCheckService::check(CandidateCheckRequest {
-                source: source_bytes,
-                candidate: candidate_text,
-                protected_terms,
-            })
-            .map_err(|_| (RunFailure::operational(CommandName::Check), format))?;
+            let result = CandidateCheckService::check_with_cancellation(
+                CandidateCheckRequest {
+                    source: source_bytes,
+                    candidate: candidate_text,
+                    protected_terms,
+                },
+                &cancellation,
+            )
+            .map_err(|error| (RunFailure::check_app(&error), format))?;
             write_report(&result.record, format)
                 .map_err(|_| (RunFailure::operational(CommandName::Check), format))?;
-            Ok(exit_code(result.record.status, fail_on_abstain))
+            Ok(exit_code(&result.record, fail_on_abstain))
         }
         Command::Model { command } => {
             let command_name = command.name();
@@ -146,7 +155,7 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
 }
 
 fn read_file_bounded(path: &Path, limit: usize) -> io::Result<Vec<u8>> {
-    read_bounded(File::open(path)?, limit)
+    read_bounded(open_regular_file(path)?, limit)
 }
 
 fn read_bounded(reader: impl Read, limit: usize) -> io::Result<Vec<u8>> {
@@ -246,6 +255,68 @@ impl RunFailure {
         }
     }
 
+    fn check_read(error: &io::Error) -> Self {
+        if error.kind() == io::ErrorKind::InvalidInput {
+            return Self {
+                command: CommandName::Check,
+                body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InputUnreadable, false),
+                exit_code: ExitCode::from(EXIT_USAGE),
+                message: "input must be a regular file",
+            };
+        }
+        if error.kind() == io::ErrorKind::InvalidData {
+            Self {
+                command: CommandName::Check,
+                body: ErrorBody::new(
+                    ErrorCategory::Compatibility,
+                    ErrorCode::ResourceLimitExceeded,
+                    false,
+                ),
+                exit_code: ExitCode::from(EXIT_COMPATIBILITY),
+                message: "input exceeds the supported byte limit",
+            }
+        } else {
+            Self {
+                command: CommandName::Check,
+                body: ErrorBody::new(
+                    ErrorCategory::Operational,
+                    ErrorCode::InputUnreadable,
+                    false,
+                ),
+                exit_code: ExitCode::from(EXIT_OPERATIONAL),
+                message: "input could not be read",
+            }
+        }
+    }
+
+    fn check_app(error: &AppError) -> Self {
+        match error {
+            AppError::CandidateTooLarge { .. } => Self {
+                command: CommandName::Check,
+                body: ErrorBody::new(
+                    ErrorCategory::Compatibility,
+                    ErrorCode::ResourceLimitExceeded,
+                    false,
+                ),
+                exit_code: ExitCode::from(EXIT_COMPATIBILITY),
+                message: "input exceeds the supported byte limit",
+            },
+            AppError::TextAdapter(_) => Self {
+                command: CommandName::Check,
+                body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InputUnreadable, false),
+                exit_code: ExitCode::from(EXIT_USAGE),
+                message: "source text is not a supported UTF-8 document",
+            },
+            AppError::Engine(_) | AppError::Protection(_) => Self {
+                command: CommandName::Check,
+                body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InvalidInvocation, false),
+                exit_code: ExitCode::from(EXIT_USAGE),
+                message: "command input is invalid",
+            },
+            AppError::Grounded(_) => Self::operational(CommandName::Check),
+        }
+    }
+
     fn from_model(error: ModelFailure) -> Self {
         Self {
             command: error.command,
@@ -290,7 +361,18 @@ fn requested_format(arguments: &[OsString]) -> ReportFormat {
     ReportFormat::Json
 }
 
-fn exit_code(status: RewriteStatus, fail_on_abstain: bool) -> ExitCode {
+fn exit_code(record: &RewriteRecord, fail_on_abstain: bool) -> ExitCode {
+    exit_status(record.status, record.reason, fail_on_abstain)
+}
+
+fn exit_status(
+    status: RewriteStatus,
+    reason: Option<ReasonCode>,
+    fail_on_abstain: bool,
+) -> ExitCode {
+    if reason == Some(ReasonCode::Cancelled) {
+        return ExitCode::from(EXIT_CANCELLED);
+    }
     match status {
         RewriteStatus::Failed => ExitCode::FAILURE,
         RewriteStatus::Abstained if fail_on_abstain => ExitCode::from(EXIT_POLICY),
@@ -331,21 +413,31 @@ mod tests {
 
     use rewrite_types::{ReasonCode, RewriteStatus};
 
-    use super::{exit_code, read_bounded, reason_name, status_name};
-    use crate::contract::EXIT_POLICY;
+    use super::{exit_status, read_bounded, reason_name, status_name};
+    use crate::contract::{EXIT_CANCELLED, EXIT_POLICY};
 
     #[test]
     fn stable_exit_code_policy() {
-        assert_eq!(exit_code(RewriteStatus::Rewritten, true), ExitCode::SUCCESS);
         assert_eq!(
-            exit_code(RewriteStatus::Abstained, true),
+            exit_status(RewriteStatus::Rewritten, None, true),
+            ExitCode::SUCCESS
+        );
+        assert_eq!(
+            exit_status(RewriteStatus::Abstained, None, true),
             ExitCode::from(EXIT_POLICY)
         );
         assert_eq!(
-            exit_code(RewriteStatus::Abstained, false),
+            exit_status(RewriteStatus::Abstained, None, false),
             ExitCode::SUCCESS
         );
-        assert_eq!(exit_code(RewriteStatus::Failed, false), ExitCode::FAILURE);
+        assert_eq!(
+            exit_status(RewriteStatus::Failed, None, false),
+            ExitCode::FAILURE
+        );
+        assert_eq!(
+            exit_status(RewriteStatus::Abstained, Some(ReasonCode::Cancelled), false),
+            ExitCode::from(EXIT_CANCELLED)
+        );
     }
 
     #[test]
@@ -354,6 +446,39 @@ mod tests {
         assert_eq!(
             reason_name(ReasonCode::ProtectedValueChanged),
             "protected_value_changed"
+        );
+    }
+
+    #[test]
+    fn check_read_classifies_limit_and_missing_inputs() {
+        use super::RunFailure;
+        use crate::contract::{CommandName, ErrorBody, ErrorCategory, ErrorCode};
+
+        let limit = RunFailure::check_read(&std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "input exceeds the supported byte limit",
+        ));
+        assert_eq!(limit.command, CommandName::Check);
+        assert_eq!(
+            limit.body,
+            ErrorBody::new(
+                ErrorCategory::Compatibility,
+                ErrorCode::ResourceLimitExceeded,
+                false
+            )
+        );
+
+        let missing = RunFailure::check_read(&std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "missing",
+        ));
+        assert_eq!(
+            missing.body,
+            ErrorBody::new(
+                ErrorCategory::Operational,
+                ErrorCode::InputUnreadable,
+                false
+            )
         );
     }
 
