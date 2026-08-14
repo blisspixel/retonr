@@ -131,6 +131,16 @@ async fn discovers_only_exact_bound_generation_models() {
     assert_eq!(discovery.inventory.len(), 1);
     assert_eq!(discovery.inventory[0].artifact_digest.as_str(), DIGEST);
     assert_eq!(
+        discovery.capabilities.roles,
+        vec![rewrite_model::ArtifactRole::Generation]
+    );
+    assert!(
+        !discovery
+            .capabilities
+            .roles
+            .contains(&rewrite_model::ArtifactRole::ClaimExtraction)
+    );
+    assert_eq!(
         discovery.capabilities.admitted_output_contract_digests,
         vec![candidate_output_contract().schema_digest]
     );

@@ -134,6 +134,28 @@ fn persists_and_recovers_an_exact_active_binding() {
 }
 
 #[test]
+fn qualification_schema_one_cannot_persist_claim_extraction_authority() {
+    let directory = tempdir().expect("temporary directory");
+    let path = directory.path().join("artifacts.sqlite3");
+    let mut fixture = fixture();
+    fixture.manifest.declared_capabilities.roles = vec![ArtifactRole::ClaimExtraction];
+    fixture.qualification.supported_roles = vec![ArtifactRole::ClaimExtraction];
+    let store = ArtifactStateStore::open(&path).expect("open store");
+    assert!(matches!(
+        store.put_qualification(&fixture.qualification),
+        Err(StoreError::InvalidQualification(
+            rewrite_model::QualificationRecordError::UnsupportedRole
+        ))
+    ));
+    assert!(
+        store
+            .artifact_inventory(1)
+            .expect("inventory remains readable")
+            .is_empty()
+    );
+}
+
+#[test]
 fn immutable_records_are_idempotent_but_conflicts_fail() {
     let directory = tempdir().expect("temporary directory");
     let store = ArtifactStateStore::open(&directory.path().join("state.db")).expect("open store");

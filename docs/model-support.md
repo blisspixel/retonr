@@ -233,8 +233,9 @@ compare critical accept, abstain, structured-output, and fidelity decisions. CPU
 Metal, CUDA, HIP, Vulkan, and hybrid execution classes are independent support
 claims, even when they load the same model bytes.
 
-Generator and semantic evaluator roles are qualified independently. The same model
-may fill both only when correlated-error testing supports that decision.
+Generation and claim-extraction roles are qualified independently. The same model
+may fill both only when correlated-error testing supports that decision. Any later
+learned semantic-evaluator role requires its own identity and qualification.
 
 ## Selection and fallback rules
 

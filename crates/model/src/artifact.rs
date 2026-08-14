@@ -44,18 +44,35 @@ pub enum ArtifactRole {
     SpeechSynthesis,
     /// Speech synthesis voice data.
     Voice,
+    /// Structured claim extraction for semantic comparison evidence.
+    ClaimExtraction,
 }
 
 impl ArtifactRole {
     /// Complete supported role set in stable domain order.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Generation,
         Self::Embedding,
         Self::SpeechRecognition,
         Self::VoiceActivityDetection,
         Self::SpeechSynthesis,
         Self::Voice,
+        Self::ClaimExtraction,
     ];
+
+    /// Returns the stable lowercase machine name used by persistence and interfaces.
+    #[must_use]
+    pub const fn machine_name(self) -> &'static str {
+        match self {
+            Self::Generation => "generation",
+            Self::Embedding => "embedding",
+            Self::SpeechRecognition => "speech_recognition",
+            Self::VoiceActivityDetection => "voice_activity_detection",
+            Self::SpeechSynthesis => "speech_synthesis",
+            Self::Voice => "voice",
+            Self::ClaimExtraction => "claim_extraction",
+        }
+    }
 }
 
 /// Immutable upstream origin recorded for an artifact.
@@ -278,5 +295,25 @@ mod tests {
             .roles
             .push(ArtifactRole::Generation);
         assert_eq!(value.validate(), Err(ManifestError::InvalidCapabilities));
+    }
+
+    #[test]
+    fn role_order_and_machine_names_are_append_only() {
+        assert_eq!(
+            ArtifactRole::ALL.map(ArtifactRole::machine_name),
+            [
+                "generation",
+                "embedding",
+                "speech_recognition",
+                "voice_activity_detection",
+                "speech_synthesis",
+                "voice",
+                "claim_extraction",
+            ]
+        );
+        assert_eq!(
+            serde_json::to_string(&ArtifactRole::ClaimExtraction).expect("serialize role"),
+            "\"claim_extraction\""
+        );
     }
 }
