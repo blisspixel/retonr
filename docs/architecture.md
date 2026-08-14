@@ -163,10 +163,13 @@ binding the complete request. Adapters and orchestrators compare the observed ru
 with discovery. Its debug representation retains only identities, limits, usage, and
 byte counts. It does not parse a domain envelope or grant semantic authority.
 
-The Ollama adapter currently admits only the candidate-output contract. A future
-claim extractor receives its own schema, role, effective manifest, application
-orchestrator, and qualification. It will not be hidden behind the synchronous semantic
-port or silently reuse a generation binding.
+The model domain defines a distinct claim-extraction artifact role without activating
+or invoking it. Qualification schema v1 rejects that role because its runtime identity
+is observational rather than a complete runtime-build and effective-state identity.
+The Ollama adapter still admits only generation and the candidate-output contract. A
+future claim extractor receives its own schema, effective manifest, application
+orchestrator, and stronger qualification identity. It will not be hidden behind the
+synchronous semantic port or silently reuse a generation binding.
 
 ## Document representation
 

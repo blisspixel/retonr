@@ -184,6 +184,12 @@ impl QualificationRecord {
         {
             return Err(QualificationRecordError::InvalidRoles);
         }
+        if self
+            .supported_roles
+            .contains(&ArtifactRole::ClaimExtraction)
+        {
+            return Err(QualificationRecordError::UnsupportedRole);
+        }
         if self.source_byte_limit == 0
             || self.context_token_limit == 0
             || self.hardware_tier.memory_mib == 0
@@ -244,6 +250,7 @@ const fn role_identity_byte(role: ArtifactRole) -> u8 {
         ArtifactRole::VoiceActivityDetection => 3,
         ArtifactRole::SpeechSynthesis => 4,
         ArtifactRole::Voice => 5,
+        ArtifactRole::ClaimExtraction => 6,
     }
 }
 
@@ -282,6 +289,10 @@ pub enum QualificationRecordError {
     /// qualified record.
     #[error("qualification roles are invalid")]
     InvalidRoles,
+    /// Qualification schema v1 cannot authorize claim extraction because its
+    /// runtime identity is observational rather than content complete.
+    #[error("qualification schema does not support the requested role")]
+    UnsupportedRole,
     /// Resource bounds or the license and outcome combination are invalid.
     #[error("qualification policy is invalid")]
     InvalidPolicy,
@@ -334,6 +345,18 @@ mod tests {
         let mut rejected = record.clone();
         rejected.status = QualificationStatus::Rejected;
         assert!(!rejected.authorizes(&rejected.artifact_id, ArtifactRole::Generation));
+    }
+
+    #[test]
+    fn schema_one_cannot_authorize_claim_extraction() {
+        let mut extraction = record();
+        extraction.supported_roles = vec![ArtifactRole::ClaimExtraction];
+        assert_eq!(
+            extraction.validate(),
+            Err(super::QualificationRecordError::UnsupportedRole)
+        );
+        assert!(!extraction.authorizes(&extraction.artifact_id, ArtifactRole::ClaimExtraction));
+        assert!(!record().authorizes(&extraction.artifact_id, ArtifactRole::ClaimExtraction));
     }
 
     #[test]

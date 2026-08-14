@@ -70,12 +70,5 @@ fn decode_stored_binding(row: &StoredBindingRow) -> StoreResult<ActiveArtifactBi
 }
 
 pub(super) const fn role_key(role: ArtifactRole) -> &'static str {
-    match role {
-        ArtifactRole::Generation => "generation",
-        ArtifactRole::Embedding => "embedding",
-        ArtifactRole::SpeechRecognition => "speech_recognition",
-        ArtifactRole::VoiceActivityDetection => "voice_activity_detection",
-        ArtifactRole::SpeechSynthesis => "speech_synthesis",
-        ArtifactRole::Voice => "voice",
-    }
+    role.machine_name()
 }

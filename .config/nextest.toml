@@ -1,0 +1,7 @@
+nextest-version = "0.9.143"
+
+[[profile.default.overrides]]
+filter = 'binary_id(retonr-cli::signal_cancellation) and test(=interrupt_requests_typed_import_cancellation_before_registration)'
+platform = { host = 'cfg(windows)' }
+priority = 100
+threads-required = "num-test-threads"

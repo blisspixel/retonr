@@ -14,7 +14,7 @@ or stored-data contracts.
 | `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, and content-redacted typed claim-evidence contracts |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
-| `rewrite-model` | Separate immutable artifact, qualification, invalidation, activation-decision, and active-binding contracts |
+| `rewrite-model` | Separate immutable artifact, qualification, invalidation, activation-decision, and active-binding contracts, including an inert claim-extraction role that qualification schema v1 cannot authorize |
 | `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, opaque exclusive-lock capability requirements for removal transitions, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
@@ -39,9 +39,11 @@ Inference capability discovery now lists sorted, unique schema digests instead o
 generic structured-output Boolean. Grounded generation and evaluation require an
 exact digest match before backend work. The structured-completion port returns only
 one bounded complete JSON value after exact artifact checks; its request and response
-debug views omit prompt and generated content. The current Ollama implementation
-admits only the existing candidate schema. No claim-extraction schema, strategy,
-role, qualification, or application evidence join is implemented.
+debug views omit prompt and generated content. The model domain now has a distinct,
+inert claim-extraction artifact role. The current Ollama implementation still admits
+only generation and the existing candidate schema. No claim-extraction schema,
+effective manifest, strategy, qualifying identity, activation, or application evidence
+join is implemented. Qualification schema v1 explicitly rejects claim extraction.
 
 ## Verified locally
 
@@ -52,6 +54,7 @@ cargo fmt --all -- --check
 cargo check --locked --workspace --all-targets --all-features
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo test --locked --workspace --all-features
+cargo nextest run --locked --workspace --all-features --no-fail-fast
 cargo llvm-cov --locked --workspace --all-features --fail-under-lines 80
 cargo test --locked --workspace --all-features --doc
 cargo doc --locked --workspace --all-features --no-deps
@@ -65,17 +68,18 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 323 Rust unit, integration, and process tests pass. Two process helpers are
+All 327 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.92
+Documentation tests also pass. The measured Rust line coverage is 90.98
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
 supports its libFuzzer execution path on Unix-like targets, so Windows is not
 reported as a local fuzz-execution result. Continuous integration runs both bounded
-targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
-installed in the local environment, so this checkpoint used the documented
-`cargo test` fallback.
+targets under the Linux sanitizer-backed fuzz smoke job. The pinned `cargo-nextest`
+0.9.143 run also passes. Its Windows-only override gives the console-interrupt
+integration test exclusive test-thread capacity because the helper owns process-wide
+console state; the test remains concurrent with the full suite on macOS and Linux.
 
 The provider-neutral structured-completion slice passed at exact-main revision
 `35ed2cdd43afa99a3cca51fed0b2f0e43c693a9a` in the passing
@@ -165,10 +169,11 @@ is:
    cancellation evidence as new consumers are added.
 2. Preserve the completed rewrite-record v2, typed invariant summaries, typed claim
    evidence, and deterministic comparison boundary.
-3. Add the distinct claim-extraction role, exact extractor manifest, strict ephemeral
-   wire contract, and application-level cancellable pair operation. Join evidence to
-   a two-phase engine path only after fake-backend conformance passes, then calibrate
-   it independently from generators in shadow mode.
+3. Preserve the distinct inert claim-extraction role. Next add the exact extractor
+   manifest and strict ephemeral wire contract, followed by an application-level
+   cancellable pair operation. Join evidence to a two-phase engine path only after
+   fake-backend conformance passes, then calibrate it independently from generators
+   in shadow mode.
 4. Add the local evaluation plan, run the currently installed 26B and 27B packages,
    and add the previously observed 8B package only after revalidation or separately
    approved acquisition. Start only after product-path evidence joins are complete.

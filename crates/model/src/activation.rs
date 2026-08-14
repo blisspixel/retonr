@@ -311,6 +311,20 @@ mod tests {
     }
 
     #[test]
+    fn generation_qualification_cannot_activate_claim_extraction() {
+        let (installed, qualification) = fixture();
+        assert_eq!(
+            activate(
+                &installed,
+                &qualification,
+                &[],
+                ArtifactRole::ClaimExtraction,
+            ),
+            Err(ActivationError::UnqualifiedRole)
+        );
+    }
+
+    #[test]
     fn rejects_invalidated_or_mismatched_state() {
         let (installed, qualification) = fixture();
         let invalidation = QualificationInvalidation {

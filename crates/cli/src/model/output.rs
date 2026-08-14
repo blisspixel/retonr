@@ -405,14 +405,7 @@ impl RegisteredBytesSummary {
 }
 
 const fn role_name(role: ArtifactRole) -> &'static str {
-    match role {
-        ArtifactRole::Generation => "generation",
-        ArtifactRole::Embedding => "embedding",
-        ArtifactRole::SpeechRecognition => "speech_recognition",
-        ArtifactRole::VoiceActivityDetection => "voice_activity_detection",
-        ArtifactRole::SpeechSynthesis => "speech_synthesis",
-        ArtifactRole::Voice => "voice",
-    }
+    role.machine_name()
 }
 
 #[cfg(test)]
@@ -465,6 +458,7 @@ mod tests {
                 "voice_activity_detection",
                 "speech_synthesis",
                 "voice",
+                "claim_extraction",
             ]
         );
     }
