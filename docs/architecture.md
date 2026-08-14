@@ -660,8 +660,15 @@ the original path and no-follow behavior so SQLite fails closed. This accepts ma
 system directory aliases without allowing an indirect final database entry. First
 import may reserve and synchronize an
 empty state file and initialize the current schema; ordinary commands never create an
-ambient default or migrate older state. Read-only inventory uses shared authority;
-import, reconciliation, removal, and recovery use exclusive authority. First import
+ambient default or migrate older state. One explicit repository migration operation
+opens only existing state, takes the outer repository and inner storage lifecycle
+locks exclusively, creates a unique backup through the pinned data directory, and
+retains one SQLite write reservation across source validation, a bounded logical copy
+into a rollback-mode snapshot, serialization into the exact held backup handle,
+same-handle verification, synchronization, and the supported forward migration commit.
+A current repository is an exact no-op and creates no
+backup. Read-only inventory uses shared authority; import, migration,
+reconciliation, removal, and recovery use exclusive authority. First import
 creates exactly one missing private leaf below an existing pinned parent
 or accepts an empty existing directory. It refuses a nonempty uninitialized root and
 does not change permissions on a pre-existing caller directory. The facade remains

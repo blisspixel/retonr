@@ -45,6 +45,7 @@ mod open;
 mod removal;
 
 pub use inventory::StoredArtifactState;
+pub(crate) use open::{open_existing, read_only_flags, writable_flags};
 pub use removal::{RemovalCompletionDisposition, RemovalPreparationDisposition};
 
 /// SQLite-backed artifact state repository.

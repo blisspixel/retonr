@@ -1,3 +1,5 @@
+use std::io;
+
 use thiserror::Error;
 
 use rewrite_model::{
@@ -75,6 +77,24 @@ pub enum StoreError {
         /// Exact schema version required by this adapter.
         current: i64,
     },
+    /// A backup destination handle was nonempty, aliased, or not a regular file.
+    #[error("artifact state backup destination is invalid")]
+    InvalidBackupDestination,
+    /// A state backup could not fit within the caller-owned byte ceiling.
+    #[error("artifact state backup exceeds its configured byte limit")]
+    BackupTooLarge,
+    /// Cooperative cancellation stopped a state backup before completion.
+    #[error("artifact state backup was cancelled")]
+    BackupCancelled,
+    /// A bounded state snapshot could not make progress to completion.
+    #[error("artifact state backup could not complete within its step limit")]
+    BackupIncomplete,
+    /// The caller-held backup file could not be read, written, or synchronized.
+    #[error("artifact state backup file operation failed")]
+    BackupIo(#[source] io::Error),
+    /// Migration was requested before this session completed a verified backup.
+    #[error("artifact state migration requires a completed verified backup")]
+    BackupRequired,
     /// An immutable identifier already names different record bytes.
     #[error("immutable artifact state conflicts with an existing record")]
     ImmutableConflict,

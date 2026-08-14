@@ -5,7 +5,9 @@
 
 mod binding;
 mod error;
+mod integrity;
 mod lifecycle;
+mod migration;
 mod record;
 mod removal;
 mod schema;
@@ -13,6 +15,9 @@ mod store;
 
 pub use error::{StoreError, StoreResult};
 pub use lifecycle::ExclusiveArtifactLifecycleLock;
+pub use migration::{
+    ExistingStoreMigration, StoreMigrationDisposition, StoreMigrationResult, StoreSchemaStatus,
+};
 pub use removal::{
     ArtifactInstallationEpoch, ArtifactRemovalPhase, StoredArtifactInstallation,
     StoredArtifactRemoval,

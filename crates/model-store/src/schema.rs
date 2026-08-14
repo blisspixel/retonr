@@ -8,24 +8,60 @@ pub(super) const STORE_SCHEMA_VERSION: i64 = 3;
 
 pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
     configure(connection, true)?;
+    migrate_transaction(connection, true).map(|_| ())
+}
+
+pub(super) fn migrate_existing_transaction(
+    connection: &Connection,
+    expected_version: i64,
+) -> StoreResult<()> {
+    let observed: i64 = connection.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if observed != expected_version {
+        return Err(StoreError::CorruptRecord);
+    }
+    crate::integrity::validate_database_integrity(connection)?;
+    migrate_supported_schema(connection, observed, false)?;
+    validate_schema_shape(connection)?;
+    crate::integrity::validate_database_integrity(connection)
+}
+
+fn migrate_transaction(connection: &mut Connection, initialize_empty: bool) -> StoreResult<i64> {
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let version: i64 = transaction.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    crate::integrity::validate_database_integrity(&transaction)?;
+    migrate_supported_schema(&transaction, version, initialize_empty)?;
+    validate_schema_shape(&transaction)?;
+    transaction.commit()?;
+    Ok(version)
+}
+
+fn migrate_supported_schema(
+    connection: &Connection,
+    version: i64,
+    initialize_empty: bool,
+) -> StoreResult<()> {
     match version {
+        0 if initialize_empty => {
+            require_empty_schema(connection)?;
+            create_current_schema(connection)?;
+        }
         0 => {
-            require_empty_schema(&transaction)?;
-            create_current_schema(&transaction)?;
+            return Err(StoreError::MigrationRequired {
+                found: version,
+                current: STORE_SCHEMA_VERSION,
+            });
         }
         1 => {
-            validate_schema_one(&transaction)?;
-            migrate_schema_one(&transaction)?;
-            validate_schema_two(&transaction)?;
-            migrate_schema_two(&transaction)?;
+            validate_schema_one(connection)?;
+            migrate_schema_one(connection)?;
+            validate_schema_two(connection)?;
+            migrate_schema_two(connection)?;
         }
         2 => {
-            validate_schema_two(&transaction)?;
-            migrate_schema_two(&transaction)?;
+            validate_schema_two(connection)?;
+            migrate_schema_two(connection)?;
         }
-        STORE_SCHEMA_VERSION => validate_schema_shape(&transaction)?,
+        STORE_SCHEMA_VERSION => validate_schema_shape(connection)?,
         value if !(0..=STORE_SCHEMA_VERSION).contains(&value) => {
             return Err(StoreError::UnsupportedSchema(value));
         }
@@ -36,8 +72,6 @@ pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
             });
         }
     }
-    validate_schema_shape(&transaction)?;
-    transaction.commit()?;
     Ok(())
 }
 
@@ -248,6 +282,11 @@ fn create_schema_one(connection: &Connection) -> StoreResult<()> {
     Ok(())
 }
 
+#[cfg(test)]
+pub(super) fn create_schema_one_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_one(connection)
+}
+
 fn migrate_schema_one(connection: &Connection) -> StoreResult<()> {
     connection.execute_batch(
         "ALTER TABLE installed_artifacts
@@ -337,7 +376,7 @@ fn validate_exact_version(connection: &Connection) -> StoreResult<()> {
     validate_schema_shape(connection)
 }
 
-fn validate_schema_shape(connection: &Connection) -> StoreResult<()> {
+pub(super) fn validate_schema_shape(connection: &Connection) -> StoreResult<()> {
     let actual = schema_objects(connection)?;
     let current = canonical_current_objects()?;
     if actual == current || actual == canonical_migrated_current_objects()? {
@@ -347,7 +386,7 @@ fn validate_schema_shape(connection: &Connection) -> StoreResult<()> {
     }
 }
 
-fn validate_schema_two(connection: &Connection) -> StoreResult<()> {
+pub(super) fn validate_schema_two(connection: &Connection) -> StoreResult<()> {
     let actual = schema_objects(connection)?;
     if actual == canonical_schema_two_objects()?
         || actual == canonical_migrated_schema_two_objects()?
@@ -358,7 +397,7 @@ fn validate_schema_two(connection: &Connection) -> StoreResult<()> {
     }
 }
 
-fn validate_schema_one(connection: &Connection) -> StoreResult<()> {
+pub(super) fn validate_schema_one(connection: &Connection) -> StoreResult<()> {
     if schema_objects(connection)? == canonical_schema_one_objects()? {
         Ok(())
     } else {
@@ -461,7 +500,7 @@ fn normalize_sql(sql: &str) -> String {
     normalized
 }
 
-fn configure(connection: &Connection, writable: bool) -> StoreResult<()> {
+pub(super) fn configure(connection: &Connection, writable: bool) -> StoreResult<()> {
     connection.busy_timeout(Duration::from_secs(5))?;
     connection.execute_batch(
         "PRAGMA foreign_keys = ON;

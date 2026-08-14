@@ -44,6 +44,53 @@ pub enum ArtifactRepositoryErrorKind {
     Operational,
 }
 
+/// Caller-owned ceilings for an explicit repository state migration.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ArtifactRepositoryMigrationLimits {
+    /// Maximum logical bytes admitted for the source database and its backup.
+    pub maximum_state_bytes: u64,
+    /// Maximum direct repository entries admitted before reserving a backup.
+    pub maximum_repository_entries: usize,
+}
+
+/// Opaque repository-relative identity of one retained pre-migration backup.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArtifactRepositoryBackupKey(String);
+
+impl ArtifactRepositoryBackupKey {
+    pub(crate) fn from_file_name(file_name: String) -> Self {
+        Self(file_name)
+    }
+
+    /// Returns the content-free repository-relative backup token.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Outcome of an explicit repository state migration.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ArtifactRepositoryMigrationDisposition {
+    /// The repository already used the current exact schema; no backup was made.
+    AlreadyCurrent,
+    /// A verified backup was retained and a supported migration committed.
+    Migrated,
+}
+
+/// Successful explicit repository state migration result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArtifactRepositoryMigrationResult {
+    /// Exact validated schema observed before the operation.
+    pub from_schema: u32,
+    /// Exact schema required by this build after the operation.
+    pub to_schema: u32,
+    /// Whether this call changed durable schema state.
+    pub disposition: ArtifactRepositoryMigrationDisposition,
+    /// Retained pre-migration backup identity, present only after migration.
+    pub backup_key: Option<ArtifactRepositoryBackupKey>,
+}
+
 /// Persistence-neutral identity for one exact installed artifact generation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArtifactInstallationKey {
@@ -187,6 +234,9 @@ pub enum ArtifactRepositoryError {
     /// One or more caller-owned repository limits are invalid.
     #[error("artifact repository limits are invalid")]
     InvalidLimits,
+    /// Existing state or its backup exceeds the configured migration byte ceiling.
+    #[error("artifact repository migration byte limit was exceeded")]
+    MigrationLimitExceeded,
     /// Cancellation was observed during a read-only repository operation.
     #[error("artifact repository operation was cancelled")]
     Cancelled,
@@ -202,6 +252,15 @@ pub enum ArtifactRepositoryError {
     /// The fixed application data directory could not be inspected or initialized.
     #[error("artifact repository data directory operation failed")]
     DataDirectoryIo(#[source] io::Error),
+    /// Migration failed after a verified backup was retained.
+    #[error("artifact repository migration failed after retaining a verified backup")]
+    MigrationFailed {
+        /// Opaque repository-relative identity of the retained backup.
+        backup_key: ArtifactRepositoryBackupKey,
+        /// Underlying repository failure.
+        #[source]
+        source: Box<ArtifactRepositoryError>,
+    },
     /// The fixed artifact state database could not be opened or validated.
     #[error("artifact repository state operation failed")]
     State(#[from] StoreError),
@@ -251,11 +310,13 @@ impl ArtifactRepositoryError {
             Self::InvalidInstallationGeneration | Self::InvalidLimits => {
                 ArtifactRepositoryErrorKind::InvalidInput
             }
+            Self::MigrationLimitExceeded => ArtifactRepositoryErrorKind::ResourceLimit,
             Self::Cancelled => ArtifactRepositoryErrorKind::Cancelled,
             Self::NotInitialized => ArtifactRepositoryErrorKind::NotInitialized,
             Self::UnsafeDataDirectory => ArtifactRepositoryErrorKind::Conflict,
             Self::RepositoryInUse => ArtifactRepositoryErrorKind::InUse,
             Self::DataDirectoryIo(_) => ArtifactRepositoryErrorKind::Operational,
+            Self::MigrationFailed { source, .. } => source.kind(),
             Self::State(error) => store_error_kind(error),
             Self::Import(error) => import_error_kind(error),
             Self::Inventory(error) => inventory_error_kind(error),
@@ -281,12 +342,23 @@ impl ArtifactRepositoryError {
             _ => None,
         }
     }
+
+    /// Returns the retained pre-migration backup identity, when available.
+    #[must_use]
+    pub fn migration_backup_key(&self) -> Option<&ArtifactRepositoryBackupKey> {
+        match self {
+            Self::MigrationFailed { backup_key, .. } => Some(backup_key),
+            _ => None,
+        }
+    }
 }
 
 fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKind {
     use ArtifactRepositoryErrorKind as Kind;
     match error {
-        StoreError::Database(_) => Kind::Operational,
+        StoreError::Database(_) | StoreError::BackupIo(_) | StoreError::BackupIncomplete => {
+            Kind::Operational
+        }
         StoreError::Serialization(_)
         | StoreError::InvalidManifest(_)
         | StoreError::InvalidInstallation(_)
@@ -304,11 +376,16 @@ fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKind {
             Kind::IncompatibleState
         }
         StoreError::NotInitialized => Kind::NotInitialized,
+        StoreError::BackupCancelled => Kind::Cancelled,
         StoreError::RecordTooLarge
+        | StoreError::BackupTooLarge
         | StoreError::InvalidLimit
         | StoreError::InventoryLimitExceeded
         | StoreError::InstallationEpochExhausted => Kind::ResourceLimit,
-        StoreError::ImmutableConflict | StoreError::VerificationFailed => Kind::Conflict,
+        StoreError::ImmutableConflict
+        | StoreError::VerificationFailed
+        | StoreError::InvalidBackupDestination
+        | StoreError::BackupRequired => Kind::Conflict,
         StoreError::MissingRecord => Kind::NotFound,
         StoreError::ActiveArtifact => Kind::ActiveArtifact,
         StoreError::RemovalPending => Kind::RecoveryRequired,

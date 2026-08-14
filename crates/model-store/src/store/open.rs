@@ -96,19 +96,19 @@ fn create_flags() -> OpenFlags {
     writable_flags() | OpenFlags::SQLITE_OPEN_CREATE
 }
 
-fn writable_flags() -> OpenFlags {
+pub(crate) fn writable_flags() -> OpenFlags {
     OpenFlags::SQLITE_OPEN_READ_WRITE
         | OpenFlags::SQLITE_OPEN_NO_MUTEX
         | OpenFlags::SQLITE_OPEN_NOFOLLOW
 }
 
-fn read_only_flags() -> OpenFlags {
+pub(crate) fn read_only_flags() -> OpenFlags {
     OpenFlags::SQLITE_OPEN_READ_ONLY
         | OpenFlags::SQLITE_OPEN_NO_MUTEX
         | OpenFlags::SQLITE_OPEN_NOFOLLOW
 }
 
-fn open_existing(path: &Path, flags: OpenFlags) -> StoreResult<Connection> {
+pub(crate) fn open_existing(path: &Path, flags: OpenFlags) -> StoreResult<Connection> {
     let sqlite_path = sqlite_path(path);
     match Connection::open_with_flags(&sqlite_path, flags) {
         Ok(connection) => Ok(connection),
