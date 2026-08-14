@@ -381,6 +381,11 @@ Controls:
 - Require explicit installation or offline import.
 - Record source URL, upstream revision, artifact digest, size, quantization,
   tokenizer, prompt, output schema, license, runtime, and supported languages.
+- Treat artifact-set, runtime-build, effective-state, and effective-package records as
+  content-addressed evidence vocabulary, not authority. Effective-package decoding
+  must reload and cross-check all three referenced records, exact member-purpose
+  coverage, and managed or attached-attested mode. A digest does not prove a retained
+  receipt is truthful or complete.
 - Verify checksums before activation.
 - Treat runtime model listings, templates, license text, and capabilities as untrusted
   discovery data rather than qualification evidence.

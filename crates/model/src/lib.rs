@@ -6,6 +6,7 @@
 mod activation;
 mod artifact;
 mod artifact_set;
+mod effective_package;
 mod qualification;
 mod runtime_identity;
 
@@ -24,6 +25,14 @@ pub use artifact_set::{
     MAX_ARTIFACT_SET_MANIFEST_JSON_BYTES, MAX_ARTIFACT_SET_MEMBERS,
     MAX_ARTIFACT_SET_PATH_COMPONENT_BYTES, MAX_ARTIFACT_SET_RELATIVE_PATH_BYTES,
     MAX_ARTIFACT_SET_TOTAL_PATH_BYTES,
+};
+pub use effective_package::{
+    EFFECTIVE_PACKAGE_EVIDENCE_SCHEMA_VERSION, EffectivePackageEvidence,
+    EffectivePackageEvidenceError, EffectivePackageEvidenceId, EffectivePackageEvidenceInput,
+    EffectivePackageEvidenceMode, EffectivePackageMemberEvidence, EffectivePackageMemberPurpose,
+    MAX_EFFECTIVE_PACKAGE_CANONICAL_BYTES, MAX_EFFECTIVE_PACKAGE_EVIDENCE_JSON_BYTES,
+    MAX_EFFECTIVE_PACKAGE_MEMBER_PURPOSES, MAX_EFFECTIVE_PACKAGE_PURPOSE_ASSIGNMENTS,
+    PackageTransformationDisposition,
 };
 pub use qualification::{
     HardwareTier, LicenseDecision, QUALIFICATION_SCHEMA_VERSION, QualificationId,

@@ -63,12 +63,11 @@ proceeds in this exact order:
 4. Retain the completed rewrite-record v2, typed invariant summaries, typed claim
    evidence, deterministic comparison, exact output-contract discovery, bounded
    structured-completion boundary, distinct inert claim-extraction role, canonical
-   artifact-set manifest, and runtime-build and effective-state identities. Next add
-   inert effective-package evidence that binds the exact artifact set, runtime build,
-   effective state, package coverage, origin, transformation, load closure, and
-   isolation evidence without granting authority. Then add a separate inert
-   qualification v2 without rewriting v1 evidence. Persist and cross-check those
-   records before adding live attestation and artifact-set leases. Only then add the
+   artifact-set manifest, runtime-build and effective-state identities, and
+   relationship-checked effective-package evidence. Next add a separate inert
+   qualification v2 that binds all four identities without rewriting v1 evidence.
+   Persist and cross-check those records before adding live attestation and artifact-set
+   leases. Only then add the
    exact effective extractor manifest, strict ephemeral wire contract, separately
    cancellable pair operation, and two-phase engine evidence join. Calibrate it in
    shadow mode before any semantic pass authority and never treat probabilistic
