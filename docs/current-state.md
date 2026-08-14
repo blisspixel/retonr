@@ -14,7 +14,7 @@ or stored-data contracts.
 | `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, and content-redacted typed claim-evidence contracts |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
-| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities, content-addressed runtime-build and effective-state records, qualification, invalidation, activation-decision, and active-binding contracts, including an inert claim-extraction role that qualification schema v1 cannot authorize |
+| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities, content-addressed runtime-build, effective-state, and effective-package evidence records, qualification, invalidation, activation-decision, and active-binding contracts, including an inert claim-extraction role that qualification schema v1 cannot authorize |
 | `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, opaque exclusive-lock capability requirements for removal transitions, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
@@ -45,12 +45,17 @@ only generation and the existing candidate schema. No claim-extraction schema,
 effective manifest, qualifying v2 record, strategy, activation, or application evidence
 join is implemented. Qualification schema v1 explicitly rejects claim extraction.
 
-The model domain now also represents a canonical, path-bounded artifact set and
-content-addressed runtime-build and effective-state records. Their private fields,
-byte-bounded validated decoding, closed platform enums, fixed canonical encodings, and
-frozen digests make identity comparisons portable across Windows, macOS, and Linux.
-These records are inert evidence vocabulary. They do not attest a live process,
-prove that a manifest is complete, authorize a role, or upgrade a v1 qualification.
+The model domain now also represents a canonical, path-bounded artifact set;
+content-addressed runtime-build and effective-state records; and an effective-package
+evidence record that joins those exact identities. The package record requires one
+canonical purpose set for every artifact member and binds completeness, acquisition,
+license review, transformation disposition, runtime load closure, and exclusion and
+isolation evidence. Its private fields, byte-bounded relationship-aware decoding,
+closed vocabularies, fixed canonical encoding, and frozen digest make identity
+comparisons portable across Windows, macOS, and Linux. These records are inert
+evidence vocabulary. They do not attest a live process, prove that supplied evidence
+is true or complete, authorize a role, persist a qualification, or upgrade a v1
+qualification.
 
 ## Verified locally
 
@@ -75,9 +80,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 345 Rust unit, integration, and process tests pass. Two process helpers are
+All 357 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 90.99
+Documentation tests also pass. The measured Rust line coverage is 91.16
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -128,7 +133,8 @@ uses its own clean runner database.
   lifecycle lock and file handle until use ends. No real runtime consumer uses that
   lease yet. Artifact-set and folder import, downloads,
   runtime-native pulls, bulk reconciliation, orphan deletion, runtime commands, and
-  exact real-artifact qualification are not implemented. The CLI requires one
+  exact real-artifact qualification are not implemented. Effective-package evidence
+  has no persistence or production attestor yet and cannot be activated. The CLI requires one
   explicit `--data-dir`; its six artifact commands do not use the network or apply
   schema migrations. `pending-operations` reads only bounded durable state and
   returns exact prepared-removal generations without opening or hashing model
@@ -179,10 +185,10 @@ is:
 2. Preserve the completed rewrite-record v2, typed invariant summaries, typed claim
    evidence, and deterministic comparison boundary.
 3. Preserve the distinct inert claim-extraction role, canonical artifact-set
-   manifest, and runtime-build and effective-state identities. Next add inert
-   effective-package evidence, then a separate qualification v2 without rewriting
-   v1 evidence. Persist and cross-check those records before live attestation and
-   artifact-set leases.
+   manifest, runtime-build and effective-state identities, and relationship-checked
+   effective-package evidence. Next add a separate inert qualification v2 without
+   rewriting v1 evidence. Persist and cross-check those records before live
+   attestation and artifact-set leases.
 4. Add the exact extractor manifest and strict ephemeral wire contract, followed by
    an application-level cancellable pair operation. Join evidence to a two-phase
    engine path only after fake-backend conformance passes, then calibrate it

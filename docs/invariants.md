@@ -123,12 +123,19 @@ names are discovery hints, not identities.
 
 Artifact or runtime drift invalidates the active binding and discards the complete
 candidate batch. Qualification records never imply formal semantic guarantees.
-The claim-extraction role requires versioned runtime-build, artifact-set, and
-effective-state identities whose truth and completeness are independently established.
-Qualification schema v1 is observational and cannot authorize that role. The domain
-can now represent those three identities, but their structural validity grants no
-authority. Qualification v2 must bind them, and the application must independently
-attest and recheck the live tuple before and after use.
+The claim-extraction role requires versioned runtime-build, artifact-set, effective-state,
+and effective-package evidence identities whose truth and completeness are independently
+established. Qualification schema v1 is observational and cannot authorize that role.
+The domain can represent all four identities and recheck their structural relationships,
+but their validity grants no authority. Qualification v2 must bind them, and the
+application must independently attest and recheck the live tuple before and after use.
+
+An effective-package record covers every artifact-set path exactly once with a bounded,
+canonical purpose set. It binds completeness, acquisition, license review,
+transformation, runtime load-closure, and exclusion evidence. Missing, extra, duplicated,
+reordered, stale, cross-product, observed-only, or mode-incompatible evidence fails
+closed. A digest is an equality binding to retained evidence, not proof that evidence is
+truthful or complete.
 
 Probabilistic claim extraction and deterministic comparison are separate evidence
 stages. Retained comparison evidence binds to the exact extractor manifest, unit,

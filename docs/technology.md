@@ -154,6 +154,15 @@ identity separate avoids changing the artifact-set ID when review evidence grows
 still requiring the qualification workflow to prove that every output-affecting member
 was included.
 
+The implemented version 1 record is inert and provider-neutral. It binds the exact
+artifact-set, runtime-build, and effective-state identities; requires one canonical
+purpose set for every member path; and binds retained completeness, acquisition,
+license-review, transformation, load-closure, and exclusion and isolation evidence by
+digest. Managed evidence is accepted only with a managed runtime build. Attached
+evidence requires a locally attested process or container build. Bounded JSON decoding
+rechecks every referenced object and relationship. No producer, persistence path,
+qualification v2, active binding, or runtime authority consumes the record yet.
+
 Current one-file offline import inspects without execution, rejects indirect and
 special files, copies one regular file into private staging, hashes it, and registers
 it without activation. A later artifact-set import must inspect and hash every member,

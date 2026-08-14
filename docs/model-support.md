@@ -246,6 +246,13 @@ platform, execution class, isolation policy, and effective context. A structural
 valid record is not qualification evidence by itself. Current attached Ollama remains
 observed-only because no process and package attestor is implemented.
 
+The inert effective-package evidence record joins the exact artifact set, runtime
+build, and effective state; requires canonical purpose coverage for every member; and
+binds retained completeness, acquisition, license-review, transformation, load-closure,
+and exclusion and isolation evidence. Relationship-aware decoding rejects stale or
+cross-product references. Structural validity does not qualify a model, attest a live
+runtime, or grant claim-extraction authority.
+
 ## Selection and fallback rules
 
 - Filter by privacy mode, runtime, language, format, strategy, context, and resource

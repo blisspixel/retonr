@@ -182,7 +182,15 @@ resolved configuration, platform evidence, execution class, isolation policy, an
 effective context. All three use domain-separated, versioned canonical identity
 material and byte-bounded validated JSON decoding. None is proof that the supplied
 evidence is true or complete.
-Qualification v2 and the application runtime join remain responsible for that claim.
+An effective-package evidence record then joins the exact artifact set, runtime build,
+and effective state. It requires canonical purpose coverage for every member and binds
+retained evidence for artifact-set completeness, acquisition, license review,
+transformation disposition, runtime load closure, and exclusion and isolation. Its
+managed or attached-attested mode must match the runtime-build mode. Decoding reloads
+the referenced records and rechecks the complete relationship rather than admitting
+three unrelated identifiers. The record is still evidence vocabulary, not authority.
+Qualification v2 and the application runtime join remain responsible for authorization
+and live truth.
 Attached observed-only Ollama metadata cannot construct a runtime-build identity.
 
 ## Document representation
