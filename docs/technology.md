@@ -169,11 +169,14 @@ active binding, live attestor, or runtime authority consumes either record yet.
 
 The SQLite adapter now persists the artifact-set manifest, runtime-build identity,
 effective runtime state, effective-package evidence, and qualification-v2 record as an
-inert dependency chain. Schema v3 leaves all v1 authority records byte-for-byte
-unchanged. Writes and reads recompute every content identity, require canonical JSON,
-compare duplicated indexed references, reload the complete subject, and fail closed on
-missing or cross-product state. Persistence is not attestation and creates no active
-binding.
+inert dependency chain. Schema v4 leaves all v1 authority records and the schema-v3
+evidence chain byte-for-byte unchanged. It adds a separate bounded artifact-set
+installation record with a unique portable set-root key and distinct positive
+generation. Migration creates no installed-set rows. Writes and reads recompute every
+content identity, require canonical JSON, compare duplicated indexed references,
+reload the complete subject, and fail closed on missing or cross-product state.
+Installation persistence does not prove that bytes exist, attest a runtime, or create
+an active binding.
 
 Current one-file offline import inspects without execution, rejects indirect and
 special files, copies one regular file into private staging, hashes it, and registers

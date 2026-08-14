@@ -65,7 +65,8 @@ fn downgrade_to_schema_two(data: &Path) {
         Connection::open(data.join("artifact-state.sqlite3")).expect("open current state fixture");
     connection
         .execute_batch(
-            "DROP TABLE qualification_v2_records;
+            "DROP TABLE installed_artifact_sets;
+             DROP TABLE qualification_v2_records;
              DROP TABLE effective_package_evidence;
              DROP TABLE effective_runtime_states;
              DROP TABLE runtime_build_identities;
@@ -73,6 +74,17 @@ fn downgrade_to_schema_two(data: &Path) {
              PRAGMA user_version = 2;",
         )
         .expect("restore canonical schema two shape");
+}
+
+fn downgrade_to_schema_three(data: &Path) {
+    let connection =
+        Connection::open(data.join("artifact-state.sqlite3")).expect("open current state fixture");
+    connection
+        .execute_batch(
+            "DROP TABLE installed_artifact_sets;
+             PRAGMA user_version = 3;",
+        )
+        .expect("restore canonical schema three shape");
 }
 
 fn assert_backup(data: &Path, backup_key: &str) {
@@ -118,7 +130,7 @@ fn migration_requires_confirmation_and_reports_current_state() {
         .success()
         .stderr(predicate::str::is_empty())
         .stdout(predicate::eq(
-            "disposition: already_current\nfrom_schema: 3\nto_schema: 3\n",
+            "disposition: already_current\nfrom_schema: 4\nto_schema: 4\n",
         ));
 }
 
@@ -144,7 +156,7 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
     assert_eq!(output["command"], "model.migrate");
     assert_eq!(output["result"]["disposition"], "migrated");
     assert_eq!(output["result"]["from_schema"], 2);
-    assert_eq!(output["result"]["to_schema"], 3);
+    assert_eq!(output["result"]["to_schema"], 4);
     let backup_key = output["result"]["backup_key"]
         .as_str()
         .expect("opaque backup key");
@@ -159,4 +171,37 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
         .success()
         .stderr(predicate::str::is_empty())
         .stdout(predicate::str::contains("\"health\": \"clean\""));
+}
+
+#[test]
+fn migrates_schema_three_with_a_schema_three_backup() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    initialize_repository(directory.path(), &data, "schema-three");
+    downgrade_to_schema_three(&data);
+
+    let output = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "migrate", "--yes"])
+        .output()
+        .expect("migrate schema three");
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let output: Value = serde_json::from_slice(&output.stdout).expect("parse migration JSON");
+    assert_eq!(output["result"]["from_schema"], 3);
+    assert_eq!(output["result"]["to_schema"], 4);
+    let backup_key = output["result"]["backup_key"]
+        .as_str()
+        .expect("opaque backup key");
+    assert_backup(&data, backup_key);
+    let backup = data.join(backup_key);
+    let backup = Connection::open(backup).expect("open schema-three backup");
+    assert_eq!(
+        backup
+            .query_row("PRAGMA user_version", [], |row| row.get::<_, u32>(0))
+            .expect("inspect schema-three backup"),
+        3
+    );
 }

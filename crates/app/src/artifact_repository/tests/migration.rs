@@ -32,7 +32,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         Err(ArtifactRepositoryError::State(
             rewrite_model_store::StoreError::MigrationRequired {
                 found: 2,
-                current: 3
+                current: 4
             }
         ))
     ));
@@ -44,7 +44,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (2, 3));
+    assert_eq!((result.from_schema, result.to_schema), (2, 4));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -59,6 +59,29 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
     assert_eq!(
         report.registered[0].installation.artifact_id(),
         imported.key.artifact_id()
+    );
+}
+
+#[test]
+fn schema_three_migration_retains_a_verified_backup() {
+    let (_directory, repository, _imported) = imported_repository();
+    downgrade_to_schema_three(&repository);
+
+    let result = repository
+        .migrate(migration_limits(), &CancellationToken::new())
+        .expect("migrate schema three");
+    assert_eq!(
+        result.disposition,
+        ArtifactRepositoryMigrationDisposition::Migrated
+    );
+    assert_eq!((result.from_schema, result.to_schema), (3, 4));
+    let backup_key = result.backup_key.expect("migration retains backup");
+    let backup = repository.data_directory.join(backup_key.as_str());
+    assert_eq!(
+        ArtifactStateStore::inspect_existing_schema(&backup)
+            .expect("inspect retained backup")
+            .found,
+        3
     );
 }
 
@@ -219,6 +242,7 @@ fn downgrade_to_schema_two(repository: &ArtifactRepository) {
     connection
         .execute_batch(
             "PRAGMA foreign_keys = OFF;
+             DROP TABLE installed_artifact_sets;
              DROP TABLE qualification_v2_records;
              DROP TABLE effective_package_evidence;
              DROP TABLE effective_runtime_states;
@@ -227,4 +251,16 @@ fn downgrade_to_schema_two(repository: &ArtifactRepository) {
              PRAGMA user_version = 2;",
         )
         .expect("downgrade fixture to exact schema two");
+}
+
+fn downgrade_to_schema_three(repository: &ArtifactRepository) {
+    let connection = rusqlite::Connection::open(repository.state_database())
+        .expect("open fixture database for downgrade");
+    connection
+        .execute_batch(
+            "PRAGMA foreign_keys = OFF;
+             DROP TABLE installed_artifact_sets;
+             PRAGMA user_version = 3;",
+        )
+        .expect("downgrade fixture to exact schema three");
 }

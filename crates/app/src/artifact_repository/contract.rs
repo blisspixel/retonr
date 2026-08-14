@@ -364,6 +364,7 @@ fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKind {
         | StoreError::InvalidInstallation(_)
         | StoreError::InvalidQualification(_)
         | StoreError::InvalidArtifactSet(_)
+        | StoreError::InvalidArtifactSetInstallation(_)
         | StoreError::InvalidRuntimeBuild(_)
         | StoreError::InvalidRuntimeState(_)
         | StoreError::InvalidEffectivePackage(_)

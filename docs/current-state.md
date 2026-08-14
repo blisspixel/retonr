@@ -14,8 +14,8 @@ or stored-data contracts.
 | `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, and content-redacted typed claim-evidence contracts |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
-| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities; content-addressed runtime-build, effective-state, and effective-package evidence; frozen qualification v1 authority; and a distinct inert claim-extraction qualification v2 record and ID that cannot enter v1 activation |
-| `rewrite-model-store` | Durable SQLite schema v3 for legacy artifact authority plus inert artifact-set, runtime-build, effective-state, effective-package, and qualification-v2 evidence; exact supported-schema inspection; single-epoch exact-handle backup and atomic v1/v2 migration; transactional relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
+| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities; a structurally validated inert installed-set record; content-addressed runtime-build, effective-state, and effective-package evidence; frozen qualification v1 authority; and a distinct inert claim-extraction qualification v2 record and ID that cannot enter v1 activation |
+| `rewrite-model-store` | Durable SQLite schema v4 for legacy artifact authority, inert artifact-set installation generations, and artifact-set, runtime-build, effective-state, effective-package, and qualification-v2 evidence; exact supported-schema inspection; single-epoch exact-handle backup and atomic v1/v2/v3 migration; transactional relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
@@ -65,10 +65,17 @@ claim-operation contracts, request and threshold policies, language policy, hard
 envelope, qualification suite, retained result evidence, license decision, and
 qualification outcome. Its bounded decoder reloads and rechecks all four subject
 records. It has no `authorizes` method and cannot enter existing v1 activation or
-recovery. SQLite schema v3 persists the five immutable evidence records
-in separate tables. Every dependent write and read reloads canonical record bytes,
+recovery. SQLite schema v4 persists the five immutable evidence records
+in separate tables and adds a bounded installed-set table with a unique portable
+set-root key and distinct positive generation. Migration creates that table empty and
+never infers installation from evidence or legacy single-file state. Every dependent
+write and read reloads canonical record bytes,
 recomputes indexed identities, and recursively cross-checks the complete subject. The
 v1 tables and serialized records remain unchanged, and migration grants no authority.
+The installed-set record is structural persistence only. It does not prove that the
+root or member bytes exist, grant a lease, attest a runtime, qualify a package, or
+authorize claim extraction. No application folder-import writer or runtime consumer
+uses it yet.
 The application and CLI now expose migration only as an explicit confirmed operation
 against an initialized repository. A current schema is an exact no-op. A supported
 older schema is inspected under both exclusive lifecycle locks and one retained
@@ -82,7 +89,7 @@ migrate implicitly.
 
 ## Verified locally
 
-The August 13, 2026 Windows development checkpoint passes:
+The August 14, 2026 Windows development checkpoint passes:
 
 ```console
 cargo fmt --all -- --check
@@ -103,9 +110,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 397 Rust unit, integration, and process tests pass. Two process helpers are
+All 420 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 91.32
+Documentation tests also pass. The measured Rust line coverage is 91.48
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -214,10 +221,11 @@ is:
    evidence, and deterministic comparison boundary.
 3. Preserve the distinct inert claim-extraction role, canonical artifact-set
    manifest, runtime-build and effective-state identities, relationship-checked
-   effective-package evidence, separate inert qualification v2, and schema-v3
-   relationship-checked persistence without rewriting v1 evidence. Preserve the
-   explicit backup-backed repository migration path. Next add distinct artifact-set
-   installation generations, bounded folder import, and repository-owned set leases;
+   effective-package evidence, separate inert qualification v2, and schema-v4
+   relationship-checked persistence without rewriting v1 or schema-v3 evidence.
+   Preserve the distinct inert artifact-set installation generation and explicit
+   backup-backed repository migration path. Next add bounded folder import and
+   repository-owned set leases;
    then add live attestation without enabling claim extraction.
 4. Add the exact extractor manifest and strict ephemeral wire contract, followed by
    an application-level cancellable pair operation. Join evidence to a two-phase

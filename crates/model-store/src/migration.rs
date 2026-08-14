@@ -226,6 +226,7 @@ fn inspect_connection(connection: &Connection) -> StoreResult<StoreSchemaStatus>
     match found {
         1 => schema::validate_schema_one(connection)?,
         2 => schema::validate_schema_two(connection)?,
+        3 => schema::validate_schema_three(connection)?,
         schema::STORE_SCHEMA_VERSION => schema::validate_schema_shape(connection)?,
         0 => {
             return Err(StoreError::MigrationRequired {

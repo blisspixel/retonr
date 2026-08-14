@@ -16,10 +16,13 @@ use tempfile::tempdir;
 use super::{StoreMigrationDisposition, StoreSchemaStatus};
 use crate::{ArtifactStateStore, StoreError};
 
+#[path = "tests/schema_three_evidence.rs"]
+mod schema_three_evidence;
+
 #[test]
 fn inspection_accepts_each_supported_schema_without_mutation() {
     let directory = tempdir().expect("temporary directory");
-    for version in 1..=3 {
+    for version in 1..=4 {
         let path = directory.path().join(format!("schema-{version}.db"));
         create_schema(&path, version);
         let before = fs::read(&path).expect("read before inspection");
@@ -27,7 +30,7 @@ fn inspection_accepts_each_supported_schema_without_mutation() {
             ArtifactStateStore::inspect_existing_schema(&path).expect("inspect supported schema"),
             StoreSchemaStatus {
                 found: version,
-                current: 3,
+                current: 4,
             }
         );
         assert_eq!(fs::read(&path).expect("read after inspection"), before);
@@ -35,9 +38,9 @@ fn inspection_accepts_each_supported_schema_without_mutation() {
 }
 
 #[test]
-fn session_migrates_v1_v2_and_current_v3_after_verified_backup() {
+fn session_migrates_v1_v2_v3_and_current_v4_after_verified_backup() {
     let directory = tempdir().expect("temporary directory");
-    for version in 1..=3 {
+    for version in 1..=4 {
         let source = directory.path().join(format!("source-{version}.db"));
         let backup = directory.path().join(format!("backup-{version}.db"));
         create_schema(&source, version);
@@ -49,16 +52,16 @@ fn session_migrates_v1_v2_and_current_v3_after_verified_backup() {
             .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
             .expect("write verified backup");
         let result = session.migrate().expect("migrate supported schema");
-        assert_eq!((result.from_schema, result.to_schema), (version, 3));
+        assert_eq!((result.from_schema, result.to_schema), (version, 4));
         assert_eq!(
             result.disposition,
-            if version == 3 {
+            if version == 4 {
                 StoreMigrationDisposition::AlreadyCurrent
             } else {
                 StoreMigrationDisposition::Migrated
             }
         );
-        assert_eq!(schema_version(&source), 3);
+        assert_eq!(schema_version(&source), 4);
         assert_eq!(schema_version(&backup), i64::from(version));
     }
 }
@@ -199,7 +202,7 @@ fn competing_sqlite_writer_cannot_cross_the_session_reservation() {
 }
 
 #[test]
-fn wal_resident_state_is_included_in_the_v2_backup_and_v3_migration() {
+fn wal_resident_state_is_included_in_the_v2_backup_and_v4_migration() {
     let directory = tempdir().expect("temporary directory");
     let source = directory.path().join("wal-source.db");
     let backup = directory.path().join("wal-backup.db");
@@ -247,7 +250,7 @@ fn wal_resident_state_is_included_in_the_v2_backup_and_v3_migration() {
         crate::record::decode_record(&backup_record).expect("decode retained manifest");
     assert_eq!(recovered, manifest);
     let source_store =
-        ArtifactStateStore::open_existing_read_only(&source).expect("open migrated source at v3");
+        ArtifactStateStore::open_existing_read_only(&source).expect("open migrated source at v4");
     assert_eq!(
         source_store
             .manifest(&manifest.artifact_id)
@@ -304,18 +307,18 @@ fn corrupt_zero_future_and_missing_state_never_start_a_session() {
         ArtifactStateStore::begin_existing_migration(&zero),
         Err(StoreError::MigrationRequired {
             found: 0,
-            current: 3
+            current: 4
         })
     ));
 
     let future = directory.path().join("future.db");
     Connection::open(&future)
         .expect("create future fixture")
-        .pragma_update(None, "user_version", 4)
+        .pragma_update(None, "user_version", 5)
         .expect("set future version");
     assert!(matches!(
         ArtifactStateStore::begin_existing_migration(&future),
-        Err(StoreError::UnsupportedSchema(4))
+        Err(StoreError::UnsupportedSchema(5))
     ));
 
     let missing = directory.path().join("missing.db");
@@ -367,6 +370,9 @@ fn create_schema(path: &Path, version: u32) {
         1 => crate::schema::create_schema_one_fixture(&connection).expect("create schema one"),
         2 => crate::schema::create_schema_two_fixture(&connection).expect("create schema two"),
         3 => {
+            crate::schema::create_schema_three_fixture(&connection).expect("create schema three");
+        }
+        4 => {
             drop(connection);
             drop(
                 ArtifactStateStore::open_existing_or_initialize_empty(path)

@@ -4,8 +4,9 @@ use thiserror::Error;
 
 use rewrite_model::{
     ActivationDecisionError, ArtifactSetManifestError, EffectivePackageEvidenceError,
-    EffectiveRuntimeStateError, InstallationError, ManifestError, QualificationInvalidationError,
-    QualificationRecordError, QualificationRecordV2Error, RuntimeBuildIdentityError,
+    EffectiveRuntimeStateError, InstallationError, InstalledArtifactSetError, ManifestError,
+    QualificationInvalidationError, QualificationRecordError, QualificationRecordV2Error,
+    RuntimeBuildIdentityError,
 };
 
 /// Result returned by the durable artifact state adapter.
@@ -33,6 +34,9 @@ pub enum StoreError {
     /// An artifact-set manifest failed domain validation.
     #[error("artifact-set manifest is invalid")]
     InvalidArtifactSet(#[source] ArtifactSetManifestError),
+    /// Installed artifact-set state failed domain validation.
+    #[error("installed artifact-set state is invalid")]
+    InvalidArtifactSetInstallation(#[source] InstalledArtifactSetError),
     /// A runtime-build identity failed domain validation.
     #[error("runtime-build identity is invalid")]
     InvalidRuntimeBuild(#[source] RuntimeBuildIdentityError),

@@ -92,12 +92,12 @@ fn migration_backup_key_is_present_only_when_attached() {
             ErrorCode::OperationalFailure,
             false,
         )
-        .with_migration_backup_key("migration-backup-v2-to-v3".to_owned()),
+        .with_migration_backup_key("migration-backup-v2-to-v4".to_owned()),
     );
     let recoverable = serde_json::to_value(recoverable).expect("serialize recoverable error");
     assert_eq!(
         recoverable["error"]["migration_backup_key"],
-        "migration-backup-v2-to-v3"
+        "migration-backup-v2-to-v4"
     );
 }
 

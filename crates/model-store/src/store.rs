@@ -39,6 +39,7 @@ pub struct InstallationWriteDisposition {
     pub installation: StoredArtifactInstallation,
 }
 
+mod artifact_set;
 mod evidence;
 mod inventory;
 mod open;
