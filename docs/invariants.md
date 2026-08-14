@@ -19,10 +19,10 @@ Retonr is an editorial tool. The user decides whether to rewrite, accept, edit,
 export, or discard a result. A provider, model, detector, profile, or policy signal
 cannot silently override that decision inside the product.
 
-The product may inspect and reduce supported source-form signals, characteristic
-model phrasing, invisible artifacts, and document metadata. It does not claim to
-erase provider records, prove human authorship, defeat every classifier, or satisfy
-an external disclosure obligation.
+The product may inspect supported source-form signals, characteristic model phrasing,
+invisible artifacts, and document metadata. Those inputs gain no editorial authority
+over the derivative. Retonr does not claim to erase provider records, prove human
+authorship, defeat every classifier, or satisfy an external disclosure obligation.
 
 ### INV-P02: Fidelity dominates style
 
@@ -77,6 +77,10 @@ workflow or abstains. Sanitation is a separate, narrowly authorized operation fo
 documented security, privacy, interoperability, accessibility, or repair purpose.
 Statistical watermark and source-classifier results never guide live generation,
 retry, ranking, or acceptance.
+
+A statistical source signal alone is not preservation-critical document state and
+receives no special protection. This does not weaken the explicit handling required
+for supported credentials, signatures, structural bindings, or unknown format state.
 
 ## Execution and data invariants
 

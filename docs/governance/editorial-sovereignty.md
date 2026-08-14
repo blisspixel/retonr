@@ -93,6 +93,10 @@ and personal profile. These operations can reduce wording carried from an upstre
 draft, but they do not erase upstream prompts, account records, service logs, or
 copies held by another party.
 
+Retonr does not treat a provider's statistical source signal as an ownership claim or
+preservation requirement. Fidelity protects the user's meaning and document integrity,
+not a provider's continuing influence over eligible wording.
+
 The product must not claim that a rewrite proves human authorship or defeats every
 watermark or classifier. A known content credential or binding is reported before a
 rewrite because transformation may invalidate it. The user decides whether to
