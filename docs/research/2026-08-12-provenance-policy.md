@@ -354,7 +354,10 @@ current retention policy without a versioned source.
 ### European Union
 
 [Article 50 of Regulation (EU) 2024/1689](https://eur-lex.europa.eu/eli/reg/2024/1689/oj)
-applies from 2026-08-02. It creates distinct provider and deployer duties:
+applies from 2026-08-02. Under
+[Regulation (EU) 2026/1744](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32026R1744),
+systems placed on the market before that date have until 2026-12-02 to comply with
+Article 50(2). Article 50 creates distinct provider and deployer duties:
 
 - Under Article 50(2), providers of AI systems that generate synthetic audio,
   image, video, or text must ensure outputs are machine-readably marked and
@@ -374,6 +377,13 @@ applies from 2026-08-02. It creates distinct provider and deployer duties:
   and provided no later than first exposure.
 - The open-source exclusion in Article 2(12) does not exclude a system that falls
   under Article 50.
+
+Article 50 does not state a general downstream prohibition on editing or removing a
+mark from an existing output. The final Commission guidelines say mere disseminators
+that are not providers or deployers are not responsible or liable under the AI Act on
+that basis, while strongly encouraging preservation of markings. This textual boundary
+does not resolve other law, provider terms, contracts, sector rules, deception, or a
+downstream system provider's own Article 50 duties.
 
 The Commission's final
 [Article 50 guidelines](https://digital-strategy.ec.europa.eu/en/library/guidelines-transparency-obligations-providers-and-deployers-ai-systems)
@@ -406,8 +416,12 @@ For provider signatories, the final code requires, among other measures:
 - one imperceptible watermark layer for free-form text, with an exception for very
   short text and a requirement to watermark free-form text longer than 200 tokens;
 - a corresponding detection mechanism;
-- best efforts not to alter or remove recognizable open-standard metadata marks,
-  except accurate and legitimate processing;
+- best efforts to retain recognizable open-standard metadata markings on inputs that
+  their systems transform, without intentional alteration or removal except the
+  specified good-faith legitimate processing;
+- an intentional-removal or tampering prohibition in the signatory's acceptable-use
+  policy, terms, or documentation, with the Code's exceptions and a documentation
+  notice sufficient for free and open-source systems or models;
 - no placement, marketing, or promotion of tools whose purpose is to circumvent
   the required marks;
 - optional logging or fingerprinting only as a supplement, not a substitute.
@@ -773,6 +787,7 @@ Re-run the policy and affected technical gates when any of these inputs changes:
 ### Government and regulatory sources
 
 - [Regulation (EU) 2024/1689, including Article 50](https://eur-lex.europa.eu/eli/reg/2024/1689/oj)
+- [Regulation (EU) 2026/1744 transitional amendment](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32026R1744)
 - [European Commission Article 50 guidelines](https://digital-strategy.ec.europa.eu/en/library/guidelines-transparency-obligations-providers-and-deployers-ai-systems)
 - [European Commission transparency code page](https://digital-strategy.ec.europa.eu/en/policies/code-practice-ai-generated-content)
 - [Final Code of Practice on Transparency of AI-generated Content](https://ec.europa.eu/newsroom/dae/redirection/document/129555)

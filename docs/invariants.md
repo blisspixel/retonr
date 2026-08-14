@@ -19,10 +19,10 @@ Retonr is an editorial tool. The user decides whether to rewrite, accept, edit,
 export, or discard a result. A provider, model, detector, profile, or policy signal
 cannot silently override that decision inside the product.
 
-The product may inspect and reduce supported source-form signals, characteristic
-model phrasing, invisible artifacts, and document metadata. It does not claim to
-erase provider records, prove human authorship, defeat every classifier, or satisfy
-an external disclosure obligation.
+The product may inspect supported source-form signals, characteristic model phrasing,
+invisible artifacts, and document metadata. Those inputs gain no editorial authority
+over the derivative. Retonr does not claim to erase provider records, prove human
+authorship, defeat every classifier, or satisfy an external disclosure obligation.
 
 ### INV-P02: Fidelity dominates style
 
@@ -78,6 +78,10 @@ documented security, privacy, interoperability, accessibility, or repair purpose
 Statistical watermark and source-classifier results never guide live generation,
 retry, ranking, or acceptance.
 
+A statistical source signal alone is not preservation-critical document state and
+receives no special protection. This does not weaken the explicit handling required
+for supported credentials, signatures, structural bindings, or unknown format state.
+
 ## Execution and data invariants
 
 ### INV-E01: Core work is local and offline after setup
@@ -119,9 +123,12 @@ names are discovery hints, not identities.
 
 Artifact or runtime drift invalidates the active binding and discards the complete
 candidate batch. Qualification records never imply formal semantic guarantees.
-The claim-extraction role requires a content-complete runtime-build, artifact-set,
-and effective-state identity. Qualification schema v1 is observational and cannot
-authorize that role.
+The claim-extraction role requires versioned runtime-build, artifact-set, and
+effective-state identities whose truth and completeness are independently established.
+Qualification schema v1 is observational and cannot authorize that role. The domain
+can now represent those three identities, but their structural validity grants no
+authority. Qualification v2 must bind them, and the application must independently
+attest and recheck the live tuple before and after use.
 
 Probabilistic claim extraction and deterministic comparison are separate evidence
 stages. Retained comparison evidence binds to the exact extractor manifest, unit,

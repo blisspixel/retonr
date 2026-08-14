@@ -154,12 +154,17 @@ score outside its context ([NIST AI 100-4](https://doi.org/10.6028/NIST.AI.100-4
 
 ### Canonical manifest
 
-The artifact-set ID is the SHA-256 digest of a canonical UTF-8 JSON manifest. Keys
-are sorted, numbers and strings use one canonical representation, path separators
-are normalized in manifest names, and each byte-bearing member has its own size and
-SHA-256 digest. The manifest format and hashing procedure are themselves versioned.
+The artifact-set ID is the SHA-256 digest of the versioned, domain-separated preimage
+`retonr:artifact-set-manifest:v1\0` followed by the canonical UTF-8 JSON content
+manifest. Keys are sorted, numbers and strings use one canonical representation,
+portable manifest names require canonical `/` separators, and each byte-bearing
+member has its own size and SHA-256 digest. The manifest format and hashing procedure
+are themselves versioned.
 
-The manifest includes, when applicable:
+The content manifest contains only portable logical paths, byte lengths, and member
+digests. It does not change when provenance or review evidence grows. A separate
+effective-package evidence record joins the content identity to the following, when
+applicable:
 
 - runtime executable, source revision, release tag, build receipt, compile flags,
   patches, dynamic libraries, accelerator libraries, container image and layers;
@@ -184,8 +189,8 @@ The manifest includes, when applicable:
 - acquisition source, upstream digest or signature when available, license record,
   and the person or process that approved the artifact for qualification.
 
-Secrets are not stored in the manifest. The manifest records their purpose, source
-class, presence, and access policy. Do not publish an ordinary digest of a
+Secrets are not stored in the evidence record. The record captures their purpose,
+source class, presence, and access policy. Do not publish an ordinary digest of a
 low-entropy secret because it can enable guessing.
 
 ### Identity rules

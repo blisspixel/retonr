@@ -61,13 +61,13 @@ proceeds in this exact order:
    application binds the lock capability to the exact pinned repository entry, and
    persistence records do not become a CLI or public inventory contract.
 4. Retain the completed rewrite-record v2, typed invariant summaries, typed claim
-   evidence, deterministic comparison, exact output-contract discovery, and bounded
-   structured-completion boundary, and distinct inert claim-extraction role. Next add
-   the runtime-build, artifact-set, and effective-state identity needed for a stronger
-   qualification contract. Then add the exact effective extractor manifest, strict
-   ephemeral wire contract, separately cancellable pair operation, and two-phase
-   engine evidence join. Calibrate it in shadow mode before any semantic pass authority
-   and never treat probabilistic extraction as proof.
+   evidence, deterministic comparison, exact output-contract discovery, bounded
+   structured-completion boundary, distinct inert claim-extraction role, canonical
+   artifact-set manifest, and runtime-build and effective-state identities. Next add
+   qualification v2 without rewriting v1 evidence. Then add the exact effective
+   extractor manifest, strict ephemeral wire contract, separately cancellable pair
+   operation, and two-phase engine evidence join. Calibrate it in shadow mode before
+   any semantic pass authority and never treat probabilistic extraction as proof.
 5. Implement the versioned local evaluation plan, run the currently installed Gemma 4
    26B and Qwen3.6 27B packages, and add the previously observed Ministral 3 8B only
    after its local identity is revalidated or acquisition is separately approved.

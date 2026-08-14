@@ -145,16 +145,21 @@ fidelity.
 
 ## Artifacts and offline operation
 
-One file digest is insufficient for sharded or composed models. A canonical
-artifact-set manifest records every required relative path, length, digest, immutable
-origin revision, weight, index, tokenizer, configuration, template, adapter, license,
-conversion input, tool, and output.
+One file digest is insufficient for sharded or composed models. The canonical content
+manifest records every required portable relative path, length, and byte digest. A
+separate effective-package evidence record joins that content identity to immutable
+origin revisions, member purposes, tokenizer and template roles, license decisions,
+conversion inputs, tools, arguments, logs, exclusions, and outputs. Keeping content
+identity separate avoids changing the artifact-set ID when review evidence grows while
+still requiring the qualification workflow to prove that every output-affecting member
+was included.
 
-Offline import inspects without execution, rejects escaping links and special files,
-copies bytes into private staging, hashes every member, reviews licenses, proves
-network-denied load, and atomically activates only after qualification. Hard links,
-symbolic links, mutable tags, plugin code, pickle weights, and unreviewed remote code
-are not active artifact identity.
+Current one-file offline import inspects without execution, rejects indirect and
+special files, copies one regular file into private staging, hashes it, and registers
+it without activation. A later artifact-set import must inspect and hash every member,
+join reviewed license evidence, and require network-denied qualification before any
+activation. Hard links, symbolic links, mutable tags, plugin code, pickle weights, and
+unreviewed remote code are not active artifact identity.
 
 Rewriting never downloads a missing runtime, model, tokenizer, template, adapter, or
 plugin. Drift before or after a generation batch discards every candidate and

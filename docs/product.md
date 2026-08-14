@@ -3,12 +3,13 @@
 ## Verdict
 
 The idea makes sense as a local-first, fidelity-gated re-expression engine for
-machine-generated and rough drafts. Its primary job is to reconstruct a draft in
-the user's own voice while minimizing supported source-form signals and embedded
-artifacts carried forward from the upstream system. The strongest product is not a
-general style imitator or detector bypass. It is a conservative control plane that
-combines personal style evidence, explicit output hygiene, fact checks, structural
-checks, declared constraints, format-aware reassembly, and abstention.
+machine-generated and rough drafts. Its primary job is to reconstruct eligible prose
+in the user's own voice while protecting meaning, structure, and declared constraints.
+Upstream wording and supported artifacts are inputs to inspect, not permanent claims
+on the finished draft. The strongest product is not a general style imitator or
+detector bypass. It is a conservative control plane that combines personal style
+evidence, explicit output hygiene, fact checks, structural checks, format-aware
+reassembly, and abstention.
 
 The product treats generated, delegated, and rough text as drafts. Its role is
 comparable to applying ordinary editorial review, a house style, authorized notes,
@@ -47,9 +48,8 @@ human-review controls.
 
 - Turn a machine-generated draft into a locally reconstructed expression of my own
   writing preferences.
-- Minimize supported upstream token-selection signals, characteristic model
-  phrasing, invisible text artifacts, and document metadata carried into the new
-  artifact.
+- Take editorial control of eligible wording and supported mutable artifacts instead
+  of treating an upstream tool's choices as untouchable.
 - Rewrite a rough draft so it sounds recognizably like me.
 - Keep names, claims, quantities, dates, links, paths, code, and formatting intact.
 - Apply my explicit preferences consistently across chat, email, documentation, and
@@ -72,8 +72,8 @@ Public description:
 
 > A local-first re-expression engine that turns machine-generated and rough drafts
 > into your voice while protecting facts, structure, and user-defined rules. It
-> minimizes supported upstream signals carried into the new artifact and returns
-> the original when it cannot validate a rewrite.
+> makes bounded, inspectable editorial changes and returns the original when it
+> cannot validate a rewrite.
 
 Developer description:
 

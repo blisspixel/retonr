@@ -125,14 +125,14 @@ The current one-file `ArtifactId` concept is appropriate for a GGUF weight file,
 but not sufficient for every runtime. Add an artifact-set manifest before
 qualifying directory-based models or composed runtime packages.
 
-An artifact-set ID should be the digest of a canonical manifest that contains:
+An artifact-set ID is the digest of a versioned, domain-separated canonical content
+manifest. That manifest contains only the portable logical path, byte length, and
+SHA-256 digest for every required file. A separate effective-package evidence record
+joins that stable content identity to:
 
-- Normalized relative path, byte length, and SHA-256 digest for every required
-  file
 - Exact upstream origin and immutable full revision when available
-- Primary weights, shards, indexes, tokenizer files, model configuration,
-  generation configuration, and chat template
-- Optional adapter, projector, draft model, and custom vocabulary members
+- Member purposes covering weights, shards, indexes, tokenizers, model and generation
+  configuration, templates, adapters, projectors, draft models, and vocabularies
 - Reviewed license records for the model, tokenizer, code, adapters, and bundled
   runtime components
 - Conversion and quantization tool identities, arguments, logs, and source

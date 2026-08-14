@@ -32,9 +32,10 @@ authors of the finished expression. Retonr is built to help a person turn author
 source material into work they understand, direct, and are prepared to stand behind.
 It does not convert copied material into owned material or decide legal authorship.
 
-It can reduce supported source-wording signals and document artifacts that remain in
-a copied or generated draft. It cannot erase provider logs, prove human authorship,
-or guarantee the result of a watermark detector or classifier.
+Upstream wording signals and provider-added artifacts do not gain editorial authority
+merely because a tool produced the draft. Retonr handles supported signals explicitly
+while preserving facts and document integrity. It cannot erase provider logs, prove
+human authorship, or guarantee a detector or classifier result.
 
 ## Opinionated by design
 
@@ -43,6 +44,10 @@ control. It rejects provider paternalism as a product default: mandatory remote
 inspection, hidden output shaping, content telemetry, provider branding, or the
 premise that using a model grants its operator continuing editorial authority over
 downstream expression.
+
+Retonr does not treat a provider's statistical signal as an ownership claim or a
+preservation requirement. Detector results do not guide live editing. Fidelity to the
+user's meaning, constraints, and document integrity does.
 
 This is a product position, not a claim that source rights, contracts, disclosure
 duties, or applicable law disappear. Retonr states what it changes, preserves the

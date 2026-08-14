@@ -237,6 +237,15 @@ Generation and claim-extraction roles are qualified independently. The same mode
 may fill both only when correlated-error testing supports that decision. Any later
 learned semantic-evaluator role requires its own identity and qualification.
 
+Canonical artifact-set, runtime-build, and effective-state records are implemented as
+inert domain identities. Artifact-set paths use one portable logical namespace rather
+than host paths. Runtime builds require managed-process or reviewed attached-process
+or container attestation vocabulary; there is no observed-only build mode. Effective
+state separately binds the provider snapshot, loaded components, configuration,
+platform, execution class, isolation policy, and effective context. A structurally
+valid record is not qualification evidence by itself. Current attached Ollama remains
+observed-only because no process and package attestor is implemented.
+
 ## Selection and fallback rules
 
 - Filter by privacy mode, runtime, language, format, strategy, context, and resource

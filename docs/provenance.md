@@ -87,6 +87,11 @@ A proposed content edit that invalidates a recognized valid signature or hard
 binding does not silently continue. The user must explicitly select a qualified
 derivative workflow after seeing the affected states.
 
+For this contract, a recognized binding is a supported credential, signature, or
+structural content binding with independently validated state. A statistical source
+signal, provider declaration, or detector result alone is not an authenticated
+document binding and does not trigger the derivative block.
+
 The derivative workflow:
 
 - Retains the original artifact and its pre-edit validation record
@@ -122,9 +127,10 @@ marks, and accessibility data must not be stripped by a generic rule.
 
 ## Statistical watermark boundary
 
-Linguistic reconstruction changes token and sentence choices and may incidentally
-change a scheme-specific detector result. Retonr does not promise that a rewrite
-preserves or removes a statistical watermark.
+Linguistic reconstruction changes token and sentence choices and may change a
+scheme-specific detector result. Preserving an upstream statistical signal is not a
+fidelity requirement. Retonr does not optimize for detector outcomes or promise
+removal, evasion, or untraceability.
 
 The live engine never:
 
