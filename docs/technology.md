@@ -160,8 +160,12 @@ purpose set for every member path; and binds retained completeness, acquisition,
 license-review, transformation, load-closure, and exclusion and isolation evidence by
 digest. Managed evidence is accepted only with a managed runtime build. Attached
 evidence requires a locally attested process or container build. Bounded JSON decoding
-rechecks every referenced object and relationship. No producer, persistence path,
-qualification v2, active binding, or runtime authority consumes the record yet.
+rechecks every referenced object and relationship. A separate inert qualification v2
+record now consumes and rechecks the exact four-part subject for claim extraction. It
+also binds the prompt, claim-output and claim-operation contracts, request and threshold
+policies, language, hardware, suite, result evidence, license decision, and outcome. Its
+distinct identifier cannot enter v1 activation. No evidence producer, persistence path,
+active binding, live attestor, or runtime authority consumes either record yet.
 
 Current one-file offline import inspects without execution, rejects indirect and
 special files, copies one regular file into private staging, hashes it, and registers

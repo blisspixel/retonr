@@ -14,7 +14,7 @@ or stored-data contracts.
 | `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, and content-redacted typed claim-evidence contracts |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
-| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities, content-addressed runtime-build, effective-state, and effective-package evidence records, qualification, invalidation, activation-decision, and active-binding contracts, including an inert claim-extraction role that qualification schema v1 cannot authorize |
+| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities; content-addressed runtime-build, effective-state, and effective-package evidence; frozen qualification v1 authority; and a distinct inert claim-extraction qualification v2 record and ID that cannot enter v1 activation |
 | `rewrite-model-store` | Durable SQLite artifact records, content-bound qualification identities, immediate activation transactions, invalidation, active-removal protection, opaque exclusive-lock capability requirements for removal transitions, mandatory byte-verification callbacks, fail-closed recovery, and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
@@ -41,9 +41,11 @@ exact digest match before backend work. The structured-completion port returns o
 one bounded complete JSON value after exact artifact checks; its request and response
 debug views omit prompt and generated content. The model domain now has a distinct,
 inert claim-extraction artifact role. The current Ollama implementation still admits
-only generation and the existing candidate schema. No claim-extraction schema,
-effective manifest, qualifying v2 record, strategy, activation, or application evidence
-join is implemented. Qualification schema v1 explicitly rejects claim extraction.
+only generation and the existing candidate schema. The model domain now has a distinct
+qualification v2 evidence type for claim extraction, but no claim-extraction output
+schema, effective extractor manifest, persistence, strategy, activation, or application
+evidence join is implemented. Qualification schema v1 explicitly rejects claim
+extraction, and its activation APIs cannot accept the separate v2 identifier or record.
 
 The model domain now also represents a canonical, path-bounded artifact set;
 content-addressed runtime-build and effective-state records; and an effective-package
@@ -56,6 +58,15 @@ comparisons portable across Windows, macOS, and Linux. These records are inert
 evidence vocabulary. They do not attest a live process, prove that supplied evidence
 is true or complete, authorize a role, persist a qualification, or upgrade a v1
 qualification.
+
+Qualification v2 is a separate, inert, content-addressed record for exactly the
+claim-extraction role. It binds the artifact set, effective-package evidence, runtime
+build, effective state, source and context ceilings, prompt, claim-output and
+claim-operation contracts, request and threshold policies, language policy, hardware
+envelope, qualification suite, retained result evidence, license decision, and
+qualification outcome. Its bounded decoder reloads and rechecks all four subject
+records. It has no `authorizes` method, is not persisted, and cannot enter existing v1
+activation or recovery.
 
 ## Verified locally
 
@@ -80,9 +91,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 357 Rust unit, integration, and process tests pass. Two process helpers are
+All 366 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 91.16
+Documentation tests also pass. The measured Rust line coverage is 91.31
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -94,10 +105,11 @@ integration test exclusive test-thread capacity because the helper owns process-
 console state; the test remains concurrent with the full suite on macOS and Linux.
 
 The editorial-pattern research package, portable artifact-set and runtime-identity
-slice, distinct claim-extraction authority, and Windows nextest isolation repair
-passed at exact-main revision `f2ab596d86b39b91c015a4ab549f929560f2eb02`
+slice, distinct inert claim-extraction role, Windows nextest isolation repair, and
+effective-package evidence slice passed at exact-main revision
+`f9bf10a488c967de8405c346de2a7062487787c9`
 in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31765239696).
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31767299911).
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
@@ -134,7 +146,8 @@ uses its own clean runner database.
   lease yet. Artifact-set and folder import, downloads,
   runtime-native pulls, bulk reconciliation, orphan deletion, runtime commands, and
   exact real-artifact qualification are not implemented. Effective-package evidence
-  has no persistence or production attestor yet and cannot be activated. The CLI requires one
+  and qualification v2 have no persistence or production attestor yet and cannot be
+  activated. The CLI requires one
   explicit `--data-dir`; its six artifact commands do not use the network or apply
   schema migrations. `pending-operations` reads only bounded durable state and
   returns exact prepared-removal generations without opening or hashing model
@@ -185,10 +198,10 @@ is:
 2. Preserve the completed rewrite-record v2, typed invariant summaries, typed claim
    evidence, and deterministic comparison boundary.
 3. Preserve the distinct inert claim-extraction role, canonical artifact-set
-   manifest, runtime-build and effective-state identities, and relationship-checked
-   effective-package evidence. Next add a separate inert qualification v2 without
-   rewriting v1 evidence. Persist and cross-check those records before live
-   attestation and artifact-set leases.
+   manifest, runtime-build and effective-state identities, relationship-checked
+   effective-package evidence, and separate inert qualification v2. Persist and
+   cross-check those records without rewriting v1 evidence before live attestation
+   and artifact-set leases.
 4. Add the exact extractor manifest and strict ephemeral wire contract, followed by
    an application-level cancellable pair operation. Join evidence to a two-phase
    engine path only after fake-backend conformance passes, then calibrate it

@@ -127,8 +127,10 @@ The claim-extraction role requires versioned runtime-build, artifact-set, effect
 and effective-package evidence identities whose truth and completeness are independently
 established. Qualification schema v1 is observational and cannot authorize that role.
 The domain can represent all four identities and recheck their structural relationships,
-but their validity grants no authority. Qualification v2 must bind them, and the
-application must independently attest and recheck the live tuple before and after use.
+but their validity grants no authority. The separate qualification v2 record binds all
+four identities for exactly claim extraction, has no authorization operation, and cannot
+enter qualification v1 activation. The application must independently attest and recheck
+the live tuple before and after use.
 
 An effective-package record covers every artifact-set path exactly once with a bounded,
 canonical purpose set. It binds completeness, acquisition, license review,
