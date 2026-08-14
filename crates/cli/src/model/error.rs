@@ -38,6 +38,17 @@ impl ModelFailure {
         )
     }
 
+    pub(crate) fn migration_confirmation_required() -> Self {
+        Self::new(
+            CommandName::ModelMigrate,
+            ErrorCategory::Policy,
+            ErrorCode::ConfirmationRequired,
+            EXIT_POLICY,
+            false,
+            "repository migration requires --yes",
+        )
+    }
+
     pub(crate) fn recovery_confirmation_required() -> Self {
         Self::new(
             CommandName::ModelRecoverRemoval,
@@ -99,6 +110,11 @@ impl ModelFailure {
             failure.body = failure
                 .body
                 .with_recovery_selection(ArtifactSelectionDto::from(key));
+        }
+        if let Some(backup_key) = error.migration_backup_key() {
+            failure.body = failure
+                .body
+                .with_migration_backup_key(backup_key.as_str().to_owned());
         }
         failure
     }

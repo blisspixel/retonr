@@ -101,9 +101,9 @@ use lifetime. Removal's durable state transitions require a live, non-cloneable
 exclusive lifecycle-lock capability bound by the application to the exact pinned
 repository lock entry. A narrow offline CLI now
 exposes exact single-file import, read-only inventory, read-only pending-operation
-inspection, selected reconciliation, inactive removal, and explicit
-interrupted-removal recovery. It does not download, qualify, activate, or run a
-model.
+inspection, explicit backup-backed state migration, selected reconciliation,
+inactive removal, and explicit interrupted-removal recovery. It does not download,
+qualify, activate, or run a model.
 
 Artifact inventory crosses the application boundary through persistence-neutral
 installation keys. SQLite records and storage-layout fields are not part of the CLI
@@ -137,6 +137,7 @@ The implemented model commands are intentionally narrow:
 retonr --data-dir <DIRECTORY> model import <ARTIFACT> --manifest <MANIFEST_JSON>
 retonr --data-dir <DIRECTORY> model inventory [--fail-on-findings]
 retonr --data-dir <DIRECTORY> model pending-operations
+retonr --data-dir <DIRECTORY> model migrate --yes
 retonr --data-dir <DIRECTORY> model reconcile --manifest <MANIFEST_JSON>
 retonr --data-dir <DIRECTORY> model remove --artifact-id <SHA256> --installation-generation <N> --yes
 retonr --data-dir <DIRECTORY> model recover-removal --artifact-id <SHA256> --installation-generation <N> --yes
@@ -144,12 +145,17 @@ retonr --data-dir <DIRECTORY> model recover-removal --artifact-id <SHA256> --ins
 
 These commands are offline and bounded. `pending-operations` reads only durable
 state and returns exact interrupted-removal recovery selections without reading or
-hashing model bytes. The commands never infer a data location, pull a model, follow
-a mutable model tag, activate an artifact, or treat a prior inventory report as
-mutation authority. First import creates one missing repository leaf or accepts one
-empty directory; it refuses a nonempty uninitialized directory and never changes
-permissions on a pre-existing root. JSON is the default machine format; `--format
-text` provides concise human output.
+hashing model bytes. `migrate` is the only command allowed to migrate state. It
+requires confirmation, opens only an existing repository, holds both exclusive
+lifecycle locks, creates, verifies, and retains a SQLite-consistent repository-owned
+backup before migration, then reports its opaque key on success or in any post-backup
+JSON failure.
+Every other command requires the exact current schema. The commands never infer a
+data location, pull a model, follow a mutable model tag, activate an artifact, or
+treat a prior inventory report as mutation authority. First import creates one
+missing repository leaf or accepts one empty directory; it refuses a nonempty
+uninitialized directory and never changes permissions on a pre-existing root. JSON
+is the default machine format; `--format text` provides concise human output.
 
 ## Product surfaces
 

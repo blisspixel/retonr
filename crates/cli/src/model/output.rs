@@ -8,6 +8,8 @@ use serde::Serialize;
 
 use crate::contract::ArtifactSelectionDto;
 
+mod migration;
+
 pub(crate) struct ModelOutput {
     pub(crate) value: serde_json::Value,
     pub(crate) text: String,

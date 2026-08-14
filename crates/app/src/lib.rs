@@ -47,10 +47,12 @@ pub use artifact_removal::{
     ArtifactRemovalResult, ArtifactRemovalService, ArtifactRemovalStage,
 };
 pub use artifact_repository::{
-    ArtifactInstallationKey, ArtifactRepository, ArtifactRepositoryError,
-    ArtifactRepositoryErrorKind, ArtifactRepositoryImportDisposition,
-    ArtifactRepositoryImportResult, ArtifactRepositoryPendingOperations,
-    ArtifactRepositoryReconciliationResult, ArtifactRepositoryRemovalResult,
+    ArtifactInstallationKey, ArtifactRepository, ArtifactRepositoryBackupKey,
+    ArtifactRepositoryError, ArtifactRepositoryErrorKind, ArtifactRepositoryImportDisposition,
+    ArtifactRepositoryImportResult, ArtifactRepositoryMigrationDisposition,
+    ArtifactRepositoryMigrationLimits, ArtifactRepositoryMigrationResult,
+    ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
+    ArtifactRepositoryRemovalResult,
 };
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
 pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};

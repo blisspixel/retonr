@@ -51,9 +51,10 @@ Milestone 0.1 technical evidence is complete, and 0.2 implementation is active. 
 proceeds in this exact order:
 
 1. With offline import, read-only inventory, selected reconciliation, inactive
-   removal, exact removal recovery, non-mutating pending-operation inspection, and
-   cross-platform signal cancellation exposed or proven through the narrow model
-   CLI, retain the complete 0.2 lifecycle evidence.
+   removal, exact removal recovery, non-mutating pending-operation inspection,
+   backup-backed explicit repository migration, and cross-platform signal
+   cancellation exposed or proven through the narrow model CLI, retain the complete
+   0.2 lifecycle evidence.
 2. Keep runtime use behind verified shared leases before wiring a real model
    consumer. Do not add network acquisition to the current administrative slice.
 3. Retain the completed opaque exclusive-lock capability on both low-level removal
@@ -67,8 +68,10 @@ proceeds in this exact order:
    relationship-checked effective-package evidence. Preserve the separate inert
    qualification v2 that binds all four identities and exact qualification policy
    without rewriting v1 evidence. Preserve the completed schema-v3 persistence and
-   recursive relationship checks. Next add live attestation and artifact-set leases
-   without enabling claim extraction. Only then add the
+   recursive relationship checks and the explicit v1/v2 repository migration path.
+   Next add distinct artifact-set installation generations, bounded folder import,
+   and repository-owned artifact-set leases. Then add live attestation without
+   enabling claim extraction. Only after those boundaries add the
    exact effective extractor manifest, strict ephemeral wire contract, separately
    cancellable pair operation, and two-phase engine evidence join. Calibrate it in
    shadow mode before any semantic pass authority and never treat probabilistic

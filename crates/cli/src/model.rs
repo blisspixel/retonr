@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 use rewrite_app::{
     ArtifactImportLimits, ArtifactInstallationKey, ArtifactInventoryLimits,
     ArtifactReconciliationLimits, ArtifactRemovalLimits, ArtifactRepository,
-    OfflineArtifactImportRequest,
+    ArtifactRepositoryMigrationLimits, OfflineArtifactImportRequest,
 };
 use rewrite_types::CancellationToken;
 
@@ -23,6 +23,8 @@ const MAXIMUM_ARTIFACT_BYTES: u64 = 256 * 1024 * 1024 * 1024;
 const MAXIMUM_STORAGE_ENTRIES: usize = 4_096;
 const MAXIMUM_STATE_ENTRIES: usize = 4_096;
 const MAXIMUM_TOTAL_VERIFICATION_BYTES: u64 = 512 * 1024 * 1024 * 1024;
+const MAXIMUM_MIGRATION_STATE_BYTES: u64 = 1024 * 1024 * 1024;
+const MAXIMUM_MIGRATION_REPOSITORY_ENTRIES: usize = 4_096;
 
 /// Offline managed-model operations.
 #[derive(Debug, Subcommand)]
@@ -33,6 +35,8 @@ pub(crate) enum ModelCommand {
     Inventory(InventoryArgs),
     /// List exact interrupted operations without reading model bytes.
     PendingOperations,
+    /// Explicitly migrate an existing repository after retaining a verified backup.
+    Migrate(MigrationArgs),
     /// Register one exact already-managed orphan without changing bytes.
     Reconcile(ReconcileArgs),
     /// Remove one exact inactive installation generation.
@@ -58,6 +62,14 @@ pub(crate) struct InventoryArgs {
     /// Return exit code 3 after emitting the complete report when findings exist.
     #[arg(long)]
     fail_on_findings: bool,
+}
+
+/// Confirmation for an explicit repository schema migration.
+#[derive(Debug, Args)]
+pub(crate) struct MigrationArgs {
+    /// Confirm the forward migration and retained repository backup.
+    #[arg(long)]
+    yes: bool,
 }
 
 /// Inputs for selected orphan state reconciliation.
@@ -117,6 +129,7 @@ pub(crate) fn run(
         ModelCommand::Import(args) => import(&repository, args, cancellation),
         ModelCommand::Inventory(args) => inventory(&repository, &args, cancellation),
         ModelCommand::PendingOperations => pending_operations(&repository, cancellation),
+        ModelCommand::Migrate(args) => migrate(&repository, &args, cancellation),
         ModelCommand::Reconcile(args) => reconcile(&repository, &args, cancellation),
         ModelCommand::Remove(args) => remove(&repository, &args, cancellation),
         ModelCommand::RecoverRemoval(args) => recover_removal(&repository, &args),
@@ -129,11 +142,29 @@ impl ModelCommand {
             Self::Import(_) => CommandName::ModelImport,
             Self::Inventory(_) => CommandName::ModelInventory,
             Self::PendingOperations => CommandName::ModelPendingOperations,
+            Self::Migrate(_) => CommandName::ModelMigrate,
             Self::Reconcile(_) => CommandName::ModelReconcile,
             Self::Remove(_) => CommandName::ModelRemove,
             Self::RecoverRemoval(_) => CommandName::ModelRecoverRemoval,
         }
     }
+}
+
+fn migrate(
+    repository: &ArtifactRepository,
+    args: &MigrationArgs,
+    cancellation: &CancellationToken,
+) -> Result<ModelSuccess, ModelFailure> {
+    if !args.yes {
+        return Err(ModelFailure::migration_confirmation_required());
+    }
+    let result = repository
+        .migrate(migration_limits(), cancellation)
+        .map_err(|error| ModelFailure::repository(CommandName::ModelMigrate, &error))?;
+    Ok(ModelSuccess {
+        output: ModelOutput::migration(&result),
+        exit_code: ExitCode::SUCCESS,
+    })
 }
 
 fn pending_operations(
@@ -277,5 +308,12 @@ const fn inventory_limits() -> ArtifactInventoryLimits {
         maximum_storage_entries: MAXIMUM_STORAGE_ENTRIES,
         maximum_artifact_bytes: MAXIMUM_ARTIFACT_BYTES,
         maximum_total_verification_bytes: MAXIMUM_TOTAL_VERIFICATION_BYTES,
+    }
+}
+
+const fn migration_limits() -> ArtifactRepositoryMigrationLimits {
+    ArtifactRepositoryMigrationLimits {
+        maximum_state_bytes: MAXIMUM_MIGRATION_STATE_BYTES,
+        maximum_repository_entries: MAXIMUM_MIGRATION_REPOSITORY_ENTRIES,
     }
 }

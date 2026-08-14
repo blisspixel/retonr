@@ -337,9 +337,22 @@ Controls:
   retains SQLite's no-follow flag. If resolution fails, it retains the original path
   and no-follow behavior so SQLite fails closed. This permits macOS system directory
   aliases while still refusing an indirect final state file.
-  Existing commands require the current exact schema and do not migrate it. Only
+  Ordinary commands require the current exact schema and do not migrate it. Only
   first import may reserve and synchronize a new empty state file before initializing
-  the current schema.
+  the current schema. The explicit `model migrate --yes` operation opens only an
+  initialized repository, takes the outer repository and inner artifact lifecycle
+  locks exclusively, pins the direct single-link state file, and validates the exact
+  source shape. It reserves a unique direct backup file through the pinned directory,
+  retains one SQLite write reservation, copies the locked logical state, including
+  committed WAL frames, into a bounded rollback-mode snapshot, and serializes that
+  snapshot into the exact held file handle under a 1 GiB logical state ceiling. It
+  re-reads and verifies the same handle, synchronizes the backup and directory, then
+  commits the supported forward migration inside the retained reservation. Version
+  zero, future versions, corrupt shapes, indirect
+  files, aliases, and backup collisions fail closed. Retained backup keys are
+  content-free repository-relative tokens; callers cannot select an arbitrary backup
+  destination, and Retonr does not overwrite, delete, or automatically restore a
+  verified backup.
 - First initialization creates only one missing private repository leaf below an
   existing pinned parent, or accepts an empty existing directory without changing its
   permissions. A nonempty uninitialized `--data-dir` is refused without mutation.

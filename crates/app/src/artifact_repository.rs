@@ -25,10 +25,13 @@ const STATE_DATABASE_FILE: &str = "artifact-state.sqlite3";
 const REPOSITORY_LOCK_FILE: &str = ".artifact-repository.lock";
 
 mod contract;
+mod migration;
 
 pub use contract::{
-    ArtifactInstallationKey, ArtifactRepositoryError, ArtifactRepositoryErrorKind,
-    ArtifactRepositoryImportDisposition, ArtifactRepositoryImportResult,
+    ArtifactInstallationKey, ArtifactRepositoryBackupKey, ArtifactRepositoryError,
+    ArtifactRepositoryErrorKind, ArtifactRepositoryImportDisposition,
+    ArtifactRepositoryImportResult, ArtifactRepositoryMigrationDisposition,
+    ArtifactRepositoryMigrationLimits, ArtifactRepositoryMigrationResult,
     ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
     ArtifactRepositoryRemovalResult,
 };

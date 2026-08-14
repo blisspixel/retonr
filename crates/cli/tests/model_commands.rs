@@ -213,6 +213,7 @@ fn help_lists_only_the_implemented_offline_model_surface() {
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("inventory"))
         .stdout(predicate::str::contains("pending-operations"))
+        .stdout(predicate::str::contains("migrate"))
         .stdout(predicate::str::contains("reconcile"))
         .stdout(predicate::str::contains("remove"))
         .stdout(predicate::str::contains("recover-removal"))

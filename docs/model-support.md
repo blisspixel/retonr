@@ -199,6 +199,11 @@ retonr model deactivate --role generation
 retonr model remove <artifact>
 ```
 
+The implemented administrative slice also provides
+`retonr --data-dir <DIRECTORY> model migrate --yes`. It migrates only an existing
+repository after retaining a verified SQLite-consistent backup. It is not model
+acquisition, qualification, activation, or runtime migration.
+
 `recommend`, `inspect`, and `eval` do not activate or remove anything. Download is
 explicit, resumable, checksummed, cancellable, and license gated. Activation is an
 atomic pointer change from one verified and currently qualified artifact to another.

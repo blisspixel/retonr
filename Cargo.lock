@@ -1283,6 +1283,7 @@ dependencies = [
  "rewrite-app",
  "rewrite-model",
  "rewrite-types",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
@@ -1303,6 +1304,7 @@ dependencies = [
  "rewrite-model-store",
  "rewrite-text-adapter",
  "rewrite-types",
+ "rusqlite",
  "rustix",
  "same-file",
  "serde_json",
@@ -1387,6 +1389,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "winx",
 ]
 
 [[package]]

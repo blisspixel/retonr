@@ -218,6 +218,12 @@ Profiles, evidence metadata, rules, versions, feedback, and redacted rewrite rec
 remain planned for the same bounded persistence layer. Migrations require forward
 tests from every supported version with pre-migration backup, interruption,
 corruption, and verified recovery fixtures before those stores freeze.
+The implemented artifact repository exposes this authority only through the explicit
+confirmed `model migrate` operation. It retains one SQLite write reservation across
+source validation, a bounded logical backup into a rollback-mode snapshot,
+serialization into the exact held repository file, same-handle verification,
+synchronization, and the supported migration commit. Ordinary repository opens remain
+exact-schema and non-migrating.
 
 Content-derived embeddings live in a qualified embedding space identified by exact
 artifact set, runtime, tokenizer, preprocessing, instruction, normalization,
