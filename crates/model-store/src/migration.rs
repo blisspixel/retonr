@@ -389,31 +389,34 @@ fn require_within_backup_limit(actual: u64, maximum: u64) -> StoreResult<()> {
 
 fn require_destination(file: &File, expected_bytes: u64) -> StoreResult<()> {
     let metadata = file.metadata().map_err(StoreError::BackupIo)?;
-    if metadata.is_file()
-        && metadata.len() == expected_bytes
-        && file_has_single_link(file, &metadata)?
-    {
+    if !metadata.is_file() || metadata.len() != expected_bytes {
+        return Err(StoreError::InvalidBackupDestination);
+    }
+    require_single_link(file, &metadata)
+}
+
+#[cfg(unix)]
+fn require_single_link(_file: &File, metadata: &Metadata) -> StoreResult<()> {
+    if std::os::unix::fs::MetadataExt::nlink(metadata) == 1 {
         Ok(())
     } else {
         Err(StoreError::InvalidBackupDestination)
     }
 }
 
-#[cfg(unix)]
-fn file_has_single_link(_file: &File, metadata: &Metadata) -> StoreResult<bool> {
-    Ok(std::os::unix::fs::MetadataExt::nlink(metadata) == 1)
-}
-
 #[cfg(windows)]
-fn file_has_single_link(file: &File, _metadata: &Metadata) -> StoreResult<bool> {
-    winx::winapi_util::file::information(file)
-        .map(|information| information.number_of_links() == 1)
-        .map_err(StoreError::BackupIo)
+fn require_single_link(file: &File, _metadata: &Metadata) -> StoreResult<()> {
+    let information = winx::winapi_util::file::information(file).map_err(StoreError::BackupIo)?;
+    if information.number_of_links() == 1 {
+        Ok(())
+    } else {
+        Err(StoreError::InvalidBackupDestination)
+    }
 }
 
 #[cfg(not(any(unix, windows)))]
-const fn file_has_single_link(_file: &File, _metadata: &Metadata) -> StoreResult<bool> {
-    Ok(false)
+const fn require_single_link(_file: &File, _metadata: &Metadata) -> StoreResult<()> {
+    Err(StoreError::InvalidBackupDestination)
 }
 
 #[cfg(test)]
