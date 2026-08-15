@@ -90,7 +90,9 @@ relationships. It does not project v2 evidence into v1 or create an active bindi
 ### Follow-up
 
 - Decide acquisition and staged-download policy in a separate record.
-- Add application-owned live attestation and artifact-set lease authority before any
+- The repository-owned artifact-set lease is implemented; it verifies bytes and
+  holds the shared lifecycle boundary but grants no role authority.
+- Add application-owned live attestation before any
   claim-extraction activation.
 - Add invalidation inputs for runtime, prompt, threshold, license, and platform
   changes.

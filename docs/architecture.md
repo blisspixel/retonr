@@ -580,7 +580,8 @@ entries within the current operation cause failure and retention rather than rec
 deletion. A state failure after publication leaves an inert exact orphan that a later
 identical import can verify and register. The operation does not inspect
 package-completeness evidence, grant a set lease, qualify a runtime, activate a role,
-execute code, or use the network. No artifact-set import CLI exists yet.
+execute code, or use the network. Import itself grants no lease; a lease is a
+separate verified operation. No artifact-set import CLI exists yet.
 Runtime-native pulls, downloads, stale-root recovery, managed-set removal, set
 inventory and reconciliation, and repair remain later operations.
 
@@ -656,6 +657,29 @@ consumer uses it yet.
 Removal requires the exclusive lock and cannot begin while such a lease exists.
 Removal is not secure erasure and does not affect external copies, caches, backups,
 runtime memory, or provider records.
+
+A repository-owned artifact-set lease extends that boundary to a complete managed
+tree. The repository pins its data directory in shared mode, pins the exact state
+database, and opens managed storage under the shared lifecycle lock. It recomputes
+the content-derived set-root name from the registered canonical manifest instead of
+resolving a persisted storage key as a path, requires the exact registered
+installation record to match that recomputed plan, and then reverifies the complete
+tree: exact shape, exact member sizes, one filesystem link per member, streaming
+SHA-256 per member, and an identical directory snapshot before and after. Durable
+manifest and installation state is read again after verification. The lease then
+retains the repository guard, the storage root, the set root, and the shared
+lifecycle lock for its complete lifetime, so import, reconciliation, removal, and
+migration all fail with an in-use classification while it lives. Read-only
+inventory and pending-operation inspection continue to succeed, and shared leases
+coexist.
+
+Unlike the single-file lease, the artifact-set lease holds both the repository and
+the storage lifecycle lock, in that order. It is point-in-time byte evidence. It
+does not qualify a set, attest a live runtime, authorize a role, prove that the
+manifest lists every file that can affect runtime output, or protect managed bytes
+from a non-cooperating same-user process outside the pinned boundary. Managed-set
+removal does not exist, so every set installation generation is currently the first
+generation and the key cannot yet distinguish a reinstall.
 
 The unpublished SQLite adapter requires a live
 `ExclusiveArtifactLifecycleLock` reference for both journal transitions. This

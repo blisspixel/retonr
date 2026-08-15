@@ -11,7 +11,8 @@ use crate::{
     ArtifactOrphanReconciliationResult, ArtifactReconciliationDisposition,
     ArtifactReconciliationError, ArtifactRemovalDisposition, ArtifactRemovalError,
     ArtifactRemovalResult, ArtifactSetImportDisposition, ArtifactSetImportError,
-    ArtifactSetImportResult,
+    ArtifactSetImportResult, ArtifactSetLeaseError,
+    runtime_artifact_set_lease::set_lease_error_kind,
 };
 
 /// Stable application-level classification for repository failures.
@@ -175,7 +176,7 @@ impl ArtifactSetInstallationKey {
         self.installation_generation
     }
 
-    fn from_stored(value: &StoredArtifactSetInstallation) -> Self {
+    pub(crate) fn from_stored(value: &StoredArtifactSetInstallation) -> Self {
         Self {
             artifact_set_id: value.installed.artifact_set_id().clone(),
             installation_generation: value.epoch.get(),
@@ -321,6 +322,9 @@ pub enum ArtifactRepositoryError {
     /// Offline artifact-set import failed.
     #[error(transparent)]
     SetImport(#[from] ArtifactSetImportError),
+    /// Shared managed artifact-set lease acquisition failed.
+    #[error(transparent)]
+    SetLease(#[from] ArtifactSetLeaseError),
     /// Read-only artifact inventory failed.
     #[error(transparent)]
     Inventory(#[from] ArtifactInventoryError),
@@ -374,6 +378,7 @@ impl ArtifactRepositoryError {
             Self::State(error) => store_error_kind(error),
             Self::Import(error) => import_error_kind(error),
             Self::SetImport(error) => set_import_error_kind(error),
+            Self::SetLease(error) => set_lease_error_kind(error),
             Self::Inventory(error) => inventory_error_kind(error),
             Self::Reconciliation(error) => reconciliation_error_kind(error),
             Self::Removal(error) => removal_error_kind(error),
@@ -436,7 +441,7 @@ fn set_import_error_kind(error: &ArtifactSetImportError) -> ArtifactRepositoryEr
     }
 }
 
-fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKind {
+pub(crate) fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKind {
     use ArtifactRepositoryErrorKind as Kind;
     match error {
         StoreError::Database(_) | StoreError::BackupIo(_) | StoreError::BackupIncomplete => {

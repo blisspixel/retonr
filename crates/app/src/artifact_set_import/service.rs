@@ -25,7 +25,7 @@ use super::{
     verify::{copy_and_verify_source, validate_staged_snapshot, verify_final_tree},
 };
 
-const SETS_DIRECTORY: &str = "sets";
+pub(crate) const SETS_DIRECTORY: &str = "sets";
 const SET_STAGING_DIRECTORY: &str = ".set-staging";
 const MAX_STORAGE_LAYOUT_ENTRIES: usize = 16;
 const MAX_REPOSITORY_LAYOUT_ENTRIES: usize = 4_096;

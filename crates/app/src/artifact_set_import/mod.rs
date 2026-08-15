@@ -5,7 +5,10 @@ mod service;
 mod source;
 mod verify;
 
-pub(crate) use service::OfflineArtifactSetImportService;
+pub(crate) use boundary::{map_managed_tree, map_set_capacity, map_storage_open};
+pub(crate) use manifest::{ArtifactSetPlanBounds, plan_artifact_set, validate_plan_bounds};
+pub(crate) use service::{OfflineArtifactSetImportService, SETS_DIRECTORY};
+pub(crate) use verify::verify_final_tree;
 
 pub(crate) fn validate_request_before_repository_mutation(
     request: &OfflineArtifactSetImportRequest,
@@ -14,7 +17,7 @@ pub(crate) fn validate_request_before_repository_mutation(
     manifest::validate_manifest_and_limits(&request.manifest, limits).map(drop)
 }
 
-use manifest::ValidatedSetPlan;
+pub(crate) use manifest::ValidatedSetPlan;
 
 fn report_progress(
     progress: &mut impl FnMut(ArtifactSetImportProgress),

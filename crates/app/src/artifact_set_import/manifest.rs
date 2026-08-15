@@ -9,44 +9,63 @@ use super::{ArtifactSetImportError, ArtifactSetImportLimits};
 pub(super) const SET_STORAGE_KEY_PREFIX: &str = "set-v1-";
 
 #[derive(Debug, Eq, PartialEq)]
-pub(super) struct ValidatedSetPlan {
-    pub(super) artifact_set_id: ArtifactSetId,
-    pub(super) storage_key: String,
-    pub(super) installed: InstalledArtifactSet,
-    pub(super) directories: Vec<ArtifactSetRelativePath>,
-    pub(super) tree_entries: usize,
-    pub(super) maximum_depth: usize,
+pub(crate) struct ValidatedSetPlan {
+    pub(crate) artifact_set_id: ArtifactSetId,
+    pub(crate) storage_key: String,
+    pub(crate) installed: InstalledArtifactSet,
+    pub(crate) directories: Vec<ArtifactSetRelativePath>,
+    pub(crate) tree_entries: usize,
+    pub(crate) maximum_depth: usize,
+}
+
+/// Portable manifest ceilings shared by every operation that plans one exact set.
+///
+/// Storage and staging ceilings are owned by the operation, not by this plan.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ArtifactSetPlanBounds {
+    pub(crate) members: usize,
+    pub(crate) member_bytes: u64,
+    pub(crate) total_bytes: u64,
+    pub(crate) tree_entries: usize,
 }
 
 pub(super) fn validate_manifest_and_limits(
     manifest: &ArtifactSetManifest,
     limits: ArtifactSetImportLimits,
 ) -> Result<ValidatedSetPlan, ArtifactSetImportError> {
-    validate_limits(limits)?;
+    validate_operation_limits(limits)?;
+    plan_artifact_set(manifest, plan_bounds(limits))
+}
+
+pub(crate) fn plan_artifact_set(
+    manifest: &ArtifactSetManifest,
+    bounds: ArtifactSetPlanBounds,
+) -> Result<ValidatedSetPlan, ArtifactSetImportError> {
+    validate_plan_bounds(bounds)?;
     manifest
         .validate()
         .map_err(ArtifactSetImportError::InvalidManifest)?;
-    if manifest.members().len() > limits.maximum_members {
+    if manifest.members().len() > bounds.members {
         return Err(ArtifactSetImportError::TooManyMembers {
             actual: manifest.members().len(),
-            maximum: limits.maximum_members,
+            maximum: bounds.members,
         });
     }
     if let Some(member) = manifest
         .members()
         .iter()
-        .find(|member| member.byte_size() > limits.maximum_member_bytes)
+        .find(|member| member.byte_size() > bounds.member_bytes)
     {
         return Err(ArtifactSetImportError::MemberTooLarge {
             actual: member.byte_size(),
-            maximum: limits.maximum_member_bytes,
+            maximum: bounds.member_bytes,
         });
     }
     let total_bytes = manifest.total_byte_size();
-    if total_bytes > limits.maximum_total_bytes {
+    if total_bytes > bounds.total_bytes {
         return Err(ArtifactSetImportError::ArtifactSetTooLarge {
             actual: total_bytes,
-            maximum: limits.maximum_total_bytes,
+            maximum: bounds.total_bytes,
         });
     }
 
@@ -72,7 +91,7 @@ pub(super) fn validate_manifest_and_limits(
         .len()
         .checked_add(manifest.members().len())
         .ok_or(ArtifactSetImportError::TreeEntryLimitExceeded)?;
-    if tree_entries > limits.maximum_tree_entries {
+    if tree_entries > bounds.tree_entries {
         return Err(ArtifactSetImportError::TreeEntryLimitExceeded);
     }
 
@@ -99,17 +118,37 @@ pub(super) fn validate_manifest_and_limits(
     })
 }
 
-fn validate_limits(limits: ArtifactSetImportLimits) -> Result<(), ArtifactSetImportError> {
-    let positive = limits.maximum_members != 0
-        && limits.maximum_member_bytes != 0
-        && limits.maximum_total_bytes != 0
-        && limits.maximum_tree_entries != 0
-        && limits.maximum_storage_entries != 0
-        && limits.maximum_staging_entries != 0;
-    let count_bounds = limits.maximum_members.checked_add(1).is_some()
-        && limits.maximum_tree_entries.checked_add(1).is_some()
-        && limits.maximum_storage_entries.checked_add(1).is_some()
+const fn plan_bounds(limits: ArtifactSetImportLimits) -> ArtifactSetPlanBounds {
+    ArtifactSetPlanBounds {
+        members: limits.maximum_members,
+        member_bytes: limits.maximum_member_bytes,
+        total_bytes: limits.maximum_total_bytes,
+        tree_entries: limits.maximum_tree_entries,
+    }
+}
+
+fn validate_operation_limits(
+    limits: ArtifactSetImportLimits,
+) -> Result<(), ArtifactSetImportError> {
+    let positive = limits.maximum_storage_entries != 0 && limits.maximum_staging_entries != 0;
+    let count_bounds = limits.maximum_storage_entries.checked_add(1).is_some()
         && limits.maximum_staging_entries.checked_add(1).is_some();
+    if positive && count_bounds {
+        Ok(())
+    } else {
+        Err(ArtifactSetImportError::InvalidLimits)
+    }
+}
+
+pub(crate) fn validate_plan_bounds(
+    bounds: ArtifactSetPlanBounds,
+) -> Result<(), ArtifactSetImportError> {
+    let positive = bounds.members != 0
+        && bounds.member_bytes != 0
+        && bounds.total_bytes != 0
+        && bounds.tree_entries != 0;
+    let count_bounds =
+        bounds.members.checked_add(1).is_some() && bounds.tree_entries.checked_add(1).is_some();
     if positive && count_bounds {
         Ok(())
     } else {

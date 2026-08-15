@@ -269,8 +269,10 @@ separate installed-set record binds a unique portable root key and generation to
 exact artifact-set manifest, but does not verify member bytes or activate
 qualification v2. The application now creates that record only after an exact local
 folder import verifies and publishes the complete manifest tree. Reading the record
-later still does not reverify bytes or grant use authority. Live claim extraction remains
-unavailable until the application can attest, lease, and recheck the complete tuple.
+later still does not reverify bytes or grant use authority. A separate
+repository-owned lease does reverify every member and holds the shared lifecycle
+boundary, but it grants no role authority on its own. Live claim extraction remains
+unavailable until the application can also attest and recheck the complete tuple.
 
 ## Selection and fallback rules
 

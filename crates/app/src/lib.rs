@@ -24,6 +24,7 @@ mod artifact_set_import;
 mod artifact_storage;
 mod grounded;
 mod runtime_artifact_lease;
+mod runtime_artifact_set_lease;
 
 pub use artifact_import::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,
@@ -63,6 +64,9 @@ pub use artifact_set_import::{
 pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
 pub use rewrite_engine::{EngineError, ProtectionError};
 pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};
+pub use runtime_artifact_set_lease::{
+    ArtifactSetLeaseError, RuntimeArtifactSetLease, RuntimeArtifactSetLeaseLimits,
+};
 
 /// Maximum accepted source or candidate size for the plain-text check service.
 pub const MAX_CANDIDATE_CHECK_BYTES: usize = MAX_PLAIN_TEXT_BYTES;

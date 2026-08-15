@@ -27,7 +27,9 @@ const REPOSITORY_LOCK_FILE: &str = ".artifact-repository.lock";
 mod contract;
 mod migration;
 mod set_import;
+mod set_lease;
 
+pub(crate) use contract::store_error_kind;
 pub use contract::{
     ArtifactInstallationKey, ArtifactRepositoryBackupKey, ArtifactRepositoryError,
     ArtifactRepositoryErrorKind, ArtifactRepositoryImportDisposition,
@@ -447,7 +449,7 @@ enum RepositoryLockMode {
     ExistingExclusive,
 }
 
-struct DataDirectoryGuard {
+pub(crate) struct DataDirectoryGuard {
     path: PathBuf,
     lock: File,
     lock_fingerprint: crate::artifact_storage::MetadataFingerprint,
