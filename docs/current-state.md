@@ -19,7 +19,7 @@ or stored-data contracts.
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
-| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, crash-recoverable inactive removal with exact pinned-lock capability binding, and verified single-file runtime artifact lease groundwork |
+| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, crash-recoverable inactive removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, and a repository-owned whole-tree artifact-set lease |
 | `retonr` | Provisional `check` command plus an explicit-root offline model-artifact CLI for import, inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, inactive removal, and exact removal recovery |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
@@ -74,7 +74,8 @@ recomputes indexed identities, and recursively cross-checks the complete subject
 v1 tables and serialized records remain unchanged, and migration grants no authority.
 The installed-set record is structural persistence only. It does not prove that the
 root or member bytes exist, grant a lease, attest a runtime, qualify a package, or
-authorize claim extraction. The application now writes it only after an exact local
+authorize claim extraction. A lease is a separate verified operation that reads that
+record and independently reverifies the managed bytes. The application now writes it only after an exact local
 folder import verifies and publishes every manifest member under the content-derived
 managed root. That observation does not turn the durable record into authority, and
 no runtime consumer uses it yet.
@@ -91,7 +92,7 @@ migrate implicitly.
 
 ## Verified locally
 
-The August 14, 2026 Windows development checkpoint passes:
+The August 15, 2026 Windows development checkpoint passes:
 
 ```console
 cargo fmt --all -- --check
@@ -112,9 +113,10 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 460 Rust unit, integration, and process tests pass. Two process helpers are
+All 498 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Documentation tests also pass. The measured Rust line coverage is 91.55
+Two further artifact-set lease cases are Unix only and run in continuous
+integration. Documentation tests also pass. The measured Rust line coverage is 91.54
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -168,11 +170,16 @@ uses its own clean runner database.
   lifecycle lock and file handle until use ends. No real runtime consumer uses that
   lease yet. Exact manifest-driven artifact-set folder import is implemented at the
   application boundary with whole-tree publication and inert structural registration,
-  but it has no CLI, set inventory, reconciliation, removal, or runtime lease. Downloads,
+  but it has no CLI, set inventory, reconciliation, or removal. A repository-owned
+  artifact-set lease reverifies the complete registered tree under the shared
+  repository and storage lifecycle locks and retains that boundary for its lifetime,
+  so exclusive operations fail while it is live. No real runtime consumer uses it
+  yet, and set installation generations are always the first generation because
+  managed-set removal does not exist. Downloads,
   runtime-native pulls, bulk reconciliation, orphan deletion, runtime commands, and
   exact real-artifact qualification are not implemented. Effective-package evidence
   and qualification v2 have durable inert persistence but no production evidence
-  producer, live attestor, artifact-set lease, activation path, or CLI surface. The
+  producer, live attestor, activation path, or CLI surface. The
   CLI requires one explicit `--data-dir`; its seven artifact commands do not use the
   network. Only confirmed `model migrate` can apply a supported schema migration,
   and it first retains a verified repository-owned backup. The other six commands
@@ -229,9 +236,9 @@ is:
    effective-package evidence, separate inert qualification v2, and schema-v4
    relationship-checked persistence without rewriting v1 or schema-v3 evidence.
    Preserve the distinct inert artifact-set installation generation, exact bounded
-   folder import, and explicit backup-backed repository migration path. Next add
-   repository-owned set leases;
-   then add live attestation without enabling claim extraction.
+   folder import, explicit backup-backed repository migration path, and
+   repository-owned artifact-set leases. Next add live attestation without enabling
+   claim extraction.
 4. Add the exact extractor manifest and strict ephemeral wire contract, followed by
    an application-level cancellable pair operation. Join evidence to a two-phase
    engine path only after fake-backend conformance passes, then calibrate it

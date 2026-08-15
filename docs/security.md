@@ -323,6 +323,17 @@ Controls:
   use of managed bytes must retain a verified shared lifecycle lease; removal takes
   the exclusive lock. The operation is not secure erasure and cannot remove external
   copies, backups, caches, loaded runtime memory, or provider data.
+- An artifact-set lease is repository owned. It takes the shared repository lock
+  before the shared storage lifecycle lock, recomputes the content-derived set-root
+  name from the registered manifest rather than resolving a persisted storage key as
+  a path, and rejects any member that is indirect, aliased, missing, oversized, or
+  digest-divergent. Whole-tree verification is bounded by caller-owned member,
+  byte, tree-entry, and storage-entry ceilings, honors cancellation before the lease
+  is granted, and requires an identical tree snapshot and identical durable state
+  before and after hashing. The lease writes no durable state and grants no
+  qualification, activation, or role authority. It does not claim identity-bound
+  protection against a non-cooperating same-user process, and network filesystem
+  semantics remain unqualified.
 - The application opens the exact lifecycle-lock entry through its pinned storage
   root, clones that same handle into the opaque exclusive capability, and retains
   the original handle for layout fingerprint checks. The store cannot prepare or

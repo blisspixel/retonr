@@ -2,7 +2,7 @@ use crate::ArtifactInventoryError;
 
 use super::ArtifactSetImportError;
 
-pub(super) fn map_storage_open(error: ArtifactInventoryError) -> ArtifactSetImportError {
+pub(crate) fn map_storage_open(error: ArtifactInventoryError) -> ArtifactSetImportError {
     match error {
         ArtifactInventoryError::InvalidLimits => ArtifactSetImportError::InvalidLimits,
         ArtifactInventoryError::StorageNotInitialized
@@ -40,7 +40,7 @@ pub(super) fn map_source_tree(error: ArtifactInventoryError) -> ArtifactSetImpor
     }
 }
 
-pub(super) fn map_managed_tree(error: ArtifactInventoryError) -> ArtifactSetImportError {
+pub(crate) fn map_managed_tree(error: ArtifactInventoryError) -> ArtifactSetImportError {
     match error {
         ArtifactInventoryError::StorageEntryLimitExceeded => {
             ArtifactSetImportError::TreeEntryLimitExceeded
@@ -67,7 +67,7 @@ pub(super) fn map_staging(error: ArtifactInventoryError) -> ArtifactSetImportErr
     }
 }
 
-pub(super) fn map_set_capacity(error: ArtifactInventoryError) -> ArtifactSetImportError {
+pub(crate) fn map_set_capacity(error: ArtifactInventoryError) -> ArtifactSetImportError {
     match error {
         ArtifactInventoryError::StorageEntryLimitExceeded => {
             ArtifactSetImportError::StorageEntryLimitExceeded

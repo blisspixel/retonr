@@ -97,7 +97,7 @@ where
     Ok(())
 }
 
-pub(super) fn verify_final_tree(
+pub(crate) fn verify_final_tree(
     root: &PinnedDirectory,
     manifest: &ArtifactSetManifest,
     plan: &ValidatedSetPlan,

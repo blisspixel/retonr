@@ -97,7 +97,9 @@ exact manifest and installation records or confirms that both existing records
 match. Inactive removal uses an installation generation and durable journal so an
 interrupted operation can resume and an old retry cannot delete a deliberate
 reinstall. Runtime artifact leases hold the shared lifecycle lock for their full
-use lifetime. Removal's durable state transitions require a live, non-cloneable
+use lifetime. A repository-owned artifact-set lease reverifies every member of a
+registered managed set and holds the shared repository and storage locks for its
+lifetime, so exclusive lifecycle operations cannot run beside it. Removal's durable state transitions require a live, non-cloneable
 exclusive lifecycle-lock capability bound by the application to the exact pinned
 repository lock entry. A narrow offline CLI now
 exposes exact single-file import, read-only inventory, read-only pending-operation
