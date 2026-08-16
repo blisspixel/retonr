@@ -163,6 +163,8 @@ pub enum ErrorCode {
     IncompatibleState,
     /// A valid request was refused by current policy or durable state.
     PolicyRefusal,
+    /// The selected output destination already exists and is never replaced.
+    OutputExists,
     /// The requested contract or capability is not supported.
     Unsupported,
     /// An operation failed without a safe domain result.
@@ -429,6 +431,36 @@ pub fn read_manifest_bounded(
 ) -> Result<ArtifactManifest, ManifestInputError> {
     let file = open_regular_file(path).map_err(|error| ManifestInputError::Io(error.kind()))?;
     parse_manifest_bounded(file, maximum_bytes)
+}
+
+/// Path value that selects the standard stream instead of a filesystem entry.
+pub(crate) const STANDARD_STREAM_PATH: &str = "-";
+
+/// Reads one bounded document from a file or from standard input.
+///
+/// Standard input is read to end of file without trimming, so blank lines,
+/// leading and trailing whitespace, a byte order mark, the newline kind, and an
+/// absent final newline all remain exactly as supplied.
+pub(crate) fn read_input_bounded(path: &Path, limit: usize) -> io::Result<Vec<u8>> {
+    if path.as_os_str() == STANDARD_STREAM_PATH {
+        read_bounded(io::stdin().lock(), limit)
+    } else {
+        read_bounded(open_regular_file(path)?, limit)
+    }
+}
+
+/// Reads at most `limit` bytes and rejects anything longer.
+pub(crate) fn read_bounded(reader: impl Read, limit: usize) -> io::Result<Vec<u8>> {
+    let read_limit = u64::try_from(limit).unwrap_or(u64::MAX).saturating_add(1);
+    let mut bytes = Vec::with_capacity(limit.min(64 * 1024));
+    reader.take(read_limit).read_to_end(&mut bytes)?;
+    if bytes.len() > limit {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "input exceeds the supported byte limit",
+        ));
+    }
+    Ok(bytes)
 }
 
 pub(crate) fn open_regular_file(path: &Path) -> io::Result<File> {

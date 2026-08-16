@@ -5,22 +5,19 @@
 
 use std::{
     ffi::OsString,
-    io::{self, Read, Write},
-    path::{Path, PathBuf},
+    io::{self, Write},
+    path::PathBuf,
     process::ExitCode,
 };
 
 use clap::{Parser, Subcommand, error::ErrorKind};
-use rewrite_app::{CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES};
-use rewrite_types::{CancellationToken, ReasonCode, RewriteRecord, RewriteStatus};
+use rewrite_types::CancellationToken;
 
-use crate::contract::{
-    CommandName, EXIT_CANCELLED, EXIT_POLICY, ErrorEnvelope, ReportFormat, SuccessEnvelope,
-    open_regular_file,
-};
+use crate::contract::{CommandName, ErrorEnvelope, ReportFormat, SuccessEnvelope};
 use crate::failure::RunFailure;
 use crate::model::{ModelCommand, ModelFailure};
 
+mod check;
 pub mod contract;
 mod failure;
 mod model;
@@ -44,10 +41,10 @@ struct Cli {
 enum Command {
     /// Validate a supplied plain-text candidate without using a model.
     Check {
-        /// UTF-8 source file to protect and validate against.
+        /// UTF-8 source file to protect and validate against, or - for standard input.
         #[arg(value_name = "SOURCE")]
         source: PathBuf,
-        /// UTF-8 file containing the complete proposed replacement.
+        /// UTF-8 file containing the complete proposed replacement, or - for standard input.
         #[arg(value_name = "CANDIDATE")]
         candidate: PathBuf,
         /// Exact term that must be preserved. May be repeated.
@@ -56,6 +53,17 @@ enum Command {
         /// Return exit code 3 when validation safely abstains.
         #[arg(long)]
         fail_on_abstain: bool,
+        /// Write the exact accepted bytes to a new file, or to - for standard output.
+        ///
+        /// An existing destination is never replaced and the source is never modified.
+        #[arg(long, value_name = "PATH")]
+        output: Option<PathBuf>,
+        /// Permit exact unescaped bytes on a terminal. Requires --yes.
+        #[arg(long)]
+        raw_terminal: bool,
+        /// Confirm the raw terminal output opt-in.
+        #[arg(long)]
+        yes: bool,
     },
     /// Administer exact local model artifacts without network access.
     Model {
@@ -108,33 +116,22 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             candidate,
             protected_terms,
             fail_on_abstain,
-        } => {
-            let cancellation = CancellationToken::new();
-            let signal_cancellation = cancellation.clone();
-            ctrlc::try_set_handler(move || signal_cancellation.cancel())
-                .map_err(|_| (RunFailure::operational(CommandName::Check), format))?;
-            let source_bytes = read_file_bounded(&source, MAX_CANDIDATE_CHECK_BYTES)
-                .map_err(|error| (RunFailure::check_read(&error), format))?;
-            let candidate_bytes = read_file_bounded(&candidate, MAX_CANDIDATE_CHECK_BYTES)
-                .map_err(|error| (RunFailure::check_read(&error), format))?;
-            let candidate_text = String::from_utf8(candidate_bytes)
-                .map_err(|_| (RunFailure::usage_for(CommandName::Check), format))?;
-            let result = CandidateCheckService::check_with_cancellation(
-                CandidateCheckRequest {
-                    source: source_bytes,
-                    candidate: candidate_text,
-                    protected_terms,
-                },
-                &cancellation,
-            )
-            .map_err(|error| (RunFailure::check_app(&error), format))?;
-            if result.record.reason == Some(ReasonCode::Cancelled) {
-                return Err((RunFailure::cancelled(CommandName::Check), format));
-            }
-            write_report(&result.record, format)
-                .map_err(|_| (RunFailure::operational(CommandName::Check), format))?;
-            Ok(exit_code(&result.record, fail_on_abstain))
-        }
+            output,
+            raw_terminal,
+            yes,
+        } => check::run(
+            check::CheckRequest {
+                source,
+                candidate,
+                protected_terms,
+                fail_on_abstain,
+                output,
+                raw_terminal,
+                confirmed: yes,
+            },
+            format,
+        )
+        .map_err(|error| (error, format)),
         Command::Model { command } => {
             let command_name = command.name();
             let data_directory = cli.data_dir.ok_or_else(|| {
@@ -154,55 +151,6 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             Ok(success.exit_code)
         }
     }
-}
-
-fn read_file_bounded(path: &Path, limit: usize) -> io::Result<Vec<u8>> {
-    read_bounded(open_regular_file(path)?, limit)
-}
-
-fn read_bounded(reader: impl Read, limit: usize) -> io::Result<Vec<u8>> {
-    let read_limit = u64::try_from(limit).unwrap_or(u64::MAX).saturating_add(1);
-    let mut bytes = Vec::with_capacity(limit.min(64 * 1024));
-    reader.take(read_limit).read_to_end(&mut bytes)?;
-    if bytes.len() > limit {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "input exceeds the supported byte limit",
-        ));
-    }
-    Ok(bytes)
-}
-
-fn write_report(record: &RewriteRecord, format: ReportFormat) -> io::Result<()> {
-    let mut stdout = io::stdout().lock();
-    match format {
-        ReportFormat::Json => {
-            let mut bytes =
-                serde_json::to_vec_pretty(&SuccessEnvelope::new(CommandName::Check, record))
-                    .map_err(io::Error::other)?;
-            bytes.push(b'\n');
-            stdout.write_all(&bytes)?;
-        }
-        ReportFormat::Text => {
-            writeln!(stdout, "status: {}", status_name(record.status))?;
-            if let Some(reason) = record.reason {
-                writeln!(stdout, "reason: {}", reason_name(reason))?;
-            }
-            writeln!(stdout, "source_digest: {}", record.source_digest.as_str())?;
-            writeln!(stdout, "output_digest: {}", record.output_digest.as_str())?;
-            writeln!(stdout, "candidates: {}", record.assessments.len())?;
-            writeln!(
-                stdout,
-                "eligible_candidates: {}",
-                record
-                    .assessments
-                    .iter()
-                    .filter(|assessment| assessment.eligible)
-                    .count()
-            )?;
-        }
-    }
-    Ok(())
 }
 
 fn write_model_report(
@@ -255,102 +203,4 @@ fn requested_format(arguments: &[OsString]) -> ReportFormat {
         }
     }
     ReportFormat::Json
-}
-
-fn exit_code(record: &RewriteRecord, fail_on_abstain: bool) -> ExitCode {
-    exit_status(record.status, record.reason, fail_on_abstain)
-}
-
-fn exit_status(
-    status: RewriteStatus,
-    reason: Option<ReasonCode>,
-    fail_on_abstain: bool,
-) -> ExitCode {
-    if reason == Some(ReasonCode::Cancelled) {
-        return ExitCode::from(EXIT_CANCELLED);
-    }
-    match status {
-        RewriteStatus::Failed => ExitCode::FAILURE,
-        RewriteStatus::Abstained if fail_on_abstain => ExitCode::from(EXIT_POLICY),
-        RewriteStatus::Rewritten
-        | RewriteStatus::UnchangedNoEligibleContent
-        | RewriteStatus::Abstained => ExitCode::SUCCESS,
-    }
-}
-
-const fn status_name(status: RewriteStatus) -> &'static str {
-    match status {
-        RewriteStatus::Rewritten => "rewritten",
-        RewriteStatus::UnchangedNoEligibleContent => "unchanged_no_eligible_content",
-        RewriteStatus::Abstained => "abstained",
-        RewriteStatus::Failed => "failed",
-    }
-}
-
-const fn reason_name(reason: ReasonCode) -> &'static str {
-    match reason {
-        ReasonCode::NoCandidate => "no_candidate",
-        ReasonCode::InvalidCandidate => "invalid_candidate",
-        ReasonCode::SentinelIntegrity => "sentinel_integrity",
-        ReasonCode::ProtectedValueChanged => "protected_value_changed",
-        ReasonCode::StructureChanged => "structure_changed",
-        ReasonCode::UnsafeText => "unsafe_text",
-        ReasonCode::SemanticMismatch => "semantic_mismatch",
-        ReasonCode::SemanticUncertain => "semantic_uncertain",
-        ReasonCode::ReassemblyVerification => "reassembly_verification",
-        ReasonCode::Cancelled => "cancelled",
-        ReasonCode::UnsupportedAtomicity => "unsupported_atomicity",
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{io::Cursor, process::ExitCode};
-
-    use rewrite_types::{ReasonCode, RewriteStatus};
-
-    use super::{exit_status, read_bounded, reason_name, status_name};
-    use crate::contract::{EXIT_CANCELLED, EXIT_POLICY};
-
-    #[test]
-    fn stable_exit_code_policy() {
-        assert_eq!(
-            exit_status(RewriteStatus::Rewritten, None, true),
-            ExitCode::SUCCESS
-        );
-        assert_eq!(
-            exit_status(RewriteStatus::Abstained, None, true),
-            ExitCode::from(EXIT_POLICY)
-        );
-        assert_eq!(
-            exit_status(RewriteStatus::Abstained, None, false),
-            ExitCode::SUCCESS
-        );
-        assert_eq!(
-            exit_status(RewriteStatus::Failed, None, false),
-            ExitCode::FAILURE
-        );
-        assert_eq!(
-            exit_status(RewriteStatus::Abstained, Some(ReasonCode::Cancelled), false),
-            ExitCode::from(EXIT_CANCELLED)
-        );
-    }
-
-    #[test]
-    fn text_names_match_serialized_contract() {
-        assert_eq!(status_name(RewriteStatus::Rewritten), "rewritten");
-        assert_eq!(
-            reason_name(ReasonCode::ProtectedValueChanged),
-            "protected_value_changed"
-        );
-    }
-
-    #[test]
-    fn bounded_reader_stops_oversized_input() {
-        let exact = read_bounded(Cursor::new(b"abc"), 3).expect("exact limit is valid");
-        assert_eq!(exact, b"abc");
-        let oversized =
-            read_bounded(Cursor::new(b"abcd"), 3).expect_err("input beyond the limit must fail");
-        assert_eq!(oversized.kind(), std::io::ErrorKind::InvalidData);
-    }
 }

@@ -121,6 +121,7 @@ Run the current slice from the repository:
 
 ```console
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --format text
+cargo run --locked -p retonr-cli -- check original.txt - --output checked.txt --format text
 cargo run --locked -p retonr-cli -- model --help
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
@@ -128,8 +129,12 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
-model. The second lists the implemented offline artifact commands without changing
-local state. The remaining commands run the checked-in fidelity and
+model. The second reads the candidate from standard input and writes the accepted
+bytes, or the exact original after an abstention, to a new file. Either document may
+come from standard input, but not both. An existing destination is never replaced and
+the source is never modified. The third lists the implemented offline artifact
+commands without changing local state. The remaining commands run the checked-in
+fidelity and
 synthetic editorial-quality suites. The rewrite, profile, runtime management, agent,
 and desktop workflows are not yet implemented.
 
