@@ -7,6 +7,7 @@ use crate::contract::{
     ErrorCategory, ErrorCode,
 };
 
+#[derive(Debug)]
 pub(crate) struct RunFailure {
     pub command: CommandName,
     pub body: ErrorBody,
@@ -128,6 +129,36 @@ impl RunFailure {
                 message: "command input is invalid",
             },
             AppError::Grounded(_) => Self::operational(CommandName::Check),
+        }
+    }
+
+    /// A candidate that is not valid UTF-8 is the same defect class as a source.
+    pub fn check_invalid_utf8() -> Self {
+        Self {
+            command: CommandName::Check,
+            body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InputUnreadable, false),
+            exit_code: ExitCode::from(EXIT_USAGE),
+            message: "candidate text is not a supported UTF-8 document",
+        }
+    }
+
+    /// Refuses exact unescaped bytes on a terminal without the double opt-in.
+    pub fn raw_terminal_refused() -> Self {
+        Self {
+            command: CommandName::Check,
+            body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false),
+            exit_code: ExitCode::from(crate::contract::EXIT_POLICY),
+            message: "writing exact bytes to a terminal requires --raw-terminal --yes",
+        }
+    }
+
+    /// Refuses to replace an existing destination file.
+    pub fn output_exists() -> Self {
+        Self {
+            command: CommandName::Check,
+            body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::OutputExists, false),
+            exit_code: ExitCode::from(crate::contract::EXIT_POLICY),
+            message: "output destination already exists",
         }
     }
 
