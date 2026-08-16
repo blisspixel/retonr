@@ -1,0 +1,74 @@
+name: Snapshot feedback
+description: Report a defect or confusing behavior in a development snapshot build
+labels:
+  - snapshot
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [the snapshot testing guide](https://github.com/blisspixel/retonr/blob/main/docs/testing-snapshot.md)
+        first. It lists behavior that is already known and not worth reporting.
+
+        Do not report a suspected security issue here. Follow
+        [SECURITY.md](https://github.com/blisspixel/retonr/blob/main/SECURITY.md)
+        and use private vulnerability reporting instead.
+
+        Use synthetic or non-sensitive documents. Do not attach confidential
+        material, credentials, or personal data.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of report is this
+      options:
+        - A candidate was accepted but actually changed something
+        - A candidate was rejected but should have been accepted
+        - Output bytes were wrong or the original was not returned exactly
+        - Crash, hang, or panic
+        - Platform or filesystem behavior
+        - Confusing output or message
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Tag and commit
+      description: Copy both lines from BUILD-PROVENANCE.txt in your archive.
+      placeholder: "tag: snapshot-2026-08-16, commit: 0123abc"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and architecture
+      placeholder: Windows 11 x86-64
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command line
+      render: console
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened
+      description: Include the JSON report where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: documents
+    attributes:
+      label: Source and candidate documents
+      description: >-
+        Paste the smallest inputs that reproduce the behavior, if you can share
+        them. Synthetic content only.
+      render: text
