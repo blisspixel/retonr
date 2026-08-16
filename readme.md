@@ -263,6 +263,7 @@ conversion.
 | Evaluation corpora | [Editorial-quality and watermark research corpora](docs/evaluation-corpora.md) |
 | Runtime discovery and model evaluation | [Model and runtime support](docs/model-support.md) |
 | Installers, signatures, updates, and targets | [Installation and distribution](docs/distribution.md) |
+| Testing a development snapshot build | [Snapshot testing guide](docs/testing-snapshot.md) |
 | Stack decisions | [Technology](docs/technology.md) |
 | Evaluation and qualification | [Evaluation](docs/evaluation.md) |
 | Security and privacy | [Security](docs/security.md) |

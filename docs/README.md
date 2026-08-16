@@ -20,6 +20,7 @@ These documents define the product direction and constrain implementation.
 | [Evaluation corpora](evaluation-corpora.md) | Separate synthetic editorial-quality fixtures from known-watermark research fixtures |
 | [Model and runtime support](model-support.md) | Hardware discovery, runtime selection, model evaluation, and fallback rules |
 | [Installation and distribution](distribution.md) | Bootstrap installers, artifact verification, release targets, updates, and removal |
+| [Snapshot testing guide](testing-snapshot.md) | What a development snapshot build does today and what feedback is useful |
 | [Technology](technology.md) | Current recommended stack and deferred decisions |
 | [Evaluation](evaluation.md) | Baselines, corpora, metrics, statistical reporting, and release gates |
 | [Security](security.md) | Assets, trust boundaries, threats, privacy, and provenance handling |

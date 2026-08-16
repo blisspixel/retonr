@@ -1,0 +1,162 @@
+name: snapshot
+
+# Builds a development snapshot for hands-on testing. This is not a milestone
+# release. It produces a draft pre-release that a maintainer must review and
+# publish explicitly, because published assets are immutable.
+
+on:
+  push:
+    tags:
+      - snapshot-*
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: snapshot binary (${{ matrix.target }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+          targets: ${{ matrix.target }}
+
+      # The shipping manifest only. --all-features would enable
+      # rewrite-inference/test-support, which must never reach a built artifact.
+      - name: Build the shipping binary
+        run: >-
+          cargo build --locked --release
+          --package retonr-cli --bin retonr
+          --target ${{ matrix.target }}
+
+      - name: Verify the binary runs and reports its own version
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="target/${{ matrix.target }}/release/retonr"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            binary="${binary}.exe"
+          fi
+          "$binary" --version
+          "$binary" check --help > /dev/null
+          printf 'Hello world\n' > smoke-source.txt
+          printf 'Hello, world!\n' > smoke-candidate.txt
+          "$binary" check smoke-source.txt smoke-candidate.txt --format text
+
+      - name: Stage the archive
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="retonr-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "staging/${name}"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp "target/${{ matrix.target }}/release/retonr.exe" "staging/${name}/"
+          else
+            cp "target/${{ matrix.target }}/release/retonr" "staging/${name}/"
+          fi
+          cp LICENSE SECURITY.md "staging/${name}/"
+          cp docs/testing-snapshot.md "staging/${name}/TESTING.md"
+          printf 'commit: %s\ntag: %s\ntarget: %s\n' \
+            "$GITHUB_SHA" "$GITHUB_REF_NAME" "${{ matrix.target }}" \
+            > "staging/${name}/BUILD-PROVENANCE.txt"
+          cd staging
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            7z a -tzip "../${name}.zip" "${name}" > /dev/null
+            asset="${name}.zip"
+          else
+            tar -czf "../${name}.tar.gz" "${name}"
+            asset="${name}.tar.gz"
+          fi
+          cd ..
+          echo "asset=${asset}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute the asset digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset="${{ steps.stage.outputs.asset }}"
+          if command -v sha256sum > /dev/null; then
+            sha256sum "$asset" > "${asset}.sha256"
+          else
+            shasum -a 256 "$asset" > "${asset}.sha256"
+          fi
+          cat "${asset}.sha256"
+
+      - name: Upload the snapshot asset
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: snapshot-${{ matrix.target }}
+          path: |
+            ${{ steps.stage.outputs.asset }}
+            ${{ steps.stage.outputs.asset }}.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  draft:
+    name: draft pre-release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/snapshot-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Download every snapshot asset
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Collect digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd assets
+          cat ./*.sha256 | sort -k2 > SHA256SUMS
+          rm -f ./*.sha256
+          cat SHA256SUMS
+
+      - name: Compose the release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'Built from commit `%s`.\n\n' "$GITHUB_SHA"
+            cat .github/snapshot-release-notes.md
+            printf '\n## Asset digests\n\n```\n'
+            cat assets/SHA256SUMS
+            printf '```\n'
+          } > release-notes.md
+
+      - name: Create the draft pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          --draft
+          --prerelease
+          --title "Development snapshot $GITHUB_REF_NAME"
+          --notes-file release-notes.md
+          assets/*

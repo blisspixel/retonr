@@ -1,0 +1,13 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/blisspixel/retonr/security/advisories/new
+    about: >-
+      Report privately. Do not open a public issue, discussion, or pull request
+      for an undisclosed vulnerability.
+  - name: Snapshot testing guide
+    url: https://github.com/blisspixel/retonr/blob/main/docs/testing-snapshot.md
+    about: What a development snapshot does today and what feedback is useful.
+  - name: Current implementation state
+    url: https://github.com/blisspixel/retonr/blob/main/docs/current-state.md
+    about: The only authority for implemented behavior.
