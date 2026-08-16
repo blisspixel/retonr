@@ -92,7 +92,7 @@ migrate implicitly.
 
 ## Verified locally
 
-The August 15, 2026 Windows development checkpoint passes:
+The August 16, 2026 Windows development checkpoint passes:
 
 ```console
 cargo fmt --all -- --check
@@ -113,10 +113,10 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo build --locked --workspace --release
 ```
 
-All 498 Rust unit, integration, and process tests pass. Two process helpers are
+All 506 Rust unit, integration, and process tests pass. Two process helpers are
 intentionally ignored by the ordinary runner and exercised by isolated parent tests.
 Two further artifact-set lease cases are Unix only and run in continuous
-integration. Documentation tests also pass. The measured Rust line coverage is 91.54
+integration. Documentation tests also pass. The measured Rust line coverage is 91.44
 percent overall. The repository's 80 percent line coverage floor passes with margin.
 
 The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
@@ -130,12 +130,13 @@ console state; the test remains concurrent with the full suite on macOS and Linu
 The editorial-pattern research package, portable artifact-set and runtime-identity
 slice, distinct inert claim-extraction role, Windows nextest isolation repair,
 effective-package evidence, qualification v2, schema-v4 artifact-set installation
-persistence, the explicit backup-backed repository migration, and the
-repository-owned artifact-set lease passed at exact-main
+persistence, the explicit backup-backed repository migration, the
+repository-owned artifact-set lease, and the candidate-check standard-input and
+output policy passed at exact-main
 revision
-`e9a21f0e93d14638287e2e092cbf3910090fc2ec`
+`c7f0a39ecdb7b9392b09ad49327369b5ab6bd857`
 in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31903192526).
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31956893414).
 The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
 policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
 isolation, concurrency, and the Ubuntu loopback-only network namespace.
