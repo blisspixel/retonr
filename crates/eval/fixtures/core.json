@@ -251,6 +251,106 @@
       "expected_status": "abstained",
       "expected_reason": "semantic_uncertain",
       "expected_output": "source"
+    },
+    {
+      "id": "zero-width-space-introduced",
+      "category": "unsafe_text_negative",
+      "source": "Review the build log.",
+      "candidate": "Review the\u200b build log.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "right-to-left-override-introduced",
+      "category": "unsafe_text_negative",
+      "source": "Open report.txt now.",
+      "candidate": "Open report\u202etxt.exe now.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "word-joiner-introduced",
+      "category": "unsafe_text_negative",
+      "source": "Restart the worker pool.",
+      "candidate": "Restart the wor\u2060ker pool.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "byte-order-mark-introduced-midtext",
+      "category": "unsafe_text_negative",
+      "source": "Second section follows.",
+      "candidate": "Second\ufeff section follows.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "arabic-letter-mark-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The value is 12 meters.",
+      "candidate": "The value is \u061c12 meters.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "line-separator-introduced",
+      "category": "unsafe_text_negative",
+      "source": "One paragraph only.",
+      "candidate": "One\u2028paragraph only.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "zero-width-joiner-introduced",
+      "category": "unsafe_text_negative",
+      "source": "Deploy the service.",
+      "candidate": "Deploy the\u200d service.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "zero-width-source-permits-identical-output",
+      "category": "identity",
+      "source": "Existing\u200b marker retained.",
+      "candidate": "Existing\u200b marker retained.",
+      "reference_judgment": "identity",
+      "expected_status": "unchanged_no_eligible_content",
+      "expected_reason": null,
+      "expected_output": "source"
+    },
+    {
+      "id": "zero-width-source-blocks-any-edit",
+      "category": "unsafe_text_negative",
+      "source": "Existing\u200b marker retained.",
+      "candidate": "Existing\u200b marker retained!",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "zero-width-source-is-never-stripped",
+      "category": "unsafe_text_negative",
+      "source": "Existing\u200b marker retained.",
+      "candidate": "Existing marker retained.",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
     }
   ]
 }

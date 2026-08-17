@@ -332,10 +332,19 @@ mod tests {
         let suite = parse_suite(CORE_SUITE).expect("checked-in suite is valid");
         let report = run_suite(&suite);
         assert!(report.is_success(), "failures: {:?}", report.failures);
-        assert_eq!(report.total, 25);
+        assert_eq!(report.total, 35);
         assert_eq!(report.passed, report.total);
         assert_eq!(report.transformation_coverage.acceptable, 9);
         assert_eq!(report.transformation_coverage.rewritten, 4);
+        assert_eq!(
+            report
+                .categories
+                .iter()
+                .find(|category| category.category == "unsafe_text_negative")
+                .map(|category| category.total),
+            Some(10),
+            "invisible and directional coverage must not regress"
+        );
         assert!(
             report
                 .categories
