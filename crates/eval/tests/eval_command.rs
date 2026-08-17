@@ -28,9 +28,9 @@ fn checked_in_editorial_corpus_validates_as_a_process() {
         .arg(corpus)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"total\": 15"))
+        .stdout(predicate::str::contains("\"total\": 20"))
         .stdout(predicate::str::contains("\"finding_cases\": 10"))
-        .stdout(predicate::str::contains("\"clean_controls\": 5"))
+        .stdout(predicate::str::contains("\"clean_controls\": 10"))
         .stdout(predicate::str::contains("Certainly").not());
 }
 

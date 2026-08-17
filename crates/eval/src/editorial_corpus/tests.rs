@@ -11,13 +11,32 @@ fn checked_in_editorial_corpus_is_valid_and_balanced() {
     let corpus = parse_editorial_corpus(EDITORIAL_CORPUS).expect("checked-in corpus is valid");
     let summary = corpus.summary();
     assert_eq!(summary.schema_version, EDITORIAL_CORPUS_SCHEMA_VERSION);
-    assert_eq!(summary.total, 15);
+    assert_eq!(summary.total, 20);
     assert_eq!(summary.finding_cases, 10);
-    assert_eq!(summary.clean_controls, 5);
+    assert_eq!(summary.clean_controls, 10);
     assert_eq!(summary.targeted_rules, 9);
     assert!(corpus.cases.iter().any(|case| {
         case.kind == EditorialCaseKind::CleanControl && case.expected_source_findings.is_empty()
     }));
+    assert_every_rule_is_paired(&corpus);
+}
+
+/// Every targeted rule needs a neighboring clean counterexample, so the rule set
+/// covered by findings and the rule set covered by clean controls must match.
+fn assert_every_rule_is_paired(corpus: &super::EditorialCorpus) {
+    let rules = |kind| {
+        corpus
+            .cases
+            .iter()
+            .filter(|case| case.kind == kind)
+            .flat_map(|case| case.target_rules.iter())
+            .collect::<std::collections::BTreeSet<_>>()
+    };
+    assert_eq!(
+        rules(EditorialCaseKind::Finding),
+        rules(EditorialCaseKind::CleanControl),
+        "each targeted rule requires a paired clean control"
+    );
 }
 
 #[test]
@@ -30,19 +49,7 @@ fn checked_in_slop_corpus_is_valid_and_balanced() {
     assert_eq!(summary.clean_controls, 12);
     assert_eq!(summary.targeted_rules, 12);
 
-    let findings = corpus
-        .cases
-        .iter()
-        .filter(|case| case.kind == EditorialCaseKind::Finding)
-        .flat_map(|case| case.target_rules.iter())
-        .collect::<std::collections::BTreeSet<_>>();
-    let controls = corpus
-        .cases
-        .iter()
-        .filter(|case| case.kind == EditorialCaseKind::CleanControl)
-        .flat_map(|case| case.target_rules.iter())
-        .collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(findings, controls);
+    assert_every_rule_is_paired(&corpus);
 }
 
 #[test]
