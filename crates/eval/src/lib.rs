@@ -332,7 +332,7 @@ mod tests {
         let suite = parse_suite(CORE_SUITE).expect("checked-in suite is valid");
         let report = run_suite(&suite);
         assert!(report.is_success(), "failures: {:?}", report.failures);
-        assert_eq!(report.total, 35);
+        assert_eq!(report.total, 49);
         assert_eq!(report.passed, report.total);
         assert_eq!(report.transformation_coverage.acceptable, 9);
         assert_eq!(report.transformation_coverage.rewritten, 4);
