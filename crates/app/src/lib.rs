@@ -25,6 +25,8 @@ mod artifact_storage;
 mod grounded;
 mod runtime_artifact_lease;
 mod runtime_artifact_set_lease;
+#[cfg(test)]
+mod symlink_test_support;
 
 pub use artifact_import::{
     ArtifactImportError, ArtifactImportLimits, ArtifactImportProgress, ArtifactImportResult,

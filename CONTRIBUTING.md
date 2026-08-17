@@ -21,6 +21,9 @@ provisional until their roadmap gates pass.
 - Node.js 24 or later for documentation tooling
 - PowerShell 7, or the in-box Windows PowerShell 5.1, for repository policy checks
 - A supported Windows, macOS, or Linux development environment
+- Optional on Windows: Developer Mode or an elevated shell, so the account holds
+  `SeCreateSymbolicLinkPrivilege`. Without it, seven link-hardening fixtures
+  report a skip and continuous integration remains their only coverage.
 
 Install the pinned documentation dependencies with:
 

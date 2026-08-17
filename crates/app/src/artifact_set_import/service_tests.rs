@@ -326,7 +326,14 @@ fn source_root_junction_is_rejected() {
     write_source(&real_source);
     match symlink_dir(&real_source, &linked) {
         Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => return,
+        Err(error)
+            if crate::symlink_test_support::skip_unavailable_link(
+                "source_root_junction_is_rejected",
+                &error,
+            ) =>
+        {
+            return;
+        }
         Err(error) => panic!("create source-root junction: {error}"),
     }
     let mut store =

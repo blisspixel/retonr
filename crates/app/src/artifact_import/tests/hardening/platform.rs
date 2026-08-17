@@ -114,10 +114,14 @@ fn recovery_rejects_reserved_symlink_without_partial_cleanup() {
 fn recovery_rejects_reserved_symlink_without_partial_cleanup() {
     use std::os::windows::fs::symlink_file;
 
-    let result = assert_recovery_rejects_reserved_symlink(|target, link| {
-        symlink_file(target, link).map_err(|error| error.kind())
-    });
-    if result == Err(std::io::ErrorKind::PermissionDenied) {
+    let result =
+        assert_recovery_rejects_reserved_symlink(|target, link| symlink_file(target, link));
+    if let Err(error) = &result
+        && crate::symlink_test_support::skip_unavailable_link(
+            "recovery_rejects_reserved_symlink_without_partial_cleanup",
+            error,
+        )
+    {
         return;
     }
     result.expect("create and reject reserved staging symlink");
@@ -154,8 +158,8 @@ fn assert_recovery_rejects_reserved_symlink(
 
 #[cfg(windows)]
 fn assert_recovery_rejects_reserved_symlink(
-    create_link: impl FnOnce(&std::path::Path, &std::path::Path) -> Result<(), std::io::ErrorKind>,
-) -> Result<(), std::io::ErrorKind> {
+    create_link: impl FnOnce(&std::path::Path, &std::path::Path) -> std::io::Result<()>,
+) -> std::io::Result<()> {
     let directory = tempdir().expect("temporary directory");
     let storage = directory.path().join("managed");
     let staging = storage.join(".staging");
@@ -180,4 +184,43 @@ fn assert_recovery_rejects_reserved_symlink(
         b"retained"
     );
     Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn rejects_symbolic_link_source() {
+    use std::os::windows::fs::symlink_file;
+
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.gguf");
+    let link = directory.path().join("linked.gguf");
+    fs::write(&source, super::super::ARTIFACT_BYTES).expect("write source fixture");
+    if let Err(error) = symlink_file(&source, &link) {
+        if crate::symlink_test_support::skip_unavailable_link(
+            "rejects_symbolic_link_source",
+            &error,
+        ) {
+            return;
+        }
+        panic!("create source symbolic link: {error}");
+    }
+    let mut store = ArtifactStateStore::open(&directory.path().join("state.sqlite3"))
+        .expect("open artifact state");
+    let mut service = OfflineArtifactImportService::open(
+        directory.path().join("managed"),
+        &mut store,
+        super::super::limits(),
+    )
+    .expect("open import service");
+    let error = service
+        .import(
+            &OfflineArtifactImportRequest {
+                source: link,
+                manifest: super::super::manifest(super::super::ARTIFACT_BYTES),
+            },
+            &CancellationToken::new(),
+            |_| {},
+        )
+        .expect_err("symbolic link source must fail");
+    assert!(matches!(error, ArtifactImportError::IndirectSource));
 }
