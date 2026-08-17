@@ -209,6 +209,66 @@
       "expected_source_findings": [],
       "expected_reference_findings": [],
       "protected_terms": ["CRLF", "UTF-8"]
+    },
+    {
+      "id": "clean-single-dash-emphasis",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The rollback completed\u2014every replica recovered without data loss.",
+      "reference_revision": null,
+      "target_rules": ["excessive_dash_density"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-emoji-documented-as-token",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The status column renders \u2705 for a passing check and stays empty for a skipped one.",
+      "reference_revision": null,
+      "target_rules": ["excessive_emoji_density"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-quoted-assistant-transcript",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The transcript records the reply, \"Certainly! I will send the notes.\"",
+      "reference_revision": null,
+      "target_rules": ["conversational_residue"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-conclusion-phrase-under-discussion",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The style guide forbids closing a section with the words \"In conclusion,\" unless the section is a summary.",
+      "reference_revision": null,
+      "target_rules": ["repeated_conclusion"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-qualifier-under-definition",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The specification defines completely unanimous as agreement by every voting member.",
+      "reference_revision": null,
+      "target_rules": ["redundant_qualifier"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
     }
   ]
 }
