@@ -30,6 +30,24 @@ $ignoredDirectoryNames = [System.Collections.Generic.HashSet[string]]::new(
     [void]$ignoredDirectoryNames.Add($_)
 }
 
+function Get-RelativeRepositoryPath {
+    param([Parameter(Mandatory)] [string] $FullPath)
+
+    $rootPrefix = $repositoryRoot
+    $separator = [System.IO.Path]::DirectorySeparatorChar
+    $altSeparator = [System.IO.Path]::AltDirectorySeparatorChar
+    if (-not $rootPrefix.EndsWith($separator) -and
+        -not $rootPrefix.EndsWith($altSeparator)) {
+        $rootPrefix += $separator
+    }
+
+    if ($FullPath.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $FullPath.Substring($rootPrefix.Length)
+    }
+
+    return $FullPath
+}
+
 function Get-RepositoryTextFiles {
     $pendingDirectories = [System.Collections.Generic.Stack[string]]::new()
     $pendingDirectories.Push($repositoryRoot)
@@ -55,7 +73,7 @@ function Get-RepositoryTextFiles {
 $files = @(Get-RepositoryTextFiles)
 
 foreach ($file in $files) {
-    $relativePath = [System.IO.Path]::GetRelativePath($repositoryRoot, $file.FullName)
+    $relativePath = Get-RelativeRepositoryPath -FullPath $file.FullName
     $content = [System.IO.File]::ReadAllText($file.FullName)
 
     if ($content -match '[\u2013\u2014]') {
@@ -69,8 +87,8 @@ foreach ($file in $files) {
     }
 
     $attributionPatterns = @(
-        '(?i)(generated|written|created|authored|implemented)\s+by\s+' +
-            '(codex|claude|chatgpt|copilot)',
+        ('(?i)(generated|written|created|authored|implemented)\s+by\s+' +
+            '(codex|claude|chatgpt|copilot)'),
         '(?i)co-authored-by\s*:.*(codex|claude|chatgpt|copilot)'
     )
 
@@ -145,10 +163,7 @@ foreach ($file in $markdownFiles) {
         $decodedTarget = [System.Uri]::UnescapeDataString($targetWithoutFragment)
         $resolvedTarget = Join-Path -Path $file.DirectoryName -ChildPath $decodedTarget
         if (-not (Test-Path -LiteralPath $resolvedTarget)) {
-            $relativePath = [System.IO.Path]::GetRelativePath(
-                $repositoryRoot,
-                $file.FullName
-            )
+            $relativePath = Get-RelativeRepositoryPath -FullPath $file.FullName
             $failures.Add("$relativePath links to missing local target $target.")
         }
     }
