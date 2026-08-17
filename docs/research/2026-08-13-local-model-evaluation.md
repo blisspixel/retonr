@@ -206,8 +206,8 @@ The first bakeoff uses all 39 checked-in synthetic editorial cases: 15 cases in
 `editorial_quality_v1.json` and 24 paired finding and clean-control cases in
 `editorial_slop_v1.json`. A future generation-suite projection must freeze the
 prompt, source, protected terms, reference revision, expected findings, and
-adjudication form. The existing 20-case `core.json` remains a deterministic
-validator regression suite; it must not be misrepresented as 20 independent model
+adjudication form. The existing 25-case `core.json` remains a deterministic
+validator regression suite; it must not be misrepresented as 25 independent model
 generations.
 
 Run one generation per case for every candidate that passed smoke. Review all hard

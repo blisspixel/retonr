@@ -6,6 +6,7 @@
 *.toml text eol=lf
 *.json text eol=lf
 *.jsonc text eol=lf
+*.txt text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
 
@@ -14,3 +15,6 @@
 *.jpg binary
 *.jpeg binary
 *.webp binary
+
+fixtures/** -text
+fuzz/corpus/** -text

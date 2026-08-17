@@ -18,9 +18,20 @@ fn write(path: &Path, bytes: &[u8]) -> String {
 #[test]
 fn standard_input_is_read_to_end_of_file_without_trimming() {
     let directory = tempfile::tempdir().expect("temporary directory");
-    let cases: [(&str, &[u8], &[u8]); 6] = [
+    let cases: [(&str, &[u8], &[u8]); 9] = [
         ("lf", b"alpha\nbeta\n", b"alpha\nbeta\n"),
         ("crlf", b"alpha\r\nbeta\r\n", b"alpha\r\nbeta\r\n"),
+        (
+            "mixed_lf_crlf",
+            b"alpha\nbeta\r\ngamma\n",
+            b"alpha\nbeta\r\ngamma\n",
+        ),
+        (
+            "mixed_crlf_first",
+            b"alpha\r\nbeta\ngamma\r\n",
+            b"alpha\r\nbeta\ngamma\r\n",
+        ),
+        ("crlf_no_final_newline", b"alpha\r\nbeta", b"alpha\r\nbeta"),
         ("no_final_newline", b"alpha\nbeta", b"alpha\nbeta"),
         ("blank_lines", b"alpha\n\n\nbeta\n", b"alpha\n\n\nbeta\n"),
         (

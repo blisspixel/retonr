@@ -183,3 +183,29 @@ fn invalid_utf8_source_is_usage() {
         .stderr(predicate::str::contains("\"category\": \"usage\""))
         .stderr(predicate::str::contains("\"code\": \"input_unreadable\""));
 }
+
+/// The checked-in fixtures back the documented reproduction and the retained
+/// screenshots, so their bytes are a contract. Line-ending normalization on
+/// checkout silently changed these digests once; `.gitattributes` now pins
+/// `fixtures/**` with `-text` and this test fails if that protection regresses.
+#[test]
+fn checked_in_cli_fixtures_keep_their_documented_bytes() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("repository root")
+        .to_path_buf();
+
+    let cases: [(&str, &[u8]); 2] = [
+        ("fixtures/cli/source.txt", b"Hello world\n"),
+        ("fixtures/cli/candidate.txt", b"Hello, world!\n"),
+    ];
+
+    for (relative, expected) in cases {
+        let actual = fs::read(root.join(relative)).expect("read checked-in fixture");
+        assert_eq!(
+            actual, expected,
+            "{relative} lost its exact committed bytes; check .gitattributes"
+        );
+    }
+}

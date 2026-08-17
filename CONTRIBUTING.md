@@ -19,7 +19,7 @@ provisional until their roadmap gates pass.
 
 - Rust 1.97.1, as pinned in `rust-toolchain.toml`
 - Node.js 24 or later for documentation tooling
-- PowerShell 7 for repository policy checks
+- PowerShell 7, or the in-box Windows PowerShell 5.1, for repository policy checks
 - A supported Windows, macOS, or Linux development environment
 
 Install the pinned documentation dependencies with:
@@ -46,6 +46,13 @@ npm run lint:markdown
 pwsh -NoProfile -File scripts/check-repository.ps1
 cargo check --locked --manifest-path fuzz/Cargo.toml --all-targets
 cargo build --locked --workspace --all-features --release
+```
+
+The repository policy script also runs under the in-box Windows PowerShell 5.1 when
+PowerShell 7 is unavailable:
+
+```console
+powershell -NoProfile -File scripts/check-repository.ps1
 ```
 
 Continuous integration repeats the applicable gates on Windows, macOS, and Linux.
