@@ -86,7 +86,14 @@ fn managed_sets_junction_is_not_adopted() {
     fs::write(outside.join("winner"), b"external").expect("external sentinel");
     match symlink_dir(&outside, storage.join("sets")) {
         Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => return,
+        Err(error)
+            if crate::symlink_test_support::skip_unavailable_link(
+                "managed_sets_junction_is_not_adopted",
+                &error,
+            ) =>
+        {
+            return;
+        }
         Err(error) => panic!("create managed sets junction: {error}"),
     }
     let mut store =
@@ -115,7 +122,14 @@ fn source_directory_junction_is_rejected_without_following() {
     fs::rename(source.join("model"), outside.join("model")).expect("move nested source");
     match symlink_dir(outside.join("model"), source.join("model")) {
         Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => return,
+        Err(error)
+            if crate::symlink_test_support::skip_unavailable_link(
+                "source_directory_junction_is_rejected_without_following",
+                &error,
+            ) =>
+        {
+            return;
+        }
         Err(error) => panic!("create source directory junction: {error}"),
     }
     let mut store =

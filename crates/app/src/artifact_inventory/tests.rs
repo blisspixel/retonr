@@ -495,7 +495,7 @@ fn reports_uninstalled_symlink_without_following_it() {
 #[cfg(windows)]
 #[test]
 fn reports_uninstalled_symlink_without_following_it() {
-    use std::{io, os::windows::fs::symlink_file};
+    use std::os::windows::fs::symlink_file;
 
     let (directory, mut store) = initialized();
     let target = directory.path().join("outside.bin");
@@ -503,7 +503,14 @@ fn reports_uninstalled_symlink_without_following_it() {
     let name = Digest::sha256(b"symlink-name");
     match symlink_file(&target, artifacts(&directory).join(name.as_str())) {
         Ok(()) => {}
-        Err(error) if error.kind() == io::ErrorKind::PermissionDenied => return,
+        Err(error)
+            if crate::symlink_test_support::skip_unavailable_link(
+                "reports_uninstalled_symlink_without_following_it",
+                &error,
+            ) =>
+        {
+            return;
+        }
         Err(error) => panic!("create symlink fixture: {error}"),
     }
     let registered = manifest(b"outside", "registered-symlink");
@@ -513,7 +520,14 @@ fn reports_uninstalled_symlink_without_following_it() {
         artifacts(&directory).join(registered.artifact_digest.as_str()),
     ) {
         Ok(()) => {}
-        Err(error) if error.kind() == io::ErrorKind::PermissionDenied => return,
+        Err(error)
+            if crate::symlink_test_support::skip_unavailable_link(
+                "reports_uninstalled_symlink_without_following_it",
+                &error,
+            ) =>
+        {
+            return;
+        }
         Err(error) => panic!("create registered symlink fixture: {error}"),
     }
 
