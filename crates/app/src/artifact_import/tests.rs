@@ -494,36 +494,3 @@ fn rejects_symbolic_link_source() {
         .expect_err("symlink source must fail");
     assert!(matches!(error, ArtifactImportError::IndirectSource));
 }
-
-#[cfg(windows)]
-#[test]
-fn rejects_symbolic_link_source() {
-    use std::os::windows::fs::symlink_file;
-
-    let directory = tempdir().expect("temporary directory");
-    let source = directory.path().join("source.gguf");
-    let link = directory.path().join("linked.gguf");
-    fs::write(&source, ARTIFACT_BYTES).expect("write source fixture");
-    if let Err(error) = symlink_file(&source, &link) {
-        if error.kind() == std::io::ErrorKind::PermissionDenied {
-            return;
-        }
-        panic!("create source symbolic link: {error}");
-    }
-    let mut store = ArtifactStateStore::open(&directory.path().join("state.sqlite3"))
-        .expect("open artifact state");
-    let mut service =
-        OfflineArtifactImportService::open(directory.path().join("managed"), &mut store, limits())
-            .expect("open import service");
-    let error = service
-        .import(
-            &OfflineArtifactImportRequest {
-                source: link,
-                manifest: manifest(ARTIFACT_BYTES),
-            },
-            &CancellationToken::new(),
-            |_| {},
-        )
-        .expect_err("symbolic link source must fail");
-    assert!(matches!(error, ArtifactImportError::IndirectSource));
-}

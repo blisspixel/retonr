@@ -115,7 +115,10 @@ fn rejects_staging_directory_replaced_with_an_indirect_path() {
         panic!("remove original staging directory: {error}");
     }
     if let Err(error) = create_directory_link(&redirected, &staging) {
-        if cfg!(windows) && error.kind() == io::ErrorKind::PermissionDenied {
+        if crate::symlink_test_support::skip_unavailable_link(
+            "rejects_staging_directory_replaced_with_an_indirect_path",
+            &error,
+        ) {
             return;
         }
         panic!("replace staging with directory link: {error}");
