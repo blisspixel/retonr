@@ -382,6 +382,45 @@ mod tests {
         ));
     }
 
+    /// Both UTF-16 byte orders are refused before any decoding work. Only the
+    /// little-endian mark was previously exercised.
+    #[test]
+    fn rejects_both_utf16_byte_orders() {
+        for input in [b"\xFF\xFEa\0".as_slice(), b"\xFE\xFF\0a".as_slice()] {
+            assert!(
+                matches!(
+                    TextAdapter::parse(input),
+                    Err(TextAdapterError::UnsupportedUtf16)
+                ),
+                "expected UTF-16 rejection for {input:02X?}"
+            );
+        }
+    }
+
+    /// One trailing invalid byte is only the simplest malformed shape. Each
+    /// family here breaks a different UTF-8 rule and reports where the valid
+    /// prefix ended.
+    #[test]
+    fn rejects_every_malformed_utf8_family() {
+        let cases: [(&str, &[u8], usize); 6] = [
+            ("overlong_nul", b"\xC0\x80", 0),
+            ("lone_surrogate", b"\xED\xA0\x80", 0),
+            ("truncated_multibyte_at_end", b"alpha\xE2\x82", 5),
+            ("invalid_continuation_midtext", b"alpha\xE2\x28\xA1beta", 5),
+            ("bare_continuation_byte", b"\x80alpha", 0),
+            ("five_byte_sequence", b"\xF8\x88\x80\x80\x80", 0),
+        ];
+        for (name, input, expected_valid_up_to) in cases {
+            match TextAdapter::parse(input) {
+                Err(TextAdapterError::InvalidUtf8 { valid_up_to }) => assert_eq!(
+                    valid_up_to, expected_valid_up_to,
+                    "{name}: unexpected valid prefix length"
+                ),
+                other => panic!("{name}: expected InvalidUtf8, got {other:?}"),
+            }
+        }
+    }
+
     #[test]
     fn applies_edit_and_preserves_bom() {
         let parsed = TextAdapter::parse(b"\xEF\xBB\xBFhello\n").expect("valid fixture");
