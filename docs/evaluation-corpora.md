@@ -30,6 +30,11 @@ repository license:
   and punctuation findings.
 - `editorial_slop_v1.json` covers 12 denser current pattern families with one paired
   clean control per rule.
+- `editorial_prose_v1.json` covers 20 structural, rhetorical, and evidential families
+  with one paired clean control per rule, across five channels.
+
+Every group pairs each targeted rule with a clean control, and a single test enforces
+that invariant for all three.
 
 They do not claim that the patterns identify model authorship. Their reference
 revisions are examples of acceptable editing rather than the only correct answer.

@@ -21,7 +21,7 @@ or stored-data contracts.
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
 | `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, crash-recoverable inactive removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, and a repository-owned whole-tree artifact-set lease |
 | `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, and a terminal raw-output double opt-in, plus an explicit-root offline model-artifact CLI for import, inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, inactive removal, and exact removal recovery |
-| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, two balanced synthetic editorial groups, and redacted aggregate reporting |
+| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, three balanced synthetic editorial groups, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
@@ -160,7 +160,7 @@ uses its own clean runner database.
   report to standard error. Exact bytes reach a terminal only after the
   `--raw-terminal --yes` double opt-in and a warning. Escaped interactive rendering,
   diff, dry-run, and trace export are not implemented yet.
-- The editorial corpus contract and 39 synthetic fixtures across two groups are
+- The editorial corpus contract and 84 synthetic fixtures across three groups are
   implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
   implemented yet.
 - Only UTF-8 plain text up to 16 MiB is accepted.

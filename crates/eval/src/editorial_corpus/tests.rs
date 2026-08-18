@@ -5,6 +5,7 @@ use super::{
 
 const EDITORIAL_CORPUS: &str = include_str!("../../fixtures/editorial_quality_v1.json");
 const EDITORIAL_SLOP_CORPUS: &str = include_str!("../../fixtures/editorial_slop_v1.json");
+const EDITORIAL_PROSE_CORPUS: &str = include_str!("../../fixtures/editorial_prose_v1.json");
 
 #[test]
 fn checked_in_editorial_corpus_is_valid_and_balanced() {
@@ -50,6 +51,30 @@ fn checked_in_slop_corpus_is_valid_and_balanced() {
     assert_eq!(summary.targeted_rules, 12);
 
     assert_every_rule_is_paired(&corpus);
+}
+
+#[test]
+fn checked_in_prose_corpus_is_valid_and_balanced() {
+    let corpus =
+        parse_editorial_corpus(EDITORIAL_PROSE_CORPUS).expect("checked-in corpus is valid");
+    let summary = corpus.summary();
+    assert_eq!(summary.schema_version, EDITORIAL_CORPUS_SCHEMA_VERSION);
+    assert_eq!(summary.total, 40);
+    assert_eq!(summary.finding_cases, 20);
+    assert_eq!(summary.clean_controls, 20);
+    assert_eq!(summary.targeted_rules, 20);
+
+    assert_every_rule_is_paired(&corpus);
+
+    let channels = corpus
+        .cases
+        .iter()
+        .map(|case| case.channel.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(
+        channels.len() >= 4,
+        "prose families must be exercised across several channels, saw {channels:?}"
+    );
 }
 
 #[test]
