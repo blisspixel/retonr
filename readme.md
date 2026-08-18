@@ -111,9 +111,10 @@ Artifact inventory crosses the application boundary through persistence-neutral
 installation keys. SQLite records and storage-layout fields are not part of the CLI
 contract.
 
-The evaluation tool also validates two synthetic editorial-quality groups with named
-findings and clean controls, including a balanced 24-case current-slop group. No
-editorial-lint rule has product authority yet.
+The evaluation tool also validates three synthetic editorial-quality groups with named
+findings and clean controls, including a balanced 24-case current-slop group and a
+40-case structural, rhetorical, and evidential group. Every targeted rule carries a
+paired clean control. No editorial-lint rule has product authority yet.
 
 [![Retonr CLI help and a successful candidate check on Linux](docs/screenshots/cli-check-linux.png)](docs/screenshots/cli-check-linux.md)
 
@@ -126,6 +127,7 @@ cargo run --locked -p retonr-cli -- model --help
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_slop_v1.json
+cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_prose_v1.json
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
