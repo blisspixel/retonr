@@ -1,0 +1,529 @@
+{
+  "schema_version": 1,
+  "corpus_id": "synthetic-editorial-prose-v1",
+  "rule_catalog_version": 1,
+  "content_origin": "synthetic",
+  "license_spdx": "Apache-2.0",
+  "cases": [
+    {
+      "id": "finding-nominalization-chain",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "The implementation of the modernization of the authorization configuration will require the performance of a validation of every assignment.",
+      "reference_revision": "We will modernize how the authorization configuration is set, then validate every assignment.",
+      "target_rules": ["nominalization_chain"],
+      "expected_source_findings": [
+        {"rule_id": "nominalization_chain", "evidence": "the performance of a validation", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["authorization"]
+    },
+    {
+      "id": "finding-noun-string-stack",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Update the customer account data retention policy exception request form.",
+      "reference_revision": "Update the form used to request an exception to the policy on retaining customer account data.",
+      "target_rules": ["noun_string_stack"],
+      "expected_source_findings": [
+        {"rule_id": "noun_string_stack", "evidence": "customer account data retention policy exception request form", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-circumlocution-padding",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "In order to reduce cost, and due to the fact that demand fell, we will at this point in time pause hiring.",
+      "reference_revision": "To reduce cost, and because demand fell, we will pause hiring now.",
+      "target_rules": ["circumlocution_padding"],
+      "expected_source_findings": [
+        {"rule_id": "circumlocution_padding", "evidence": "due to the fact that", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-expletive-sentence-opener",
+      "kind": "finding",
+      "language": "en",
+      "channel": "essay",
+      "source": "There are several factors that influence retention. It is important that teams track them. There is a risk that leaders ignore them.",
+      "reference_revision": "Several factors influence retention. Teams should track them, because leaders often ignore them.",
+      "target_rules": ["expletive_sentence_opener"],
+      "expected_source_findings": [
+        {"rule_id": "expletive_sentence_opener", "evidence": "There are several factors that", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-hedge-stack",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "This may possibly suggest that the change could potentially have somewhat improved retention.",
+      "reference_revision": "The change may have improved retention.",
+      "target_rules": ["hedge_stack"],
+      "expected_source_findings": [
+        {"rule_id": "hedge_stack", "evidence": "may possibly suggest", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["retention"]
+    },
+    {
+      "id": "finding-disclaimer-pileup",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "This list is not exhaustive. Results may vary by environment. Your situation may differ.",
+      "reference_revision": "This list covers the four supported backends.",
+      "target_rules": ["disclaimer_pileup"],
+      "expected_source_findings": [
+        {"rule_id": "disclaimer_pileup", "evidence": "This list is not exhaustive.", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-trailing-participial-benefit",
+      "kind": "finding",
+      "language": "en",
+      "channel": "marketing",
+      "source": "The cache stores recent results, improving performance. The queue retries failed jobs, ensuring reliability.",
+      "reference_revision": "The cache stores the last 1,000 results and the queue retries failed jobs twice.",
+      "target_rules": ["trailing_participial_benefit"],
+      "expected_source_findings": [
+        {"rule_id": "trailing_participial_benefit", "evidence": ", improving performance", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["cache"]
+    },
+    {
+      "id": "finding-anaphoric-opener-repetition",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "This means the migration is blocked. This ensures no data is lost. This allows the team to retry later.",
+      "reference_revision": "The migration is blocked until the schema check passes. No rows are written while it is blocked, so the team can retry.",
+      "target_rules": ["anaphoric_opener_repetition"],
+      "expected_source_findings": [
+        {"rule_id": "anaphoric_opener_repetition", "evidence": "This means", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["migration"]
+    },
+    {
+      "id": "finding-uniform-sentence-cadence",
+      "kind": "finding",
+      "language": "en",
+      "channel": "essay",
+      "source": "The team reviewed the plan. The team approved the plan. The team shared the plan. The team tracked the plan. The team closed the plan.",
+      "reference_revision": "The team reviewed the plan, approved it after two rounds of comments, then shared it with operations and tracked it until closure.",
+      "target_rules": ["uniform_sentence_cadence"],
+      "expected_source_findings": [
+        {"rule_id": "uniform_sentence_cadence", "evidence": "The team reviewed the plan.", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["plan"]
+    },
+    {
+      "id": "finding-vacuous-definitional-opener",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Latency budgeting is a term used to describe the process of budgeting latency across a system.",
+      "reference_revision": "A latency budget assigns each hop a maximum delay so the total stays under the service objective.",
+      "target_rules": ["vacuous_definitional_opener"],
+      "expected_source_findings": [
+        {"rule_id": "vacuous_definitional_opener", "evidence": "is a term used to describe", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["latency"]
+    },
+    {
+      "id": "finding-roadmap-meta-signposting",
+      "kind": "finding",
+      "language": "en",
+      "channel": "essay",
+      "source": "In this section we will explore the causes. Then we will examine the effects. Finally we will conclude with recommendations.",
+      "reference_revision": "Three causes explain the outage: a stale certificate, an unbounded retry loop, and a missing alert.",
+      "target_rules": ["roadmap_meta_signposting"],
+      "expected_source_findings": [
+        {"rule_id": "roadmap_meta_signposting", "evidence": "In this section we will explore", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-bullet-label-tautology",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Scalability: the system is scalable. Reliability: the system is reliable. Security: the system is secure.",
+      "reference_revision": "Scalability: adds replicas up to 12 without a restart. Reliability: survives one zone loss with no lost writes. Security: requires mutual TLS.",
+      "target_rules": ["bullet_label_tautology"],
+      "expected_source_findings": [
+        {"rule_id": "bullet_label_tautology", "evidence": "Scalability: the system is scalable.", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-heading-inflation",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "## Background\nThe project started in March.\n## Purpose\nWe want faster builds.\n## Scope\nOnly the CI pipeline.",
+      "reference_revision": "## Background\nThe project started in March after the CI queue exceeded 40 minutes at peak, which blocked releases for two teams.",
+      "target_rules": ["heading_inflation"],
+      "expected_source_findings": [
+        {"rule_id": "heading_inflation", "evidence": "## Purpose\nWe want faster builds.", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["March"]
+    },
+    {
+      "id": "finding-unsourced-quantified-claim",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Studies show a 47 percent improvement in onboarding speed when teams adopt this pattern.",
+      "reference_revision": "Onboarding time fell from 9.5 days to 5.0 days across the 38 hires in our 2026 cohort.",
+      "target_rules": ["unsourced_quantified_claim"],
+      "expected_source_findings": [
+        {"rule_id": "unsourced_quantified_claim", "evidence": "Studies show", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-superlative-absolute-stack",
+      "kind": "finding",
+      "language": "en",
+      "channel": "marketing",
+      "source": "Our fully automated platform guarantees seamless, effortless migrations with zero downtime, every time.",
+      "reference_revision": "Migrations run without downtime when both replicas are healthy.",
+      "target_rules": ["superlative_absolute_stack"],
+      "expected_source_findings": [
+        {"rule_id": "superlative_absolute_stack", "evidence": "guarantees seamless, effortless migrations with zero downtime", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["downtime"]
+    },
+    {
+      "id": "finding-unanchored-time-reference",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Recently, adoption has grown, and currently most teams use the new client.",
+      "reference_revision": "Between January 2026 and June 2026, adoption grew from 12 teams to 41.",
+      "target_rules": ["unanchored_time_reference"],
+      "expected_source_findings": [
+        {"rule_id": "unanchored_time_reference", "evidence": "Recently", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-false-consensus-marker",
+      "kind": "finding",
+      "language": "en",
+      "channel": "essay",
+      "source": "Everyone knows that longer documentation reduces support load, so the team should write more of it.",
+      "reference_revision": "Two internal studies, from 2024 and 2026, found lower ticket volume after the troubleshooting guide shipped.",
+      "target_rules": ["false_consensus_marker"],
+      "expected_source_findings": [
+        {"rule_id": "false_consensus_marker", "evidence": "Everyone knows that", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-elegant-variation",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Start the scheduler. The orchestration layer then reads the queue. The dispatch component assigns work. The coordinator records the result.",
+      "reference_revision": "Start the scheduler. The scheduler reads the queue, assigns work to runners, and records the result.",
+      "target_rules": ["elegant_variation"],
+      "expected_source_findings": [
+        {"rule_id": "elegant_variation", "evidence": "The orchestration layer", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["scheduler"]
+    },
+    {
+      "id": "finding-copula-avoidance",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "The registry serves as the single source of truth. The manifest stands as the record of record.",
+      "reference_revision": "The registry is the single source of truth. The manifest is the record of record.",
+      "target_rules": ["copula_avoidance"],
+      "expected_source_findings": [
+        {"rule_id": "copula_avoidance", "evidence": "serves as", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["registry"]
+    },
+    {
+      "id": "finding-keyword-echo-density",
+      "kind": "finding",
+      "language": "en",
+      "channel": "marketing",
+      "source": "Our project management software helps teams choose project management software. When you compare project management software, pick project management software that scales.",
+      "reference_revision": "Our project management software helps teams plan work. When you compare tools, check whether the audit log is exportable.",
+      "target_rules": ["keyword_echo_density"],
+      "expected_source_findings": [
+        {"rule_id": "keyword_echo_density", "evidence": "project management software", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["project management software"]
+    },
+    {
+      "id": "clean-nominalization-chain",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The authentication flow requires authorization before deprecation takes effect.",
+      "reference_revision": null,
+      "target_rules": ["nominalization_chain"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["authorization"]
+    },
+    {
+      "id": "clean-noun-string-stack",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Open the Windows Registry Editor and change the key.",
+      "reference_revision": null,
+      "target_rules": ["noun_string_stack"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-circumlocution-padding",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The contract states that payment is due in the event that delivery fails.",
+      "reference_revision": null,
+      "target_rules": ["circumlocution_padding"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-expletive-sentence-opener",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "There is no second replica in this cluster.",
+      "reference_revision": null,
+      "target_rules": ["expletive_sentence_opener"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-hedge-stack",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The change may have improved retention, though the confidence interval crosses zero.",
+      "reference_revision": null,
+      "target_rules": ["hedge_stack"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["retention"]
+    },
+    {
+      "id": "clean-disclaimer-pileup",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "This notice is required by the licence and does not limit your statutory rights.",
+      "reference_revision": null,
+      "target_rules": ["disclaimer_pileup"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-trailing-participial-benefit",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The cache stores the last 1,000 results, reducing median lookup time from 40 ms to 6 ms.",
+      "reference_revision": null,
+      "target_rules": ["trailing_participial_benefit"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["cache"]
+    },
+    {
+      "id": "clean-anaphoric-opener-repetition",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "This flag disables the cache. This flag is read once at startup.",
+      "reference_revision": null,
+      "target_rules": ["anaphoric_opener_repetition"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-uniform-sentence-cadence",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Install the package. Start the service. Verify the health endpoint.",
+      "reference_revision": null,
+      "target_rules": ["uniform_sentence_cadence"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-vacuous-definitional-opener",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "glossary",
+      "source": "Latency budget: the delay allowed for each hop so the total stays within the service objective.",
+      "reference_revision": null,
+      "target_rules": ["vacuous_definitional_opener"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-roadmap-meta-signposting",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The thesis requires a roadmap paragraph, so section 1 states what each later chapter argues.",
+      "reference_revision": null,
+      "target_rules": ["roadmap_meta_signposting"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-bullet-label-tautology",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Scalability: adds replicas up to 12 without a restart. Reliability: survives one zone loss with no lost writes.",
+      "reference_revision": null,
+      "target_rules": ["bullet_label_tautology"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-heading-inflation",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "## Background\nThe project started in March after the CI queue exceeded 40 minutes at peak. Two teams shared one runner pool, so a single long job blocked releases.",
+      "reference_revision": null,
+      "target_rules": ["heading_inflation"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["March"]
+    },
+    {
+      "id": "clean-unsourced-quantified-claim",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "Onboarding time fell 47 percent across the 38 hires in our 2026 cohort, measured from offer to first merged change.",
+      "reference_revision": null,
+      "target_rules": ["unsourced_quantified_claim"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-superlative-absolute-stack",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The migration always pauses when either replica lags more than 30 seconds.",
+      "reference_revision": null,
+      "target_rules": ["superlative_absolute_stack"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-unanchored-time-reference",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "As of 1 July 2026, 41 of 48 teams use the new client, and adoption has grown steadily since January.",
+      "reference_revision": null,
+      "target_rules": ["unanchored_time_reference"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-false-consensus-marker",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The 2026 survey found that 44 of 48 teams agreed the guide reduced ticket volume.",
+      "reference_revision": null,
+      "target_rules": ["false_consensus_marker"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-elegant-variation",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The scheduler reads the queue. The runner executes the work. The store records the result.",
+      "reference_revision": null,
+      "target_rules": ["elegant_variation"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-copula-avoidance",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Under section 4, a signed manifest constitutes acceptance of the terms.",
+      "reference_revision": null,
+      "target_rules": ["copula_avoidance"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-keyword-echo-density",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The project management software stores each plan as a versioned document, and the audit log records every change.",
+      "reference_revision": null,
+      "target_rules": ["keyword_echo_density"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    }
+  ]
+}
