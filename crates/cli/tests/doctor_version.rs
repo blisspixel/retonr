@@ -51,7 +51,8 @@ fn help_lists_completions_and_man() {
         .assert()
         .success()
         .stdout(predicate::str::contains("completions"))
-        .stdout(predicate::str::contains("man"));
+        .stdout(predicate::str::contains("man"))
+        .stdout(predicate::str::contains("inspect"));
 }
 
 #[test]

@@ -30,6 +30,7 @@ mod grounded;
 mod runtime_artifact_lease;
 mod runtime_artifact_set_lease;
 mod runtime_attestation;
+mod source_inspection;
 #[cfg(test)]
 mod symlink_test_support;
 
@@ -99,6 +100,9 @@ pub use grounded::{
     GroundedRewriteResult, GroundedRewriteSelection, GroundedRewriteService,
 };
 pub use rewrite_engine::{ClaimShadowObserver, EngineError, ProtectionError};
+pub use rewrite_text_adapter::{
+    CarrierPresence, ControlCounts, LineEndingKind, PlainTextInventory, TextEncoding,
+};
 pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};
 pub use runtime_artifact_set_lease::{
     ArtifactSetLeaseError, RuntimeArtifactSetLease, RuntimeArtifactSetLeaseLimits,
@@ -108,6 +112,7 @@ pub use runtime_attestation::{
     RuntimeAttestationError, RuntimeAttestationLimits, RuntimeAttestationPersistence,
     RuntimeAttestationResult, RuntimeAttestationService, WriteDisposition, host_runtime_target,
 };
+pub use source_inspection::inspect_plain_text;
 
 /// Maximum accepted source or candidate size for the plain-text check service.
 pub const MAX_CANDIDATE_CHECK_BYTES: usize = MAX_PLAIN_TEXT_BYTES;
