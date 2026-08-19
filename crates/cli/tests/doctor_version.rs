@@ -3,7 +3,9 @@ use predicates::prelude::*;
 use tempfile::tempdir;
 
 fn binary() -> Command {
-    Command::cargo_bin("retonr").expect("built binary")
+    let mut command = Command::cargo_bin("retonr").expect("built binary");
+    command.env_remove("RETONR_DATA_DIR");
+    command
 }
 
 #[test]
@@ -52,7 +54,10 @@ fn help_lists_completions_and_man() {
         .success()
         .stdout(predicate::str::contains("completions"))
         .stdout(predicate::str::contains("man"))
-        .stdout(predicate::str::contains("inspect"));
+        .stdout(predicate::str::contains("inspect"))
+        .stdout(predicate::str::contains("Examples:"))
+        .stdout(predicate::str::contains("retonr rewrite draft.txt -i"))
+        .stdout(predicate::str::contains("-D .retonr model list"));
 }
 
 #[test]

@@ -34,7 +34,7 @@ impl ModelFailure {
             ErrorCode::InvalidInvocation,
             EXIT_USAGE,
             false,
-            "model commands require --data-dir",
+            "model commands require --data-dir or RETONR_DATA_DIR",
         )
     }
 

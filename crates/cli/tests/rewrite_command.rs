@@ -5,7 +5,9 @@ use predicates::prelude::*;
 use tempfile::tempdir;
 
 fn binary() -> Command {
-    Command::cargo_bin("retonr").expect("built binary")
+    let mut command = Command::cargo_bin("retonr").expect("built binary");
+    command.env_remove("RETONR_DATA_DIR");
+    command
 }
 
 #[test]

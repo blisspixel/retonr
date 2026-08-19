@@ -102,6 +102,26 @@ fn migration_backup_key_is_present_only_when_attached() {
 }
 
 #[test]
+fn report_format_defaults_to_text_on_a_terminal_and_json_on_a_pipe() {
+    assert_eq!(
+        ReportFormat::from_invocation(None, true),
+        ReportFormat::Text
+    );
+    assert_eq!(
+        ReportFormat::from_invocation(None, false),
+        ReportFormat::Json
+    );
+    assert_eq!(
+        ReportFormat::from_invocation(Some(ReportFormat::Json), true),
+        ReportFormat::Json
+    );
+    assert_eq!(
+        ReportFormat::from_invocation(Some(ReportFormat::Text), false),
+        ReportFormat::Text
+    );
+}
+
+#[test]
 fn exact_artifact_selection_round_trips_without_store_types() {
     let digest = Digest::sha256(b"artifact").to_string();
     let selection = ArtifactSelectionDto {

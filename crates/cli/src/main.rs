@@ -5,7 +5,7 @@
 
 use std::{
     ffi::OsString,
-    io::{self, Write},
+    io::{self, IsTerminal, Write},
     path::PathBuf,
     process::ExitCode,
 };
@@ -30,15 +30,38 @@ mod model;
 mod rewrite;
 mod version;
 
+const EXAMPLES: &str = "\
+Examples:
+  retonr inspect draft.txt
+  retonr rewrite draft.txt -o rewritten.txt
+  retonr rewrite draft.txt -i
+  retonr check original.txt candidate.txt --diff
+  retonr -D .retonr model list
+";
+
 /// Fidelity-gated rewriting prototype.
 #[derive(Debug, Parser)]
-#[command(name = "retonr", version, about)]
+#[command(name = "retonr", version, about, after_help = EXAMPLES)]
 struct Cli {
-    /// Versioned JSON or concise human-readable output.
-    #[arg(long, value_enum, default_value_t = ReportFormat::Json, global = true)]
-    format: ReportFormat,
-    /// Explicit fixed repository root required by every model command.
-    #[arg(long, value_name = "DIRECTORY", global = true)]
+    /// json for machines, text for humans. A terminal defaults to text.
+    #[arg(
+        short,
+        long,
+        value_enum,
+        value_name = "json|text",
+        global = true,
+        hide_possible_values = true
+    )]
+    format: Option<ReportFormat>,
+    /// Explicit repository root. Also read from `RETONR_DATA_DIR`.
+    #[arg(
+        short = 'D',
+        long,
+        value_name = "DIRECTORY",
+        global = true,
+        env = "RETONR_DATA_DIR",
+        hide_env_values = true
+    )]
     data_dir: Option<PathBuf>,
     #[command(subcommand)]
     command: Command,
@@ -58,20 +81,19 @@ enum Command {
         /// Write the accepted bytes to a new file, or to - for standard output.
         ///
         /// An existing destination is never replaced. The source is modified only
-        /// with --in-place --backup.
-        #[arg(long, value_name = "PATH")]
+        /// with --in-place.
+        #[arg(short, long, value_name = "PATH")]
         output: Option<PathBuf>,
-        /// Replace the source after retaining a sibling backup.
+        /// Replace the source after retaining a sibling .retonr-backup.
         ///
-        /// Requires --backup. Standard input, --output, symlinks, and
-        /// directories are refused.
-        #[arg(long)]
+        /// Standard input, --output, symlinks, and directories are refused.
+        #[arg(short, long)]
         in_place: bool,
-        /// Retain <SOURCE>.retonr-backup before --in-place replacement.
-        #[arg(long)]
+        /// Accepted with --in-place. Implied by --in-place.
+        #[arg(long, hide = true)]
         backup: bool,
         /// Exact installed artifact that must match the active generation binding.
-        #[arg(long, value_name = "ARTIFACT_ID")]
+        #[arg(long, visible_alias = "artifact", value_name = "ARTIFACT_ID")]
         artifact_id: Option<crate::contract::ArtifactIdArgument>,
         /// Exact term that must be preserved. May be repeated.
         #[arg(long = "protect", value_name = "TERM")]
@@ -94,17 +116,16 @@ enum Command {
         /// Write the exact accepted bytes to a new file, or to - for standard output.
         ///
         /// An existing destination is never replaced. The source is modified only
-        /// with --in-place --backup.
-        #[arg(long, value_name = "PATH")]
+        /// with --in-place.
+        #[arg(short, long, value_name = "PATH")]
         output: Option<PathBuf>,
-        /// Replace the source after retaining a sibling backup.
+        /// Replace the source after retaining a sibling .retonr-backup.
         ///
-        /// Requires --backup. Standard input, --output, symlinks, and
-        /// directories are refused.
-        #[arg(long)]
+        /// Standard input, --output, symlinks, and directories are refused.
+        #[arg(short, long)]
         in_place: bool,
-        /// Retain <SOURCE>.retonr-backup before --in-place replacement.
-        #[arg(long)]
+        /// Accepted with --in-place. Implied by --in-place.
+        #[arg(long, hide = true)]
         backup: bool,
         /// Permit exact unescaped bytes on a terminal. Requires --yes.
         ///
@@ -112,7 +133,7 @@ enum Command {
         #[arg(long)]
         raw_terminal: bool,
         /// Confirm the raw terminal output opt-in.
-        #[arg(long)]
+        #[arg(short = 'y', long)]
         yes: bool,
         /// Write an escaped linear diff of source versus accepted output.
         #[arg(long)]
@@ -137,7 +158,7 @@ enum Command {
         #[arg(value_name = "SOURCE")]
         source: PathBuf,
         /// Recurse into real child directories without following links.
-        #[arg(long)]
+        #[arg(short, long)]
         recursive: bool,
     },
     /// Administer exact local model artifacts without network access.
@@ -210,7 +231,7 @@ fn main() -> ExitCode {
     reason = "each command arm owns its clap-derived request"
 )]
 fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
-    let format = cli.format;
+    let format = ReportFormat::from_invocation(cli.format, io::stdout().is_terminal());
     match cli.command {
         Command::Rewrite {
             source,
@@ -360,16 +381,18 @@ fn requested_format(arguments: &[OsString]) -> ReportFormat {
         if value == "--" {
             break;
         }
-        if value == "--format" {
-            return if values.next() == Some("text") {
-                ReportFormat::Text
-            } else {
-                ReportFormat::Json
+        if value == "--format" || value == "-f" {
+            return match values.next() {
+                Some("text") => ReportFormat::Text,
+                _ => ReportFormat::Json,
             };
         }
-        if value == "--format=text" {
+        if value == "--format=text" || value == "-f=text" || value == "-ftext" {
             return ReportFormat::Text;
         }
+        if value == "--format=json" || value == "-f=json" || value == "-fjson" {
+            return ReportFormat::Json;
+        }
     }
-    ReportFormat::Json
+    ReportFormat::from_invocation(None, io::stdout().is_terminal())
 }

@@ -36,7 +36,7 @@ The current 0.2 build queue, in dependency order, is:
 5. Escaped terminal rendering, `doctor`, `version`, `completions`, `man`,
    source `inspect`, `model list`, `model inspect`, and `rewrite` exist.
    `inspect` inventories one file or directory without credential validation
-   or link following. `--recursive` is bounded. `--in-place --backup`
+   or link following. `--recursive` is bounded. `--in-place`
    replaces one regular file after a sibling backup. `doctor` names
    recovery follow-up without mutation. Recovered fake-qualified
    bindings attach in-process conformance for `rewrite` and generative
