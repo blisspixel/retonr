@@ -10,6 +10,38 @@ All plans are prospective. A listed capability is not implemented until
 [the current-state document](../current-state.md) says it is implemented and records
 the verification evidence.
 
+## Approaching 1.0
+
+Version 1.0 is the first frozen contract, not the first useful build. The path is
+the versioned roadmap: finish 0.2, then 0.3 through 0.9, then 1.0. Work may run
+ahead when it is reversible, $0, and does not create unmigratable state or a
+public claim.
+
+`$0` here means no paid APIs, no paid downloads, no cloud services, and no new
+model acquisition. Valid evidence is local: fixtures, fake backends, process
+tests, repository policy, and already-installed artifacts.
+
+The current 0.2 build queue, in dependency order, is:
+
+1. Keep the completed artifact lifecycle, `import-set` CLI, `check --diff` /
+   `--dry-run` / `--trace`, inventory DTOs, and cancellation evidence intact.
+2. Preserve the managed-process attestor. It remains inert and grants no role.
+3. Preserve the extractor manifest, claim-output schema, pair-extraction
+   service, the informational engine shadow claim-comparison gate, the
+   application shadow join, and the independent claim-shadow calibration
+   runner. Keep Ollama on the candidate contract only. Do not give pair
+   extraction or shadow comparison acceptance authority.
+4. Preserve read-only set inventory, selected set reconciliation, and
+   crash-recoverable set removal without implying set authority.
+5. Escaped terminal rendering, `doctor`, `version`, and fail-closed `rewrite`
+   exist. Bind a selected qualified local artifact to `rewrite` only at $0.
+6. Qualify one exact local runtime and artifact combination before profiles or
+   another format.
+
+Later phases stay blocked on their entry evidence. Do not implement Markdown,
+DOCX, profiles, MCP, desktop, or signed installers as if they were the next 0.2
+slice.
+
 ## Reading order
 
 | Plan | Primary outcome |
@@ -17,29 +49,31 @@ the verification evidence.
 | [0.2 grounded engine and CLI](0.2-grounded-cli.md) | Qualify one local generation path through the common validation cascade and complete the plain-text CLI |
 | [0.3 profile and CLI alpha](0.3-profile-cli.md) | Build an inspectable, reversible style profile and prove it beats simpler baselines |
 | [0.4 Markdown](0.4-markdown.md) | Add a deliberately bounded source-splice Markdown adapter |
-| [0.5 calibration and hardening](0.5-calibration.md) | Calibrate semantic risk, add strategies safely, and qualify partial atomicity |
+| [0.5 calibration and runtime breadth](0.5-calibration.md) | Calibrate semantic risk, add strategies safely, qualify a second runtime path, and keep language and partial atomicity evidence-gated |
 | [0.6 agent tool, MCP, and Agent Plugins](0.6-integrations.md) | Package the stable CLI and application service for portable local agent use |
 | [0.7 DOCX](0.7-docx.md) | Support a narrow WordprocessingML subset without broad preservation claims |
 | [0.8 native desktop](0.8-desktop.md) | Deliver an accessible installed Rust application without an embedded browser |
 | [0.9 release qualification](0.9-release-qualification.md) | Freeze contracts and qualify signed cross-platform release artifacts |
 
-The [dated research ledger](../research/2026-08-11-next-phases.md) records the
-external specifications and ecosystem assumptions behind these plans. It is
-evidence, not a substitute for architecture decision records.
+Current research baselines are the August 12 and 13 records and
+[External change watch](../external-change-watch.md). The
+[August 11 next-phase ledger](../research/2026-08-11-next-phases.md) is retained
+historical evidence only. It is superseded for MCP, desktop toolkit, runtime
+breadth, 1.0 voice, and phase order.
 
 ## Dependency order
 
 ```mermaid
 flowchart LR
-    V01["Finish missing 0.1 evidence"] --> V02["0.2 local model and plain-text CLI"]
+    V01["0.1 deterministic core complete"] --> V02["0.2 local model and plain-text CLI"]
     V02 --> V03["0.3 profile evidence and CLI workflows"]
     V03 --> V04["0.4 bounded Markdown"]
-    V04 --> V05["0.5 calibration and strategy hardening"]
+    V04 --> V05["0.5 calibration and runtime breadth"]
     V05 --> V06["0.6 agent tool and portable plugins"]
     V06 --> V07["0.7 bounded DOCX"]
     V07 --> V08["0.8 native desktop"]
     V08 --> V09["0.9 contract freeze and release qualification"]
-    V09 --> V10["1.0 release qualification"]
+    V09 --> V10["1.0 reference product"]
 ```
 
 This is a risk order, not a statement that every implementation task must be

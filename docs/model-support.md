@@ -191,6 +191,7 @@ retonr model recommend --language auto --mode balanced --format text
 retonr model inspect <artifact>
 retonr model download <artifact>
 retonr model import <path>
+retonr model import-set <source-root>
 retonr model verify <artifact>
 retonr model eval <artifact> --suite device
 retonr model qualify <artifact> --suite qualification
@@ -200,9 +201,20 @@ retonr model remove <artifact>
 ```
 
 The implemented administrative slice also provides
-`retonr --data-dir <DIRECTORY> model migrate --yes`. It migrates only an existing
-repository after retaining a verified SQLite-consistent backup. It is not model
-acquisition, qualification, activation, or runtime migration.
+`retonr --data-dir <DIRECTORY> model migrate --yes` and
+`retonr --data-dir <DIRECTORY> model import-set <SOURCE_ROOT> --manifest <MANIFEST_JSON>`.
+Migration applies only to an existing repository after retaining a verified
+SQLite-consistent backup. Set import copies one exact local folder that matches a
+canonical multi-file manifest and records only inert structural installation state.
+Neither command is model acquisition, qualification, activation, or runtime
+migration. The implemented administrative slice also provides
+`retonr --data-dir <DIRECTORY> model inventory-set [--fail-on-findings]`.
+Set inventory is read-only and does not grant a lease, qualify a package, or
+authorize a role. The implemented administrative slice also provides
+`retonr --data-dir <DIRECTORY> model reconcile-set --manifest <MANIFEST_JSON>`.
+Set reconciliation registers one exact already-managed set root selected only by
+manifest. It does not copy, replace, qualify, or activate. Single-file inventory,
+reconciliation, and removal do not inspect or mutate managed sets.
 
 `recommend`, `inspect`, and `eval` do not activate or remove anything. Download is
 explicit, resumable, checksummed, cancellable, and license gated. Activation is an
@@ -249,7 +261,10 @@ or container attestation vocabulary; there is no observed-only build mode. Effec
 state separately binds the provider snapshot, loaded components, configuration,
 platform, execution class, isolation policy, and effective context. A structurally
 valid record is not qualification evidence by itself. Current attached Ollama remains
-observed-only because no process and package attestor is implemented.
+observed-only. The application can attest a managed entrypoint into inert
+runtime-build and effective-state records, but that path is not connected to
+Ollama discovery and cannot upgrade observed-only metadata into a build
+identity.
 
 The inert effective-package evidence record joins the exact artifact set, runtime
 build, and effective state; requires canonical purpose coverage for every member; and

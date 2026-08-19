@@ -12,10 +12,13 @@ use rewrite_model::{ArtifactId, ArtifactRole, RuntimeIdentity};
 use rewrite_types::{CancellationToken, Digest, RewriteStatus};
 
 use super::{
-    BASELINE_SCHEMA_VERSION, BaselineDefinition, BaselineInferencePolicy, BaselineKind,
-    BaselineStatusCounts, run_baseline,
+    BASELINE_SCHEMA_VERSION, BaselineDefinition, BaselineError, BaselineInferencePolicy,
+    BaselineKind, BaselineStatusCounts, parse_baseline_definition, run_baseline,
+    run_offline_baseline,
 };
 use crate::{EvaluationSuite, parse_suite};
+
+const NO_REWRITE_DEFINITION: &str = include_str!("../../fixtures/no_rewrite_baseline_v1.json");
 
 fn block_ready<T>(future: impl Future<Output = T>) -> T {
     let mut future = Box::pin(future);
@@ -167,4 +170,67 @@ fn direct_baseline_uses_inference_port_and_common_validation() {
     assert_eq!(fake.requests().expect("request record").len(), 1);
     let serialized = serde_json::to_string(&report).expect("serialize report");
     assert!(!serialized.contains("Hello world"));
+}
+
+#[test]
+fn checked_in_no_rewrite_definition_runs_offline() {
+    let definition =
+        parse_baseline_definition(NO_REWRITE_DEFINITION).expect("checked-in definition");
+    assert_eq!(definition.schema_version, BASELINE_SCHEMA_VERSION);
+    assert_eq!(definition.id, "no-rewrite-v1");
+    assert_eq!(definition.kind, BaselineKind::NoRewrite);
+    let report = run_offline_baseline(&definition, &suite()).expect("offline no-rewrite");
+    assert!(report.is_success());
+    assert_eq!(report.total, 1);
+    assert_eq!(report.statuses.unchanged, 1);
+    assert_eq!(report.statuses.failed, 0);
+    let serialized = serde_json::to_string(&report).expect("serialize report");
+    assert!(!serialized.contains("Hello world"));
+    assert!(!serialized.contains("Hello, world!"));
+}
+
+#[test]
+fn generative_definition_round_trips_and_stays_offline_closed() {
+    let (definition, _, _) = generative_fixtures();
+    let encoded = serde_json::to_string(&definition).expect("definition serializes");
+    let parsed = parse_baseline_definition(&encoded).expect("generative definition is valid");
+    assert_eq!(parsed, definition);
+    assert_eq!(
+        run_offline_baseline(&parsed, &suite()),
+        Err(BaselineError::MissingBackend)
+    );
+}
+
+#[test]
+fn rejects_untrusted_baseline_definitions() {
+    assert!(matches!(
+        parse_baseline_definition(&"x".repeat(super::MAX_BASELINE_DEFINITION_BYTES + 1)),
+        Err(BaselineError::TooLarge)
+    ));
+    assert!(matches!(
+        parse_baseline_definition("{"),
+        Err(BaselineError::InvalidJson)
+    ));
+    assert!(matches!(
+        parse_baseline_definition(
+            r#"{"schema_version":1,"id":"no-rewrite-v1","kind":"no_rewrite","notes":"secret"}"#
+        ),
+        Err(BaselineError::InvalidJson)
+    ));
+    assert!(matches!(
+        parse_baseline_definition(
+            r#"{"schema_version":2,"id":"no-rewrite-v1","kind":"no_rewrite"}"#
+        ),
+        Err(BaselineError::UnsupportedSchema)
+    ));
+    assert!(matches!(
+        parse_baseline_definition(r#"{"schema_version":1,"id":"No Rewrite","kind":"no_rewrite"}"#),
+        Err(BaselineError::InvalidIdentifier)
+    ));
+    assert!(matches!(
+        parse_baseline_definition(
+            r#"{"schema_version":1,"id":"direct-prompt-v1","kind":"direct_prompt"}"#
+        ),
+        Err(BaselineError::InvalidConfiguration)
+    ));
 }

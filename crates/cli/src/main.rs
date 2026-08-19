@@ -19,8 +19,12 @@ use crate::model::{ModelCommand, ModelFailure};
 
 mod check;
 pub mod contract;
+mod doctor;
 mod failure;
+mod identity;
 mod model;
+mod rewrite;
+mod version;
 
 /// Fidelity-gated rewriting prototype.
 #[derive(Debug, Parser)]
@@ -39,6 +43,24 @@ struct Cli {
 /// Supported prototype operations.
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Rewrite one UTF-8 source after grounded generation and engine gates.
+    ///
+    /// The current product has no attached local runtime, so this command fails
+    /// closed after validating the source and inspecting any requested
+    /// repository binding. It does not start a runtime or access the network.
+    Rewrite {
+        /// UTF-8 source file, or - for standard input.
+        #[arg(value_name = "SOURCE")]
+        source: PathBuf,
+        /// Write the accepted bytes to a new file, or to - for standard output.
+        ///
+        /// An existing destination is never replaced and the source is never modified.
+        #[arg(long, value_name = "PATH")]
+        output: Option<PathBuf>,
+        /// Exact installed artifact that must match the active generation binding.
+        #[arg(long, value_name = "ARTIFACT_ID")]
+        artifact_id: Option<crate::contract::ArtifactIdArgument>,
+    },
     /// Validate a supplied plain-text candidate without using a model.
     Check {
         /// UTF-8 source file to protect and validate against, or - for standard input.
@@ -59,17 +81,32 @@ enum Command {
         #[arg(long, value_name = "PATH")]
         output: Option<PathBuf>,
         /// Permit exact unescaped bytes on a terminal. Requires --yes.
+        ///
+        /// Without both flags, a terminal receives escaped rendering.
         #[arg(long)]
         raw_terminal: bool,
         /// Confirm the raw terminal output opt-in.
         #[arg(long)]
         yes: bool,
+        /// Write an escaped linear diff of source versus accepted output.
+        #[arg(long)]
+        diff: bool,
+        /// Compute the report without writing --output.
+        #[arg(long)]
+        dry_run: bool,
+        /// Write the redacted rewrite record to a new file.
+        #[arg(long, value_name = "PATH")]
+        trace: Option<PathBuf>,
     },
     /// Administer exact local model artifacts without network access.
     Model {
         #[command(subcommand)]
         command: ModelCommand,
     },
+    /// Report product and machine-contract versions without accessing storage.
+    Version,
+    /// Inspect local CLI identity and optional repository schema without mutation.
+    Doctor,
 }
 
 fn main() -> ExitCode {
@@ -108,9 +145,24 @@ fn main() -> ExitCode {
     }
 }
 
+#[expect(
+    clippy::result_large_err,
+    reason = "RunFailure carries the typed CLI report contract"
+)]
 fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
     let format = cli.format;
     match cli.command {
+        Command::Rewrite {
+            source,
+            output,
+            artifact_id,
+        } => rewrite::run(&rewrite::RewriteRequest {
+            source,
+            output,
+            data_directory: cli.data_dir,
+            artifact_id,
+        })
+        .map_err(|error| (error, format)),
         Command::Check {
             source,
             candidate,
@@ -119,6 +171,9 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             output,
             raw_terminal,
             yes,
+            diff,
+            dry_run,
+            trace,
         } => check::run(
             check::CheckRequest {
                 source,
@@ -128,6 +183,11 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 output,
                 raw_terminal,
                 confirmed: yes,
+                inspection: check::CheckInspection {
+                    diff,
+                    dry_run,
+                    trace,
+                },
             },
             format,
         )
@@ -149,6 +209,19 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             write_model_report(command_name, &success.output, format)
                 .map_err(|_| (RunFailure::operational(command_name), format))?;
             Ok(success.exit_code)
+        }
+        Command::Version => {
+            let (command, output, exit_code) = version::run();
+            write_model_report(command, &output, format)
+                .map_err(|_| (RunFailure::operational(command), format))?;
+            Ok(exit_code)
+        }
+        Command::Doctor => {
+            let (command, output, exit_code) =
+                doctor::run(cli.data_dir).map_err(|error| (error, format))?;
+            write_model_report(command, &output, format)
+                .map_err(|_| (RunFailure::operational(command), format))?;
+            Ok(exit_code)
         }
     }
 }

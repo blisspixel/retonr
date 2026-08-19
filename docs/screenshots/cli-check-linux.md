@@ -3,8 +3,9 @@
 ## Scope
 
 This image documents the implemented model-free `check` command. It does not imply
-that the planned model-backed rewrite, profile, model-management, service, or desktop
-commands are implemented.
+that model-backed rewrite, profile, download, qualification, activation, runtime
+execution, service, or desktop commands are implemented. Offline artifact
+administration exists as a separate `model` command family.
 
 ## Capture metadata
 

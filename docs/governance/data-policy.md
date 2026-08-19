@@ -34,7 +34,12 @@ manifest records its authoring method, intended risk category, and review status
 
 Public data may be used only after a manifest records the exact source revision,
 license, permitted purpose, attribution requirement if any, redistribution limits,
-and reviewer decision. Public availability alone is not authorization.
+and reviewer decision. Public availability alone is not authorization. The first
+approved licensed-public excerpts are the IETF RFC 791, RFC 793, RFC 1034, and
+RFC 1945 passages, the 1996 USGS This Dynamic Earth excerpt, NIST SP 800-12
+(1995), the 1999 CDC program-evaluation MMWR summary, and the 2003 PLOS Biology
+Plasmodium transcriptome introduction, in
+`crates/eval/fixtures/writing_samples/licensed_pre_ai_human_v1.json`.
 
 ### Participant-contributed data
 

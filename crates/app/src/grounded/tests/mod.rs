@@ -12,9 +12,10 @@ use rewrite_inference::{
 use rewrite_model::{ArtifactId, ArtifactRole, RuntimeIdentity};
 use rewrite_types::{CancellationToken, Digest, ReasonCode, RewriteMode, RewriteStatus};
 
-use super::{GroundedRewriteRequest, GroundedRewriteService};
+use super::{GroundedRewriteRequest, GroundedRewriteSelection, GroundedRewriteService};
+use crate::AppError;
 
-fn block_ready<T>(future: impl Future<Output = T>) -> T {
+pub(super) fn block_ready<T>(future: impl Future<Output = T>) -> T {
     let mut future = Box::pin(future);
     let waker = Waker::noop();
     let mut context = Context::from_waker(waker);
@@ -24,7 +25,7 @@ fn block_ready<T>(future: impl Future<Output = T>) -> T {
     }
 }
 
-fn fixtures(candidate: &str) -> (GroundedStrategy, FakeInferenceBackend) {
+pub(super) fn fixtures(candidate: &str) -> (GroundedStrategy, FakeInferenceBackend) {
     let digest = Digest::sha256(b"artifact");
     let artifact_id = ArtifactId::from_digest(digest.clone());
     let runtime = RuntimeIdentity {
@@ -94,13 +95,95 @@ fn fixtures(candidate: &str) -> (GroundedStrategy, FakeInferenceBackend) {
     )
 }
 
-fn request() -> GroundedRewriteRequest {
+pub(super) fn request() -> GroundedRewriteRequest {
     GroundedRewriteRequest {
         source: b"Version 2 works.".to_vec(),
         protected_terms: Vec::new(),
         mode: RewriteMode::Literal,
         style_context: String::new(),
+        claim_shadow: None,
     }
+}
+
+#[test]
+fn current_selection_fails_closed_without_a_qualified_artifact() {
+    assert!(matches!(
+        GroundedRewriteSelection::require_selected(),
+        Err(AppError::GroundedUnavailable)
+    ));
+    assert!(matches!(
+        GroundedRewriteSelection::require_ready(None, None),
+        Err(AppError::GroundedUnavailable)
+    ));
+    let requested = rewrite_model::ArtifactId::from_digest(rewrite_types::Digest::sha256(b"none"));
+    assert!(matches!(
+        GroundedRewriteSelection::require_ready(None, Some(&requested)),
+        Err(AppError::GroundedSelectionMismatch)
+    ));
+    GroundedRewriteSelection::validate_source(b"Hello world\n").expect("valid source");
+    assert!(matches!(
+        GroundedRewriteSelection::validate_source(b"a\xff"),
+        Err(AppError::TextAdapter(_))
+    ));
+}
+
+#[test]
+fn imported_repository_without_activation_is_not_ready() {
+    use crate::{ArtifactImportLimits, ArtifactRepository, OfflineArtifactImportRequest};
+
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let source = directory.path().join("source.gguf");
+    let bytes = b"grounded selection fixture";
+    std::fs::write(&source, bytes).expect("write artifact");
+    let digest = Digest::sha256(bytes);
+    let artifact_id = ArtifactId::from_digest(digest.clone());
+    let data = directory.path().join("data");
+    let repository = ArtifactRepository::new(&data).expect("derive repository");
+    repository
+        .import(
+            &OfflineArtifactImportRequest {
+                source,
+                manifest: rewrite_model::ArtifactManifest {
+                    schema_version: rewrite_model::ARTIFACT_MANIFEST_SCHEMA_VERSION,
+                    artifact_id: artifact_id.clone(),
+                    source: rewrite_model::ArtifactSource {
+                        origin: "fixture/model".to_owned(),
+                        revision: "fixture".to_owned(),
+                    },
+                    artifact_digest: digest,
+                    byte_size: u64::try_from(bytes.len()).expect("fixture size"),
+                    format: "gguf".to_owned(),
+                    family: "fixture".to_owned(),
+                    architecture: None,
+                    quantization: None,
+                    tokenizer: None,
+                    licenses: vec![rewrite_model::LicenseRecord {
+                        component: "weights".to_owned(),
+                        identifier: "Apache-2.0".to_owned(),
+                        text_digest: Digest::sha256(b"license"),
+                    }],
+                    declared_capabilities: rewrite_model::DeclaredCapabilities {
+                        roles: vec![ArtifactRole::Generation],
+                        languages: vec!["en".to_owned()],
+                        context_tokens: Some(8_192),
+                    },
+                },
+            },
+            ArtifactImportLimits {
+                maximum_artifact_bytes: 1024,
+                maximum_storage_entries: 8,
+            },
+            &CancellationToken::new(),
+        )
+        .expect("import");
+    assert!(matches!(
+        GroundedRewriteSelection::require_ready(Some(&data), None),
+        Err(AppError::GroundedUnavailable)
+    ));
+    assert!(matches!(
+        GroundedRewriteSelection::require_ready(Some(&data), Some(&artifact_id)),
+        Err(AppError::GroundedSelectionMismatch)
+    ));
 }
 
 #[test]
@@ -156,6 +239,7 @@ fn ambiguous_source_mapping_abstains_without_backend_work() {
         protected_terms: Vec::new(),
         mode: RewriteMode::Literal,
         style_context: String::new(),
+        claim_shadow: None,
     };
     let result = block_ready(service.rewrite(request, &CancellationToken::new(), None))
         .expect("source ambiguity is a successful abstention");
@@ -165,3 +249,5 @@ fn ambiguous_source_mapping_abstains_without_backend_work() {
     assert!(result.record.generation.is_none());
     assert!(fake.requests().expect("request log").is_empty());
 }
+
+mod shadow;

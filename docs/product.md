@@ -215,13 +215,38 @@ Before building the broad product surface:
 
 ## 1.0 product boundary
 
-Version 1.0 includes a polished CLI and native desktop application, TXT and declared
-Markdown support, a bounded DOCX subset, non-destructive file and folder
-transactions, local profiles, typed interviews, MCP, Agent Skills, a portable Agent
-Plugin package, a stable local API, a documented text-only compatibility adapter,
-cross-platform installers, published model and hardware recommendations, and
-qualified rewriting for English, at least one additional Latin-script language, and
-at least one non-Latin-script language.
+This table is the single 1.0 include list. The roadmap and README cite it instead of
+restating a different set. Required rows must have retained evidence before 1.0.
+Conditional rows ship only when their named evidence exists; their absence does not
+block 1.0. Excluded rows stay post-1.0 or out of scope.
+
+| Capability | 1.0 disposition |
+| --- | --- |
+| Scriptable CLI on Windows, macOS, and Linux | Required |
+| Accessible native desktop without a browser frontend | Required |
+| UTF-8 plain text rewriting | Required |
+| Declared Markdown subset via source splicing | Required |
+| Bounded unencrypted DOCX subset | Required |
+| Non-destructive file and folder transactions | Required |
+| Inspectable, reversible, provenance-backed profiles | Required |
+| Typed interviews using the same evidence schema | Required |
+| Explainable editorial lint with no authorship verdict | Required |
+| Deterministic gates, calibrated assessment, honest abstention | Required |
+| Two independently controlled qualified runtime paths | Required |
+| Hardware-aware recommendations with no silent downgrade | Required |
+| MCP over standard input, Agent Skills, Agent Plugin package | Required |
+| English plus one additional Latin-script language and one non-Latin-script language | Required, earned independently in 0.5 |
+| Signed cross-platform distributions and offline-after-setup operation | Required |
+| Completed-response compatibility adapter | Required |
+| Authenticated loopback API | Conditional on retained client evidence |
+| MCP Streamable HTTP | Conditional on retained client evidence |
+| Extra native runtimes beyond the two qualified paths | Conditional; otherwise experimental or unsupported |
+| At-rest profile encryption | Conditional claim; not a 1.0 closer |
+| Local voice input, PDF round trip, spreadsheets, mobile, team sync | Excluded |
+
+Version 1.0 is the first frozen contract for the required rows. It is not the first
+useful build, and it is not a claim that every later format, runtime, or transport
+is ready.
 
 Language and format support are independent claims. Mixed-language or unsupported
 units are preserved or cause abstention according to the selected atomicity policy.

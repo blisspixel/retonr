@@ -1,5 +1,10 @@
 use std::io;
 
+mod error_kind;
+
+pub(crate) use error_kind::store_error_kind;
+pub(crate) use error_kind::{map_import_error, map_reconciliation_error};
+
 use rewrite_model::{ArtifactId, ArtifactSetId};
 use rewrite_model_store::{
     StoreError, StoredArtifactInstallation, StoredArtifactSetInstallation, WriteDisposition,
@@ -11,7 +16,8 @@ use crate::{
     ArtifactOrphanReconciliationResult, ArtifactReconciliationDisposition,
     ArtifactReconciliationError, ArtifactRemovalDisposition, ArtifactRemovalError,
     ArtifactRemovalResult, ArtifactSetImportDisposition, ArtifactSetImportError,
-    ArtifactSetImportResult, ArtifactSetLeaseError,
+    ArtifactSetImportResult, ArtifactSetInventoryError, ArtifactSetLeaseError,
+    ArtifactSetReconciliationError, ArtifactSetRemovalError, ArtifactSetRemovalResult,
     runtime_artifact_set_lease::set_lease_error_kind,
 };
 
@@ -164,6 +170,35 @@ pub struct ArtifactSetInstallationKey {
 }
 
 impl ArtifactSetInstallationKey {
+    /// Constructs one validated exact artifact-set installation key.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArtifactRepositoryError::InvalidInstallationGeneration`] when the
+    /// generation is zero or outside the durable store range.
+    pub fn new(
+        artifact_set_id: ArtifactSetId,
+        installation_generation: u64,
+    ) -> Result<Self, ArtifactRepositoryError> {
+        if installation_generation == 0 || i64::try_from(installation_generation).is_err() {
+            Err(ArtifactRepositoryError::InvalidInstallationGeneration)
+        } else {
+            Ok(Self {
+                artifact_set_id,
+                installation_generation,
+            })
+        }
+    }
+
+    pub(crate) fn validate(&self) -> Result<(), ArtifactRepositoryError> {
+        if self.installation_generation == 0 || i64::try_from(self.installation_generation).is_err()
+        {
+            Err(ArtifactRepositoryError::InvalidInstallationGeneration)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Returns the content-derived artifact-set identity.
     #[must_use]
     pub const fn artifact_set_id(&self) -> &ArtifactSetId {
@@ -266,6 +301,26 @@ pub struct ArtifactRepositoryRemovalResult {
 pub struct ArtifactRepositoryPendingOperations {
     /// Exact prepared artifact-removal generations in artifact-identity order.
     pub artifact_removals: Vec<ArtifactInstallationKey>,
+    /// Exact prepared artifact-set-removal generations in set-identity order.
+    pub artifact_set_removals: Vec<ArtifactSetInstallationKey>,
+}
+
+/// Successful repository-level set removal or recovery result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArtifactRepositorySetRemovalResult {
+    /// Exact set installation key affected or confirmed by the operation.
+    pub key: ArtifactSetInstallationKey,
+    /// Whether the tree was removed, recovered, or already absent for this generation.
+    pub disposition: ArtifactRemovalDisposition,
+}
+
+impl From<ArtifactSetRemovalResult> for ArtifactRepositorySetRemovalResult {
+    fn from(value: ArtifactSetRemovalResult) -> Self {
+        Self {
+            key: ArtifactSetInstallationKey::from_stored(&value.selection),
+            disposition: value.disposition,
+        }
+    }
 }
 
 impl From<ArtifactRemovalResult> for ArtifactRepositoryRemovalResult {
@@ -328,15 +383,27 @@ pub enum ArtifactRepositoryError {
     /// Read-only artifact inventory failed.
     #[error(transparent)]
     Inventory(#[from] ArtifactInventoryError),
+    /// Read-only artifact-set inventory failed.
+    #[error(transparent)]
+    SetInventory(#[from] ArtifactSetInventoryError),
     /// Selected orphan reconciliation failed.
     #[error(transparent)]
     Reconciliation(#[from] ArtifactReconciliationError),
+    /// Selected set-root reconciliation failed.
+    #[error(transparent)]
+    SetReconciliation(#[from] ArtifactSetReconciliationError),
     /// Selected inactive artifact removal failed.
     #[error(transparent)]
     Removal(#[from] ArtifactRemovalError),
+    /// Selected inactive artifact-set removal failed.
+    #[error(transparent)]
+    SetRemoval(#[from] ArtifactSetRemovalError),
     /// No current installation exists for the selected artifact identity.
     #[error("artifact is not currently installed")]
     ArtifactNotInstalled,
+    /// No current installation exists for the selected artifact-set identity.
+    #[error("artifact set is not currently installed")]
+    ArtifactSetNotInstalled,
     /// Fresh removal cannot continue until the prepared operation is recovered.
     #[error("artifact has a prepared removal that requires explicit recovery")]
     RemovalRecoveryPending {
@@ -355,9 +422,30 @@ pub enum ArtifactRepositoryError {
     /// No exact prepared removal exists for the selected artifact identity.
     #[error("artifact has no prepared removal to recover")]
     RemovalRecoveryNotPending,
+    /// Fresh set removal cannot continue until the prepared operation is recovered.
+    #[error("artifact set has a prepared removal that requires explicit recovery")]
+    SetRemovalRecoveryPending {
+        /// Exact prepared set generation that must be recovered.
+        key: ArtifactSetInstallationKey,
+    },
+    /// Set removal crossed its durable preparation boundary and must recover exactly.
+    #[error("artifact-set removal requires exact recovery")]
+    SetRemovalRecoveryRequired {
+        /// Exact prepared set generation that must be recovered.
+        key: ArtifactSetInstallationKey,
+        /// Lower-level post-preparation failure.
+        #[source]
+        source: ArtifactSetRemovalError,
+    },
+    /// No exact prepared set removal exists for the selected identity.
+    #[error("artifact set has no prepared removal to recover")]
+    SetRemovalRecoveryNotPending,
     /// The selected installation generation is no longer current.
     #[error("artifact installation selection is stale")]
     StaleInstallation,
+    /// The selected set installation generation is no longer current.
+    #[error("artifact-set installation selection is stale")]
+    StaleSetInstallation,
 }
 
 impl ArtifactRepositoryError {
@@ -375,20 +463,31 @@ impl ArtifactRepositoryError {
             Self::RepositoryInUse => ArtifactRepositoryErrorKind::InUse,
             Self::DataDirectoryIo(_) => ArtifactRepositoryErrorKind::Operational,
             Self::MigrationFailed { source, .. } => source.kind(),
-            Self::State(error) => store_error_kind(error),
-            Self::Import(error) => import_error_kind(error),
-            Self::SetImport(error) => set_import_error_kind(error),
+            Self::State(error) => error_kind::store_error_kind(error),
+            Self::Import(error) => error_kind::import_error_kind(error),
+            Self::SetImport(error) => error_kind::set_import_error_kind(error),
             Self::SetLease(error) => set_lease_error_kind(error),
-            Self::Inventory(error) => inventory_error_kind(error),
-            Self::Reconciliation(error) => reconciliation_error_kind(error),
-            Self::Removal(error) => removal_error_kind(error),
-            Self::ArtifactNotInstalled | Self::RemovalRecoveryNotPending => {
-                ArtifactRepositoryErrorKind::NotFound
+            Self::Inventory(error) => error_kind::inventory_error_kind(error),
+            Self::SetInventory(error) => super::set_inventory::set_inventory_error_kind(error),
+            Self::Reconciliation(error) => error_kind::reconciliation_error_kind(error),
+            Self::SetReconciliation(error) => {
+                super::set_reconciliation::set_reconciliation_error_kind(error)
             }
-            Self::RemovalRecoveryPending { .. } | Self::RemovalRecoveryRequired { .. } => {
+            Self::Removal(error) => error_kind::removal_error_kind(error),
+            Self::SetRemoval(error) => super::set_removal::set_removal_error_kind(error),
+            Self::ArtifactNotInstalled
+            | Self::ArtifactSetNotInstalled
+            | Self::RemovalRecoveryNotPending
+            | Self::SetRemovalRecoveryNotPending => ArtifactRepositoryErrorKind::NotFound,
+            Self::RemovalRecoveryPending { .. }
+            | Self::RemovalRecoveryRequired { .. }
+            | Self::SetRemovalRecoveryPending { .. }
+            | Self::SetRemovalRecoveryRequired { .. } => {
                 ArtifactRepositoryErrorKind::RecoveryRequired
             }
-            Self::StaleInstallation => ArtifactRepositoryErrorKind::StaleSelection,
+            Self::StaleInstallation | Self::StaleSetInstallation => {
+                ArtifactRepositoryErrorKind::StaleSelection
+            }
         }
     }
 
@@ -403,6 +502,16 @@ impl ArtifactRepositoryError {
         }
     }
 
+    /// Returns the exact set generation required for recovery, when available.
+    #[must_use]
+    pub fn set_recovery_key(&self) -> Option<&ArtifactSetInstallationKey> {
+        match self {
+            Self::SetRemovalRecoveryPending { key }
+            | Self::SetRemovalRecoveryRequired { key, .. } => Some(key),
+            _ => None,
+        }
+    }
+
     /// Returns the retained pre-migration backup identity, when available.
     #[must_use]
     pub fn migration_backup_key(&self) -> Option<&ArtifactRepositoryBackupKey> {
@@ -410,179 +519,5 @@ impl ArtifactRepositoryError {
             Self::MigrationFailed { backup_key, .. } => Some(backup_key),
             _ => None,
         }
-    }
-}
-
-fn set_import_error_kind(error: &ArtifactSetImportError) -> ArtifactRepositoryErrorKind {
-    use ArtifactRepositoryErrorKind as Kind;
-    use ArtifactSetImportError as Error;
-    match error {
-        Error::InvalidLimits | Error::InvalidManifest(_) => Kind::InvalidInput,
-        Error::InvalidInstallation(_) | Error::StateStorageMismatch => Kind::CorruptState,
-        Error::TooManyMembers { .. }
-        | Error::MemberTooLarge { .. }
-        | Error::ArtifactSetTooLarge { .. }
-        | Error::TreeEntryLimitExceeded
-        | Error::StagingEntryLimitExceeded
-        | Error::StorageEntryLimitExceeded => Kind::ResourceLimit,
-        Error::Cancelled => Kind::Cancelled,
-        Error::StorageInUse => Kind::InUse,
-        Error::StorageChanged => Kind::ConcurrentModification,
-        Error::IndirectSource
-        | Error::SourceNotDirectory
-        | Error::UnsafeSourceTree
-        | Error::SourceTreeMismatch
-        | Error::SizeMismatch
-        | Error::DigestMismatch
-        | Error::UnsafeStorageLayout
-        | Error::StorageConflict => Kind::Conflict,
-        Error::SourceIo(_) | Error::StorageIo(_) => Kind::Operational,
-        Error::State(error) => store_error_kind(error),
-    }
-}
-
-pub(crate) fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKind {
-    use ArtifactRepositoryErrorKind as Kind;
-    match error {
-        StoreError::Database(_) | StoreError::BackupIo(_) | StoreError::BackupIncomplete => {
-            Kind::Operational
-        }
-        StoreError::Serialization(_)
-        | StoreError::InvalidManifest(_)
-        | StoreError::InvalidInstallation(_)
-        | StoreError::InvalidQualification(_)
-        | StoreError::InvalidArtifactSet(_)
-        | StoreError::InvalidArtifactSetInstallation(_)
-        | StoreError::InvalidRuntimeBuild(_)
-        | StoreError::InvalidRuntimeState(_)
-        | StoreError::InvalidEffectivePackage(_)
-        | StoreError::InvalidQualificationV2(_)
-        | StoreError::InvalidInvalidation(_)
-        | StoreError::InvalidDecision(_)
-        | StoreError::CorruptRecord
-        | StoreError::InvalidActiveBinding => Kind::CorruptState,
-        StoreError::UnsupportedSchema(_) | StoreError::MigrationRequired { .. } => {
-            Kind::IncompatibleState
-        }
-        StoreError::NotInitialized => Kind::NotInitialized,
-        StoreError::BackupCancelled => Kind::Cancelled,
-        StoreError::RecordTooLarge
-        | StoreError::BackupTooLarge
-        | StoreError::InvalidLimit
-        | StoreError::InventoryLimitExceeded
-        | StoreError::InstallationEpochExhausted => Kind::ResourceLimit,
-        StoreError::ImmutableConflict
-        | StoreError::VerificationFailed
-        | StoreError::InvalidBackupDestination
-        | StoreError::BackupRequired => Kind::Conflict,
-        StoreError::MissingRecord => Kind::NotFound,
-        StoreError::ActiveArtifact => Kind::ActiveArtifact,
-        StoreError::RemovalPending => Kind::RecoveryRequired,
-        StoreError::StaleInstallation => Kind::StaleSelection,
-    }
-}
-
-fn import_error_kind(error: &ArtifactImportError) -> ArtifactRepositoryErrorKind {
-    use ArtifactImportError as Error;
-    use ArtifactRepositoryErrorKind as Kind;
-    match error {
-        Error::InvalidLimits | Error::InvalidManifest(_) => Kind::InvalidInput,
-        Error::ArtifactTooLarge { .. }
-        | Error::StagingEntryLimitExceeded
-        | Error::StorageEntryLimitExceeded => Kind::ResourceLimit,
-        Error::Cancelled => Kind::Cancelled,
-        Error::StorageInUse => Kind::InUse,
-        Error::StorageChanged => Kind::ConcurrentModification,
-        Error::IndirectSource
-        | Error::SourceNotRegular
-        | Error::SizeMismatch
-        | Error::DigestMismatch
-        | Error::UnsafeStorageLayout
-        | Error::StorageConflict => Kind::Conflict,
-        Error::SourceIo(_) | Error::StorageIo(_) => Kind::Operational,
-        Error::State(error) => store_error_kind(error),
-        Error::RemovalPending { .. } => Kind::RecoveryRequired,
-    }
-}
-
-fn inventory_error_kind(error: &ArtifactInventoryError) -> ArtifactRepositoryErrorKind {
-    use ArtifactInventoryError as Error;
-    use ArtifactRepositoryErrorKind as Kind;
-    match error {
-        Error::InvalidLimits => Kind::InvalidInput,
-        Error::StorageNotInitialized => Kind::NotInitialized,
-        Error::StorageInUse => Kind::InUse,
-        Error::StateEntryLimitExceeded
-        | Error::StorageEntryLimitExceeded
-        | Error::TotalVerificationLimitExceeded => Kind::ResourceLimit,
-        Error::ConcurrentModification => Kind::ConcurrentModification,
-        Error::Cancelled => Kind::Cancelled,
-        Error::UnsafeStorageLayout => Kind::Conflict,
-        Error::StorageIo(_) => Kind::Operational,
-        Error::State(error) => store_error_kind(error),
-    }
-}
-
-fn reconciliation_error_kind(error: &ArtifactReconciliationError) -> ArtifactRepositoryErrorKind {
-    use ArtifactReconciliationError as Error;
-    use ArtifactRepositoryErrorKind as Kind;
-    match error {
-        Error::InvalidLimits | Error::InvalidManifest(_) => Kind::InvalidInput,
-        Error::ArtifactTooLarge { .. } | Error::StorageEntryLimitExceeded => Kind::ResourceLimit,
-        Error::StorageNotInitialized => Kind::NotInitialized,
-        Error::StorageInUse => Kind::InUse,
-        Error::OrphanNotFound => Kind::NotFound,
-        Error::StorageChanged => Kind::ConcurrentModification,
-        Error::Cancelled => Kind::Cancelled,
-        Error::UnsafeStorageLayout | Error::StorageConflict | Error::StateConflict => {
-            Kind::Conflict
-        }
-        Error::StorageIo(_) | Error::State(_) => Kind::Operational,
-        Error::StateCorrupt(_) => Kind::CorruptState,
-        Error::RemovalPending { .. } => Kind::RecoveryRequired,
-    }
-}
-
-fn removal_error_kind(error: &ArtifactRemovalError) -> ArtifactRepositoryErrorKind {
-    use ArtifactRemovalError as Error;
-    use ArtifactRepositoryErrorKind as Kind;
-    match error {
-        Error::InvalidLimits | Error::InvalidSelection => Kind::InvalidInput,
-        Error::ArtifactTooLarge { .. } | Error::StorageEntryLimitExceeded => Kind::ResourceLimit,
-        Error::StorageNotInitialized => Kind::NotInitialized,
-        Error::StorageInUse => Kind::InUse,
-        Error::StaleSelection => Kind::StaleSelection,
-        Error::ActiveArtifact => Kind::ActiveArtifact,
-        Error::BytesMissing => Kind::NotFound,
-        Error::StorageChanged => Kind::ConcurrentModification,
-        Error::Cancelled => Kind::Cancelled,
-        Error::UnsafeStorageLayout | Error::StorageConflict => Kind::Conflict,
-        Error::StorageIo(_) | Error::State(_) => Kind::Operational,
-        Error::StateCorrupt(_) => Kind::CorruptState,
-        Error::RecoveryRequired(_) => Kind::RecoveryRequired,
-    }
-}
-
-pub(super) fn map_import_error(error: crate::ArtifactImportError) -> ArtifactRepositoryError {
-    match error {
-        crate::ArtifactImportError::RemovalPending {
-            selection: Some(selection),
-        } => ArtifactRepositoryError::RemovalRecoveryPending {
-            key: ArtifactInstallationKey::from_stored(&selection),
-        },
-        other => ArtifactRepositoryError::Import(other),
-    }
-}
-
-pub(super) fn map_reconciliation_error(
-    error: crate::ArtifactReconciliationError,
-) -> ArtifactRepositoryError {
-    match error {
-        crate::ArtifactReconciliationError::RemovalPending {
-            selection: Some(selection),
-        } => ArtifactRepositoryError::RemovalRecoveryPending {
-            key: ArtifactInstallationKey::from_stored(&selection),
-        },
-        other => ArtifactRepositoryError::Reconciliation(other),
     }
 }

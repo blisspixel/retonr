@@ -98,6 +98,12 @@ workflow.
 
 The CLI is a primary product, not a debug wrapper around the desktop application.
 
+The command families below are the planned 1.0 surface. They are not implemented
+until [the current-state document](current-state.md) records them. The current
+binary exposes `check` plus the offline model commands listed in the
+[README](../readme.md), including exact single-file `import` and exact folder
+`import-set`.
+
 ### Command families
 
 ```console
@@ -128,6 +134,7 @@ retonr model verify <model>
 retonr model qualify <model>
 retonr model eval <model> --suite device
 retonr model import <path>
+retonr model import-set <source-root>
 retonr model activate <model>
 retonr model deactivate <model>
 retonr model remove <model>

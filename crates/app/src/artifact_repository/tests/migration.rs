@@ -32,7 +32,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         Err(ArtifactRepositoryError::State(
             rewrite_model_store::StoreError::MigrationRequired {
                 found: 2,
-                current: 4
+                current: 5
             }
         ))
     ));
@@ -44,7 +44,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (2, 4));
+    assert_eq!((result.from_schema, result.to_schema), (2, 5));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -74,7 +74,7 @@ fn schema_three_migration_retains_a_verified_backup() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (3, 4));
+    assert_eq!((result.from_schema, result.to_schema), (3, 5));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -242,6 +242,7 @@ fn downgrade_to_schema_two(repository: &ArtifactRepository) {
     connection
         .execute_batch(
             "PRAGMA foreign_keys = OFF;
+             DROP TABLE artifact_set_removals;
              DROP TABLE installed_artifact_sets;
              DROP TABLE qualification_v2_records;
              DROP TABLE effective_package_evidence;
@@ -259,6 +260,7 @@ fn downgrade_to_schema_three(repository: &ArtifactRepository) {
     connection
         .execute_batch(
             "PRAGMA foreign_keys = OFF;
+             DROP TABLE artifact_set_removals;
              DROP TABLE installed_artifact_sets;
              PRAGMA user_version = 3;",
         )

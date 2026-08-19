@@ -56,6 +56,7 @@ fn state_input() -> EffectiveRuntimeStateInput {
 #[test]
 fn freezes_runtime_build_and_effective_state_identities() {
     let build = build();
+    assert_eq!(build.entrypoint_digest(), &digest("entrypoint"));
     assert_eq!(
         build.runtime_build_id().digest().as_str(),
         "3be1e0228cc02924beaa32ba47c309edd02fe66dbde49b32b63f8621f77f8475"

@@ -67,6 +67,10 @@ impl ExistingArtifactStorage {
         Ok(storage)
     }
 
+    pub(crate) fn root(&self) -> &PinnedDirectory {
+        &self.root
+    }
+
     pub(crate) fn artifacts(&self) -> &PinnedDirectory {
         &self.artifacts
     }

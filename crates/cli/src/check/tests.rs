@@ -1,25 +1,13 @@
-use std::{io::Cursor, path::PathBuf, process::ExitCode};
+use std::{io::Cursor, process::ExitCode};
 
 use rewrite_types::{ReasonCode, RewriteStatus};
 
 use super::{
-    CheckRequest, OutputSink, exit_status,
+    DocumentRender, OutputSink, exit_status,
     report::{reason_name, status_name},
-    resolve_output_sink,
+    resolve_document_render, resolve_output_sink,
 };
 use crate::contract::{EXIT_CANCELLED, EXIT_POLICY, read_bounded};
-
-fn request(output: Option<&str>, raw_terminal: bool, confirmed: bool) -> CheckRequest {
-    CheckRequest {
-        source: PathBuf::from("source.txt"),
-        candidate: PathBuf::from("candidate.txt"),
-        protected_terms: Vec::new(),
-        fail_on_abstain: false,
-        output: output.map(PathBuf::from),
-        raw_terminal,
-        confirmed,
-    }
-}
 
 #[test]
 fn stable_exit_code_policy() {
@@ -64,8 +52,32 @@ fn bounded_reader_stops_oversized_input() {
 }
 
 #[test]
+fn a_terminal_without_the_double_opt_in_uses_escaped_rendering() {
+    assert_eq!(
+        resolve_document_render(true, false, false),
+        DocumentRender::Escaped
+    );
+    assert_eq!(
+        resolve_document_render(true, true, false),
+        DocumentRender::Escaped
+    );
+    assert_eq!(
+        resolve_document_render(true, false, true),
+        DocumentRender::Escaped
+    );
+    assert_eq!(
+        resolve_document_render(true, true, true),
+        DocumentRender::Exact
+    );
+    assert_eq!(
+        resolve_document_render(false, false, false),
+        DocumentRender::Exact
+    );
+}
+
+#[test]
 fn absent_output_emits_no_document_bytes() {
-    let sink = resolve_output_sink(&request(None, false, false)).expect("no output is valid");
+    let sink = resolve_output_sink(None).expect("no output is valid");
     assert_eq!(sink, OutputSink::None);
 }
 
@@ -73,20 +85,11 @@ fn absent_output_emits_no_document_bytes() {
 fn a_new_destination_is_accepted_and_an_existing_one_is_refused() {
     let directory = tempfile::tempdir().expect("temporary directory");
     let fresh = directory.path().join("out.txt");
-    let sink = resolve_output_sink(&request(
-        Some(fresh.to_str().expect("path is UTF-8")),
-        false,
-        false,
-    ))
-    .expect("a new destination is valid");
+    let sink = resolve_output_sink(Some(fresh.as_path())).expect("a new destination is valid");
     assert_eq!(sink, OutputSink::File(fresh.clone()));
 
     std::fs::write(&fresh, b"existing").expect("create the destination");
-    let refused = resolve_output_sink(&request(
-        Some(fresh.to_str().expect("path is UTF-8")),
-        false,
-        false,
-    ))
-    .expect_err("an existing destination is never replaced");
+    let refused = resolve_output_sink(Some(fresh.as_path()))
+        .expect_err("an existing destination is never replaced");
     assert_eq!(refused.exit_code, ExitCode::from(EXIT_POLICY));
 }

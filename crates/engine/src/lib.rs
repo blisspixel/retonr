@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 
 mod claim_comparison;
+mod claim_shadow;
 mod engine;
 #[cfg(test)]
 #[path = "engine_cancellation_tests.rs"]
@@ -26,6 +27,7 @@ mod semantic_binding_tests;
 mod structure;
 
 pub use claim_comparison::{ClaimComparisonError, ClaimEvidenceComparator};
+pub use claim_shadow::ClaimShadowObserver;
 pub use engine::{
     EngineError, EngineOutcome, MAX_GENERATED_CANDIDATES, MAX_GENERATED_TEXT_BYTES, RewriteEngine,
 };

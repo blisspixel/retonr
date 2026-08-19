@@ -98,7 +98,7 @@ impl ClaimEvidence {
         modality: ClaimModality,
         condition_count: u16,
         attributed: bool,
-        mut evidence_spans: Vec<SourceSpan>,
+        evidence_spans: Vec<SourceSpan>,
         confidence: f32,
     ) -> Result<Self, ClaimEvidenceError> {
         if !confidence.is_finite() || !(0.0..=1.0).contains(&confidence) {
@@ -111,6 +111,44 @@ impl ClaimEvidence {
         )]
         let confidence_ppm =
             (f64::from(confidence) * f64::from(CLAIM_CONFIDENCE_PARTS_PER_MILLION)).round() as u32;
+        Self::from_canonical(
+            claim_id,
+            subject_id,
+            predicate_id,
+            object_id,
+            polarity,
+            modality,
+            condition_count,
+            attributed,
+            evidence_spans,
+            confidence_ppm,
+        )
+    }
+
+    /// Creates one claim from already-canonical confidence parts per million.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ClaimEvidenceError`] when confidence or evidence spans are invalid.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the constructor mirrors one atomic claim"
+    )]
+    pub fn from_canonical(
+        claim_id: Digest,
+        subject_id: Option<Digest>,
+        predicate_id: Digest,
+        object_id: Option<Digest>,
+        polarity: ClaimPolarity,
+        modality: ClaimModality,
+        condition_count: u16,
+        attributed: bool,
+        mut evidence_spans: Vec<SourceSpan>,
+        confidence_ppm: u32,
+    ) -> Result<Self, ClaimEvidenceError> {
+        if confidence_ppm > CLAIM_CONFIDENCE_PARTS_PER_MILLION {
+            return Err(ClaimEvidenceError::InvalidConfidence);
+        }
         if evidence_spans.is_empty() || evidence_spans.len() > MAX_EVIDENCE_SPANS_PER_CLAIM {
             return Err(ClaimEvidenceError::InvalidSpanCount);
         }

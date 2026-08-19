@@ -18,6 +18,7 @@ These documents define the product direction and constrain implementation.
 | [Guided editorial brief](editorial-brief.md) | Document-specific clarification and time-aware preference evolution |
 | [Editorial lint](editorial-lint.md) | Explainable anti-slop findings, quality-loop boundaries, and reporting |
 | [Evaluation corpora](evaluation-corpora.md) | Separate synthetic editorial-quality fixtures from known-watermark research fixtures |
+| [Writing-sample library](evaluation-style-library.md) | Licensed pre-AI human controls, synthetic model-style impressions, and style-is-not-a-watermark refusals |
 | [Model and runtime support](model-support.md) | Hardware discovery, runtime selection, model evaluation, and fallback rules |
 | [Installation and distribution](distribution.md) | Bootstrap installers, artifact verification, release targets, updates, and removal |
 | [Snapshot testing guide](testing-snapshot.md) | What a development snapshot build does today and what feedback is useful |

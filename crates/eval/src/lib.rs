@@ -9,18 +9,37 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 mod baseline;
+mod claim_shadow_calibration;
 mod editorial_corpus;
+mod watermark_research;
+mod writing_sample_library;
 
 pub use baseline::{
     BASELINE_SCHEMA_VERSION, BaselineCaseError, BaselineCaseResult, BaselineDefinition,
     BaselineError, BaselineInferencePolicy, BaselineKind, BaselineReport, BaselineStatusCounts,
-    run_baseline,
+    MAX_BASELINE_DEFINITION_BYTES, parse_baseline_definition, run_baseline, run_offline_baseline,
+};
+pub use claim_shadow_calibration::{
+    CLAIM_SHADOW_CALIBRATION_SCHEMA_VERSION, ClaimShadowCalibrationCorpus,
+    ClaimShadowCalibrationError, ClaimShadowCalibrationFailure, ClaimShadowCalibrationReport,
+    ExpectedShadowOutcome, MAX_CLAIM_SHADOW_CALIBRATION_BYTES, MAX_CLAIM_SHADOW_CALIBRATION_CASES,
+    parse_claim_shadow_calibration, run_claim_shadow_calibration,
 };
 pub use editorial_corpus::{
     EDITORIAL_CORPUS_SCHEMA_VERSION, EditorialCase, EditorialCaseKind, EditorialCorpus,
     EditorialCorpusError, EditorialCorpusOrigin, EditorialCorpusSummary,
     EditorialFindingExpectation, MAX_EDITORIAL_CASES, MAX_EDITORIAL_CORPUS_BYTES,
     parse_editorial_corpus,
+};
+pub use watermark_research::{
+    MAX_WATERMARK_RESEARCH_BYTES, WATERMARK_RESEARCH_SCHEMA_VERSION, WatermarkResearchCorpus,
+    WatermarkResearchError, WatermarkResearchOutcome, WatermarkResearchSummary,
+    parse_watermark_research_corpus,
+};
+pub use writing_sample_library::{
+    MAX_WRITING_SAMPLE_LIBRARY_BYTES, WRITING_SAMPLE_LIBRARY_SCHEMA_VERSION, WritingSample,
+    WritingSampleLibrary, WritingSampleLibraryError, WritingSampleLibrarySummary,
+    WritingSampleOrigin, WritingSampleRole, parse_writing_sample_library,
 };
 
 /// Current evaluation-suite contract version.
@@ -306,6 +325,11 @@ fn operational_failure(case: &EvaluationCase, error: &AppError) -> EvaluationFai
         AppError::Engine(_) => "engine",
         AppError::Protection(_) => "protection",
         AppError::Grounded(_) => "grounded",
+        AppError::GroundedUnavailable => "grounded_unavailable",
+        AppError::GroundedSelectionMismatch => "grounded_selection_mismatch",
+        AppError::GroundedRuntimeUnavailable => "grounded_runtime_unavailable",
+        AppError::GroundedRepository => "grounded_repository",
+        AppError::ClaimExtraction(_) => "claim_extraction",
     };
     EvaluationFailure {
         id: case.id.clone(),

@@ -9,6 +9,7 @@ use std::{
 use rewrite_inference::{
     GENERATION_REQUEST_SCHEMA_VERSION, GenerationRequest, InferenceBackend, InferenceErrorKind,
     OperationContext, ReasoningPolicy, SamplingParameters, candidate_output_contract,
+    claim_output_contract,
 };
 use rewrite_model::ArtifactId;
 use rewrite_types::{CancellationToken, Digest};
@@ -143,6 +144,11 @@ async fn discovers_only_exact_bound_generation_models() {
     assert_eq!(
         discovery.capabilities.admitted_output_contract_digests,
         vec![candidate_output_contract().schema_digest]
+    );
+    assert!(
+        !discovery
+            .capabilities
+            .admits_output(&claim_output_contract())
     );
 }
 

@@ -6,7 +6,7 @@ use rewrite_model::{
 
 use super::{ArtifactSetImportError, ArtifactSetImportLimits};
 
-pub(super) const SET_STORAGE_KEY_PREFIX: &str = "set-v1-";
+pub(crate) const SET_STORAGE_KEY_PREFIX: &str = "set-v1-";
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) struct ValidatedSetPlan {

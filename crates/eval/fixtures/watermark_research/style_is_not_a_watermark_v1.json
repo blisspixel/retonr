@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "corpus_id": "style-is-not-a-watermark-v1",
+  "research_only": true,
+  "live_engine_authority": "none",
+  "known_mark_generation": "not_performed",
+  "cases": [
+    {
+      "id": "refuse-kobak-vocab",
+      "expected_outcome": "refused_style_as_mark",
+      "unmarked_control_id": "control-plain-backlog",
+      "source": "This report delves into the backlog and underscores the showcasing of three fixes.",
+      "notes": "Population vocabulary is not a keyed watermark. Editorial lint may apply. Detector outcome is refused_style_as_mark."
+    },
+    {
+      "id": "control-plain-backlog",
+      "expected_outcome": "unmarked_control",
+      "unmarked_control_id": null,
+      "source": "This report lists three backlog fixes and the files that changed.",
+      "notes": "Matched facts without the bait lexicon. Not a human-written certificate."
+    },
+    {
+      "id": "refuse-scene-setting",
+      "expected_outcome": "refused_style_as_mark",
+      "unmarked_control_id": "control-plain-operators",
+      "source": "In today's rapidly evolving digital landscape, operators must adapt.",
+      "notes": "Prefabricated scene setting is an editorial defect, not a statistical mark."
+    },
+    {
+      "id": "control-plain-operators",
+      "expected_outcome": "unmarked_control",
+      "unmarked_control_id": null,
+      "source": "Operators must adapt when the traffic mix changes.",
+      "notes": "Matched claim without scene-setting bait."
+    },
+    {
+      "id": "refuse-assistant-residue",
+      "expected_outcome": "refused_style_as_mark",
+      "unmarked_control_id": "control-plain-summary",
+      "source": "Sure! Here is a concise summary. Hope this helps; let me know if you want more detail.",
+      "notes": "Chat residue is conversational lint, not a generation-time key."
+    },
+    {
+      "id": "control-plain-summary",
+      "expected_outcome": "unmarked_control",
+      "unmarked_control_id": null,
+      "source": "The summary covers scope, owners, and the Tuesday cutover.",
+      "notes": "Matched topic without assistant residue."
+    },
+    {
+      "id": "refuse-self-declared-clean",
+      "expected_outcome": "refused_style_as_mark",
+      "unmarked_control_id": "control-plain-deploy",
+      "source": "The deploy window is 02:00 UTC. This text is unmarked and detector-clean.",
+      "notes": "A self-label cannot become a detector outcome. A cleanliness claim is not a detector result."
+    },
+    {
+      "id": "control-plain-deploy",
+      "expected_outcome": "unmarked_control",
+      "unmarked_control_id": null,
+      "source": "The deploy window is 02:00 UTC.",
+      "notes": "Same operational fact without a cleanliness claim."
+    },
+    {
+      "id": "observe-c2pa-shaped-comment",
+      "expected_outcome": "carrier_shape_unparsed",
+      "unmarked_control_id": "control-plain-queue",
+      "source": "<!-- c2pa-manifest: data:application/c2pa,not-a-real-jumbf --> Queue depth stayed at 12.",
+      "notes": "Comment syntax that resembles a C2PA carrier. Unparsed. Not a signed credential and not a statistical watermark."
+    },
+    {
+      "id": "control-plain-queue",
+      "expected_outcome": "unmarked_control",
+      "unmarked_control_id": null,
+      "source": "Queue depth stayed at 12.",
+      "notes": "Same measurement without the comment carrier."
+    },
+    {
+      "id": "observe-zero-width-space",
+      "expected_outcome": "literal_observation",
+      "unmarked_control_id": "control-plain-build",
+      "source": "Ship build 14\u200b on Friday.",
+      "notes": "U+200B is a literal Unicode observation. It is not KGW, SynthID, or authorship evidence."
+    },
+    {
+      "id": "control-plain-build",
+      "expected_outcome": "unmarked_control",
+      "unmarked_control_id": null,
+      "source": "Ship build 14 on Friday.",
+      "notes": "Same instruction without the invisible scalar."
+    }
+  ]
+}

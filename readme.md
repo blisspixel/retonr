@@ -62,7 +62,11 @@ duties, or applicable law disappear. Retonr states what it changes, preserves th
 source, keeps uncertain claims bounded, and leaves the final editorial decision with
 the user.
 
-## How it works
+## Intended 1.0 control loop
+
+The diagram is the intended product loop, not the current slice. Profiles and
+qualified local generation are not implemented yet. Today the engine can validate a
+caller-supplied candidate and administer exact local artifacts offline.
 
 ```mermaid
 flowchart LR
@@ -102,19 +106,30 @@ registered managed set and holds the shared repository and storage locks for its
 lifetime, so exclusive lifecycle operations cannot run beside it. Removal's durable state transitions require a live, non-cloneable
 exclusive lifecycle-lock capability bound by the application to the exact pinned
 repository lock entry. A narrow offline CLI now
-exposes exact single-file import, read-only inventory, read-only pending-operation
-inspection, explicit backup-backed state migration, selected reconciliation,
-inactive removal, and explicit interrupted-removal recovery. It does not download,
-qualify, activate, or run a model.
+exposes exact single-file import, exact artifact-set folder import, read-only
+inventory, read-only set inventory, read-only pending-operation inspection, explicit
+backup-backed state
+migration, selected reconciliation, selected set reconciliation, inactive removal, and
+explicit
+interrupted-removal recovery. It does not download, qualify, activate, or run a
+model. Single-file inventory, reconciliation, and removal do not inspect or mutate
+managed artifact sets. Set inventory does not inspect or mutate single-file
+artifacts and does not grant set authority. A cancellable application pair
+extraction can collect and compare claim evidence from source and candidate
+text. Completed comparison evidence can be joined onto an informational
+engine shadow gate. That evidence has no acceptance authority and is not
+semantic proof.
 
 Artifact inventory crosses the application boundary through persistence-neutral
 installation keys. SQLite records and storage-layout fields are not part of the CLI
 contract.
 
-The evaluation tool also validates three synthetic editorial-quality groups with named
-findings and clean controls, including a balanced 24-case current-slop group and a
-40-case structural, rhetorical, and evidential group. Every targeted rule carries a
-paired clean control. No editorial-lint rule has product authority yet.
+The evaluation tool also validates five synthetic editorial-quality groups with named
+findings and clean controls, including a balanced 24-case current-slop group, a
+40-case structural, rhetorical, and evidential group, a 16-case assistant-impression
+group, and a 20-case later-residue group. A writing-sample library adds licensed pre-2018 human excerpts and synthetic
+model-style impressions. Those impressions are editorial fixtures, not vendor
+identifications. No editorial-lint rule has product authority yet.
 
 [![Retonr CLI help and a successful candidate check on Linux](docs/screenshots/cli-check-linux.png)](docs/screenshots/cli-check-linux.md)
 
@@ -123,36 +138,68 @@ Run the current slice from the repository:
 ```console
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --format text
 cargo run --locked -p retonr-cli -- check original.txt - --output checked.txt --format text
+cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --diff --dry-run --format text
+cargo run --locked -p retonr-cli -- rewrite fixtures/cli/source.txt --format text
+cargo run --locked -p retonr-cli -- --data-dir <DIRECTORY> rewrite fixtures/cli/source.txt --format text
+cargo run --locked -p retonr-cli -- version --format text
+cargo run --locked -p retonr-cli -- doctor --format text
 cargo run --locked -p retonr-cli -- model --help
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
+cargo run --locked -p rewrite-eval -- --baseline crates/eval/fixtures/no_rewrite_baseline_v1.json crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_slop_v1.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_prose_v1.json
+cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_model_impressions_v1.json
+cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_assistant_residue_v1.json
+cargo run --locked -p rewrite-eval -- --writing-samples crates/eval/fixtures/writing_samples/licensed_pre_ai_human_v1.json
+cargo run --locked -p rewrite-eval -- --watermark-research crates/eval/fixtures/watermark_research/style_is_not_a_watermark_v1.json
+cargo run --locked -p rewrite-eval -- --claim-shadow-calibration crates/eval/fixtures/claim_shadow_calibration_v1.json
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
 model. The second reads the candidate from standard input and writes the accepted
 bytes, or the exact original after an abstention, to a new file. Either document may
 come from standard input, but not both. An existing destination is never replaced and
-the source is never modified. The third lists the implemented offline artifact
-commands without changing local state. The remaining commands run the checked-in
-fidelity and
-synthetic editorial-quality suites. The rewrite, profile, runtime management, agent,
-and desktop workflows are not yet implemented.
+the source is never modified. `--diff` writes an escaped comparison to standard
+error. `--output -` writes exact bytes to a pipe. A terminal receives escaped
+rendering unless `--raw-terminal --yes` both appear. `--dry-run` reports without
+creating `--output`. `--trace` writes the redacted rewrite record to a new file.
+`rewrite` validates one source, optionally inspects `--data-dir` for an
+active generation binding, then fails closed because no local runtime is
+attached. `version` and `doctor` are recovery commands. `model --help`
+lists the implemented offline artifact commands. The remaining commands run the
+checked-in fidelity and synthetic editorial-quality suites, including an
+offline no-rewrite baseline and an independent claim-shadow calibration that
+cannot change hard-gate acceptance.
+Profile, runtime management, agent, and desktop workflows are not yet implemented.
 
 The implemented model commands are intentionally narrow:
 
 ```console
 retonr --data-dir <DIRECTORY> model import <ARTIFACT> --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model import-set <SOURCE_ROOT> --manifest <MANIFEST_JSON>
 retonr --data-dir <DIRECTORY> model inventory [--fail-on-findings]
+retonr --data-dir <DIRECTORY> model inventory-set [--fail-on-findings]
 retonr --data-dir <DIRECTORY> model pending-operations
 retonr --data-dir <DIRECTORY> model migrate --yes
 retonr --data-dir <DIRECTORY> model reconcile --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model reconcile-set --manifest <MANIFEST_JSON>
 retonr --data-dir <DIRECTORY> model remove --artifact-id <SHA256> --installation-generation <N> --yes
 retonr --data-dir <DIRECTORY> model recover-removal --artifact-id <SHA256> --installation-generation <N> --yes
+retonr --data-dir <DIRECTORY> model remove-set --artifact-set-id <SHA256> --installation-generation <N> --yes
+retonr --data-dir <DIRECTORY> model recover-set-removal --artifact-set-id <SHA256> --installation-generation <N> --yes
 ```
 
-These commands are offline and bounded. `pending-operations` reads only durable
+These commands are offline and bounded. `import-set` copies one exact local folder
+that matches a canonical multi-file manifest, then records only inert structural
+installation state. It does not reconcile, remove, qualify, activate, or
+run a set. `inventory-set` is read-only set-root inspection and does not grant a
+lease, qualify a package, or authorize a role. `reconcile-set` registers one exact
+already-managed set root selected only by manifest. It does not copy, replace,
+qualify, or activate. `remove-set` deletes one exact inactive set generation after
+reverification and journals crash-recoverable preparation. `recover-set-removal`
+forward-completes that journal. Neither command qualifies, activates, or leases
+the set. `pending-operations` reads only durable
 state and returns exact interrupted-removal recovery selections without reading or
 hashing model bytes. `migrate` is the only command allowed to migrate state. It
 requires confirmation, opens only an existing repository, holds both exclusive
@@ -263,6 +310,7 @@ conversion.
 | Large files and folder transactions | [Document transactions](docs/document-transactions.md) |
 | Clarifying questions and evolving preferences | [Guided editorial brief](docs/editorial-brief.md) |
 | Evaluation corpora | [Editorial-quality and watermark research corpora](docs/evaluation-corpora.md) |
+| Writing samples and style impressions | [Writing-sample library](docs/evaluation-style-library.md) |
 | Runtime discovery and model evaluation | [Model and runtime support](docs/model-support.md) |
 | Installers, signatures, updates, and targets | [Installation and distribution](docs/distribution.md) |
 | Testing a development snapshot build | [Snapshot testing guide](docs/testing-snapshot.md) |

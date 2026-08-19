@@ -32,9 +32,21 @@ repository license:
   clean control per rule.
 - `editorial_prose_v1.json` covers 20 structural, rhetorical, and evidential families
   with one paired clean control per rule, across five channels.
+- `editorial_model_impressions_v1.json` covers 8 assistant-residue families
+  (sycophantic affirmation, hedge openings, capability disclaimers, takeaway
+  packaging, empty both-sides framing, casual address, certainty theater, and
+  offered follow-ups) with one paired clean control per rule.
+- `editorial_assistant_residue_v1.json` covers 10 later assistant-residue families
+  (meta breakdown openers, knowledge-cutoff disclaimers, source-gap speculation,
+  canned notability blurbs, leftover template placeholders, scientific-register
+  padding, roast asides, decorative bold header lists, leftover role disclaimers,
+  and empty it-depends scaffolds) with one paired clean control per rule.
 
 Every group pairs each targeted rule with a clean control, and a single test enforces
-that invariant for all three.
+that invariant for all five. Longer labeled impressions and licensed pre-2000
+human excerpts live in the
+[writing-sample library](evaluation-style-library.md). They are not lint
+authority and not authorship labels.
 
 They do not claim that the patterns identify model authorship. Their reference
 revisions are examples of acceptable editing rather than the only correct answer.
@@ -108,6 +120,11 @@ Private provider keys, stolen detector material, personal drafts, and adaptive
 evasion recipes are never corpus dependencies. Closed provider output is a separate
 black-box condition and is never represented as equivalent to a public reference
 implementation.
+
+Until a pinned public embedder runs, the checked-in research file
+`crates/eval/fixtures/watermark_research/style_is_not_a_watermark_v1.json`
+only refuses style-as-mark folklore and inventories literal carriers. It contains
+no generated marks and no detector scores.
 
 Initial reproducible candidates include KGW, Unigram, the Kuditipudi keyed sampler,
 DiPMark or STA-1, and the public SynthID Text reference implementation. Selection

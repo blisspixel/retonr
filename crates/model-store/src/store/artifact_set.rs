@@ -8,7 +8,8 @@ use crate::artifact_set_installation::{
     StoredArtifactSetInstallation, load_artifact_set_installation,
     load_artifact_set_installation_by_storage_key, load_artifact_set_manifest,
 };
-use crate::{StoreError, StoreResult, record::insert_immutable};
+use crate::artifact_set_removal::{load_set_removal_state, validate_set_removal_state};
+use crate::{ArtifactRemovalPhase, StoreError, StoreResult, record::insert_immutable};
 
 impl ArtifactStateStore {
     /// Atomically stores an exact artifact-set manifest and its inert set-root state.
@@ -40,6 +41,27 @@ impl ArtifactStateStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let existing_manifest = load_artifact_set_manifest(&transaction, &manifest_id)?;
         let existing_installation = load_artifact_set_installation(&transaction, &manifest_id)?;
+        let (_, removal) = load_set_removal_state(&transaction, &manifest_id)?;
+        validate_set_removal_state(
+            manifest_key,
+            existing_manifest.as_ref(),
+            existing_installation.as_ref(),
+            removal.as_ref(),
+        )?;
+        if removal
+            .as_ref()
+            .is_some_and(|record| record.phase == ArtifactRemovalPhase::Prepared)
+        {
+            if existing_installation.is_some() {
+                return Err(StoreError::CorruptRecord);
+            }
+            return Err(StoreError::RemovalPending);
+        }
+        if let (Some(existing), Some(removal)) = (&existing_installation, &removal)
+            && existing.epoch <= removal.selection.epoch
+        {
+            return Err(StoreError::CorruptRecord);
+        }
         let storage_owner =
             load_artifact_set_installation_by_storage_key(&transaction, installed.storage_key())?;
         if existing_manifest
@@ -72,9 +94,13 @@ impl ArtifactStateStore {
         let (installed_disposition, installation) = if let Some(existing) = existing_installation {
             (WriteDisposition::AlreadyPresent, existing)
         } else {
+            let epoch = removal
+                .map(|record| record.selection.epoch.next())
+                .transpose()?
+                .unwrap_or_else(ArtifactSetInstallationEpoch::first);
             let installation = StoredArtifactSetInstallation {
                 installed: installed.clone(),
-                epoch: ArtifactSetInstallationEpoch::first(),
+                epoch,
             };
             transaction.execute(
                 "INSERT INTO installed_artifact_sets

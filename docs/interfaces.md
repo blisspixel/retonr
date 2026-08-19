@@ -24,6 +24,12 @@ flowchart LR
 
 ## CLI text entry
 
+The `rewrite` examples below are the planned 1.0 surface. The current binary
+implements `check` with file or standard-input documents, `--output`,
+escaped terminal rendering, `--raw-terminal --yes`, `--diff`, `--dry-run`,
+`--trace`, fail-closed `rewrite`, `version`, and `doctor`. See
+[current state](current-state.md).
+
 The primary non-interactive forms are:
 
 ```console

@@ -66,17 +66,17 @@ mod tests {
         let output = migration_output(
             "migrated",
             2,
-            4,
-            Some("migration-backup-v2-to-v4".to_owned()),
+            5,
+            Some("migration-backup-v2-to-v5".to_owned()),
         );
         assert_eq!(output.value["disposition"], "migrated");
         assert_eq!(output.value["from_schema"], 2);
-        assert_eq!(output.value["to_schema"], 4);
-        assert_eq!(output.value["backup_key"], "migration-backup-v2-to-v4");
+        assert_eq!(output.value["to_schema"], 5);
+        assert_eq!(output.value["backup_key"], "migration-backup-v2-to-v5");
         assert!(
             output
                 .text
-                .contains("backup_key: migration-backup-v2-to-v4")
+                .contains("backup_key: migration-backup-v2-to-v5")
         );
         assert!(!output.has_findings());
     }
@@ -84,8 +84,8 @@ mod tests {
     #[test]
     fn current_output_omits_an_absent_backup_key() {
         let output = ModelOutput::migration(&ArtifactRepositoryMigrationResult {
-            from_schema: 4,
-            to_schema: 4,
+            from_schema: 5,
+            to_schema: 5,
             disposition: ArtifactRepositoryMigrationDisposition::AlreadyCurrent,
             backup_key: None,
         });

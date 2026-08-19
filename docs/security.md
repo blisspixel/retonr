@@ -288,6 +288,18 @@ Controls:
   A verified orphan is only a point-in-time candidate. Any later repair or removal
   must reacquire the exclusive lock and reverify the exact entry. Network filesystem
   replacement and locking semantics remain unqualified.
+- Selected set-root reconciliation accepts only a complete exact set manifest,
+  derives the content-derived set-root name internally, and takes the lifecycle
+  lock exclusively. It ignores prior inventory evidence as authority, requires the
+  current managed set tree, and applies caller-owned member, tree, and byte
+  ceilings. It never copies, replaces, or deletes managed bytes. The result is
+  persistence-neutral and grants no lease, qualification, or role authority.
+- Read-only artifact-set inventory takes the same shared lifecycle lock, freezes
+  exact set-root names, and hashes only members of a durable matching manifest
+  within per-set and aggregate ceilings. It follows no symlink or reparse point,
+  never treats a persisted storage key as a user path, and emits only aggregate
+  counts for malformed or unregistered set-root names. The report is
+  persistence-neutral and grants no lease, qualification, or role authority.
 - Selected orphan reconciliation accepts only a complete exact manifest, derives the
   canonical digest name internally, and takes the lifecycle lock exclusively. It
   ignores prior inventory evidence as authority, requires one direct regular
