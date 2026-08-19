@@ -21,7 +21,7 @@ protocol, or stored-data contracts.
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
 | `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, read-only artifact-set inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, selected set-root reconciliation, crash-recoverable inactive single-file and artifact-set removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, a repository-owned whole-tree artifact-set lease, an inert managed-process runtime attestor, a cancellable pair-extraction service, and an informational shadow join of independently produced claim comparison with no eligibility authority |
-| `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a pre-model `inspect` command that inventories one file or directory: encoding, BOM, newline kind, control-class counts, sibling sidecar presence, and skipped child reasons, without stripping bytes, following links, or validating a Content Credential; `--recursive` is a bounded walk that skips hidden names, `target`, and `node_modules`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then attaches in-process fake-backend conformance when that recovered qualification names the retained fake backend, or fails closed otherwise; dedicated `version` and read-only `doctor` recovery commands that name migrate or removal-recovery follow-up without mutation; generated `completions` scripts and a section-1 `man` page from the live CLI definition; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, read-only `list` of registered single-file installations, read-only `inspect` of one registered artifact's declared facts, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, and exact set-removal recovery |
+| `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, opt-in `--in-place --backup` for a regular file, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a pre-model `inspect` command that inventories one file or directory: encoding, BOM, newline kind, control-class counts, sibling sidecar presence, and skipped child reasons, without stripping bytes, following links, or validating a Content Credential; `--recursive` is a bounded walk that skips hidden names, `target`, and `node_modules`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then attaches in-process fake-backend conformance when that recovered qualification names the retained fake backend, or fails closed otherwise; dedicated `version` and read-only `doctor` recovery commands that name migrate or removal-recovery follow-up without mutation; generated `completions` scripts and a section-1 `man` page from the live CLI definition; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, read-only `list` of registered single-file installations, read-only `inspect` of one registered artifact's declared facts, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, and exact set-removal recovery |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
@@ -183,13 +183,18 @@ uses its own clean runner database.
   whitespace, and final-newline state exactly. Both documents cannot share one stream.
   `--output` writes the accepted bytes, or the exact original after an abstention, to
   a new file that must not already exist, or to standard output, which moves the
-  report to standard error. Exact bytes reach a terminal only after the
+  report to standard error. `--in-place --backup` retains a sibling
+  `<name>.retonr-backup` that must not already exist, then replaces a regular
+  source file after same-directory staging. Standard input, `--output`, and
+  symlinks are refused. Unchanged accepted bytes leave the source untouched.
+  Exact bytes reach a terminal only after the
   `--raw-terminal --yes` double opt-in and a warning. Without that double opt-in,
   a terminal receives escaped interactive rendering that neutralizes ANSI, OSC,
   C0, C1, carriage-return, hyperlink, clipboard, bidi, and invisible-control
   effects. Either flag alone stays escaped. `--diff` writes an escaped
   linear comparison of source and accepted output to standard error. `--dry-run`
-  computes the report without creating `--output`. `--trace` writes the redacted
+  computes the report without creating `--output` or replacing the source.
+  `--trace` writes the redacted
   rewrite record to a new file.
 - The editorial corpus contract and 120 synthetic fixtures across five groups are
   implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
@@ -339,6 +344,8 @@ is:
    exist. `inspect` inventories one source or directory before rewrite.
    `--recursive` is a bounded walk that does not follow links. It does not
    parse credentials, follow external references, or strip bytes.
+   `--in-place --backup` replaces one regular source file after retaining a
+   sibling backup. It is not a directory rewrite.
    `doctor` names exact recovery follow-up when schema migration or a
    prepared removal is pending. It does not migrate, recover, or activate.
    `rewrite` attaches in-process fake-backend conformance to a recovered

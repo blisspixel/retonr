@@ -11,8 +11,9 @@ pub(crate) fn write(
     record: &RewriteRecord,
     format: ReportFormat,
     target: ReportTarget,
+    backup: Option<&str>,
 ) -> io::Result<()> {
-    let bytes = render(command, record, format)?;
+    let bytes = render(command, record, format, backup)?;
     match target {
         ReportTarget::Data => {
             let mut stream = io::stdout().lock();
@@ -31,19 +32,31 @@ fn render(
     command: CommandName,
     record: &RewriteRecord,
     format: ReportFormat,
+    backup: Option<&str>,
 ) -> io::Result<Vec<u8>> {
     match format {
         ReportFormat::Json => {
-            let mut bytes = serde_json::to_vec_pretty(&SuccessEnvelope::new(command, record))
-                .map_err(io::Error::other)?;
+            let mut bytes = serde_json::to_vec_pretty(&SuccessEnvelope::new(
+                command,
+                DocumentReport { record, backup },
+            ))
+            .map_err(io::Error::other)?;
             bytes.push(b'\n');
             Ok(bytes)
         }
-        ReportFormat::Text => Ok(render_text(record).into_bytes()),
+        ReportFormat::Text => Ok(render_text(record, backup).into_bytes()),
     }
 }
 
-fn render_text(record: &RewriteRecord) -> String {
+#[derive(serde::Serialize)]
+struct DocumentReport<'a> {
+    #[serde(flatten)]
+    record: &'a RewriteRecord,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    backup: Option<&'a str>,
+}
+
+fn render_text(record: &RewriteRecord, backup: Option<&str>) -> String {
     use std::fmt::Write as _;
 
     let eligible = record
@@ -60,6 +73,9 @@ fn render_text(record: &RewriteRecord) -> String {
     let _ = writeln!(text, "output_digest: {}", record.output_digest.as_str());
     let _ = writeln!(text, "candidates: {}", record.assessments.len());
     let _ = writeln!(text, "eligible_candidates: {eligible}");
+    if let Some(backup) = backup {
+        let _ = writeln!(text, "backup: {backup}");
+    }
     text
 }
 

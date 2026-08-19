@@ -163,8 +163,10 @@ cargo run --locked -p rewrite-eval -- --claim-shadow-calibration crates/eval/fix
 The first command validates a caller-supplied complete candidate without invoking a
 model. The second reads the candidate from standard input and writes the accepted
 bytes, or the exact original after an abstention, to a new file. Either document may
-come from standard input, but not both. An existing destination is never replaced and
-the source is never modified. `--diff` writes an escaped comparison to standard
+come from standard input, but not both. An existing destination is never replaced.
+`--in-place --backup` retains a sibling `<name>.retonr-backup` and then replaces a
+regular source file. Standard input, `--output`, and symlinks are refused.
+`--diff` writes an escaped comparison to standard
 error. `--output -` writes exact bytes to a pipe. A terminal receives escaped
 rendering unless `--raw-terminal --yes` both appear. `--dry-run` reports without
 creating `--output`. `--trace` writes the redacted rewrite record to a new file.

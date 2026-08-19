@@ -26,9 +26,9 @@ flowchart LR
 
 The `rewrite` examples below are the planned 1.0 surface. The current binary
 implements `check` with file or standard-input documents, `--output`,
-escaped terminal rendering, `--raw-terminal --yes`, `--diff`, `--dry-run`,
-`--trace`, fail-closed `rewrite`, pre-model `inspect` of a file or
-directory, `version`, `doctor`
+`--in-place --backup`, escaped terminal rendering, `--raw-terminal --yes`,
+`--diff`, `--dry-run`, `--trace`, fail-closed `rewrite`, pre-model `inspect`
+of a file or directory, `version`, `doctor`
 with recovery follow-up, `completions`, `man`, `model list`, and
 `model inspect`. See [current state](current-state.md).
 
@@ -67,9 +67,11 @@ preserved, but clipboard content has no source-byte or rich-format claim.
 ## Files and output safety
 
 The default writes rewritten content to standard output or a new requested path. It
-does not overwrite an input file. `--in-place` requires a regular unambiguous file,
-an explicit backup or recoverable replacement policy, same-directory staging, flush,
-verification, and atomic replacement where the platform supports it.
+does not overwrite an input file. `--in-place --backup` requires a regular
+unambiguous file, retains a sibling `<name>.retonr-backup` that must not already
+exist, uses same-directory staging, flush, and verification, then replaces the
+source. Standard input, `--output`, and symlinks are refused. Unchanged accepted
+bytes leave the source untouched and create no backup.
 
 Text output and diagnostics remain separate. Structured JSON is versioned and stable
 for its declared range. Raw untrusted text is not rendered to a terminal unless the
