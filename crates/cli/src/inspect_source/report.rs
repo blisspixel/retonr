@@ -1,6 +1,4 @@
-//! Pre-model inventory of one source document without mutation.
-
-use std::{fs, path::Path, process::ExitCode};
+use std::{fs, path::Path};
 
 use rewrite_app::{
     CarrierPresence, LineEndingKind, MAX_CANDIDATE_CHECK_BYTES, PlainTextInventory, TextEncoding,
@@ -10,30 +8,21 @@ use serde::Serialize;
 
 use crate::contract::{CommandName, STANDARD_STREAM_PATH, read_input_bounded};
 use crate::failure::RunFailure;
-use crate::model::ModelOutput;
 
 const SIDECAR_SUFFIXES: [&str; 2] = [".c2pa", ".xmp"];
 
-/// Inventories one source file or standard input.
-pub(crate) fn run(source: &Path) -> Result<(CommandName, ModelOutput, ExitCode), RunFailure> {
+pub(super) fn inspect_file(source: &Path) -> Result<InspectReport, RunFailure> {
     let bytes = read_input_bounded(source, MAX_CANDIDATE_CHECK_BYTES)
         .map_err(|error| RunFailure::input_read(CommandName::Inspect, &error))?;
     let inventory = inspect_plain_text(&bytes)
         .map_err(|error| RunFailure::app(CommandName::Inspect, &error))?;
-    let sidecars = sidecar_scan(source);
-    let report = InspectReport::from_inventory(&inventory, sidecars);
-    Ok((
-        CommandName::Inspect,
-        ModelOutput {
-            value: serde_json::to_value(&report).expect("inspect report serializes"),
-            text: report.text(),
-            findings: false,
-        },
-        ExitCode::SUCCESS,
+    Ok(InspectReport::from_inventory(
+        &inventory,
+        sidecar_scan(source),
     ))
 }
 
-fn sidecar_scan(source: &Path) -> SidecarScan {
+pub(super) fn sidecar_scan(source: &Path) -> SidecarScan {
     if source.as_os_str() == STANDARD_STREAM_PATH {
         return SidecarScan {
             status: "not_applicable",
@@ -71,13 +60,13 @@ fn sidecar_scan(source: &Path) -> SidecarScan {
 }
 
 #[derive(Serialize)]
-struct SidecarScan {
-    status: &'static str,
-    present: Vec<String>,
+pub(super) struct SidecarScan {
+    pub(super) status: &'static str,
+    pub(super) present: Vec<String>,
 }
 
 #[derive(Serialize)]
-struct InspectReport {
+pub(super) struct InspectReport {
     encoding: TextEncoding,
     #[serde(skip_serializing_if = "Option::is_none")]
     valid_up_to: Option<String>,
@@ -135,7 +124,11 @@ impl InspectReport {
         }
     }
 
-    fn text(&self) -> String {
+    pub(super) fn derivative(&self) -> &'static str {
+        self.derivative
+    }
+
+    pub(super) fn text(&self) -> String {
         let mut lines = vec![
             format!("encoding: {}", encoding_name(self.encoding)),
             format!("utf8_bom: {}", self.utf8_bom),

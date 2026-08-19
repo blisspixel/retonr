@@ -104,16 +104,20 @@ enum Command {
         #[arg(long, value_name = "PATH")]
         trace: Option<PathBuf>,
     },
-    /// Inventory one source document before rewrite without mutation.
+    /// Inventory one source document or directory before rewrite without mutation.
     ///
     /// Reports encoding, BOM, newline kind, control-class counts, sibling
     /// sidecar presence, and whether an explicit derivative decision is
-    /// required. It does not parse Content Credentials, follow external
-    /// references, or strip bytes.
+    /// required. A directory is a non-recursive discovery manifest. It does
+    /// not parse Content Credentials, follow external references, follow
+    /// links, recurse, or strip bytes.
     Inspect {
-        /// UTF-8 source file, or - for standard input.
+        /// UTF-8 source file, directory, or - for standard input.
         #[arg(value_name = "SOURCE")]
         source: PathBuf,
+        /// Recurse into child directories. Not implemented.
+        #[arg(long)]
+        recursive: bool,
     },
     /// Administer exact local model artifacts without network access.
     Model {
@@ -226,9 +230,9 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             format,
         )
         .map_err(|error| (error, format)),
-        Command::Inspect { source } => {
+        Command::Inspect { source, recursive } => {
             let (command, output, exit_code) =
-                inspect_source::run(&source).map_err(|error| (error, format))?;
+                inspect_source::run(&source, recursive).map_err(|error| (error, format))?;
             write_model_report(command, &output, format)
                 .map_err(|_| (RunFailure::operational(command), format))?;
             Ok(exit_code)
