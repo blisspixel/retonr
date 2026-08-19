@@ -57,9 +57,19 @@ enum Command {
         source: PathBuf,
         /// Write the accepted bytes to a new file, or to - for standard output.
         ///
-        /// An existing destination is never replaced and the source is never modified.
+        /// An existing destination is never replaced. The source is modified only
+        /// with --in-place --backup.
         #[arg(long, value_name = "PATH")]
         output: Option<PathBuf>,
+        /// Replace the source after retaining a sibling backup.
+        ///
+        /// Requires --backup. Standard input, --output, symlinks, and
+        /// directories are refused.
+        #[arg(long)]
+        in_place: bool,
+        /// Retain <SOURCE>.retonr-backup before --in-place replacement.
+        #[arg(long)]
+        backup: bool,
         /// Exact installed artifact that must match the active generation binding.
         #[arg(long, value_name = "ARTIFACT_ID")]
         artifact_id: Option<crate::contract::ArtifactIdArgument>,
@@ -83,9 +93,19 @@ enum Command {
         fail_on_abstain: bool,
         /// Write the exact accepted bytes to a new file, or to - for standard output.
         ///
-        /// An existing destination is never replaced and the source is never modified.
+        /// An existing destination is never replaced. The source is modified only
+        /// with --in-place --backup.
         #[arg(long, value_name = "PATH")]
         output: Option<PathBuf>,
+        /// Replace the source after retaining a sibling backup.
+        ///
+        /// Requires --backup. Standard input, --output, symlinks, and
+        /// directories are refused.
+        #[arg(long)]
+        in_place: bool,
+        /// Retain <SOURCE>.retonr-backup before --in-place replacement.
+        #[arg(long)]
+        backup: bool,
         /// Permit exact unescaped bytes on a terminal. Requires --yes.
         ///
         /// Without both flags, a terminal receives escaped rendering.
@@ -97,7 +117,7 @@ enum Command {
         /// Write an escaped linear diff of source versus accepted output.
         #[arg(long)]
         diff: bool,
-        /// Compute the report without writing --output.
+        /// Compute the report without writing --output or replacing the source.
         #[arg(long)]
         dry_run: bool,
         /// Write the redacted rewrite record to a new file.
@@ -185,17 +205,27 @@ fn main() -> ExitCode {
     clippy::result_large_err,
     reason = "RunFailure carries the typed CLI report contract"
 )]
+#[expect(
+    clippy::too_many_lines,
+    reason = "each command arm owns its clap-derived request"
+)]
 fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
     let format = cli.format;
     match cli.command {
         Command::Rewrite {
             source,
             output,
+            in_place,
+            backup,
             artifact_id,
             protected_terms,
         } => rewrite::run(&rewrite::RewriteRequest {
             source,
             output,
+            in_place: check::replace::InPlaceFlags {
+                requested: in_place,
+                backup,
+            },
             data_directory: cli.data_dir,
             artifact_id,
             protected_terms,
@@ -208,6 +238,8 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             protected_terms,
             fail_on_abstain,
             output,
+            in_place,
+            backup,
             raw_terminal,
             yes,
             diff,
@@ -220,6 +252,10 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 protected_terms,
                 fail_on_abstain,
                 output,
+                in_place: check::replace::InPlaceFlags {
+                    requested: in_place,
+                    backup,
+                },
                 raw_terminal,
                 confirmed: yes,
                 inspection: check::CheckInspection {

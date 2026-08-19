@@ -1,7 +1,6 @@
 //! Deterministic candidate validation with explicit input and output policy.
 
 use std::{
-    fs::OpenOptions,
     io::{self, IsTerminal, Write},
     path::{Path, PathBuf},
     process::ExitCode,
@@ -20,6 +19,7 @@ use crate::{
 
 mod escape;
 mod inspect;
+pub(crate) mod replace;
 pub(crate) mod report;
 #[cfg(test)]
 mod tests;
@@ -42,6 +42,7 @@ pub(crate) struct CheckRequest {
     pub(crate) protected_terms: Vec<String>,
     pub(crate) fail_on_abstain: bool,
     pub(crate) output: Option<PathBuf>,
+    pub(crate) in_place: replace::InPlaceFlags,
     pub(crate) raw_terminal: bool,
     pub(crate) confirmed: bool,
     pub(crate) inspection: CheckInspection,
@@ -56,7 +57,12 @@ pub(crate) struct CheckInspection {
 
 /// Validates one candidate and applies the explicit input and output policy.
 pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCode, RunFailure> {
-    let sink = resolve_output_sink(request.output.as_deref())?;
+    let destination = replace::resolve_destination(
+        &request.source,
+        request.output.as_deref(),
+        request.in_place,
+        CommandName::Check,
+    )?;
     ensure_distinct_inputs(&request.source, &request.candidate)?;
 
     let cancellation = CancellationToken::new();
@@ -64,17 +70,17 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
     ctrlc::try_set_handler(move || signal_cancellation.cancel())
         .map_err(|_| RunFailure::operational(CommandName::Check))?;
 
-    let source = read_input_bounded(&request.source, MAX_CANDIDATE_CHECK_BYTES)
+    let source_bytes = read_input_bounded(&request.source, MAX_CANDIDATE_CHECK_BYTES)
         .map_err(|error| RunFailure::check_read(&error))?;
     let candidate_bytes = read_input_bounded(&request.candidate, MAX_CANDIDATE_CHECK_BYTES)
         .map_err(|error| RunFailure::check_read(&error))?;
     let candidate =
         String::from_utf8(candidate_bytes).map_err(|_| RunFailure::check_invalid_utf8())?;
-    let source_for_diff = request.inspection.diff.then(|| source.clone());
+    let source_for_diff = request.inspection.diff.then(|| source_bytes.clone());
 
     let result = CandidateCheckService::check_with_cancellation(
         CandidateCheckRequest {
-            source,
+            source: source_bytes.clone(),
             candidate,
             protected_terms: request.protected_terms,
         },
@@ -85,18 +91,22 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         return Err(RunFailure::cancelled(CommandName::Check));
     }
 
-    if !request.inspection.dry_run {
-        emit_document(
-            &sink,
+    let backup = if request.inspection.dry_run {
+        None
+    } else {
+        emit_destination(
+            &destination,
+            &request.source,
+            &source_bytes,
             &result.output,
             request.raw_terminal,
             request.confirmed,
             CommandName::Check,
-        )?;
-    }
-    if let Some(source_bytes) = source_for_diff.as_deref() {
+        )?
+    };
+    if let Some(diff_source) = source_for_diff.as_deref() {
         inspect::write_diff(
-            &inspect::SafeDiff::compare(source_bytes, &result.output),
+            &inspect::SafeDiff::compare(diff_source, &result.output),
             ReportTarget::Diagnostic,
         )?;
     }
@@ -107,7 +117,8 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         CommandName::Check,
         &result.record,
         format,
-        report_target(&sink),
+        destination_report_target(&destination),
+        backup.as_deref(),
     )
     .map_err(|_| RunFailure::operational(CommandName::Check))?;
     Ok(exit_status(
@@ -115,6 +126,37 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         result.record.reason,
         request.fail_on_abstain,
     ))
+}
+
+pub(crate) fn emit_destination(
+    destination: &replace::Destination,
+    source: &Path,
+    original: &[u8],
+    accepted: &[u8],
+    raw_terminal: bool,
+    confirmed: bool,
+    command: CommandName,
+) -> Result<Option<String>, RunFailure> {
+    match destination {
+        replace::Destination::Sink(sink) => {
+            emit_document(sink, accepted, raw_terminal, confirmed, command)?;
+            Ok(None)
+        }
+        replace::Destination::InPlace { source: planned } => {
+            if planned != source {
+                return Err(RunFailure::operational(command));
+            }
+            let outcome = replace::commit(planned, original, accepted, command)?;
+            Ok(replace::backup_name(&outcome).map(str::to_owned))
+        }
+    }
+}
+
+pub(crate) fn destination_report_target(destination: &replace::Destination) -> ReportTarget {
+    match destination {
+        replace::Destination::Sink(sink) => report_target(sink),
+        replace::Destination::InPlace { .. } => ReportTarget::Data,
+    }
 }
 
 /// Rejects reading both documents from one standard-input stream.
@@ -127,11 +169,6 @@ fn ensure_distinct_inputs(source: &Path, candidate: &Path) -> Result<(), RunFail
 
 pub(crate) fn is_standard_stream(path: &Path) -> bool {
     path.as_os_str() == STANDARD_STREAM_PATH
-}
-
-/// Resolves and validates the output policy before any document work happens.
-pub(crate) fn resolve_output_sink(output: Option<&Path>) -> Result<OutputSink, RunFailure> {
-    resolve_output_sink_for(output, CommandName::Check)
 }
 
 pub(crate) fn resolve_output_sink_for(
@@ -191,10 +228,11 @@ const fn resolve_document_render(
 
 /// Writes accepted document bytes according to the resolved output policy.
 ///
-/// The source document is never modified and an existing destination is never
-/// replaced. A terminal receives escaped rendering unless `--raw-terminal --yes`
-/// both appear. Either flag alone stays escaped. Raw terminal emission warns
-/// on standard error before the exact bytes.
+/// The default path never modifies the source and never replaces an existing
+/// destination. `--in-place --backup` uses a separately tested commit protocol.
+/// A terminal receives escaped rendering unless `--raw-terminal --yes` both
+/// appear. Either flag alone stays escaped. Raw terminal emission warns on
+/// standard error before the exact bytes.
 pub(crate) fn emit_document(
     sink: &OutputSink,
     bytes: &[u8],
@@ -204,7 +242,7 @@ pub(crate) fn emit_document(
 ) -> Result<(), RunFailure> {
     match sink {
         OutputSink::None => Ok(()),
-        OutputSink::File(path) => write_new_file(path, bytes, command),
+        OutputSink::File(path) => replace::write_exclusive(path, bytes, command),
         OutputSink::Standard => {
             let terminal = io::stdout().is_terminal();
             let render = resolve_document_render(terminal, raw_terminal, confirmed);
@@ -228,24 +266,6 @@ pub(crate) fn emit_document(
                 .map_err(|_| RunFailure::operational(command))
         }
     }
-}
-
-/// Creates the destination exclusively so an existing file is never replaced.
-fn write_new_file(path: &Path, bytes: &[u8], command: CommandName) -> Result<(), RunFailure> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .map_err(|error| {
-            if error.kind() == io::ErrorKind::AlreadyExists {
-                RunFailure::output_exists_for(command)
-            } else {
-                RunFailure::operational(command)
-            }
-        })?;
-    file.write_all(bytes)
-        .and_then(|()| file.sync_all())
-        .map_err(|_| RunFailure::operational(command))
 }
 
 pub(crate) fn exit_status(
