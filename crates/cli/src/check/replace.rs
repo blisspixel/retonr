@@ -17,7 +17,7 @@ use crate::{
 const BACKUP_SUFFIX: &str = ".retonr-backup";
 const STAGING_SUFFIX: &str = ".retonr-staging";
 
-/// Paired `--in-place` and `--backup` flags.
+/// `--in-place` request, with an optional redundant `--backup` flag.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct InPlaceFlags {
     /// Replace the source file when paired with `backup`.
@@ -44,27 +44,20 @@ pub(crate) enum InPlaceOutcome {
     Replaced { backup_name: String },
 }
 
-/// Resolves `--output` versus `--in-place --backup` before document work.
+/// Resolves `--output` versus `--in-place` before document work.
 pub(crate) fn resolve_destination(
     source: &Path,
     output: Option<&Path>,
     in_place: InPlaceFlags,
     command: CommandName,
 ) -> Result<Destination, RunFailure> {
-    if !in_place.requested && !in_place.backup {
+    if in_place.backup && !in_place.requested {
+        return Err(usage(command, "--backup requires --in-place"));
+    }
+    if !in_place.requested {
         return Ok(Destination::Sink(super::resolve_output_sink_for(
             output, command,
         )?));
-    }
-    if in_place.requested != in_place.backup {
-        return Err(usage(
-            command,
-            if in_place.requested {
-                "in-place requires --backup"
-            } else {
-                "--backup requires --in-place"
-            },
-        ));
     }
     if output.is_some() {
         return Err(usage(command, "in-place is incompatible with --output"));
@@ -252,16 +245,17 @@ mod tests {
     }
 
     #[test]
-    fn in_place_without_backup_is_usage() {
-        let failure = resolve_destination(
-            Path::new("draft.txt"),
-            None,
-            flags(true, false),
-            CommandName::Check,
-        )
-        .expect_err("in-place requires backup");
-        assert_eq!(failure.exit_code, ExitCode::from(EXIT_USAGE));
-        assert!(failure.message.contains("requires --backup"));
+    fn in_place_implies_backup() {
+        let directory = tempdir().expect("temporary directory");
+        let source = directory.path().join("draft.txt");
+        fs::write(&source, b"original\n").expect("write source");
+        let destination =
+            resolve_destination(&source, None, flags(true, false), CommandName::Check)
+                .expect("in-place implies backup");
+        assert!(matches!(destination, Destination::InPlace { .. }));
+        let with_flag = resolve_destination(&source, None, flags(true, true), CommandName::Check)
+            .expect("redundant --backup remains valid");
+        assert_eq!(destination, with_flag);
     }
 
     #[test]

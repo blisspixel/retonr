@@ -50,6 +50,20 @@ pub enum ReportFormat {
     Text,
 }
 
+impl ReportFormat {
+    /// Resolves an explicit `--format` flag, or a terminal versus pipe default.
+    ///
+    /// A terminal defaults to text so everyday commands stay short. A pipe or
+    /// file defaults to JSON so scripts keep a stable machine envelope.
+    pub(crate) const fn from_invocation(explicit: Option<Self>, stdout_is_terminal: bool) -> Self {
+        match explicit {
+            Some(format) => format,
+            None if stdout_is_terminal => Self::Text,
+            None => Self::Json,
+        }
+    }
+}
+
 /// Stable command identity carried by a JSON envelope.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 pub enum CommandName {

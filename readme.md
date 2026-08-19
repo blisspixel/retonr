@@ -136,16 +136,16 @@ identifications. No editorial-lint rule has product authority yet.
 Run the current slice from the repository:
 
 ```console
-cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --format text
-cargo run --locked -p retonr-cli -- check original.txt - --output checked.txt --format text
-cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --diff --dry-run --format text
-cargo run --locked -p retonr-cli -- rewrite fixtures/cli/source.txt --format text
-cargo run --locked -p retonr-cli -- --data-dir <DIRECTORY> rewrite fixtures/cli/source.txt --format text
-cargo run --locked -p retonr-cli -- inspect fixtures/cli/source.txt --format text
-cargo run --locked -p retonr-cli -- version --format text
-cargo run --locked -p retonr-cli -- doctor --format text
-cargo run --locked -p retonr-cli -- --format text completions powershell
-cargo run --locked -p retonr-cli -- --format text man
+cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt
+cargo run --locked -p retonr-cli -- check original.txt - -o checked.txt
+cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt --diff --dry-run
+cargo run --locked -p retonr-cli -- rewrite fixtures/cli/source.txt
+cargo run --locked -p retonr-cli -- -D <DIRECTORY> rewrite fixtures/cli/source.txt
+cargo run --locked -p retonr-cli -- inspect fixtures/cli/source.txt
+cargo run --locked -p retonr-cli -- version
+cargo run --locked -p retonr-cli -- doctor
+cargo run --locked -p retonr-cli -- -f text completions powershell
+cargo run --locked -p retonr-cli -- -f text man
 cargo run --locked -p retonr-cli -- model --help
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --baseline crates/eval/fixtures/no_rewrite_baseline_v1.json crates/eval/fixtures/core.json
@@ -164,23 +164,25 @@ The first command validates a caller-supplied complete candidate without invokin
 model. The second reads the candidate from standard input and writes the accepted
 bytes, or the exact original after an abstention, to a new file. Either document may
 come from standard input, but not both. An existing destination is never replaced.
-`--in-place --backup` retains a sibling `<name>.retonr-backup` and then replaces a
+`--in-place` (`-i`) retains a sibling `<name>.retonr-backup` and then replaces a
 regular source file. Standard input, `--output`, and symlinks are refused.
 `--diff` writes an escaped comparison to standard
-error. `--output -` writes exact bytes to a pipe. A terminal receives escaped
+error. `-o -` writes exact bytes to a pipe. A terminal receives escaped
 rendering unless `--raw-terminal --yes` both appear. `--dry-run` reports without
 creating `--output`. `--trace` writes the redacted rewrite record to a new file.
-`rewrite` validates one source, optionally inspects `--data-dir` for an
+A terminal defaults to text reports; a pipe defaults to JSON. `-f` selects
+either. `rewrite` validates one source, optionally inspects `--data-dir` (`-D`,
+or `RETONR_DATA_DIR`) for an
 active generation binding, and attaches in-process fake-backend
 conformance when that recovered qualification names the retained fake
 backend. It does not start a runtime or use the network. `inspect` inventories one source file or directory before rewrite without
 stripping bytes, following links, or validating a Content Credential.
-`--recursive` is a bounded walk that skips hidden names, `target`, and
+`-r` is a bounded walk that skips hidden names, `target`, and
 `node_modules`. `version` and `doctor` are recovery commands. `doctor` names migrate or removal-recovery
 follow-up when `--data-dir` is current or requires migration; it does not
 mutate. `completions` writes a shell script and `man`
-writes a section-1 manual page; JSON wraps those bytes and `--format text`
-emits them raw. `model --help`
+writes a section-1 manual page; a terminal emits them raw and `-f json`
+wraps them. `model --help`
 lists the implemented offline artifact commands. The remaining commands run the
 checked-in fidelity and synthetic editorial-quality suites, including an
 offline no-rewrite baseline and an independent claim-shadow calibration that
@@ -190,20 +192,20 @@ Profile, runtime management, agent, and desktop workflows are not yet implemente
 The implemented model commands are intentionally narrow:
 
 ```console
-retonr --data-dir <DIRECTORY> model import <ARTIFACT> --manifest <MANIFEST_JSON>
-retonr --data-dir <DIRECTORY> model import-set <SOURCE_ROOT> --manifest <MANIFEST_JSON>
-retonr --data-dir <DIRECTORY> model list
-retonr --data-dir <DIRECTORY> model inspect <ARTIFACT_ID>
-retonr --data-dir <DIRECTORY> model inventory [--fail-on-findings]
-retonr --data-dir <DIRECTORY> model inventory-set [--fail-on-findings]
-retonr --data-dir <DIRECTORY> model pending-operations
-retonr --data-dir <DIRECTORY> model migrate --yes
-retonr --data-dir <DIRECTORY> model reconcile --manifest <MANIFEST_JSON>
-retonr --data-dir <DIRECTORY> model reconcile-set --manifest <MANIFEST_JSON>
-retonr --data-dir <DIRECTORY> model remove --artifact-id <SHA256> --installation-generation <N> --yes
-retonr --data-dir <DIRECTORY> model recover-removal --artifact-id <SHA256> --installation-generation <N> --yes
-retonr --data-dir <DIRECTORY> model remove-set --artifact-set-id <SHA256> --installation-generation <N> --yes
-retonr --data-dir <DIRECTORY> model recover-set-removal --artifact-set-id <SHA256> --installation-generation <N> --yes
+retonr -D <DIRECTORY> model import <ARTIFACT> -m <MANIFEST_JSON>
+retonr -D <DIRECTORY> model import-set <SOURCE_ROOT> -m <MANIFEST_JSON>
+retonr -D <DIRECTORY> model list
+retonr -D <DIRECTORY> model inspect <ARTIFACT_ID>
+retonr -D <DIRECTORY> model inventory [--fail-on-findings]
+retonr -D <DIRECTORY> model inventory-set [--fail-on-findings]
+retonr -D <DIRECTORY> model pending
+retonr -D <DIRECTORY> model migrate -y
+retonr -D <DIRECTORY> model reconcile -m <MANIFEST_JSON>
+retonr -D <DIRECTORY> model reconcile-set -m <MANIFEST_JSON>
+retonr -D <DIRECTORY> model remove --artifact <SHA256> --generation <N> -y
+retonr -D <DIRECTORY> model recover --artifact <SHA256> --generation <N> -y
+retonr -D <DIRECTORY> model remove-set --set-id <SHA256> --generation <N> -y
+retonr -D <DIRECTORY> model recover-set --set-id <SHA256> --generation <N> -y
 ```
 
 These commands are offline and bounded. `list` reports registered single-file

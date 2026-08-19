@@ -11,7 +11,7 @@ fn binary() -> Command {
 }
 
 #[test]
-fn check_in_place_without_backup_is_usage() {
+fn check_in_place_implies_backup() {
     let directory = tempdir().expect("temporary directory");
     let source = directory.path().join("draft.txt");
     let candidate = directory.path().join("candidate.txt");
@@ -19,15 +19,22 @@ fn check_in_place_without_backup_is_usage() {
     fs::write(&candidate, "Hello, world!\n").expect("write candidate");
 
     binary()
-        .args(["check", "--in-place"])
+        .args(["check", "-i"])
         .arg(&source)
         .arg(&candidate)
         .assert()
-        .code(2)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
-    assert_eq!(fs::read(&source).expect("source remains"), b"Hello world\n");
-    assert!(!directory.path().join("draft.txt.retonr-backup").exists());
+        .success()
+        .stdout(predicate::str::contains(
+            "\"backup\": \"draft.txt.retonr-backup\"",
+        ));
+    assert_eq!(
+        fs::read(&source).expect("replaced source"),
+        b"Hello, world!\n"
+    );
+    assert_eq!(
+        fs::read(directory.path().join("draft.txt.retonr-backup")).expect("backup"),
+        b"Hello world\n"
+    );
 }
 
 #[test]

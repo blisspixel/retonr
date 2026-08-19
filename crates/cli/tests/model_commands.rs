@@ -197,11 +197,56 @@ fn missing_repository_and_invalid_invocation_use_stderr_only() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
+        .env_remove("RETONR_DATA_DIR")
         .args(["model", "inventory"])
         .assert()
         .code(2)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains("invalid_invocation"));
+}
+
+#[test]
+fn data_dir_env_and_short_selection_flags_are_accepted() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, artifact_id) = write_fixture(directory.path());
+    import(&data, &source, &manifest_path);
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .env("RETONR_DATA_DIR", &data)
+        .args(["model", "pending"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"command\": \"model.pending_operations\"",
+        ));
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["-D"])
+        .arg(&data)
+        .args(["model", "list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"command\": \"model.list\""));
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("-D")
+        .arg(&data)
+        .args([
+            "model",
+            "remove",
+            "--artifact",
+            &artifact_id,
+            "--generation",
+            "1",
+            "-y",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"disposition\": \"removed\""));
 }
 
 #[test]

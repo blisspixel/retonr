@@ -47,6 +47,7 @@ pub(crate) enum ModelCommand {
     /// Inspect managed artifact-set state and trees without mutation.
     InventorySet(InventoryArgs),
     /// List exact interrupted operations without reading model bytes.
+    #[command(visible_alias = "pending")]
     PendingOperations,
     /// Explicitly migrate an existing repository after retaining a verified backup.
     Migrate(MigrationArgs),
@@ -57,10 +58,12 @@ pub(crate) enum ModelCommand {
     /// Remove one exact inactive installation generation.
     Remove(RemoveArgs),
     /// Forward-complete one exact prepared removal.
+    #[command(visible_alias = "recover")]
     RecoverRemoval(RecoveryArgs),
     /// Remove one exact inactive artifact-set installation generation.
     RemoveSet(RemoveSetArgs),
     /// Forward-complete one exact prepared artifact-set removal.
+    #[command(visible_alias = "recover-set")]
     RecoverSetRemoval(RecoverSetArgs),
 }
 
@@ -71,7 +74,7 @@ pub(crate) struct ImportArgs {
     #[arg(value_name = "SOURCE")]
     source: PathBuf,
     /// Strict JSON manifest with exact artifact digest, size, and metadata.
-    #[arg(long, value_name = "MANIFEST_JSON")]
+    #[arg(short, long, value_name = "MANIFEST_JSON")]
     manifest: PathBuf,
 }
 
@@ -82,7 +85,7 @@ pub(crate) struct ImportSetArgs {
     #[arg(value_name = "SOURCE_ROOT")]
     source_root: PathBuf,
     /// Strict JSON manifest with exact member paths, digests, and sizes.
-    #[arg(long, value_name = "MANIFEST_JSON")]
+    #[arg(short, long, value_name = "MANIFEST_JSON")]
     manifest: PathBuf,
 }
 
@@ -106,7 +109,7 @@ pub(crate) struct InventoryArgs {
 #[derive(Debug, Args)]
 pub(crate) struct MigrationArgs {
     /// Confirm the forward migration and retained repository backup.
-    #[arg(long)]
+    #[arg(short = 'y', long)]
     yes: bool,
 }
 
@@ -114,7 +117,7 @@ pub(crate) struct MigrationArgs {
 #[derive(Debug, Args)]
 pub(crate) struct ReconcileArgs {
     /// Strict JSON manifest selecting the exact canonical managed artifact.
-    #[arg(long, value_name = "MANIFEST_JSON")]
+    #[arg(short, long, value_name = "MANIFEST_JSON")]
     manifest: PathBuf,
 }
 
@@ -122,7 +125,7 @@ pub(crate) struct ReconcileArgs {
 #[derive(Debug, Args)]
 pub(crate) struct ReconcileSetArgs {
     /// Strict JSON set manifest selecting the exact canonical managed set root.
-    #[arg(long, value_name = "MANIFEST_JSON")]
+    #[arg(short, long, value_name = "MANIFEST_JSON")]
     manifest: PathBuf,
 }
 
@@ -132,7 +135,7 @@ pub(crate) struct RemoveArgs {
     #[command(flatten)]
     selection: SelectionArgs,
     /// Confirm deletion of the selected inactive managed artifact bytes.
-    #[arg(long)]
+    #[arg(short = 'y', long)]
     yes: bool,
 }
 
@@ -142,7 +145,7 @@ pub(crate) struct RecoveryArgs {
     #[command(flatten)]
     selection: SelectionArgs,
     /// Confirm forward deletion or absence confirmation for the prepared bytes.
-    #[arg(long)]
+    #[arg(short = 'y', long)]
     yes: bool,
 }
 
@@ -152,7 +155,7 @@ pub(crate) struct RemoveSetArgs {
     #[command(flatten)]
     selection: SetSelectionArgs,
     /// Confirm deletion of the selected inactive managed set tree.
-    #[arg(long)]
+    #[arg(short = 'y', long)]
     yes: bool,
 }
 
@@ -162,7 +165,7 @@ pub(crate) struct RecoverSetArgs {
     #[command(flatten)]
     selection: SetSelectionArgs,
     /// Confirm forward deletion or absence confirmation for the prepared set tree.
-    #[arg(long)]
+    #[arg(short = 'y', long)]
     yes: bool,
 }
 
@@ -170,10 +173,10 @@ pub(crate) struct RecoverSetArgs {
 #[derive(Debug, Args)]
 pub(crate) struct SelectionArgs {
     /// Canonical lowercase SHA-256 artifact identity.
-    #[arg(long, value_name = "ARTIFACT_ID")]
+    #[arg(long, visible_alias = "artifact", value_name = "ARTIFACT_ID")]
     artifact_id: ArtifactIdArgument,
     /// Positive installation generation returned by import, inventory, or reconcile.
-    #[arg(long, value_name = "GENERATION")]
+    #[arg(long, visible_alias = "generation", value_name = "GENERATION")]
     installation_generation: InstallationGeneration,
 }
 
@@ -181,10 +184,10 @@ pub(crate) struct SelectionArgs {
 #[derive(Debug, Args)]
 pub(crate) struct SetSelectionArgs {
     /// Canonical lowercase SHA-256 artifact-set identity.
-    #[arg(long, value_name = "ARTIFACT_SET_ID")]
+    #[arg(long, visible_alias = "set-id", value_name = "ARTIFACT_SET_ID")]
     artifact_set_id: ArtifactIdArgument,
     /// Positive installation generation returned by import-set, inventory-set, or reconcile-set.
-    #[arg(long, value_name = "GENERATION")]
+    #[arg(long, visible_alias = "generation", value_name = "GENERATION")]
     installation_generation: InstallationGeneration,
 }
 
