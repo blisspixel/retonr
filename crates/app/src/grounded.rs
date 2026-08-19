@@ -70,6 +70,18 @@ pub struct AttachedConformanceRewrite {
 }
 
 impl AttachedConformanceRewrite {
+    /// Returns the bound in-process fake backend.
+    #[must_use]
+    pub fn backend(&self) -> &dyn InferenceBackend {
+        &self.backend
+    }
+
+    /// Returns the recovered generation artifact bound to this path.
+    #[must_use]
+    pub fn artifact_id(&self) -> &ArtifactId {
+        &self.strategy.policy().artifact_id
+    }
+
     /// Runs grounded generation and the common gates without starting a runtime.
     ///
     /// # Errors
