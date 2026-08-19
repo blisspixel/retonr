@@ -26,6 +26,14 @@ impl ArtifactSetInstallationEpoch {
         }
     }
 
+    pub(crate) fn next(self) -> StoreResult<Self> {
+        self.0
+            .checked_add(1)
+            .filter(|value| i64::try_from(*value).is_ok())
+            .map(Self)
+            .ok_or(StoreError::InstallationEpochExhausted)
+    }
+
     pub(crate) fn database_value(self) -> StoreResult<i64> {
         i64::try_from(self.0).map_err(|_| StoreError::InstallationEpochExhausted)
     }

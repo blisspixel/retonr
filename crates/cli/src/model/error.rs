@@ -28,8 +28,12 @@ impl ModelFailure {
     }
 
     pub(crate) fn confirmation_required() -> Self {
+        Self::confirmation_required_for(CommandName::ModelRemove)
+    }
+
+    pub(crate) fn confirmation_required_for(command: CommandName) -> Self {
         Self::new(
-            CommandName::ModelRemove,
+            command,
             ErrorCategory::Policy,
             ErrorCode::ConfirmationRequired,
             EXIT_POLICY,
@@ -50,8 +54,12 @@ impl ModelFailure {
     }
 
     pub(crate) fn recovery_confirmation_required() -> Self {
+        Self::recovery_confirmation_required_for(CommandName::ModelRecoverRemoval)
+    }
+
+    pub(crate) fn recovery_confirmation_required_for(command: CommandName) -> Self {
         Self::new(
-            CommandName::ModelRecoverRemoval,
+            command,
             ErrorCategory::Policy,
             ErrorCode::ConfirmationRequired,
             EXIT_POLICY,
@@ -105,11 +113,22 @@ impl ModelFailure {
             code = ErrorCode::RemovalRecoveryNotPending;
             message = "artifact has no prepared removal to recover";
         }
+        if command == CommandName::ModelRecoverSetRemoval
+            && matches!(error, ArtifactRepositoryError::SetRemovalRecoveryNotPending)
+        {
+            code = ErrorCode::RemovalRecoveryNotPending;
+            message = "artifact set has no prepared removal to recover";
+        }
         let mut failure = Self::new(command, category, code, exit, retryable, message);
         if let Some(key) = error.recovery_key() {
             failure.body = failure
                 .body
                 .with_recovery_selection(ArtifactSelectionDto::from(key));
+        }
+        if let Some(key) = error.set_recovery_key() {
+            failure.body = failure
+                .body
+                .with_set_recovery_selection(crate::contract::ArtifactSetSelectionDto::from(key));
         }
         if let Some(backup_key) = error.migration_backup_key() {
             failure.body = failure

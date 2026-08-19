@@ -8,8 +8,8 @@ use thiserror::Error;
 use crate::policy::{candidate_batch_reason, preferred_reason, validate_rewrite_options};
 use crate::selection::compare_candidates;
 use crate::{
-    CancellationToken, CandidateGenerator, GenerationError, GenerationRequest, ProtectionError,
-    ProtectionPlan, SemanticEvaluator, StructureAssessment, StructureValidator,
+    CancellationToken, CandidateGenerator, ClaimShadowObserver, GenerationError, GenerationRequest,
+    ProtectionError, ProtectionPlan, SemanticEvaluator, StructureAssessment, StructureValidator,
 };
 
 mod support;
@@ -77,6 +77,7 @@ pub struct RewriteEngine<'a> {
     generator: &'a dyn CandidateGenerator,
     semantic: &'a dyn SemanticEvaluator,
     structure: &'a dyn StructureValidator,
+    claim_shadow: Option<&'a dyn ClaimShadowObserver>,
 }
 
 impl<'a> RewriteEngine<'a> {
@@ -91,7 +92,19 @@ impl<'a> RewriteEngine<'a> {
             generator,
             semantic,
             structure,
+            claim_shadow: None,
         }
+    }
+
+    /// Records independently produced claim comparison without changing eligibility.
+    ///
+    /// The observer cannot authorize a rewrite. Literal-token failure still
+    /// abstains, and a claim conflict cannot reject a candidate that already
+    /// passed the hard gates.
+    #[must_use]
+    pub const fn with_claim_shadow(mut self, observer: &'a dyn ClaimShadowObserver) -> Self {
+        self.claim_shadow = Some(observer);
+        self
     }
 
     /// Evaluates a document and returns edits only when all units are eligible.
@@ -316,6 +329,7 @@ impl<'a> RewriteEngine<'a> {
         let structure_passed = structure == StructureAssessment::Preserved;
         gates.push(structure_gate);
         if !structure_passed {
+            self.attach_claim_shadow(&unit.id, &unit.text, &restored, &mut gates);
             return ineligible(
                 candidate,
                 unit.id.clone(),
@@ -328,6 +342,7 @@ impl<'a> RewriteEngine<'a> {
         let (semantic_gate, semantic_passed, semantic_reason) =
             self.semantic_gate(&unit.id, &unit.text, &restored, options);
         gates.push(semantic_gate);
+        self.attach_claim_shadow(&unit.id, &unit.text, &restored, &mut gates);
         if !semantic_passed {
             return ineligible(candidate, unit.id.clone(), restored, gates, semantic_reason);
         }
@@ -345,6 +360,21 @@ impl<'a> RewriteEngine<'a> {
                 restored,
             },
             reason: None,
+        }
+    }
+
+    fn attach_claim_shadow(
+        &self,
+        unit_id: &RewriteUnitId,
+        source: &str,
+        candidate: &str,
+        gates: &mut Vec<GateResult>,
+    ) {
+        if let Some(observer) = self.claim_shadow
+            && let Some(gate) =
+                crate::claim_shadow::shadow_gate(observer, unit_id, source, candidate)
+        {
+            gates.push(gate);
         }
     }
 

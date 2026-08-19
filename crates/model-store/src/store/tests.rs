@@ -17,8 +17,11 @@ mod installation;
 mod integrity;
 mod inventory;
 mod open;
+mod open_schema;
 mod removal;
 mod schema_open;
+mod set_inventory;
+mod set_removal;
 
 struct Fixture {
     manifest: ArtifactManifest,

@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "corpus_id": "claim-shadow-calibration-v1",
+  "cases": [
+    {
+      "id": "punctuation-absent",
+      "source": "Hello world",
+      "candidate": "Hello, world!",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_shadow": "absent"
+    },
+    {
+      "id": "punctuation-preserved",
+      "source": "Hello world",
+      "candidate": "Hello, world!",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_shadow": "preserved",
+      "source_predicate": "greeting",
+      "candidate_predicate": "greeting"
+    },
+    {
+      "id": "punctuation-conflict",
+      "source": "Hello world",
+      "candidate": "Hello, world!",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_shadow": "conflict",
+      "source_predicate": "greeting",
+      "candidate_predicate": "farewell"
+    },
+    {
+      "id": "punctuation-uncertain",
+      "source": "Hello world",
+      "candidate": "Hello, world!",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_shadow": "uncertain",
+      "source_predicate": "greeting",
+      "candidate_predicate": "greeting"
+    },
+    {
+      "id": "crlf-preserved",
+      "source": "First line\r\nSecond line\r\n",
+      "candidate": "First line.\r\nSecond line.\r\n",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_shadow": "preserved",
+      "source_predicate": "line-status",
+      "candidate_predicate": "line-status"
+    },
+    {
+      "id": "url-punctuation-preserved",
+      "source": "See https://example.com.",
+      "candidate": "See https://example.com!",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_shadow": "preserved",
+      "source_predicate": "see-url",
+      "candidate_predicate": "see-url"
+    },
+    {
+      "id": "identity-absent",
+      "source": "No change",
+      "candidate": "No change",
+      "expected_status": "unchanged_no_eligible_content",
+      "expected_reason": null,
+      "expected_shadow": "absent"
+    },
+    {
+      "id": "number-change-absent",
+      "source": "Version 2 costs $10.",
+      "candidate": "Version 3 costs $10.",
+      "expected_status": "abstained",
+      "expected_reason": "protected_value_changed",
+      "expected_shadow": "absent"
+    },
+    {
+      "id": "identity-conflict",
+      "source": "No change",
+      "candidate": "No change",
+      "expected_status": "unchanged_no_eligible_content",
+      "expected_reason": null,
+      "expected_shadow": "conflict",
+      "source_predicate": "same-state",
+      "candidate_predicate": "other-state"
+    },
+    {
+      "id": "lexical-absent",
+      "source": "The service is available.",
+      "candidate": "The service is unavailable.",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_shadow": "absent"
+    },
+    {
+      "id": "lexical-preserved",
+      "source": "The service is available.",
+      "candidate": "The service is unavailable.",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_shadow": "preserved",
+      "source_predicate": "availability",
+      "candidate_predicate": "availability"
+    },
+    {
+      "id": "lexical-conflict",
+      "source": "The service is available.",
+      "candidate": "The service is unavailable.",
+      "expected_status": "abstained",
+      "expected_reason": "semantic_uncertain",
+      "expected_shadow": "conflict",
+      "source_predicate": "available",
+      "candidate_predicate": "unavailable"
+    }
+  ]
+}

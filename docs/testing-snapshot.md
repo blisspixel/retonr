@@ -24,6 +24,25 @@ gives you back the exact original bytes instead.
 
 The snapshot does not generate text. It never contacts the network.
 
+The same snapshot also administers exact local model artifacts offline. These
+commands copy, inspect, migrate, or remove local files. They do not download,
+qualify, activate, or run a model:
+
+```console
+retonr --data-dir <DIRECTORY> model import <ARTIFACT> --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model import-set <SOURCE_ROOT> --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model inventory
+retonr --data-dir <DIRECTORY> model inventory-set
+retonr --data-dir <DIRECTORY> model pending-operations
+retonr --data-dir <DIRECTORY> model migrate --yes
+retonr --data-dir <DIRECTORY> model reconcile --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model reconcile-set --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model remove --artifact-id <SHA256> --installation-generation <N> --yes
+retonr --data-dir <DIRECTORY> model recover-removal --artifact-id <SHA256> --installation-generation <N> --yes
+retonr --data-dir <DIRECTORY> model remove-set --artifact-set-id <SHA256> --installation-generation <N> --yes
+retonr --data-dir <DIRECTORY> model recover-set-removal --artifact-set-id <SHA256> --installation-generation <N> --yes
+```
+
 ## Setup
 
 1. Download the archive for your platform and verify its SHA-256 digest against
@@ -93,8 +112,9 @@ never modifies your source. `--output -` sends the document to standard output
 and moves the report to standard error so the two never mix.
 
 Writing exact unescaped document bytes to a terminal requires `--raw-terminal
---yes` together. Either flag alone is refused. This exists because untrusted text
-can carry terminal control sequences.
+--yes` together. Either flag alone, or neither flag, writes escaped rendering
+that cannot drive the terminal. This exists because untrusted text can carry
+terminal control sequences.
 
 ## What will frustrate you, and why
 
@@ -105,7 +125,8 @@ These are known and expected. Reporting them again is not useful.
   Rewording a sentence is correctly rejected as an unverifiable change. The
   calibrated semantic evaluator that would accept paraphrases is later work.
 - **The reason does not say which value changed.** Reports are content-redacted
-  by policy. Richer explanation and a diff are not implemented yet.
+  by policy. `--diff` shows an escaped line comparison; it does not name the
+  protected value that failed.
 - **There is no rewrite command.** The snapshot validates a candidate you supply.
   It does not produce one.
 - **Plain text only**, UTF-8, up to 16 MiB. Markdown and DOCX are later phases.

@@ -47,7 +47,10 @@ This order encodes five deliberate choices:
 
 ## Current build queue
 
-Milestone 0.1 technical evidence is complete, and 0.2 implementation is active. Work
+Milestone 0.1 technical evidence is complete, and 0.2 implementation is active. 0.1
+has not been tagged as a milestone release. INV-Q04 applies from the first completed
+0.2 closeout. The 1.0 include list lives in the
+[product 1.0 capability table](product.md#10-product-boundary). Work
 proceeds in this exact order:
 
 1. With offline import, read-only inventory, selected reconciliation, inactive
@@ -69,8 +72,10 @@ proceeds in this exact order:
    qualification v2 that binds all four identities and exact qualification policy
    without rewriting v1 evidence. Preserve the completed schema-v4 persistence,
    recursive relationship checks, distinct inert artifact-set installation
-   generations, bounded exact folder import, explicit v1/v2/v3 repository
-   migration path, and repository-owned artifact-set leases. Next add live
+   generations, bounded exact folder import, offline `import-set` CLI, explicit
+   v1/v2/v3 repository
+   migration path, repository-owned artifact-set leases, and read-only set
+   inventory without implying set authority. Next add live
    attestation without enabling claim extraction. Only after those boundaries add the
    exact effective extractor manifest, strict ephemeral wire contract, separately
    cancellable pair operation, and two-phase engine evidence join. Calibrate it in

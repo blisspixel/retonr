@@ -6,6 +6,10 @@ use super::{
 const EDITORIAL_CORPUS: &str = include_str!("../../fixtures/editorial_quality_v1.json");
 const EDITORIAL_SLOP_CORPUS: &str = include_str!("../../fixtures/editorial_slop_v1.json");
 const EDITORIAL_PROSE_CORPUS: &str = include_str!("../../fixtures/editorial_prose_v1.json");
+const EDITORIAL_MODEL_IMPRESSIONS: &str =
+    include_str!("../../fixtures/editorial_model_impressions_v1.json");
+const EDITORIAL_ASSISTANT_RESIDUE: &str =
+    include_str!("../../fixtures/editorial_assistant_residue_v1.json");
 
 #[test]
 fn checked_in_editorial_corpus_is_valid_and_balanced() {
@@ -75,6 +79,32 @@ fn checked_in_prose_corpus_is_valid_and_balanced() {
         channels.len() >= 4,
         "prose families must be exercised across several channels, saw {channels:?}"
     );
+}
+
+#[test]
+fn checked_in_model_impression_corpus_is_valid_and_balanced() {
+    let corpus =
+        parse_editorial_corpus(EDITORIAL_MODEL_IMPRESSIONS).expect("checked-in corpus is valid");
+    let summary = corpus.summary();
+    assert_eq!(summary.schema_version, EDITORIAL_CORPUS_SCHEMA_VERSION);
+    assert_eq!(summary.total, 16);
+    assert_eq!(summary.finding_cases, 8);
+    assert_eq!(summary.clean_controls, 8);
+    assert_eq!(summary.targeted_rules, 8);
+    assert_every_rule_is_paired(&corpus);
+}
+
+#[test]
+fn checked_in_assistant_residue_corpus_is_valid_and_balanced() {
+    let corpus =
+        parse_editorial_corpus(EDITORIAL_ASSISTANT_RESIDUE).expect("checked-in corpus is valid");
+    let summary = corpus.summary();
+    assert_eq!(summary.schema_version, EDITORIAL_CORPUS_SCHEMA_VERSION);
+    assert_eq!(summary.total, 20);
+    assert_eq!(summary.finding_cases, 10);
+    assert_eq!(summary.clean_controls, 10);
+    assert_eq!(summary.targeted_rules, 10);
+    assert_every_rule_is_paired(&corpus);
 }
 
 #[test]

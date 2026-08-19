@@ -19,7 +19,7 @@ pub use contract::{
 };
 pub use error::{ContractError, InferenceError, InferenceErrorKind};
 pub use port::{InferenceBackend, OperationContext, PortFuture};
-pub use schemas::candidate_output_contract;
+pub use schemas::{candidate_output_contract, claim_output_contract};
 pub use structured::{
     STRUCTURED_COMPLETION_REQUEST_SCHEMA_VERSION, StructuredCompletionFinish,
     StructuredCompletionRequest, StructuredCompletionResponse,

@@ -3,25 +3,26 @@
 ## Checkpoint
 
 The public repository completed the milestone 0.1 technical evidence and is
-implementing milestone 0.2 under the `Retonr` project identity. External contracts
-remain provisional. Public source availability does not freeze package, protocol,
-or stored-data contracts.
+implementing milestone 0.2 under the `Retonr` project identity. 0.1 is not a tagged
+milestone release; INV-Q04 applies from the first completed 0.2 closeout. External
+contracts remain provisional. Public source availability does not freeze package,
+protocol, or stored-data contracts.
 
 ## Implemented
 
 | Component | Current behavior |
 | --- | --- |
-| `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, and content-redacted typed claim-evidence contracts |
+| `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, content-redacted typed claim-evidence contracts, and an inert extractor manifest |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, and verification |
-| `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, reason priority, lexicographic selection, and document-atomic abstention |
+| `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, an informational shadow claim-comparison gate with no eligibility authority, reason priority, lexicographic selection, and document-atomic abstention |
 | `rewrite-model` | Separate immutable single-file and canonical artifact-set identities; a structurally validated inert installed-set record; content-addressed runtime-build, effective-state, and effective-package evidence; frozen qualification v1 authority; and a distinct inert claim-extraction qualification v2 record and ID that cannot enter v1 activation |
-| `rewrite-model-store` | Durable SQLite schema v4 for legacy artifact authority, inert artifact-set installation generations, and artifact-set, runtime-build, effective-state, effective-package, and qualification-v2 evidence; exact supported-schema inspection; single-epoch exact-handle backup and atomic v1/v2/v3 migration; transactional relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
-| `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
+| `rewrite-model-store` | Durable SQLite schema v5 for legacy artifact authority, inert artifact-set installation generations, crash-recoverable artifact-set removal journals, and artifact-set, runtime-build, effective-state, effective-package, and qualification-v2 evidence; exact supported-schema inspection; single-epoch exact-handle backup and atomic v1/v2/v3/v4 migration; transactional relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
+| `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, a distinct claim-output contract, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
-| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, crash-recoverable inactive removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, and a repository-owned whole-tree artifact-set lease |
-| `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, and a terminal raw-output double opt-in, plus an explicit-root offline model-artifact CLI for import, inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, inactive removal, and exact removal recovery |
-| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts, three balanced synthetic editorial groups, and redacted aggregate reporting |
+| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, read-only artifact-set inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, selected set-root reconciliation, crash-recoverable inactive single-file and artifact-set removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, a repository-owned whole-tree artifact-set lease, an inert managed-process runtime attestor, a cancellable pair-extraction service, and an informational shadow join of independently produced claim comparison with no eligibility authority |
+| `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then fails closed because no local runtime is attached; dedicated `version` and read-only `doctor` recovery commands; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, and exact set-removal recovery |
+| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts with an offline no-rewrite CLI, five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
@@ -41,10 +42,19 @@ exact digest match before backend work. The structured-completion port returns o
 one bounded complete JSON value after exact artifact checks; its request and response
 debug views omit prompt and generated content. The model domain now has a distinct,
 inert claim-extraction artifact role. The current Ollama implementation still admits
-only generation and the existing candidate schema. The model domain now has a distinct
-qualification v2 evidence type for claim extraction, but no claim-extraction output
-schema, effective extractor manifest, strategy, activation, or application
-evidence join is implemented. Qualification schema v1 explicitly rejects claim
+only generation and the existing candidate schema. The claim-output contract and
+an inert extractor manifest now exist. Ollama discovery still refuses that
+digest. An application pair-extraction service can call a backend twice and
+compare the results. Completed comparison evidence can be joined onto the
+engine's informational shadow gate for candidate-check and grounded
+transactions. The join is skipped when the backend does not admit the claim
+contract, the payload is unusable, or extraction is incomplete. A claim
+conflict cannot reject a candidate that already passed the hard gates. The
+join has no activation path or product authority. An independent
+`rewrite-eval` calibration runner assigns fixture claim identities, compares
+them separately from generation, and records whether attaching that
+informational shadow changed hard-gate acceptance. It cannot promote a claim
+result into a hard gate. Qualification schema v1 explicitly rejects claim
 extraction, and its activation APIs cannot accept the separate v2 identifier or record.
 
 The model domain now also represents a canonical, path-bounded artifact set;
@@ -67,7 +77,8 @@ qualification outcome. Its bounded decoder reloads and rechecks all four subject
 records. It has no `authorizes` method and cannot enter existing v1 activation or
 recovery. SQLite schema v4 persists the five immutable evidence records
 in separate tables and adds a bounded installed-set table with a unique portable
-set-root key and distinct positive generation. Migration creates that table empty and
+set-root key and distinct positive generation. Schema v5 adds a separate
+artifact-set removal journal. Migration creates those tables empty and
 never infers installation from evidence or legacy single-file state. Every dependent
 write and read reloads canonical record bytes,
 recomputes indexed identities, and recursively cross-checks the complete subject. The
@@ -151,18 +162,30 @@ uses its own clean runner database.
 ## Deliberate limitations
 
 - The current CLI checks a supplied candidate and administers exact local artifact
-  files. The grounded generation path is not exposed as a CLI command yet.
+  files. `rewrite` accepts one source file or standard input under the same
+  output policy. Optional `--data-dir` inspects an existing repository for an
+  active generation binding. Optional `--artifact-id` must match that binding.
+  The command then fails closed: no local runtime is attached. It does not
+  start a runtime, pull a model, or use the network. A recovered binding is
+  not activation, a lease, or a qualification producer.
 - `check` accepts either document from standard input, read to end of file without
   trimming, and preserves the byte order mark, newline kind, blank lines, surrounding
   whitespace, and final-newline state exactly. Both documents cannot share one stream.
   `--output` writes the accepted bytes, or the exact original after an abstention, to
   a new file that must not already exist, or to standard output, which moves the
   report to standard error. Exact bytes reach a terminal only after the
-  `--raw-terminal --yes` double opt-in and a warning. Escaped interactive rendering,
-  diff, dry-run, and trace export are not implemented yet.
-- The editorial corpus contract and 84 synthetic fixtures across three groups are
+  `--raw-terminal --yes` double opt-in and a warning. Without that double opt-in,
+  a terminal receives escaped interactive rendering that neutralizes ANSI, OSC,
+  C0, C1, carriage-return, hyperlink, clipboard, bidi, and invisible-control
+  effects. Either flag alone stays escaped. `--diff` writes an escaped
+  linear comparison of source and accepted output to standard error. `--dry-run`
+  computes the report without creating `--output`. `--trace` writes the redacted
+  rewrite record to a new file.
+- The editorial corpus contract and 120 synthetic fixtures across five groups are
   implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
-  implemented yet.
+  implemented yet. A separate writing-sample library holds licensed pre-2018
+  human excerpts and synthetic model-style impressions. A research-only watermark file
+  refuses style-as-mark folklore and does not contain generated marks.
 - Only UTF-8 plain text up to 16 MiB is accepted.
 - Durable artifact lifecycle state, bounded single-file staging recovery, pinned single-file
   offline import, read-only managed-byte inventory, selected single-artifact orphan
@@ -179,24 +202,50 @@ uses its own clean runner database.
   boundary verifies current durable state and bytes, then retains the shared
   lifecycle lock and file handle until use ends. No real runtime consumer uses that
   lease yet. Exact manifest-driven artifact-set folder import is implemented at the
-  application boundary with whole-tree publication and inert structural registration,
-  but it has no CLI, set inventory, reconciliation, or removal. A repository-owned
+  application boundary and exposed as offline `model import-set`. The command
+  verifies the complete local source tree, publishes the whole content-derived set
+  root, and records only inert structural installation state. It does not qualify,
+  activate, lease, or execute the set. Read-only `inventory-set` inspects managed
+  set roots under the shared lifecycle lock, reports registered tree status,
+  manifest-only set state, verified orphan set roots, tree conflicts, oversized
+  planned trees, and aggregate unexpected set-root counts, and never creates,
+  repairs, or removes anything. The report does not grant a lease, qualify a
+  package, or authorize a role. Selected `reconcile-set` accepts one exact set
+  manifest, ignores earlier inventory evidence as authority, reacquires the
+  exclusive lifecycle lock, and reverifies the current canonical set tree before
+  atomically inserting any missing exact set-manifest and installation records or
+  confirming that both existing records match. It does not copy, replace, repair,
+  delete, qualify, or activate the set. Selected `remove-set` accepts one exact
+  set installation generation, ignores earlier inventory evidence as authority,
+  reacquires the exclusive lifecycle lock, and reverifies the current canonical
+  set tree before journaling preparation, deleting the verified tree, and
+  completing the journal. Exact prepared set removals resume through
+  `recover-set-removal` without callbacks or cancellation. A later exact reimport
+  uses the next generation so an old retry cannot delete the reinstall. Set
+  removal does not qualify, activate, lease, or grant role authority.
+  Single-file `inventory`, `reconcile`, and `remove`
+  do not inspect or mutate managed sets. Set `inventory-set`, `reconcile-set`,
+  `remove-set`, and `recover-set-removal`
+  do not inspect or mutate single-file artifacts. A repository-owned
   artifact-set lease reverifies the complete registered tree under the shared
   repository and storage lifecycle locks and retains that boundary for its lifetime,
   so exclusive operations fail while it is live. No real runtime consumer uses it
-  yet, and set installation generations are always the first generation because
-  managed-set removal does not exist. Downloads,
+  yet. Downloads,
   runtime-native pulls, bulk reconciliation, orphan deletion, runtime commands, and
   exact real-artifact qualification are not implemented. Effective-package evidence
   and qualification v2 have durable inert persistence but no production evidence
-  producer, live attestor, activation path, or CLI surface. The
-  CLI requires one explicit `--data-dir`; its seven artifact commands do not use the
+  producer, activation path, or CLI surface. An application-owned managed-process
+  attestor can hash one live regular entrypoint, bind `RuntimeBuildIdentity` and
+  `EffectiveRuntimeState`, and optionally persist those inert records. It does not
+  activate a role, admit observed-only Ollama identity, or enable claim extraction. The
+  CLI requires one explicit `--data-dir`; its twelve artifact commands do not use the
   network. Only confirmed `model migrate` can apply a supported schema migration,
-  and it first retains a verified repository-owned backup. The other six commands
+  and it first retains a verified repository-owned backup. The other eleven commands
   remain exact-schema and non-migrating. `pending-operations` reads only bounded durable state and
-  returns exact prepared-removal generations without opening or hashing model
-  bytes. The current product ceilings are 256 GiB per artifact, 4,096
-  durable or storage entries, 512 GiB of aggregate inventory verification, and
+  returns exact prepared single-file and artifact-set removal generations without
+  opening or hashing model bytes. The current product ceilings are 256 GiB per artifact or set member, 4,096
+  durable or storage entries, 4,096 set members, 8,192 set-tree entries, 512 GiB of
+  aggregate inventory or set-import verification, and
   1 MiB per manifest. Removal is not secure
   erasure and does not affect external copies, caches, backups, or provider records.
   Only local, application-owned storage on the tested platform and filesystem
@@ -207,8 +256,15 @@ uses its own clean runner database.
   pinned runtime and model artifact on the three operating systems.
 - The grounded path can safely accept only literal-mode token-preserving changes
   under the current evaluator. Open-domain paraphrases and broader modes abstain.
-- The typed claim contract and deterministic comparator are implemented, but no
-  learned extractor or runtime-backed semantic evaluator is connected. The current
+- The typed claim contract and deterministic comparator are implemented. The engine
+  can record independently produced comparison evidence on a separate informational
+  shadow gate. The application can prepare that evidence from pair extraction and
+  attach it to candidate-check or grounded transactions. That gate cannot authorize
+  a rewrite or reject a candidate that already passed the hard gates. Literal-token
+  failure still abstains. `rewrite-eval --claim-shadow-calibration` runs a
+  checked-in fixture corpus through that same candidate-check path and fails if
+  shadow evidence changes acceptance. No learned extractor or runtime-backed
+  semantic evaluator is connected. The current
   synchronous semantic port is not the future runtime extraction boundary. The raw
   structured-completion port has no semantic authority. The Ollama adapter admits
   only the exact candidate contract currently advertised by discovery. This
@@ -237,27 +293,45 @@ The detailed handoff is in the
 is:
 
 1. Preserve the completed artifact lifecycle boundary, application-owned inventory
-   DTOs, non-mutating pending-operation inspection, and process-level signal
+   DTOs, offline `import-set` CLI, read-only `inventory-set` CLI, non-mutating
+   pending-operation inspection, and process-level signal
    cancellation evidence as new consumers are added.
 2. Preserve the completed rewrite-record v2, typed invariant summaries, typed claim
    evidence, and deterministic comparison boundary.
 3. Preserve the distinct inert claim-extraction role, canonical artifact-set
    manifest, runtime-build and effective-state identities, relationship-checked
-   effective-package evidence, separate inert qualification v2, and schema-v4
+   effective-package evidence, separate inert qualification v2, and schema-v5
    relationship-checked persistence without rewriting v1 or schema-v3 evidence.
    Preserve the distinct inert artifact-set installation generation, exact bounded
-   folder import, explicit backup-backed repository migration path, and
-   repository-owned artifact-set leases. Next add live attestation without enabling
-   claim extraction.
-4. Add the exact extractor manifest and strict ephemeral wire contract, followed by
-   an application-level cancellable pair operation. Join evidence to a two-phase
-   engine path only after fake-backend conformance passes, then calibrate it
-   independently from generators in shadow mode.
+   folder import, offline `import-set` CLI, explicit backup-backed repository
+   migration path,
+   repository-owned artifact-set leases, read-only set inventory, selected
+   set-root reconciliation, and crash-recoverable set removal without
+   implying set authority. Preserve the completed managed-process attestor that
+   writes inert runtime-build and effective-state records without role authority.
+   Preserve the cancellable pair-extraction service, the informational
+   shadow claim-comparison gate, the application shadow join, and the
+   independent claim-shadow calibration runner. That gate has no eligibility
+   authority.
+4. The extractor manifest, claim-output contract, cancellable pair
+   extraction service, engine shadow gate, application shadow join, and
+   independent claim-shadow calibration runner exist. Pair extraction can
+   compare completed evidence sets and record that comparison informatively.
+   Calibration assigns fixture claim identities separately from generation
+   and fails if the informational shadow changes hard-gate acceptance. It
+   has no activation authority and cannot change acceptance. Keep Ollama on
+   the candidate contract only.
 5. Add the local evaluation plan, run the currently installed 26B and 27B packages,
    and add the previously observed 8B package only after revalidation or separately
    approved acquisition. Start only after product-path evidence joins are complete.
-6. Complete stdin, safe diff, dry-run, trace, terminal safety, and
-   raw-output policy before exposing grounded rewriting in the CLI.
+6. `check` output policy, `version`, `doctor`, a fail-closed `rewrite`
+   command that can inspect an optional repository generation binding, and
+   an offline `rewrite-eval --baseline` no-rewrite path exist. Attach a
+   local runtime to a recovered binding only after fake-backend conformance
+   is retained and an exact already-installed combination can be used at
+   $0. Do not start a runtime or use the network. Local validation of
+   uncommitted 0.2 work remains blocked when the session cannot launch a
+   process.
 7. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
 8. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only

@@ -209,3 +209,86 @@ fn checked_in_cli_fixtures_keep_their_documented_bytes() {
         );
     }
 }
+
+#[test]
+fn diff_dry_run_and_trace_are_safe_and_non_replacing() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    let output = directory.path().join("accepted.txt");
+    let trace = directory.path().join("trace.json");
+    fs::write(&source, "Hello world\n").expect("write source fixture");
+    fs::write(&candidate, "Hello, world!\n").expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(&source)
+        .arg(&candidate)
+        .args(["--diff", "--dry-run", "--format", "text"])
+        .arg("--output")
+        .arg(&output)
+        .arg("--trace")
+        .arg(&trace)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("status: rewritten"))
+        .stderr(predicate::str::contains("diff: changed"))
+        .stderr(predicate::str::contains("replace"))
+        .stderr(predicate::str::contains("Hello, world!"));
+
+    assert!(!output.exists(), "dry-run must not create --output");
+    let trace_text = fs::read_to_string(&trace).expect("read trace");
+    assert!(trace_text.contains("\"command\": \"check\""));
+    assert!(trace_text.contains("\"status\": \"rewritten\""));
+    assert!(!trace_text.contains("Hello world"));
+
+    fs::write(&output, b"keep existing").expect("write existing destination");
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(&source)
+        .arg(&candidate)
+        .args(["--dry-run", "--output"])
+        .arg(&output)
+        .assert()
+        .code(3)
+        .stderr(predicate::str::contains("\"code\": \"output_exists\""));
+    assert_eq!(
+        fs::read(&output).expect("read destination"),
+        b"keep existing"
+    );
+}
+
+#[test]
+fn diff_neutralizes_controls_and_trace_refuses_to_replace() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    let trace = directory.path().join("trace.json");
+    fs::write(&source, "safe line\n").expect("write source fixture");
+    fs::write(&candidate, "safe line.\n").expect("write candidate fixture");
+    fs::write(&trace, b"existing").expect("write existing trace");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(&source)
+        .arg(&candidate)
+        .arg("--diff")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("safe line."));
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(source)
+        .arg(candidate)
+        .arg("--trace")
+        .arg(&trace)
+        .assert()
+        .code(3)
+        .stderr(predicate::str::contains("\"code\": \"output_exists\""));
+    assert_eq!(fs::read(trace).expect("read existing trace"), b"existing");
+}

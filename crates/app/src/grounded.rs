@@ -1,25 +1,30 @@
-use std::time::Instant;
+use std::{path::Path, time::Instant};
 
 use rewrite_engine::{
-    PreparedCandidateGenerator, ProtectedKind, ProtectionError, ProtectionPlan,
-    validate_rewrite_options,
+    ClaimShadowObserver, PreparedCandidateGenerator, ProtectedKind, ProtectionError,
+    ProtectionPlan, validate_rewrite_options,
 };
 use rewrite_grounded::{
     GroundedError, GroundedRequest, GroundedSentinel, GroundedSentinelKind, GroundedStrategy,
     GroundedTrace,
 };
 use rewrite_inference::{InferenceBackend, InferenceErrorKind, OperationContext};
-use rewrite_text_adapter::TextAdapter;
+use rewrite_model::{ActiveArtifactBinding, ArtifactId};
+use rewrite_text_adapter::{ParsedTextDocument, TextAdapter};
 use rewrite_types::{
-    CancellationToken, GENERATION_PROVENANCE_SCHEMA_VERSION, GenerationProvenance,
-    GenerationRuntimeProvenance, GenerationUsageProvenance, RewriteMode, RewriteOptions,
-    RewriteRecord,
+    CancellationToken, GENERATION_PROVENANCE_SCHEMA_VERSION, GeneratedCandidate,
+    GenerationProvenance, GenerationRuntimeProvenance, GenerationUsageProvenance, RewriteMode,
+    RewriteOptions, RewriteRecord, RewriteUnitId,
 };
 
-use crate::{AppError, CandidateCheckResult, run_plain_text_transaction};
+use crate::{
+    AppError, ArtifactRepository, ArtifactRepositoryErrorKind, CandidateCheckResult,
+    ClaimExtractionContext, ClaimExtractionError, ClaimShadowJoinBinding, ClaimShadowJoinService,
+    PreparedClaimShadowSet, run_plain_text_transaction,
+};
 
 /// Owned plain-text input for grounded local rewriting.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct GroundedRewriteRequest {
     /// Complete source bytes.
     pub source: Vec<u8>,
@@ -29,6 +34,11 @@ pub struct GroundedRewriteRequest {
     pub mode: RewriteMode,
     /// Explicit style context, or an empty string when unavailable.
     pub style_context: String,
+    /// Optional extractor binding for informational shadow comparison.
+    ///
+    /// Absence, backend unavailability, or incomplete extraction leaves the
+    /// hard gates unchanged. A recorded conflict cannot reject a candidate.
+    pub claim_shadow: Option<ClaimShadowJoinBinding>,
 }
 
 /// Safe transaction result with any redacted generation provenance in its record.
@@ -38,6 +48,96 @@ pub struct GroundedRewriteResult {
     pub output: Vec<u8>,
     /// Common versioned transaction record without raw content.
     pub record: RewriteRecord,
+}
+
+/// Current grounded-rewrite selection. No runtime is attached yet.
+pub struct GroundedRewriteSelection;
+
+impl GroundedRewriteSelection {
+    /// Requires a selected qualified local generation artifact.
+    ///
+    /// When no repository is supplied this fails closed. It does not start a
+    /// runtime, access the network, or invent a production backend.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError::GroundedUnavailable`].
+    pub const fn require_selected() -> Result<(), AppError> {
+        Err(AppError::GroundedUnavailable)
+    }
+
+    /// Inspects an optional repository for an active generation binding.
+    ///
+    /// A recovered binding is not enough to rewrite. The product still has no
+    /// attached local runtime and does not start one.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError::GroundedUnavailable`] when no generation binding is
+    /// selected, [`AppError::GroundedSelectionMismatch`] when a requested
+    /// identity disagrees, [`AppError::GroundedRuntimeUnavailable`] when a
+    /// binding exists but no runtime is attached, or
+    /// [`AppError::GroundedRepository`] when the repository cannot be inspected.
+    pub fn require_ready(
+        data_directory: Option<&Path>,
+        requested: Option<&ArtifactId>,
+    ) -> Result<(), AppError> {
+        match Self::select(data_directory, requested) {
+            Ok(_binding) => Err(AppError::GroundedRuntimeUnavailable),
+            Err(error) => Err(error),
+        }
+    }
+
+    /// Recovers one active generation binding without attaching a runtime.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError`] when no binding is selected, the requested identity
+    /// disagrees, or the repository cannot be inspected.
+    pub fn select(
+        data_directory: Option<&Path>,
+        requested: Option<&ArtifactId>,
+    ) -> Result<ActiveArtifactBinding, AppError> {
+        let Some(data_directory) = data_directory else {
+            return if requested.is_some() {
+                Err(AppError::GroundedSelectionMismatch)
+            } else {
+                Err(AppError::GroundedUnavailable)
+            };
+        };
+        let repository =
+            ArtifactRepository::new(data_directory).map_err(|_| AppError::GroundedRepository)?;
+        let binding = match repository.active_generation_binding() {
+            Ok(binding) => binding,
+            Err(error) if error.kind() == ArtifactRepositoryErrorKind::NotInitialized => {
+                return if requested.is_some() {
+                    Err(AppError::GroundedSelectionMismatch)
+                } else {
+                    Err(AppError::GroundedUnavailable)
+                };
+            }
+            Err(_) => return Err(AppError::GroundedRepository),
+        };
+        match (binding, requested) {
+            (Some(binding), Some(artifact_id)) if artifact_id != &binding.artifact_id => {
+                Err(AppError::GroundedSelectionMismatch)
+            }
+            (Some(binding), _) => Ok(binding),
+            (None, Some(_)) => Err(AppError::GroundedSelectionMismatch),
+            (None, None) => Err(AppError::GroundedUnavailable),
+        }
+    }
+
+    /// Validates one plain-text source without generating candidates.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError::TextAdapter`] when the source is not a supported
+    /// UTF-8 document.
+    pub fn validate_source(source: &[u8]) -> Result<(), AppError> {
+        TextAdapter::parse(source)?;
+        Ok(())
+    }
 }
 
 /// Application service joining grounded generation to the common validation path.
@@ -57,11 +157,14 @@ impl<'a> GroundedRewriteService<'a> {
     ///
     /// Cancellation returns the original bytes with a cancelled abstention. Other
     /// backend failures remain operational errors and never produce output bytes.
+    /// An optional claim-shadow binding records independently produced comparison
+    /// without changing hard-gate eligibility.
     ///
     /// # Errors
     ///
     /// Returns [`AppError`] for invalid input or policy, backend failure, engine
-    /// failure, or adapter failure. Candidate rejection is a successful abstention.
+    /// failure, adapter failure, or an invalid claim-shadow binding. Candidate
+    /// rejection is a successful abstention.
     pub async fn rewrite(
         &self,
         request: GroundedRewriteRequest,
@@ -76,24 +179,18 @@ impl<'a> GroundedRewriteService<'a> {
         };
         validate_rewrite_options(&options)?;
         let Some(unit) = parsed.document().rewrite_units.first() else {
-            let generator = PreparedCandidateGenerator::new(Vec::new());
-            let transaction =
-                run_plain_text_transaction(&parsed, &generator, &options, cancellation)?;
-            return Ok(with_trace(transaction, None));
+            return empty_transaction(&parsed, &options, cancellation);
         };
         let protection = match ProtectionPlan::build(&unit.text, &options.protected_terms) {
             Ok(protection) => protection,
             Err(
                 ProtectionError::ReservedTokenInSource | ProtectionError::AmbiguousSurfaceMapping,
             ) => {
-                let generator = PreparedCandidateGenerator::new(Vec::new());
-                let transaction =
-                    run_plain_text_transaction(&parsed, &generator, &options, cancellation)?;
-                return Ok(with_trace(transaction, None));
+                return empty_transaction(&parsed, &options, cancellation);
             }
             Err(error) => return Err(error.into()),
         };
-        let (masked_source, protected_values) = protection.into_parts();
+        let (masked_source, protected_values) = protection.clone().into_parts();
         let strategy_request = GroundedRequest {
             unit_id: unit.id.clone(),
             masked_source,
@@ -118,18 +215,107 @@ impl<'a> GroundedRewriteService<'a> {
         {
             Ok(generation) => generation,
             Err(error) if is_cancelled(&error) => {
-                let cancelled = CancellationToken::new();
-                cancelled.cancel();
-                let generator = PreparedCandidateGenerator::new(Vec::new());
-                let transaction =
-                    run_plain_text_transaction(&parsed, &generator, &options, &cancelled)?;
-                return Ok(with_trace(transaction, None));
+                return cancelled_transaction(&parsed, Vec::new(), &options, None);
+            }
+            Err(error) => return Err(error.into()),
+        };
+        let shadow = match prepare_claim_shadow(
+            self.backend,
+            request.claim_shadow.as_ref(),
+            unit.id.clone(),
+            &unit.text,
+            &protection,
+            &generation.candidates,
+            cancellation,
+            deadline,
+        )
+        .await
+        {
+            Ok(shadow) => shadow,
+            Err(ClaimExtractionError::Cancelled) => {
+                return cancelled_transaction(
+                    &parsed,
+                    generation.candidates,
+                    &options,
+                    Some(generation.trace),
+                );
             }
             Err(error) => return Err(error.into()),
         };
         let generator = PreparedCandidateGenerator::new(generation.candidates);
-        let transaction = run_plain_text_transaction(&parsed, &generator, &options, cancellation)?;
+        let transaction = run_plain_text_transaction(
+            &parsed,
+            &generator,
+            &options,
+            shadow
+                .as_ref()
+                .map(|observer| observer as &dyn ClaimShadowObserver),
+            cancellation,
+        )?;
         Ok(with_trace(transaction, Some(generation.trace)))
+    }
+}
+
+fn empty_transaction(
+    parsed: &ParsedTextDocument,
+    options: &RewriteOptions,
+    cancellation: &CancellationToken,
+) -> Result<GroundedRewriteResult, AppError> {
+    let generator = PreparedCandidateGenerator::new(Vec::new());
+    let transaction = run_plain_text_transaction(parsed, &generator, options, None, cancellation)?;
+    Ok(with_trace(transaction, None))
+}
+
+fn cancelled_transaction(
+    parsed: &ParsedTextDocument,
+    candidates: Vec<GeneratedCandidate>,
+    options: &RewriteOptions,
+    trace: Option<GroundedTrace>,
+) -> Result<GroundedRewriteResult, AppError> {
+    let cancelled = CancellationToken::new();
+    cancelled.cancel();
+    let generator = PreparedCandidateGenerator::new(candidates);
+    let transaction = run_plain_text_transaction(parsed, &generator, options, None, &cancelled)?;
+    Ok(with_trace(transaction, trace))
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the helper binds one optional shadow join after generation"
+)]
+async fn prepare_claim_shadow(
+    backend: &dyn InferenceBackend,
+    binding: Option<&ClaimShadowJoinBinding>,
+    unit_id: RewriteUnitId,
+    source: &str,
+    protection: &ProtectionPlan,
+    candidates: &[GeneratedCandidate],
+    cancellation: &CancellationToken,
+    deadline: Option<Instant>,
+) -> Result<Option<PreparedClaimShadowSet>, ClaimExtractionError> {
+    let Some(binding) = binding else {
+        return Ok(None);
+    };
+    let restored: Vec<String> = candidates
+        .iter()
+        .filter_map(|candidate| protection.restore(&candidate.text).ok())
+        .collect();
+    let set = ClaimShadowJoinService::new(backend)
+        .prepare_for_candidates(
+            binding,
+            unit_id,
+            source,
+            restored.iter().map(String::as_str),
+            ClaimExtractionContext {
+                cancellation,
+                deadline,
+            },
+        )
+        .await?;
+    if set.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(set))
     }
 }
 

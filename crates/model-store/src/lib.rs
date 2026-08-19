@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 
 mod artifact_set_installation;
+mod artifact_set_removal;
 mod binding;
 mod error;
 mod integrity;
@@ -18,10 +19,12 @@ pub use artifact_set_installation::{
     ArtifactSetInstallationEpoch, ArtifactSetInstallationWriteDisposition,
     StoredArtifactSetInstallation,
 };
+pub use artifact_set_removal::StoredArtifactSetRemoval;
 pub use error::{StoreError, StoreResult};
 pub use lifecycle::ExclusiveArtifactLifecycleLock;
 pub use migration::{
     ExistingStoreMigration, StoreMigrationDisposition, StoreMigrationResult, StoreSchemaStatus,
+    required_store_schema_version,
 };
 pub use removal::{
     ArtifactInstallationEpoch, ArtifactRemovalPhase, StoredArtifactInstallation,
@@ -29,5 +32,5 @@ pub use removal::{
 };
 pub use store::{
     ArtifactStateStore, InstallationWriteDisposition, RemovalCompletionDisposition,
-    RemovalPreparationDisposition, StoredArtifactState, WriteDisposition,
+    RemovalPreparationDisposition, StoredArtifactSetState, StoredArtifactState, WriteDisposition,
 };

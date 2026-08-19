@@ -18,13 +18,15 @@ use crate::{
     failure::RunFailure,
 };
 
+mod escape;
+mod inspect;
 mod report;
 #[cfg(test)]
 mod tests;
 
 /// Where the exact accepted document bytes are written, if anywhere.
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum OutputSink {
+pub(crate) enum OutputSink {
     /// Only the report is emitted.
     None,
     /// Exact bytes are written to a new file that must not already exist.
@@ -42,11 +44,19 @@ pub(crate) struct CheckRequest {
     pub(crate) output: Option<PathBuf>,
     pub(crate) raw_terminal: bool,
     pub(crate) confirmed: bool,
+    pub(crate) inspection: CheckInspection,
+}
+
+/// Optional inspection views that do not change acceptance.
+pub(crate) struct CheckInspection {
+    pub(crate) diff: bool,
+    pub(crate) dry_run: bool,
+    pub(crate) trace: Option<PathBuf>,
 }
 
 /// Validates one candidate and applies the explicit input and output policy.
 pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCode, RunFailure> {
-    let sink = resolve_output_sink(&request)?;
+    let sink = resolve_output_sink(request.output.as_deref())?;
     ensure_distinct_inputs(&request.source, &request.candidate)?;
 
     let cancellation = CancellationToken::new();
@@ -60,6 +70,7 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         .map_err(|error| RunFailure::check_read(&error))?;
     let candidate =
         String::from_utf8(candidate_bytes).map_err(|_| RunFailure::check_invalid_utf8())?;
+    let source_for_diff = request.inspection.diff.then(|| source.clone());
 
     let result = CandidateCheckService::check_with_cancellation(
         CandidateCheckRequest {
@@ -74,7 +85,23 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         return Err(RunFailure::cancelled(CommandName::Check));
     }
 
-    emit_document(&sink, &result.output, request.raw_terminal)?;
+    if !request.inspection.dry_run {
+        emit_document(
+            &sink,
+            &result.output,
+            request.raw_terminal,
+            request.confirmed,
+        )?;
+    }
+    if let Some(source_bytes) = source_for_diff.as_deref() {
+        inspect::write_diff(
+            &inspect::SafeDiff::compare(source_bytes, &result.output),
+            ReportTarget::Diagnostic,
+        )?;
+    }
+    if let Some(trace) = request.inspection.trace.as_ref() {
+        inspect::write_trace(trace, &result.record)?;
+    }
     report::write(&result.record, format, report_target(&sink))
         .map_err(|_| RunFailure::operational(CommandName::Check))?;
     Ok(exit_status(
@@ -92,25 +119,29 @@ fn ensure_distinct_inputs(source: &Path, candidate: &Path) -> Result<(), RunFail
     Ok(())
 }
 
-fn is_standard_stream(path: &Path) -> bool {
+pub(crate) fn is_standard_stream(path: &Path) -> bool {
     path.as_os_str() == STANDARD_STREAM_PATH
 }
 
 /// Resolves and validates the output policy before any document work happens.
-fn resolve_output_sink(request: &CheckRequest) -> Result<OutputSink, RunFailure> {
-    let Some(output) = request.output.as_ref() else {
+pub(crate) fn resolve_output_sink(output: Option<&Path>) -> Result<OutputSink, RunFailure> {
+    resolve_output_sink_for(output, CommandName::Check)
+}
+
+pub(crate) fn resolve_output_sink_for(
+    output: Option<&Path>,
+    command: CommandName,
+) -> Result<OutputSink, RunFailure> {
+    let Some(output) = output else {
         return Ok(OutputSink::None);
     };
     if is_standard_stream(output) {
-        if io::stdout().is_terminal() && !(request.raw_terminal && request.confirmed) {
-            return Err(RunFailure::raw_terminal_refused());
-        }
         return Ok(OutputSink::Standard);
     }
     if output.exists() {
-        return Err(RunFailure::output_exists());
+        return Err(RunFailure::output_exists_for(command));
     }
-    Ok(OutputSink::File(output.clone()))
+    Ok(OutputSink::File(output.to_path_buf()))
 }
 
 /// Reports are separated from document bytes so one stream is never both.
@@ -130,16 +161,47 @@ pub(crate) enum ReportTarget {
     Diagnostic,
 }
 
-/// Writes the exact accepted bytes according to the resolved output policy.
+/// How accepted document bytes are written to a destination stream.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DocumentRender {
+    /// Exact accepted bytes. Used for files, pipes, and the raw-terminal opt-in.
+    Exact,
+    /// Escaped interactive rendering that cannot drive a terminal.
+    Escaped,
+}
+
+/// Chooses exact bytes versus escaped rendering without consulting the filesystem.
+const fn resolve_document_render(
+    is_terminal: bool,
+    raw_terminal: bool,
+    confirmed: bool,
+) -> DocumentRender {
+    if is_terminal && !(raw_terminal && confirmed) {
+        DocumentRender::Escaped
+    } else {
+        DocumentRender::Exact
+    }
+}
+
+/// Writes accepted document bytes according to the resolved output policy.
 ///
 /// The source document is never modified and an existing destination is never
-/// replaced. Raw terminal emission warns on standard error before the bytes.
-fn emit_document(sink: &OutputSink, bytes: &[u8], raw_terminal: bool) -> Result<(), RunFailure> {
+/// replaced. A terminal receives escaped rendering unless `--raw-terminal --yes`
+/// both appear. Either flag alone stays escaped. Raw terminal emission warns
+/// on standard error before the exact bytes.
+fn emit_document(
+    sink: &OutputSink,
+    bytes: &[u8],
+    raw_terminal: bool,
+    confirmed: bool,
+) -> Result<(), RunFailure> {
     match sink {
         OutputSink::None => Ok(()),
         OutputSink::File(path) => write_new_file(path, bytes),
         OutputSink::Standard => {
-            if raw_terminal && io::stdout().is_terminal() {
+            let terminal = io::stdout().is_terminal();
+            let render = resolve_document_render(terminal, raw_terminal, confirmed);
+            if render == DocumentRender::Exact && terminal {
                 let mut stderr = io::stderr().lock();
                 writeln!(
                     stderr,
@@ -147,9 +209,14 @@ fn emit_document(sink: &OutputSink, bytes: &[u8], raw_terminal: bool) -> Result<
                 )
                 .map_err(|_| RunFailure::operational(CommandName::Check))?;
             }
+            let payload = match render {
+                DocumentRender::Exact => bytes.to_vec(),
+                DocumentRender::Escaped => escape::render_document_for_terminal(bytes)
+                    .map_err(|_| RunFailure::operational(CommandName::Check))?,
+            };
             let mut stdout = io::stdout().lock();
             stdout
-                .write_all(bytes)
+                .write_all(&payload)
                 .and_then(|()| stdout.flush())
                 .map_err(|_| RunFailure::operational(CommandName::Check))
         }

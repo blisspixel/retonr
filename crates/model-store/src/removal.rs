@@ -70,7 +70,7 @@ pub enum ArtifactRemovalPhase {
 }
 
 impl ArtifactRemovalPhase {
-    pub(super) const fn key(self) -> &'static str {
+    pub(crate) const fn key(self) -> &'static str {
         match self {
             Self::Prepared => "prepared",
             Self::Completed => "completed",

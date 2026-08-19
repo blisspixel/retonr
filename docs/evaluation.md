@@ -37,6 +37,11 @@ Every style claim is compared with:
 5. An editable measured profile without the full compiler
 6. A compact per-user adapter when hardware and licensing permit
 
+`rewrite-eval --baseline` runs a versioned baseline definition against a suite.
+The checked-in no-rewrite definition executes offline. Generative kinds remain
+library-only until a selected local backend is supplied; the CLI fails closed
+instead of starting a runtime or using the network.
+
 The architecture is justified only when it improves over the strongest cheap
 baseline on blind user preference without a material fidelity regression.
 
@@ -66,6 +71,13 @@ the suite for future locked qualification.
 Locked cases never become prompts, regression training data, or threshold-tuning
 data. A label defect creates a new suite version and invalidation record rather than
 silently changing the old result.
+
+Development also keeps a writing-sample library, a research-only watermark
+refusal corpus, and an independent claim-shadow calibration corpus. Those files
+are not locked release evidence and do not grant live engine authority. The
+calibration runner assigns fixture claim identities separately from generation
+and fails if attaching the informational shadow changes hard-gate acceptance.
+See [Writing-sample library](evaluation-style-library.md).
 
 ### Authorized user corpus
 

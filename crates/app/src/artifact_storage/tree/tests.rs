@@ -6,7 +6,7 @@ use tempfile::tempdir;
 
 use super::{
     ArtifactInventoryError, ManagedTreeEntryKind, ManagedTreeLimits, OwnedStagingTree,
-    PinnedDirectory,
+    PinnedDirectory, remove_verified_managed_tree,
 };
 
 fn path(value: &str) -> ArtifactSetRelativePath {
@@ -305,6 +305,37 @@ fn publication_never_replaces_an_existing_destination() {
             .expect("read staging parent")
             .count(),
         0
+    );
+}
+
+#[test]
+fn published_tree_removal_releases_identity_handles_before_unlink() {
+    let fixture = tempdir().expect("temporary directory");
+    let parent_path = fixture.path().join("sets");
+    let root_path = parent_path.join("set-root");
+    fs::create_dir_all(root_path.join("model")).expect("create published tree");
+    fs::write(root_path.join("config.json"), b"config").expect("write config");
+    fs::write(root_path.join("model/weights.bin"), b"weights").expect("write weights");
+    let parent = PinnedDirectory::open_existing(&parent_path).expect("pin parent");
+    let root = parent
+        .open_child_directory(std::ffi::OsStr::new("set-root"))
+        .expect("pin published root");
+
+    remove_verified_managed_tree(
+        &parent,
+        std::ffi::OsStr::new("set-root"),
+        root,
+        limits(8),
+        8,
+    )
+    .expect("remove published tree");
+
+    assert!(!root_path.exists());
+    assert!(
+        fs::read_dir(&parent_path)
+            .expect("read parent")
+            .next()
+            .is_none()
     );
 }
 

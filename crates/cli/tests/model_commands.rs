@@ -3,7 +3,8 @@ use std::{fs, path::Path};
 use assert_cmd::Command;
 use predicates::prelude::*;
 use rewrite_model::{
-    ARTIFACT_MANIFEST_SCHEMA_VERSION, ArtifactId, ArtifactManifest, ArtifactRole, ArtifactSource,
+    ARTIFACT_MANIFEST_SCHEMA_VERSION, ArtifactId, ArtifactManifest, ArtifactRole,
+    ArtifactSetManifest, ArtifactSetMember, ArtifactSetRelativePath, ArtifactSource,
     DeclaredCapabilities, LicenseRecord,
 };
 use rewrite_types::Digest;
@@ -211,12 +212,17 @@ fn help_lists_only_the_implemented_offline_model_surface() {
         .assert()
         .success()
         .stdout(predicate::str::contains("import"))
+        .stdout(predicate::str::contains("import-set"))
         .stdout(predicate::str::contains("inventory"))
+        .stdout(predicate::str::contains("inventory-set"))
         .stdout(predicate::str::contains("pending-operations"))
         .stdout(predicate::str::contains("migrate"))
         .stdout(predicate::str::contains("reconcile"))
+        .stdout(predicate::str::contains("reconcile-set"))
         .stdout(predicate::str::contains("remove"))
+        .stdout(predicate::str::contains("remove-set"))
         .stdout(predicate::str::contains("recover-removal"))
+        .stdout(predicate::str::contains("recover-set-removal"))
         .stdout(predicate::str::contains("download").not())
         .stdout(predicate::str::contains("activate").not())
         .stdout(predicate::str::contains("qualify").not());
@@ -245,7 +251,9 @@ fn pending_operations_is_empty_and_read_only_for_a_healthy_repository() {
         .args(["model", "pending-operations"])
         .assert()
         .success()
-        .stdout(predicate::eq("pending_artifact_removals: 0\n"));
+        .stdout(predicate::eq(
+            "pending_artifact_removals: 0\npending_artifact_set_removals: 0\n",
+        ));
 }
 
 #[test]
@@ -387,4 +395,314 @@ fn import_never_claims_or_mutates_a_nonempty_uninitialized_directory() {
 
     assert_eq!(fs::read(sentinel).expect("read sentinel"), b"keep this");
     assert_eq!(fs::read_dir(data).expect("read project").count(), 1);
+}
+
+fn write_set_fixture(root: &Path) -> (std::path::PathBuf, std::path::PathBuf, String) {
+    let source = root.join("private-set-source");
+    fs::create_dir(&source).expect("create set source");
+    fs::create_dir(source.join("model")).expect("create nested set source");
+    let files: [(&str, &[u8]); 2] = [
+        ("config.json", b"{\"name\":\"private-set\"}"),
+        ("model/weights.bin", b"private set weights"),
+    ];
+    let members = files
+        .iter()
+        .map(|(path, bytes)| {
+            ArtifactSetMember::new(
+                ArtifactId::from_digest(Digest::sha256(bytes)),
+                u64::try_from(bytes.len()).expect("fixture size"),
+                ArtifactSetRelativePath::new(*path).expect("portable path"),
+            )
+        })
+        .collect();
+    let manifest = ArtifactSetManifest::new(members).expect("valid set manifest");
+    for (path, bytes) in files {
+        fs::write(source.join(path), bytes).expect("write set member");
+    }
+    let manifest_path = root.join("private-set-manifest.json");
+    fs::write(&manifest_path, manifest.canonical_json()).expect("write set manifest");
+    (
+        source,
+        manifest_path,
+        manifest.artifact_set_id().digest().as_str().to_owned(),
+    )
+}
+
+fn import_set(data: &Path, source: &Path, manifest: &Path) -> Value {
+    let output = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(data)
+        .args(["model", "import-set"])
+        .arg(source)
+        .arg("--manifest")
+        .arg(manifest)
+        .output()
+        .expect("run set import");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "set import failed: {stderr}");
+    assert!(
+        output.stderr.is_empty(),
+        "set import stderr was not empty: {stderr}"
+    );
+    serde_json::from_slice(&output.stdout).expect("parse set import JSON")
+}
+
+#[test]
+fn imports_one_exact_artifact_set_without_activation_and_is_idempotent() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, artifact_set_id) = write_set_fixture(directory.path());
+    let imported = import_set(&data, &source, &manifest_path);
+    assert_eq!(imported["command"], "model.import_set");
+    assert_eq!(
+        imported["result"]["selection"]["artifact_set_id"],
+        artifact_set_id
+    );
+    assert_eq!(
+        imported["result"]["selection"]["installation_generation"],
+        "1"
+    );
+    assert_eq!(imported["result"]["disposition"], "imported");
+
+    let imported_text = serde_json::to_string(&imported).expect("encode imported result");
+    for private in [
+        "private-set-source",
+        "private-set",
+        "weights.bin",
+        "artifact-storage",
+        "private set weights",
+    ] {
+        assert!(!imported_text.contains(private));
+    }
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "--data-dir"])
+        .arg(&data)
+        .args(["model", "import-set"])
+        .arg(&source)
+        .arg("--manifest")
+        .arg(&manifest_path)
+        .assert()
+        .success()
+        .stderr(predicate::str::is_empty())
+        .stdout(predicate::str::contains("disposition: already_present"))
+        .stdout(predicate::str::contains(format!(
+            "artifact_set_id: {artifact_set_id}"
+        )))
+        .stdout(predicate::str::contains("private-set").not());
+}
+
+#[test]
+fn inventories_one_exact_artifact_set_without_disclosing_member_paths() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, artifact_set_id) = write_set_fixture(directory.path());
+    import_set(&data, &source, &manifest_path);
+
+    let inventory = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "inventory-set"])
+        .output()
+        .expect("run set inventory");
+    assert!(inventory.status.success());
+    assert!(inventory.stderr.is_empty());
+    let inventory_text = String::from_utf8(inventory.stdout.clone()).expect("UTF-8 output");
+    for private in [
+        "private-set-source",
+        "weights.bin",
+        "artifact-storage",
+        "private set weights",
+    ] {
+        assert!(!inventory_text.contains(private));
+    }
+    let inventory: Value = serde_json::from_slice(&inventory.stdout).expect("parse set inventory");
+    assert_eq!(inventory["command"], "model.inventory_set");
+    assert_eq!(inventory["result"]["health"], "clean");
+    assert_eq!(
+        inventory["result"]["registered"][0]["selection"]["artifact_set_id"],
+        artifact_set_id
+    );
+    assert!(inventory["result"]["storage_entry_count"].is_string());
+    assert!(inventory["result"]["verified_bytes"].is_string());
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "--data-dir"])
+        .arg(&data)
+        .args(["model", "inventory-set"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(format!(
+            "registered {artifact_set_id} generation=1"
+        )))
+        .stdout(predicate::str::contains("weights.bin").not());
+
+    let unexpected = data
+        .join("artifact-storage")
+        .join("sets")
+        .join("unexpected-set-name");
+    fs::write(&unexpected, b"unexpected").expect("write unexpected set entry");
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "inventory-set", "--fail-on-findings"])
+        .assert()
+        .code(3)
+        .stderr(predicate::str::is_empty())
+        .stdout(predicate::str::contains("\"health\": \"findings\""))
+        .stdout(predicate::str::contains("unexpected-set-name").not());
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "inventory"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"health\": \"clean\""));
+}
+
+#[test]
+fn reconciles_one_exact_artifact_set_without_changing_bytes() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, artifact_set_id) = write_set_fixture(directory.path());
+    import_set(&data, &source, &manifest_path);
+
+    let reconciled = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "reconcile-set", "--manifest"])
+        .arg(&manifest_path)
+        .output()
+        .expect("run set reconcile");
+    assert!(reconciled.status.success());
+    assert!(reconciled.stderr.is_empty());
+    let reconciled_text = String::from_utf8(reconciled.stdout.clone()).expect("UTF-8 output");
+    for private in [
+        "private-set-source",
+        "weights.bin",
+        "artifact-storage",
+        "private set weights",
+    ] {
+        assert!(!reconciled_text.contains(private));
+    }
+    let reconciled: Value =
+        serde_json::from_slice(&reconciled.stdout).expect("parse set reconcile");
+    assert_eq!(reconciled["command"], "model.reconcile_set");
+    assert_eq!(reconciled["result"]["disposition"], "already_registered");
+    assert_eq!(
+        reconciled["result"]["selection"]["artifact_set_id"],
+        artifact_set_id
+    );
+    assert_eq!(
+        reconciled["result"]["selection"]["installation_generation"],
+        "1"
+    );
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "--data-dir"])
+        .arg(&data)
+        .args(["model", "reconcile-set", "--manifest"])
+        .arg(&manifest_path)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("disposition: already_registered"))
+        .stdout(predicate::str::contains(format!(
+            "artifact_set_id: {artifact_set_id}"
+        )))
+        .stdout(predicate::str::contains("weights.bin").not());
+}
+
+#[test]
+fn removes_one_exact_artifact_set_generation() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, artifact_set_id) = write_set_fixture(directory.path());
+    import_set(&data, &source, &manifest_path);
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "remove-set", "--artifact-set-id", &artifact_set_id])
+        .args(["--installation-generation", "1"])
+        .assert()
+        .code(3)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "\"code\": \"confirmation_required\"",
+        ));
+
+    let removal = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "remove-set", "--artifact-set-id", &artifact_set_id])
+        .args(["--installation-generation", "1", "--yes"])
+        .output()
+        .expect("run set removal");
+    assert!(
+        removal.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&removal.stdout),
+        String::from_utf8_lossy(&removal.stderr)
+    );
+    let removal: Value = serde_json::from_slice(&removal.stdout).expect("parse set removal");
+    assert_eq!(removal["command"], "model.remove_set");
+    assert_eq!(removal["result"]["disposition"], "removed");
+    assert_eq!(
+        removal["result"]["selection"]["artifact_set_id"],
+        artifact_set_id
+    );
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "inventory-set"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"registered\": []"));
+}
+
+#[test]
+fn set_import_rejects_a_file_source_and_a_single_file_manifest() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, _) = write_set_fixture(directory.path());
+    let (file_source, file_manifest, _) = write_fixture(directory.path());
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "import-set"])
+        .arg(&file_source)
+        .arg("--manifest")
+        .arg(&manifest_path)
+        .assert()
+        .code(3)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"code\": \"artifact_conflict\""));
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "import-set"])
+        .arg(&source)
+        .arg("--manifest")
+        .arg(&file_manifest)
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"code\": \"invalid_manifest\""));
 }

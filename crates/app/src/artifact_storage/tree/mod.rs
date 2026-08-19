@@ -13,9 +13,11 @@ use super::{
 };
 
 mod platform;
+mod removal;
 mod staging;
 mod traversal;
 
+pub(crate) use removal::remove_verified_managed_tree;
 pub(crate) use staging::OwnedStagingTree;
 
 #[cfg(test)]
@@ -35,6 +37,10 @@ impl ManagedTreeLimits {
         } else {
             Ok(Self { maximum_entries })
         }
+    }
+
+    pub(crate) const fn maximum_entries(self) -> usize {
+        self.maximum_entries
     }
 
     fn remaining(self, observed: usize) -> Result<usize, ArtifactInventoryError> {
@@ -164,7 +170,7 @@ impl PinnedDirectory {
         Ok(Self { handle })
     }
 
-    fn open_relative_directory(
+    pub(super) fn open_relative_directory(
         &self,
         relative_path: &ArtifactSetRelativePath,
     ) -> Result<Self, ArtifactInventoryError> {

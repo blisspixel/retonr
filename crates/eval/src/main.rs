@@ -1,4 +1,4 @@
-//! Command-line runner for deterministic suites and editorial corpus validation.
+//! Command-line runner for deterministic suites, offline baselines, and corpus validation.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -13,24 +13,97 @@ use std::{
 
 use clap::Parser;
 use rewrite_eval::{
-    MAX_EDITORIAL_CORPUS_BYTES, MAX_EVALUATION_SUITE_BYTES, parse_editorial_corpus, parse_suite,
-    run_suite,
+    MAX_BASELINE_DEFINITION_BYTES, MAX_CLAIM_SHADOW_CALIBRATION_BYTES, MAX_EDITORIAL_CORPUS_BYTES,
+    MAX_EVALUATION_SUITE_BYTES, MAX_WATERMARK_RESEARCH_BYTES, MAX_WRITING_SAMPLE_LIBRARY_BYTES,
+    parse_baseline_definition, parse_claim_shadow_calibration, parse_editorial_corpus, parse_suite,
+    parse_watermark_research_corpus, parse_writing_sample_library, run_claim_shadow_calibration,
+    run_offline_baseline, run_suite,
 };
 
-/// Runs a versioned fidelity suite or validates an editorial-quality corpus.
+/// Runs a versioned fidelity suite, baseline, claim-shadow calibration, or corpus validation.
 #[derive(Debug, Parser)]
 #[command(name = "rewrite-eval", version, about)]
 struct Cli {
     /// JSON evaluation suite.
     #[arg(
         value_name = "SUITE",
-        required_unless_present = "editorial_corpus",
-        conflicts_with = "editorial_corpus"
+        required_unless_present_any = [
+            "editorial_corpus",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration"
+        ],
+        conflicts_with_all = [
+            "editorial_corpus",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration"
+        ]
     )]
     suite: Option<PathBuf>,
+    /// Run a versioned offline baseline definition against SUITE.
+    #[arg(
+        long,
+        value_name = "DEFINITION",
+        conflicts_with_all = [
+            "editorial_corpus",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration"
+        ]
+    )]
+    baseline: Option<PathBuf>,
     /// Validate a synthetic editorial-quality corpus instead of running a suite.
-    #[arg(long, value_name = "CORPUS", conflicts_with = "suite")]
+    #[arg(
+        long,
+        value_name = "CORPUS",
+        conflicts_with_all = [
+            "suite",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration",
+            "baseline"
+        ]
+    )]
     editorial_corpus: Option<PathBuf>,
+    /// Validate a writing-sample library.
+    #[arg(
+        long,
+        value_name = "LIBRARY",
+        conflicts_with_all = [
+            "suite",
+            "editorial_corpus",
+            "watermark_research",
+            "claim_shadow_calibration",
+            "baseline"
+        ]
+    )]
+    writing_samples: Option<PathBuf>,
+    /// Validate a research-only watermark refusal corpus.
+    #[arg(
+        long,
+        value_name = "CORPUS",
+        conflicts_with_all = [
+            "suite",
+            "editorial_corpus",
+            "writing_samples",
+            "claim_shadow_calibration",
+            "baseline"
+        ]
+    )]
+    watermark_research: Option<PathBuf>,
+    /// Run an independent claim-shadow calibration corpus.
+    #[arg(
+        long,
+        value_name = "CORPUS",
+        conflicts_with_all = [
+            "suite",
+            "editorial_corpus",
+            "writing_samples",
+            "baseline"
+        ]
+    )]
+    claim_shadow_calibration: Option<PathBuf>,
 }
 
 fn main() -> ExitCode {
@@ -55,9 +128,51 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
         writeln!(stdout)?;
         return Ok(ExitCode::SUCCESS);
     }
+    if let Some(path) = cli.writing_samples {
+        let input = read_bounded_utf8(path, MAX_WRITING_SAMPLE_LIBRARY_BYTES)?;
+        let library = parse_writing_sample_library(&input)?;
+        let mut stdout = io::stdout().lock();
+        serde_json::to_writer_pretty(&mut stdout, &library.summary())?;
+        writeln!(stdout)?;
+        return Ok(ExitCode::SUCCESS);
+    }
+    if let Some(path) = cli.watermark_research {
+        let input = read_bounded_utf8(path, MAX_WATERMARK_RESEARCH_BYTES)?;
+        let corpus = parse_watermark_research_corpus(&input)?;
+        let mut stdout = io::stdout().lock();
+        serde_json::to_writer_pretty(&mut stdout, &corpus.summary())?;
+        writeln!(stdout)?;
+        return Ok(ExitCode::SUCCESS);
+    }
+    if let Some(path) = cli.claim_shadow_calibration {
+        let input = read_bounded_utf8(path, MAX_CLAIM_SHADOW_CALIBRATION_BYTES)?;
+        let corpus = parse_claim_shadow_calibration(&input)?;
+        let report = run_claim_shadow_calibration(&corpus);
+        let mut stdout = io::stdout().lock();
+        serde_json::to_writer_pretty(&mut stdout, &report)?;
+        writeln!(stdout)?;
+        return Ok(if report.is_success() {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        });
+    }
     let path = cli.suite.ok_or("evaluation suite path is required")?;
     let input = read_bounded_utf8(path, MAX_EVALUATION_SUITE_BYTES)?;
     let suite = parse_suite(&input)?;
+    if let Some(definition_path) = cli.baseline {
+        let definition_input = read_bounded_utf8(definition_path, MAX_BASELINE_DEFINITION_BYTES)?;
+        let definition = parse_baseline_definition(&definition_input)?;
+        let report = run_offline_baseline(&definition, &suite)?;
+        let mut stdout = io::stdout().lock();
+        serde_json::to_writer_pretty(&mut stdout, &report)?;
+        writeln!(stdout)?;
+        return Ok(if report.is_success() {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        });
+    }
     let report = run_suite(&suite);
     let mut stdout = io::stdout().lock();
     serde_json::to_writer_pretty(&mut stdout, &report)?;

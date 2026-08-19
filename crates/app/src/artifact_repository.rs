@@ -1,7 +1,6 @@
 use std::{
     ffi::OsStr,
-    fs::{self, File, TryLockError},
-    io,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -17,7 +16,7 @@ use crate::{
     ArtifactOrphanReconciliationService, ArtifactReconciliationLimits, ArtifactRemovalDisposition,
     ArtifactRemovalLimits, ArtifactRemovalRequest, ArtifactRemovalService,
     OfflineArtifactImportRequest, OfflineArtifactImportService,
-    artifact_storage::{PinnedDirectory, fingerprint_std_file, is_indirect, lock_shared},
+    artifact_storage::{PinnedDirectory, is_indirect, lock_shared},
 };
 
 const MANAGED_STORAGE_DIRECTORY: &str = "artifact-storage";
@@ -25,10 +24,22 @@ const STATE_DATABASE_FILE: &str = "artifact-state.sqlite3";
 const REPOSITORY_LOCK_FILE: &str = ".artifact-repository.lock";
 
 mod contract;
+mod guard;
+mod inspect;
 mod migration;
+mod selection;
 mod set_import;
+mod set_inventory;
 mod set_lease;
+mod set_reconciliation;
+mod set_removal;
 
+pub(crate) use guard::{
+    DataDirectoryGuard, RepositoryLockMode, ensure_repository_not_cancelled, finish_operation,
+    lock_exclusive, map_data_directory_boundary_error, map_removal_error,
+};
+
+pub use contract::ArtifactRepositorySetRemovalResult;
 pub(crate) use contract::store_error_kind;
 pub use contract::{
     ArtifactInstallationKey, ArtifactRepositoryBackupKey, ArtifactRepositoryError,
@@ -38,6 +49,8 @@ pub use contract::{
     ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
     ArtifactRepositoryRemovalResult, ArtifactRepositorySetImportResult, ArtifactSetInstallationKey,
 };
+pub use inspect::{ArtifactRepositorySchemaInspection, ArtifactRepositorySchemaStatus};
+pub use set_reconciliation::ArtifactRepositorySetReconciliationResult;
 
 /// Application-owned entry point for administrative artifact lifecycle operations.
 ///
@@ -167,7 +180,16 @@ impl ArtifactRepository {
                 .map(ArtifactInstallationKey::from_stored)
                 .collect();
             ensure_repository_not_cancelled(cancellation)?;
-            Ok(ArtifactRepositoryPendingOperations { artifact_removals })
+            let artifact_set_removals = store
+                .pending_artifact_set_removals(maximum_state_entries)?
+                .iter()
+                .map(ArtifactSetInstallationKey::from_stored)
+                .collect();
+            ensure_repository_not_cancelled(cancellation)?;
+            Ok(ArtifactRepositoryPendingOperations {
+                artifact_removals,
+                artifact_set_removals,
+            })
         })();
         finish_operation(result, guard.recheck())
     }
@@ -439,140 +461,6 @@ impl ArtifactRepository {
                 other => Err(other),
             })
             .map_err(ArtifactRepositoryError::State)
-    }
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum RepositoryLockMode {
-    InitializeExclusive,
-    ExistingShared,
-    ExistingExclusive,
-}
-
-pub(crate) struct DataDirectoryGuard {
-    path: PathBuf,
-    lock: File,
-    lock_fingerprint: crate::artifact_storage::MetadataFingerprint,
-    pinned: PinnedDirectory,
-    state_database: Option<(File, crate::artifact_storage::MetadataFingerprint)>,
-}
-
-impl DataDirectoryGuard {
-    fn pin_state_database(&mut self) -> Result<(), ArtifactRepositoryError> {
-        let state_database = self
-            .pinned
-            .open_lock_file(OsStr::new(STATE_DATABASE_FILE))
-            .map_err(map_data_directory_boundary_error)?;
-        if !state_database.1.has_single_link() {
-            return Err(ArtifactRepositoryError::UnsafeDataDirectory);
-        }
-        self.state_database = Some(state_database);
-        Ok(())
-    }
-
-    fn pin_or_create_state_database(&mut self) -> Result<(), ArtifactRepositoryError> {
-        let state_database = self
-            .pinned
-            .open_or_create_lock_file(OsStr::new(STATE_DATABASE_FILE))
-            .map_err(map_data_directory_boundary_error)?;
-        if !state_database.1.has_single_link() {
-            return Err(ArtifactRepositoryError::UnsafeDataDirectory);
-        }
-        self.pinned
-            .sync()
-            .map_err(map_data_directory_boundary_error)?;
-        self.state_database = Some(state_database);
-        Ok(())
-    }
-
-    fn recheck(&self) -> Result<(), ArtifactRepositoryError> {
-        let held_lock =
-            fingerprint_std_file(&self.lock).map_err(map_data_directory_boundary_error)?;
-        let current_lock = self
-            .pinned
-            .child_file_fingerprint(OsStr::new(REPOSITORY_LOCK_FILE))
-            .map_err(map_data_directory_boundary_error)?;
-        let pinned = self
-            .pinned
-            .fingerprint()
-            .map_err(map_data_directory_boundary_error)?;
-        let current = PinnedDirectory::fingerprint_path(&self.path)
-            .map_err(map_data_directory_boundary_error)?;
-        let state_matches = self
-            .state_database
-            .as_ref()
-            .is_none_or(|(file, fingerprint)| {
-                fingerprint_std_file(file)
-                    .is_ok_and(|held| held.same_identity(fingerprint) && held.has_single_link())
-                    && self
-                        .pinned
-                        .child_file_fingerprint(OsStr::new(STATE_DATABASE_FILE))
-                        .is_ok_and(|current| {
-                            current.same_identity(fingerprint) && current.has_single_link()
-                        })
-            });
-        if held_lock == self.lock_fingerprint
-            && current_lock == self.lock_fingerprint
-            && pinned == current
-            && state_matches
-        {
-            Ok(())
-        } else {
-            Err(ArtifactRepositoryError::UnsafeDataDirectory)
-        }
-    }
-}
-
-fn map_data_directory_boundary_error(error: ArtifactInventoryError) -> ArtifactRepositoryError {
-    match error {
-        ArtifactInventoryError::StorageInUse => ArtifactRepositoryError::RepositoryInUse,
-        ArtifactInventoryError::StorageIo(error) => ArtifactRepositoryError::DataDirectoryIo(error),
-        _ => ArtifactRepositoryError::UnsafeDataDirectory,
-    }
-}
-
-fn lock_exclusive(file: &File) -> Result<(), ArtifactRepositoryError> {
-    match file.try_lock() {
-        Ok(()) => Ok(()),
-        Err(TryLockError::WouldBlock) => Err(ArtifactRepositoryError::RepositoryInUse),
-        Err(TryLockError::Error(error)) => Err(ArtifactRepositoryError::DataDirectoryIo(error)),
-    }
-}
-
-fn map_removal_error(
-    key: &ArtifactInstallationKey,
-    error: crate::ArtifactRemovalError,
-) -> ArtifactRepositoryError {
-    if matches!(error, crate::ArtifactRemovalError::RecoveryRequired(_)) {
-        ArtifactRepositoryError::RemovalRecoveryRequired {
-            key: key.clone(),
-            source: error,
-        }
-    } else {
-        ArtifactRepositoryError::Removal(error)
-    }
-}
-
-fn finish_operation<T>(
-    result: Result<T, ArtifactRepositoryError>,
-    boundary: Result<(), ArtifactRepositoryError>,
-) -> Result<T, ArtifactRepositoryError> {
-    match (result, boundary) {
-        (Err(error @ ArtifactRepositoryError::RemovalRecoveryRequired { .. }), Err(_)) => {
-            Err(error)
-        }
-        (_, Err(error)) => Err(error),
-        (result, Ok(())) => result,
-    }
-}
-
-fn ensure_repository_not_cancelled(
-    cancellation: &CancellationToken,
-) -> Result<(), ArtifactRepositoryError> {
-    if cancellation.is_cancelled() {
-        Err(ArtifactRepositoryError::Cancelled)
-    } else {
-        Ok(())
     }
 }
 

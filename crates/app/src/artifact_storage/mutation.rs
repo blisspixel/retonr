@@ -65,6 +65,19 @@ impl PinnedDirectory {
         }
     }
 
+    pub(crate) fn open_optional_child_directory(
+        &self,
+        name: &OsStr,
+    ) -> Result<Option<Self>, ArtifactInventoryError> {
+        match inspect_entry(&self.handle, name)? {
+            None => Ok(None),
+            Some(entry) if !entry.indirect && !entry.direct_regular_file => {
+                Ok(Some(self.open_child_directory(name)?))
+            }
+            Some(_) => Err(ArtifactInventoryError::UnsafeStorageLayout),
+        }
+    }
+
     pub(crate) fn has_direct_regular_child(
         &self,
         name: &OsStr,

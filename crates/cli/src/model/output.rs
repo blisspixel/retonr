@@ -9,11 +9,13 @@ use serde::Serialize;
 use crate::contract::ArtifactSelectionDto;
 
 mod migration;
+mod set_import;
+mod set_inventory;
 
 pub(crate) struct ModelOutput {
     pub(crate) value: serde_json::Value,
     pub(crate) text: String,
-    findings: bool,
+    pub(crate) findings: bool,
 }
 
 impl ModelOutput {
@@ -100,7 +102,16 @@ impl ModelOutput {
             .iter()
             .map(ArtifactSelectionDto::from)
             .collect();
-        let mut text = format!("pending_artifact_removals: {}\n", artifact_removals.len());
+        let artifact_set_removals: Vec<_> = result
+            .artifact_set_removals
+            .iter()
+            .map(crate::contract::ArtifactSetSelectionDto::from)
+            .collect();
+        let mut text = format!(
+            "pending_artifact_removals: {}\npending_artifact_set_removals: {}\n",
+            artifact_removals.len(),
+            artifact_set_removals.len()
+        );
         for selection in &artifact_removals {
             use std::fmt::Write as _;
             writeln!(
@@ -110,8 +121,20 @@ impl ModelOutput {
             )
             .expect("writing to a String cannot fail");
         }
-        let value = serde_json::to_value(PendingOperationsResult { artifact_removals })
-            .expect("pending-operations DTO serialization is infallible");
+        for selection in &artifact_set_removals {
+            use std::fmt::Write as _;
+            writeln!(
+                text,
+                "artifact_set_removal {} generation={}",
+                selection.artifact_set_id, selection.installation_generation
+            )
+            .expect("writing to a String cannot fail");
+        }
+        let value = serde_json::to_value(PendingOperationsResult {
+            artifact_removals,
+            artifact_set_removals,
+        })
+        .expect("pending-operations DTO serialization is infallible");
         Self {
             value,
             text,
@@ -150,6 +173,7 @@ struct SelectionResult {
 #[derive(Serialize)]
 struct PendingOperationsResult {
     artifact_removals: Vec<ArtifactSelectionDto>,
+    artifact_set_removals: Vec<crate::contract::ArtifactSetSelectionDto>,
 }
 
 #[derive(Serialize)]
@@ -474,8 +498,10 @@ mod tests {
         .expect("valid fixture key");
         let output = ModelOutput::pending_operations(&ArtifactRepositoryPendingOperations {
             artifact_removals: vec![key],
+            artifact_set_removals: Vec::new(),
         });
         assert!(output.text.contains("pending_artifact_removals: 1"));
+        assert!(output.text.contains("pending_artifact_set_removals: 0"));
         assert!(output.text.contains("generation=7"));
         assert_eq!(
             output.value["artifact_removals"][0]["installation_generation"],

@@ -17,6 +17,8 @@ rewrite-model-store = { path = "../model-store", version = "0.1.0" }
 rewrite-text-adapter = { path = "../text-adapter", version = "0.1.0" }
 rewrite-types = { path = "../types", version = "0.1.0" }
 getrandom.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 
