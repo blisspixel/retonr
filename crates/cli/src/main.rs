@@ -108,14 +108,15 @@ enum Command {
     ///
     /// Reports encoding, BOM, newline kind, control-class counts, sibling
     /// sidecar presence, and whether an explicit derivative decision is
-    /// required. A directory is a non-recursive discovery manifest. It does
-    /// not parse Content Credentials, follow external references, follow
-    /// links, recurse, or strip bytes.
+    /// required. A directory is a discovery manifest. Recursion is bounded,
+    /// does not follow links, and skips hidden names plus `target` and
+    /// `node_modules`. It does not parse Content Credentials, follow
+    /// external references, or strip bytes.
     Inspect {
         /// UTF-8 source file, directory, or - for standard input.
         #[arg(value_name = "SOURCE")]
         source: PathBuf,
-        /// Recurse into child directories. Not implemented.
+        /// Recurse into real child directories without following links.
         #[arg(long)]
         recursive: bool,
     },

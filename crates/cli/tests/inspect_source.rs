@@ -144,16 +144,77 @@ fn inspect_inventories_a_directory_without_recursion_or_mutation() {
 }
 
 #[test]
-fn inspect_refuses_unimplemented_recursion() {
+fn inspect_recursive_includes_nested_files_and_skips_ignored_trees() {
     let directory = tempdir().expect("temporary directory");
-    fs::write(directory.path().join("a.txt"), "alpha\n").expect("write a");
+    let root = directory.path();
+    fs::write(root.join("a.txt"), "alpha\n").expect("write a");
+    fs::create_dir(root.join("nested")).expect("create nested");
+    fs::write(root.join("nested").join("inner.txt"), "inner\n").expect("write nested");
+    fs::create_dir(root.join("target")).expect("create target");
+    fs::write(root.join("target").join("built.txt"), "built\n").expect("write ignored");
+
+    let output = binary()
+        .args(["inspect", "--recursive"])
+        .arg(root)
+        .output()
+        .expect("run recursive inspect");
+    assert!(output.status.success());
+    let text = String::from_utf8(output.stdout).expect("UTF-8");
+    assert!(text.contains("\"recursion\": \"bounded\""));
+    assert!(text.contains("\"relative_path\": \"nested/inner.txt\""));
+    assert!(text.contains("\"relative_path\": \"a.txt\""));
+    assert!(!text.contains("built.txt"));
+    assert!(!text.contains("inner\n"));
+    assert!(text.contains("\"reason\": \"ignored\""));
+    assert!(!text.contains(&root.display().to_string()));
+    assert_eq!(
+        fs::read(root.join("nested").join("inner.txt")).expect("read nested"),
+        b"inner\n"
+    );
+
+    binary()
+        .args(["--format", "text", "inspect", "--recursive"])
+        .arg(root)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("recursion: bounded"))
+        .stdout(predicate::str::contains("document nested/inner.txt"))
+        .stdout(predicate::str::contains("skipped target reason=ignored"));
+}
+
+#[test]
+fn inspect_recursive_on_a_file_is_usage() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("a.txt");
+    fs::write(&source, "alpha\n").expect("write a");
     binary()
         .args(["inspect", "--recursive"])
-        .arg(directory.path())
+        .arg(&source)
         .assert()
-        .code(4)
+        .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains("\"code\": \"unsupported\""));
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
+}
+
+#[test]
+fn inspect_recursive_on_standard_input_is_usage() {
+    binary()
+        .args(["inspect", "--recursive", "-"])
+        .write_stdin("alpha\n")
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
+
+    binary()
+        .args(["--format", "text", "inspect", "--recursive", "-"])
+        .write_stdin("alpha\n")
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "recursive inspect requires a directory",
+        ));
 }
 
 fn source_mutated(path: &std::path::Path, expected: &[u8]) -> bool {
