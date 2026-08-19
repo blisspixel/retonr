@@ -10,7 +10,8 @@ use std::{
     process::ExitCode,
 };
 
-use clap::{Parser, Subcommand, error::ErrorKind};
+use clap::{CommandFactory, Parser, Subcommand, error::ErrorKind};
+use clap_complete::Shell;
 use rewrite_types::CancellationToken;
 
 use crate::contract::{CommandName, ErrorEnvelope, ReportFormat, SuccessEnvelope};
@@ -18,10 +19,12 @@ use crate::failure::RunFailure;
 use crate::model::{ModelCommand, ModelFailure};
 
 mod check;
+mod completions;
 pub mod contract;
 mod doctor;
 mod failure;
 mod identity;
+mod man;
 mod model;
 mod rewrite;
 mod version;
@@ -109,6 +112,20 @@ enum Command {
     Version,
     /// Inspect local CLI identity and optional repository schema without mutation.
     Doctor,
+    /// Write a completion script for one supported shell.
+    ///
+    /// JSON reports the shell and script. Text writes the raw script so it can
+    /// be sourced or saved without a machine envelope.
+    Completions {
+        /// Shell that will consume the generated script.
+        #[arg(value_enum, value_name = "SHELL")]
+        shell: Shell,
+    },
+    /// Write a generated section-1 manual page for the CLI.
+    ///
+    /// JSON reports the name, section, and page. Text writes the raw manual
+    /// page without a machine envelope.
+    Man,
 }
 
 fn main() -> ExitCode {
@@ -227,6 +244,20 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             write_model_report(command, &output, format)
                 .map_err(|_| (RunFailure::operational(command), format))?;
             Ok(exit_code)
+        }
+        Command::Completions { shell } => {
+            let mut command = Cli::command();
+            let (command_name, output) = completions::run(shell, &mut command);
+            write_model_report(command_name, &output, format)
+                .map_err(|_| (RunFailure::operational(command_name), format))?;
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::Man => {
+            let command = Cli::command();
+            let (command_name, output) = man::run(&command).map_err(|error| (error, format))?;
+            write_model_report(command_name, &output, format)
+                .map_err(|_| (RunFailure::operational(command_name), format))?;
+            Ok(ExitCode::SUCCESS)
         }
     }
 }
