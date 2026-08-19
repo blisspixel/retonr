@@ -154,7 +154,7 @@ fn inspect_recursive_includes_nested_files_and_skips_ignored_trees() {
     fs::write(root.join("target").join("built.txt"), "built\n").expect("write ignored");
 
     let output = binary()
-        .args(["inspect", "--recursive"])
+        .args(["inspect", "-r"])
         .arg(root)
         .output()
         .expect("run recursive inspect");

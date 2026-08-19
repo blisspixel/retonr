@@ -229,7 +229,7 @@ const fn resolve_document_render(
 /// Writes accepted document bytes according to the resolved output policy.
 ///
 /// The default path never modifies the source and never replaces an existing
-/// destination. `--in-place --backup` uses a separately tested commit protocol.
+/// destination. `--in-place` uses a separately tested backup-then-replace protocol.
 /// A terminal receives escaped rendering unless `--raw-terminal --yes` both
 /// appear. Either flag alone stays escaped. Raw terminal emission warns on
 /// standard error before the exact bytes.

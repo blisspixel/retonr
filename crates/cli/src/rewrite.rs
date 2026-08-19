@@ -25,8 +25,8 @@ pub(crate) struct RewriteRequest {
 /// Reads one source document and rewrites it only after a recovered fake binding attaches.
 ///
 /// The command uses the same output-destination policy as `check`. An existing
-/// file is never replaced unless `--in-place --backup` retains a sibling copy of
-/// the original first. It attaches in-process fake-backend conformance when a
+/// file is never replaced unless `--in-place` retains a sibling copy of the
+/// original first. It attaches in-process fake-backend conformance when a
 /// recovered generation binding names that backend. It does not start a runtime,
 /// open a network path, or invent a production backend.
 pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {

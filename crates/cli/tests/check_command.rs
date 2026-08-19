@@ -66,6 +66,30 @@ fn abstention_can_be_used_as_a_ci_failure() {
 }
 
 #[test]
+fn short_format_and_output_flags_match_the_long_forms() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    let output = directory.path().join("accepted.txt");
+    fs::write(&source, "Hello world\n").expect("write source fixture");
+    fs::write(&candidate, "Hello, world!\n").expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check", "-f", "text", "-o"])
+        .arg(&output)
+        .arg(&source)
+        .arg(&candidate)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("status: rewritten"));
+    assert_eq!(
+        fs::read(&output).expect("accepted bytes"),
+        b"Hello, world!\n"
+    );
+}
+
+#[test]
 fn global_format_is_accepted_before_or_after_the_command() {
     let directory = tempdir().expect("temporary directory");
     let source = directory.path().join("source.txt");
