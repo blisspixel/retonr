@@ -104,6 +104,12 @@ pub enum CommandName {
     /// Read-only local recovery inspection.
     #[serde(rename = "doctor")]
     Doctor,
+    /// Generated shell-completion script.
+    #[serde(rename = "completions")]
+    Completions,
+    /// Generated section-1 manual page.
+    #[serde(rename = "man")]
+    Man,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
