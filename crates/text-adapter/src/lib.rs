@@ -11,9 +11,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-const UTF8_BOM: &[u8] = b"\xEF\xBB\xBF";
-const UTF16_LE_BOM: &[u8] = b"\xFF\xFE";
-const UTF16_BE_BOM: &[u8] = b"\xFE\xFF";
+pub(crate) const UTF8_BOM: &[u8] = b"\xEF\xBB\xBF";
+pub(crate) const UTF16_LE_BOM: &[u8] = b"\xFF\xFE";
+pub(crate) const UTF16_BE_BOM: &[u8] = b"\xFE\xFF";
+
+mod inventory;
+pub use inventory::{CarrierPresence, ControlCounts, PlainTextInventory, TextEncoding};
 
 /// Maximum accepted plain-text source size in bytes.
 pub const MAX_PLAIN_TEXT_BYTES: usize = 16 * 1024 * 1024;
@@ -274,7 +277,7 @@ impl TextAdapter {
     }
 }
 
-fn metadata(input: &[u8], text: &str, has_utf8_bom: bool) -> TextMetadata {
+pub(crate) fn metadata(input: &[u8], text: &str, has_utf8_bom: bool) -> TextMetadata {
     let signature = newline_signature(text);
     let mut saw_lf = false;
     let mut saw_crlf = false;

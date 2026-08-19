@@ -1440,6 +1440,7 @@ dependencies = [
  "rewrite-types",
  "schemars",
  "serde",
+ "serde_json",
  "thiserror",
 ]
 
