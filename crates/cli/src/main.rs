@@ -24,6 +24,7 @@ pub mod contract;
 mod doctor;
 mod failure;
 mod identity;
+mod inspect_source;
 mod man;
 mod model;
 mod rewrite;
@@ -102,6 +103,17 @@ enum Command {
         /// Write the redacted rewrite record to a new file.
         #[arg(long, value_name = "PATH")]
         trace: Option<PathBuf>,
+    },
+    /// Inventory one source document before rewrite without mutation.
+    ///
+    /// Reports encoding, BOM, newline kind, control-class counts, sibling
+    /// sidecar presence, and whether an explicit derivative decision is
+    /// required. It does not parse Content Credentials, follow external
+    /// references, or strip bytes.
+    Inspect {
+        /// UTF-8 source file, or - for standard input.
+        #[arg(value_name = "SOURCE")]
+        source: PathBuf,
     },
     /// Administer exact local model artifacts without network access.
     Model {
@@ -214,6 +226,13 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             format,
         )
         .map_err(|error| (error, format)),
+        Command::Inspect { source } => {
+            let (command, output, exit_code) =
+                inspect_source::run(&source).map_err(|error| (error, format))?;
+            write_model_report(command, &output, format)
+                .map_err(|_| (RunFailure::operational(command), format))?;
+            Ok(exit_code)
+        }
         Command::Model { command } => {
             let command_name = command.name();
             let data_directory = cli.data_dir.ok_or_else(|| {

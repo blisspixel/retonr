@@ -62,6 +62,9 @@ pub enum CommandName {
     /// Grounded rewrite of one source document.
     #[serde(rename = "rewrite")]
     Rewrite,
+    /// Pre-model inventory of one source document.
+    #[serde(rename = "inspect")]
+    Inspect,
     /// Offline single-file artifact import.
     #[serde(rename = "model.import")]
     ModelImport,
