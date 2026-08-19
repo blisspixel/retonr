@@ -17,7 +17,8 @@ mod writing_sample_library;
 pub use baseline::{
     BASELINE_SCHEMA_VERSION, BaselineCaseError, BaselineCaseResult, BaselineDefinition,
     BaselineError, BaselineInferencePolicy, BaselineKind, BaselineReport, BaselineStatusCounts,
-    MAX_BASELINE_DEFINITION_BYTES, parse_baseline_definition, run_baseline, run_offline_baseline,
+    MAX_BASELINE_DEFINITION_BYTES, parse_baseline_definition, run_attached_baseline, run_baseline,
+    run_offline_baseline,
 };
 pub use claim_shadow_calibration::{
     CLAIM_SHADOW_CALIBRATION_SCHEMA_VERSION, ClaimShadowCalibrationCorpus,

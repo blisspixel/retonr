@@ -38,9 +38,10 @@ Every style claim is compared with:
 6. A compact per-user adapter when hardware and licensing permit
 
 `rewrite-eval --baseline` runs a versioned baseline definition against a suite.
-The checked-in no-rewrite definition executes offline. Generative kinds remain
-library-only until a selected local backend is supplied; the CLI fails closed
-instead of starting a runtime or using the network.
+The checked-in no-rewrite definition executes offline. Generative kinds attach
+the same recovered fake-backend conformance path as `rewrite` when `--data-dir`
+selects a fake-qualified generation binding. Without that recovered binding the
+CLI fails closed instead of starting a runtime or using the network.
 
 The architecture is justified only when it improves over the strongest cheap
 baseline on blind user preference without a material fidelity regression.
