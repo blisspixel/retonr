@@ -68,6 +68,12 @@ pub enum CommandName {
     /// Offline exact artifact-set folder import.
     #[serde(rename = "model.import_set")]
     ModelImportSet,
+    /// Read-only catalog of registered single-file installations.
+    #[serde(rename = "model.list")]
+    ModelList,
+    /// Read-only inspection of one registered artifact.
+    #[serde(rename = "model.inspect")]
+    ModelInspect,
     /// Read-only managed artifact inventory.
     #[serde(rename = "model.inventory")]
     ModelInventory,

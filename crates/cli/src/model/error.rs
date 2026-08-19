@@ -16,6 +16,17 @@ pub(crate) struct ModelFailure {
 }
 
 impl ModelFailure {
+    pub(crate) fn artifact_not_found(command: CommandName) -> Self {
+        Self::new(
+            command,
+            ErrorCategory::Policy,
+            ErrorCode::ArtifactNotFound,
+            EXIT_POLICY,
+            false,
+            "selected artifact was not found",
+        )
+    }
+
     pub(crate) fn missing_data_directory(command: CommandName) -> Self {
         Self::new(
             command,

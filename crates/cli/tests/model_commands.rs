@@ -213,6 +213,8 @@ fn help_lists_only_the_implemented_offline_model_surface() {
         .success()
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("import-set"))
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("inspect"))
         .stdout(predicate::str::contains("inventory"))
         .stdout(predicate::str::contains("inventory-set"))
         .stdout(predicate::str::contains("pending-operations"))
@@ -226,6 +228,122 @@ fn help_lists_only_the_implemented_offline_model_surface() {
         .stdout(predicate::str::contains("download").not())
         .stdout(predicate::str::contains("activate").not())
         .stdout(predicate::str::contains("qualify").not());
+}
+
+#[test]
+fn list_and_inspect_report_registered_artifacts_without_activation() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, artifact_id) = write_fixture(directory.path());
+    import(&data, &source, &manifest_path);
+
+    let listed = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "list"])
+        .output()
+        .expect("run list");
+    assert!(listed.status.success());
+    assert!(listed.stderr.is_empty());
+    let listed_text = String::from_utf8(listed.stdout.clone()).expect("UTF-8 list");
+    for private in [
+        "private-source",
+        "private/provider",
+        "secret-revision",
+        "private-family",
+        "artifact-storage",
+        "private model bytes",
+    ] {
+        assert!(
+            !listed_text.contains(private),
+            "list leaked {private}: {listed_text}"
+        );
+    }
+    let listed: Value = serde_json::from_slice(&listed.stdout).expect("parse list");
+    assert_eq!(listed["command"], "model.list");
+    assert_eq!(
+        listed["result"]["artifacts"][0]["selection"]["artifact_id"],
+        artifact_id
+    );
+    assert_eq!(listed["result"]["artifacts"][0]["qualified"], false);
+    assert_eq!(
+        listed["result"]["artifacts"][0]["active_roles"],
+        serde_json::json!([])
+    );
+    assert_eq!(
+        listed["result"]["artifacts"][0]["bytes"]["status"],
+        "verified"
+    );
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "--data-dir"])
+        .arg(&data)
+        .args(["model", "list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("registered: 1"))
+        .stdout(predicate::str::contains(&artifact_id))
+        .stdout(predicate::str::contains("qualified=false"))
+        .stdout(predicate::str::contains("roles=none"));
+
+    let inspected = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "inspect", &artifact_id])
+        .output()
+        .expect("run inspect");
+    assert!(inspected.status.success());
+    assert!(inspected.stderr.is_empty());
+    let inspected_text = String::from_utf8(inspected.stdout.clone()).expect("UTF-8 inspect");
+    for private in [
+        "private-source",
+        "private/provider",
+        "secret-revision",
+        "artifact-storage",
+        "private model bytes",
+    ] {
+        assert!(
+            !inspected_text.contains(private),
+            "inspect leaked {private}: {inspected_text}"
+        );
+    }
+    assert!(inspected_text.contains("private-family"));
+    let inspected: Value = serde_json::from_slice(&inspected.stdout).expect("parse inspect");
+    assert_eq!(inspected["command"], "model.inspect");
+    assert_eq!(inspected["result"]["selection"]["artifact_id"], artifact_id);
+    assert_eq!(inspected["result"]["qualified"], false);
+    assert_eq!(inspected["result"]["qualification"], "absent");
+    assert_eq!(inspected["result"]["declared"]["family"], "private-family");
+    assert_eq!(inspected["result"]["declared"]["format"], "gguf");
+    assert_eq!(
+        inspected["result"]["declared"]["roles"],
+        serde_json::json!(["generation"])
+    );
+    assert_eq!(inspected["result"]["active_roles"], serde_json::json!([]));
+    assert!(inspected["result"].get("source").is_none());
+}
+
+#[test]
+fn inspect_missing_artifact_is_a_policy_refusal() {
+    let directory = tempdir().expect("temporary directory");
+    let data = directory.path().join("repository");
+    let (source, manifest_path, _) = write_fixture(directory.path());
+    import(&data, &source, &manifest_path);
+    let missing = "0".repeat(64);
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["model", "inspect", &missing])
+        .assert()
+        .code(3)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"command\": \"model.inspect\""))
+        .stderr(predicate::str::contains("\"code\": \"artifact_not_found\""));
 }
 
 #[test]

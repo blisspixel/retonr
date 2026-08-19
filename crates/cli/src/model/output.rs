@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use crate::contract::ArtifactSelectionDto;
 
+mod catalog;
 mod migration;
 mod set_import;
 mod set_inventory;
@@ -383,7 +384,7 @@ struct UnexpectedSummary {
 
 #[derive(Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
-enum RegisteredBytesSummary {
+pub(super) enum RegisteredBytesSummary {
     Verified,
     Missing,
     UnsafeEntry,
@@ -416,7 +417,7 @@ impl From<RegisteredArtifactBytes> for RegisteredBytesSummary {
 }
 
 impl RegisteredBytesSummary {
-    const fn name(&self) -> &'static str {
+    pub(super) const fn name(&self) -> &'static str {
         match self {
             Self::Verified => "verified",
             Self::Missing => "missing",
@@ -430,7 +431,7 @@ impl RegisteredBytesSummary {
     }
 }
 
-const fn role_name(role: ArtifactRole) -> &'static str {
+pub(super) const fn role_name(role: ArtifactRole) -> &'static str {
     role.machine_name()
 }
 
