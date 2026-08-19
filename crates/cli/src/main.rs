@@ -16,7 +16,7 @@ use rewrite_types::CancellationToken;
 
 use crate::contract::{CommandName, ErrorEnvelope, ReportFormat, SuccessEnvelope};
 use crate::failure::RunFailure;
-use crate::model::{ModelCommand, ModelFailure};
+use crate::model::ModelCommand;
 
 mod check;
 mod completions;
@@ -297,17 +297,11 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
         }
         Command::Model { command } => {
             let command_name = command.name();
-            let data_directory = cli.data_dir.ok_or_else(|| {
-                (
-                    RunFailure::from_model(ModelFailure::missing_data_directory(command_name)),
-                    format,
-                )
-            })?;
             let cancellation = CancellationToken::new();
             let signal_cancellation = cancellation.clone();
             ctrlc::try_set_handler(move || signal_cancellation.cancel())
                 .map_err(|_| (RunFailure::operational(command_name), format))?;
-            let success = model::run(command, data_directory, &cancellation)
+            let success = model::run(command, cli.data_dir, &cancellation)
                 .map_err(|error| (RunFailure::from_model(error), format))?;
             write_model_report(command_name, &success.output, format)
                 .map_err(|_| (RunFailure::operational(command_name), format))?;

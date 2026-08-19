@@ -38,7 +38,9 @@ The current 0.2 build queue, in dependency order, is:
    `inspect` inventories one file or directory without credential validation
    or link following. `--recursive` is bounded. `--in-place`
    replaces one regular file after a sibling backup. `doctor` names
-   recovery follow-up without mutation. Recovered fake-qualified
+   recovery follow-up without mutation. Optional fitr device-measurement
+   evidence can be inspected without a repository and is not a
+   qualification. Recovered fake-qualified
    bindings attach in-process conformance for `rewrite` and generative
    `rewrite-eval --baseline` kinds. Do not start a runtime.
 6. Qualify one exact local runtime and artifact combination before profiles or

@@ -17,6 +17,7 @@ use crate::contract::{
 };
 
 mod catalog;
+mod device_evidence;
 mod error;
 mod output;
 
@@ -42,6 +43,9 @@ pub(crate) enum ModelCommand {
     List,
     /// Inspect one registered artifact without qualification or activation.
     Inspect(InspectArgs),
+    /// Inspect optional fitr device-measurement evidence without qualification.
+    #[command(visible_alias = "fitr")]
+    DeviceEvidence(device_evidence::DeviceEvidenceArgs),
     /// Inspect managed artifact state and bytes without mutation.
     Inventory(InventoryArgs),
     /// Inspect managed artifact-set state and trees without mutation.
@@ -199,13 +203,35 @@ pub(crate) struct ModelSuccess {
 
 pub(crate) fn run(
     command: ModelCommand,
-    data_directory: PathBuf,
+    data_directory: Option<PathBuf>,
     cancellation: &CancellationToken,
 ) -> Result<ModelSuccess, ModelFailure> {
+    match command {
+        ModelCommand::DeviceEvidence(args) => return device_evidence::run(&args),
+        ModelCommand::Import(_)
+        | ModelCommand::ImportSet(_)
+        | ModelCommand::List
+        | ModelCommand::Inspect(_)
+        | ModelCommand::Inventory(_)
+        | ModelCommand::InventorySet(_)
+        | ModelCommand::PendingOperations
+        | ModelCommand::Migrate(_)
+        | ModelCommand::Reconcile(_)
+        | ModelCommand::ReconcileSet(_)
+        | ModelCommand::Remove(_)
+        | ModelCommand::RecoverRemoval(_)
+        | ModelCommand::RemoveSet(_)
+        | ModelCommand::RecoverSetRemoval(_) => {}
+    }
     let command_name = command.name();
+    let data_directory =
+        data_directory.ok_or_else(|| ModelFailure::missing_data_directory(command_name))?;
     let repository = ArtifactRepository::new(data_directory)
         .map_err(|error| ModelFailure::repository(command_name, &error))?;
     match command {
+        ModelCommand::DeviceEvidence(_) => {
+            unreachable!("device evidence returns before the repository is opened")
+        }
         ModelCommand::Import(args) => import(&repository, args, cancellation),
         ModelCommand::ImportSet(args) => import_set(&repository, args, cancellation),
         ModelCommand::List => catalog::list(&repository, cancellation),
@@ -232,6 +258,7 @@ impl ModelCommand {
             Self::ImportSet(_) => CommandName::ModelImportSet,
             Self::List => CommandName::ModelList,
             Self::Inspect(_) => CommandName::ModelInspect,
+            Self::DeviceEvidence(_) => CommandName::ModelDeviceEvidence,
             Self::Inventory(_) => CommandName::ModelInventory,
             Self::InventorySet(_) => CommandName::ModelInventorySet,
             Self::PendingOperations => CommandName::ModelPendingOperations,

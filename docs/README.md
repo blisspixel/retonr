@@ -20,6 +20,7 @@ These documents define the product direction and constrain implementation.
 | [Evaluation corpora](evaluation-corpora.md) | Separate synthetic editorial-quality fixtures from known-watermark research fixtures |
 | [Writing-sample library](evaluation-style-library.md) | Licensed pre-AI human controls, synthetic model-style impressions, and style-is-not-a-watermark refusals |
 | [Model and runtime support](model-support.md) | Hardware discovery, runtime selection, model evaluation, and fallback rules |
+| [Optional fitr evidence](fitr.md) | Device-measurement handoff from the sister project; not a qualification |
 | [Installation and distribution](distribution.md) | Bootstrap installers, artifact verification, release targets, updates, and removal |
 | [Snapshot testing guide](testing-snapshot.md) | What a development snapshot build does today and what feedback is useful |
 | [Technology](technology.md) | Current recommended stack and deferred decisions |
