@@ -511,7 +511,7 @@ fn load_invalidations(
     Ok(invalidations)
 }
 
-fn load_qualification(
+pub(super) fn load_qualification(
     connection: &Connection,
     qualification_id: &QualificationId,
 ) -> StoreResult<Option<QualificationRecord>> {

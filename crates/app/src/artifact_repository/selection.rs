@@ -1,7 +1,9 @@
 use std::fs;
 
-use rewrite_model::{ActiveArtifactBinding, ArtifactRole, InstalledArtifact};
-use rewrite_model_store::ArtifactStateStore;
+use rewrite_model::{
+    ActiveArtifactBinding, ArtifactRole, InstalledArtifact, QualificationId, QualificationRecord,
+};
+use rewrite_model_store::{ArtifactStateStore, StoreError};
 
 use super::{
     ArtifactRepository, ArtifactRepositoryError, RepositoryLockMode, finish_operation, is_indirect,
@@ -34,6 +36,33 @@ impl ArtifactRepository {
                     installed_bytes_present(&storage, installed)
                 })
                 .map_err(ArtifactRepositoryError::State)
+        })();
+        finish_operation(result, guard.recheck())
+    }
+
+    /// Reloads one qualification record after revalidating durable identity.
+    ///
+    /// The call is read-only. It does not activate a role or attach a runtime.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArtifactRepositoryError`] when the repository is absent, busy,
+    /// incompatible, or the qualification cannot be reloaded.
+    pub fn generation_qualification(
+        &self,
+        qualification_id: &QualificationId,
+    ) -> Result<QualificationRecord, ArtifactRepositoryError> {
+        self.require_data_directory()?;
+        let mut guard = self.pin_data_directory(RepositoryLockMode::ExistingShared)?;
+        guard.recheck()?;
+        let result = (|| {
+            guard.pin_state_database()?;
+            guard.recheck()?;
+            let store = ArtifactStateStore::open_existing_read_only(&self.state_database())?;
+            guard.recheck()?;
+            store
+                .qualification(qualification_id)?
+                .ok_or(ArtifactRepositoryError::State(StoreError::MissingRecord))
         })();
         finish_operation(result, guard.recheck())
     }

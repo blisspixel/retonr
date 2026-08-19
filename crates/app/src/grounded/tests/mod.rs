@@ -186,6 +186,133 @@ fn imported_repository_without_activation_is_not_ready() {
     ));
 }
 
+fn fixture_generation_qualification(
+    installed: &rewrite_model::InstalledArtifact,
+) -> rewrite_model::QualificationRecord {
+    use rewrite_model::{
+        HardwareTier, LicenseDecision, QUALIFICATION_SCHEMA_VERSION, QualificationRecord,
+        QualificationStatus,
+    };
+
+    QualificationRecord {
+        schema_version: QUALIFICATION_SCHEMA_VERSION,
+        artifact_id: installed.artifact_id.clone(),
+        artifact_digest: installed.artifact_digest.clone(),
+        runtime: RuntimeIdentity {
+            backend: "fake".to_owned(),
+            version: "1.0.0".to_owned(),
+            digest: Some(Digest::sha256(b"runtime")),
+        },
+        operating_system: "test".to_owned(),
+        hardware_tier: HardwareTier {
+            id: "test".to_owned(),
+            memory_mib: 8_192,
+            accelerator: "none".to_owned(),
+        },
+        supported_roles: vec![ArtifactRole::Generation],
+        source_byte_limit: 4_096,
+        context_token_limit: 8_192,
+        prompt_template_digest: Digest::sha256(b"prompt"),
+        request_policy_digest: Digest::sha256(b"request"),
+        threshold_policy_digest: Digest::sha256(b"threshold"),
+        license_decision: LicenseDecision::LocalUseOnly,
+        status: QualificationStatus::Qualified,
+    }
+}
+
+fn activate_fake_generation(data: &std::path::Path, bytes: &[u8]) -> ArtifactId {
+    use crate::{
+        ArtifactImportLimits, ArtifactRepository, OfflineArtifactImportRequest,
+        artifact_storage::managed_storage_key,
+    };
+    use rewrite_model::{ActivationId, InstalledArtifact};
+    use rewrite_model_store::ArtifactStateStore;
+
+    let source = data.parent().expect("temp parent").join("source.gguf");
+    std::fs::write(&source, bytes).expect("write artifact");
+    let digest = Digest::sha256(bytes);
+    let artifact_id = ArtifactId::from_digest(digest.clone());
+    ArtifactRepository::new(data)
+        .expect("derive repository")
+        .import(
+            &OfflineArtifactImportRequest {
+                source,
+                manifest: rewrite_model::ArtifactManifest {
+                    schema_version: rewrite_model::ARTIFACT_MANIFEST_SCHEMA_VERSION,
+                    artifact_id: artifact_id.clone(),
+                    source: rewrite_model::ArtifactSource {
+                        origin: "fixture/model".to_owned(),
+                        revision: "fixture".to_owned(),
+                    },
+                    artifact_digest: digest.clone(),
+                    byte_size: u64::try_from(bytes.len()).expect("fixture size"),
+                    format: "gguf".to_owned(),
+                    family: "fixture".to_owned(),
+                    architecture: None,
+                    quantization: None,
+                    tokenizer: None,
+                    licenses: vec![rewrite_model::LicenseRecord {
+                        component: "weights".to_owned(),
+                        identifier: "Apache-2.0".to_owned(),
+                        text_digest: Digest::sha256(b"license"),
+                    }],
+                    declared_capabilities: rewrite_model::DeclaredCapabilities {
+                        roles: vec![ArtifactRole::Generation],
+                        languages: vec!["en".to_owned()],
+                        context_tokens: Some(8_192),
+                    },
+                },
+            },
+            ArtifactImportLimits {
+                maximum_artifact_bytes: 1024,
+                maximum_storage_entries: 8,
+            },
+            &CancellationToken::new(),
+        )
+        .expect("import");
+    let installed = InstalledArtifact {
+        artifact_id: artifact_id.clone(),
+        artifact_digest: digest,
+        byte_size: u64::try_from(bytes.len()).expect("fixture size"),
+        storage_key: managed_storage_key(artifact_id.digest()),
+    };
+    let qualification = fixture_generation_qualification(&installed);
+    let qualification_id = qualification
+        .qualification_id()
+        .expect("fixture qualification");
+    let mut store =
+        ArtifactStateStore::open_existing_writable_exact(&data.join("artifact-state.sqlite3"))
+            .expect("open writable store");
+    store
+        .put_qualification(&qualification)
+        .expect("store qualification");
+    store
+        .activate(
+            ActivationId::from_digest(Digest::sha256(b"conformance-attach")),
+            ArtifactRole::Generation,
+            &installed,
+            &qualification_id,
+        )
+        .expect("activate generation");
+    artifact_id
+}
+
+#[test]
+fn recovered_fake_binding_rewrites_through_in_process_conformance() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let data = directory.path().join("data");
+    let artifact_id = activate_fake_generation(&data, b"conformance attach fixture");
+    let attached = GroundedRewriteSelection::require_ready(Some(&data), Some(&artifact_id))
+        .expect("attach fake conformance");
+    let result = attached
+        .rewrite(request(), &CancellationToken::new(), None)
+        .expect("conformance rewrite");
+    assert_eq!(result.output, b"Version 2 works.");
+    let generation = result.record.generation.expect("generation provenance");
+    assert_eq!(generation.runtime.backend, "fake");
+    assert_eq!(generation.candidate_count, 1);
+}
+
 #[test]
 fn accepts_only_after_grounded_candidate_passes_common_gates() {
     let (strategy, fake) = fixtures("Version {{PROTECTED_NUMBER_0001}} works!");

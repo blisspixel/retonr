@@ -21,7 +21,7 @@ protocol, or stored-data contracts.
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
 | `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
 | `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, read-only artifact-set inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, selected set-root reconciliation, crash-recoverable inactive single-file and artifact-set removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, a repository-owned whole-tree artifact-set lease, an inert managed-process runtime attestor, a cancellable pair-extraction service, and an informational shadow join of independently produced claim comparison with no eligibility authority |
-| `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then fails closed because no local runtime is attached; dedicated `version` and read-only `doctor` recovery commands; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, and exact set-removal recovery |
+| `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then attaches in-process fake-backend conformance when that recovered qualification names the retained fake backend, or fails closed otherwise; dedicated `version` and read-only `doctor` recovery commands; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, and exact set-removal recovery |
 | `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts with an offline no-rewrite CLI, five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
@@ -165,9 +165,11 @@ uses its own clean runner database.
   files. `rewrite` accepts one source file or standard input under the same
   output policy. Optional `--data-dir` inspects an existing repository for an
   active generation binding. Optional `--artifact-id` must match that binding.
-  The command then fails closed: no local runtime is attached. It does not
-  start a runtime, pull a model, or use the network. A recovered binding is
-  not activation, a lease, or a qualification producer.
+  When the recovered qualification names the retained fake backend, `rewrite`
+  attaches in-process conformance, generates an identity candidate, and runs
+  the common gates. It does not start a runtime, pull a model, or use the
+  network. Any other recovered backend still fails closed. A recovered binding
+  is not activation, a lease, or a qualification producer.
 - `check` accepts either document from standard input, read to end of file without
   trimming, and preserves the byte order mark, newline kind, blank lines, surrounding
   whitespace, and final-newline state exactly. Both documents cannot share one stream.
@@ -324,14 +326,12 @@ is:
 5. Add the local evaluation plan, run the currently installed 26B and 27B packages,
    and add the previously observed 8B package only after revalidation or separately
    approved acquisition. Start only after product-path evidence joins are complete.
-6. `check` output policy, `version`, `doctor`, a fail-closed `rewrite`
-   command that can inspect an optional repository generation binding, and
-   an offline `rewrite-eval --baseline` no-rewrite path exist. Attach a
-   local runtime to a recovered binding only after fake-backend conformance
-   is retained and an exact already-installed combination can be used at
-   $0. Do not start a runtime or use the network. Local validation of
-   uncommitted 0.2 work remains blocked when the session cannot launch a
-   process.
+6. `check` output policy, `version`, `doctor`, and an offline
+   `rewrite-eval --baseline` no-rewrite path exist. `rewrite` attaches
+   in-process fake-backend conformance to a recovered fake-qualified
+   binding and otherwise fails closed. It does not start a runtime or use
+   the network. Generative baselines stay library-only until they share that
+   attached conformance path. Do not start Ollama or qualify a real model.
 7. Run exact artifact qualification and selective-risk reporting on declared
    hardware tiers.
 8. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only

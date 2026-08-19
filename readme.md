@@ -165,8 +165,10 @@ error. `--output -` writes exact bytes to a pipe. A terminal receives escaped
 rendering unless `--raw-terminal --yes` both appear. `--dry-run` reports without
 creating `--output`. `--trace` writes the redacted rewrite record to a new file.
 `rewrite` validates one source, optionally inspects `--data-dir` for an
-active generation binding, then fails closed because no local runtime is
-attached. `version` and `doctor` are recovery commands. `model --help`
+active generation binding, and attaches in-process fake-backend
+conformance when that recovered qualification names the retained fake
+backend. It does not start a runtime or use the network. `version` and
+`doctor` are recovery commands. `model --help`
 lists the implemented offline artifact commands. The remaining commands run the
 checked-in fidelity and synthetic editorial-quality suites, including an
 offline no-rewrite baseline and an independent claim-shadow calibration that

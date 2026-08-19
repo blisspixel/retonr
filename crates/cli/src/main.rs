@@ -45,9 +45,8 @@ struct Cli {
 enum Command {
     /// Rewrite one UTF-8 source after grounded generation and engine gates.
     ///
-    /// The current product has no attached local runtime, so this command fails
-    /// closed after validating the source and inspecting any requested
-    /// repository binding. It does not start a runtime or access the network.
+    /// A recovered generation binding can attach in-process fake-backend
+    /// conformance. The command does not start a runtime or access the network.
     Rewrite {
         /// UTF-8 source file, or - for standard input.
         #[arg(value_name = "SOURCE")]
@@ -60,6 +59,9 @@ enum Command {
         /// Exact installed artifact that must match the active generation binding.
         #[arg(long, value_name = "ARTIFACT_ID")]
         artifact_id: Option<crate::contract::ArtifactIdArgument>,
+        /// Exact term that must be preserved. May be repeated.
+        #[arg(long = "protect", value_name = "TERM")]
+        protected_terms: Vec<String>,
     },
     /// Validate a supplied plain-text candidate without using a model.
     Check {
@@ -156,11 +158,14 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             source,
             output,
             artifact_id,
+            protected_terms,
         } => rewrite::run(&rewrite::RewriteRequest {
             source,
             output,
             data_directory: cli.data_dir,
             artifact_id,
+            protected_terms,
+            format,
         })
         .map_err(|error| (error, format)),
         Command::Check {

@@ -1,15 +1,25 @@
-use std::{path::Path, time::Instant};
+use std::{
+    future::Future,
+    path::Path,
+    task::{Context, Poll, Waker},
+    time::Instant,
+};
 
 use rewrite_engine::{
     ClaimShadowObserver, PreparedCandidateGenerator, ProtectedKind, ProtectionError,
     ProtectionPlan, validate_rewrite_options,
 };
 use rewrite_grounded::{
-    GroundedError, GroundedRequest, GroundedSentinel, GroundedSentinelKind, GroundedStrategy,
-    GroundedTrace,
+    GROUNDED_POLICY_SCHEMA_VERSION, GroundedError, GroundedPolicy, GroundedRequest,
+    GroundedSentinel, GroundedSentinelKind, GroundedStrategy, GroundedTrace,
 };
-use rewrite_inference::{InferenceBackend, InferenceErrorKind, OperationContext};
-use rewrite_model::{ActiveArtifactBinding, ArtifactId};
+use rewrite_inference::{
+    CONFORMANCE_BACKEND_ID, ConformanceInferenceBackend, InferenceBackend, InferenceErrorKind,
+    OperationContext, ReasoningPolicy, SamplingParameters, candidate_output_contract,
+};
+use rewrite_model::{
+    ActiveArtifactBinding, ArtifactId, ArtifactRole, LicenseDecision, QualificationStatus,
+};
 use rewrite_text_adapter::{ParsedTextDocument, TextAdapter};
 use rewrite_types::{
     CancellationToken, GENERATION_PROVENANCE_SCHEMA_VERSION, GeneratedCandidate,
@@ -50,7 +60,33 @@ pub struct GroundedRewriteResult {
     pub record: RewriteRecord,
 }
 
-/// Current grounded-rewrite selection. No runtime is attached yet.
+/// Product prompt used by the in-process fake-backend conformance path.
+pub const CONFORMANCE_PROMPT_TEMPLATE: &str = "Rewrite conservatively and preserve every sentinel.";
+
+/// Recovered generation binding attached to in-process fake-backend conformance.
+pub struct AttachedConformanceRewrite {
+    strategy: GroundedStrategy,
+    backend: ConformanceInferenceBackend,
+}
+
+impl AttachedConformanceRewrite {
+    /// Runs grounded generation and the common gates without starting a runtime.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError`] for invalid input, backend failure, or engine failure.
+    pub fn rewrite(
+        &self,
+        request: GroundedRewriteRequest,
+        cancellation: &CancellationToken,
+        deadline: Option<Instant>,
+    ) -> Result<GroundedRewriteResult, AppError> {
+        let service = GroundedRewriteService::new(self.strategy.clone(), &self.backend);
+        block_ready(service.rewrite(request, cancellation, deadline))
+    }
+}
+
+/// Current grounded-rewrite selection.
 pub struct GroundedRewriteSelection;
 
 impl GroundedRewriteSelection {
@@ -66,26 +102,74 @@ impl GroundedRewriteSelection {
         Err(AppError::GroundedUnavailable)
     }
 
-    /// Inspects an optional repository for an active generation binding.
+    /// Recovers one generation binding and attaches in-process fake conformance.
     ///
-    /// A recovered binding is not enough to rewrite. The product still has no
-    /// attached local runtime and does not start one.
+    /// The path never starts a runtime, pulls a model, or opens a network path.
+    /// Only a recovered binding whose qualification names the retained fake
+    /// backend can attach. Claims stay unadmitted.
     ///
     /// # Errors
     ///
     /// Returns [`AppError::GroundedUnavailable`] when no generation binding is
     /// selected, [`AppError::GroundedSelectionMismatch`] when a requested
     /// identity disagrees, [`AppError::GroundedRuntimeUnavailable`] when a
-    /// binding exists but no runtime is attached, or
-    /// [`AppError::GroundedRepository`] when the repository cannot be inspected.
+    /// binding exists but the qualification is not the fake conformance
+    /// backend, or [`AppError::GroundedRepository`] when the repository cannot
+    /// be inspected.
     pub fn require_ready(
         data_directory: Option<&Path>,
         requested: Option<&ArtifactId>,
-    ) -> Result<(), AppError> {
-        match Self::select(data_directory, requested) {
-            Ok(_binding) => Err(AppError::GroundedRuntimeUnavailable),
-            Err(error) => Err(error),
+    ) -> Result<AttachedConformanceRewrite, AppError> {
+        let binding = Self::select(data_directory, requested)?;
+        let Some(data_directory) = data_directory else {
+            return Err(AppError::GroundedUnavailable);
+        };
+        let repository =
+            ArtifactRepository::new(data_directory).map_err(|_| AppError::GroundedRepository)?;
+        let qualification = repository
+            .generation_qualification(&binding.qualification_id)
+            .map_err(|_| AppError::GroundedRepository)?;
+        if qualification.runtime.backend != CONFORMANCE_BACKEND_ID {
+            return Err(AppError::GroundedRuntimeUnavailable);
         }
+        if qualification.status != QualificationStatus::Qualified
+            || !qualification
+                .supported_roles
+                .contains(&ArtifactRole::Generation)
+            || qualification.license_decision == LicenseDecision::Rejected
+        {
+            return Err(AppError::GroundedUnavailable);
+        }
+        let output = candidate_output_contract();
+        let prompt_template = CONFORMANCE_PROMPT_TEMPLATE.to_owned();
+        let strategy = GroundedStrategy::new(GroundedPolicy {
+            schema_version: GROUNDED_POLICY_SCHEMA_VERSION,
+            artifact_id: binding.artifact_id.clone(),
+            artifact_digest: binding.artifact_digest.clone(),
+            prompt_template_digest: rewrite_types::Digest::sha256(prompt_template.as_bytes()),
+            prompt_template,
+            output,
+            candidate_count: 1,
+            source_byte_limit: qualification.source_byte_limit,
+            input_byte_limit: qualification.source_byte_limit.saturating_add(8_192),
+            context_token_limit: qualification.context_token_limit,
+            output_token_limit: 256,
+            candidate_byte_limit: qualification.source_byte_limit,
+            sampling: SamplingParameters {
+                temperature: 0.0,
+                top_p: 1.0,
+                seed: Some(1),
+            },
+            reasoning: ReasoningPolicy::Disabled,
+        })?;
+        let backend = ConformanceInferenceBackend::bind(
+            binding.artifact_id,
+            binding.artifact_digest,
+            qualification.runtime,
+            None,
+        )
+        .map_err(|_| AppError::GroundedRuntimeUnavailable)?;
+        Ok(AttachedConformanceRewrite { strategy, backend })
     }
 
     /// Recovers one active generation binding without attaching a runtime.
@@ -325,6 +409,16 @@ const fn map_protected_kind(kind: ProtectedKind) -> GroundedSentinelKind {
         ProtectedKind::Url => GroundedSentinelKind::Url,
         ProtectedKind::Email => GroundedSentinelKind::Email,
         ProtectedKind::Number => GroundedSentinelKind::Number,
+    }
+}
+
+fn block_ready<T>(future: impl Future<Output = T>) -> T {
+    let mut future = Box::pin(future);
+    let waker = Waker::noop();
+    let mut context = Context::from_waker(waker);
+    match future.as_mut().poll(&mut context) {
+        Poll::Ready(value) => value,
+        Poll::Pending => panic!("conformance-backed rewrite must complete immediately"),
     }
 }
 
