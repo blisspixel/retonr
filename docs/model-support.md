@@ -201,6 +201,12 @@ retonr model remove <artifact>
 ```
 
 The implemented administrative slice also provides
+`retonr --data-dir <DIRECTORY> model list` and
+`retonr --data-dir <DIRECTORY> model inspect <ARTIFACT_ID>`.
+`list` is a read-only catalog of registered single-file installations.
+`inspect` reports one registered artifact's declared facts and current byte
+status. Neither command qualifies, activates, or downloads. The implemented
+administrative slice also provides
 `retonr --data-dir <DIRECTORY> model migrate --yes` and
 `retonr --data-dir <DIRECTORY> model import-set <SOURCE_ROOT> --manifest <MANIFEST_JSON>`.
 Migration applies only to an existing repository after retaining a verified

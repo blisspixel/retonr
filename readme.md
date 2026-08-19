@@ -185,6 +185,8 @@ The implemented model commands are intentionally narrow:
 ```console
 retonr --data-dir <DIRECTORY> model import <ARTIFACT> --manifest <MANIFEST_JSON>
 retonr --data-dir <DIRECTORY> model import-set <SOURCE_ROOT> --manifest <MANIFEST_JSON>
+retonr --data-dir <DIRECTORY> model list
+retonr --data-dir <DIRECTORY> model inspect <ARTIFACT_ID>
 retonr --data-dir <DIRECTORY> model inventory [--fail-on-findings]
 retonr --data-dir <DIRECTORY> model inventory-set [--fail-on-findings]
 retonr --data-dir <DIRECTORY> model pending-operations
@@ -197,7 +199,10 @@ retonr --data-dir <DIRECTORY> model remove-set --artifact-set-id <SHA256> --inst
 retonr --data-dir <DIRECTORY> model recover-set-removal --artifact-set-id <SHA256> --installation-generation <N> --yes
 ```
 
-These commands are offline and bounded. `import-set` copies one exact local folder
+These commands are offline and bounded. `list` reports registered single-file
+installations without storage-health findings. `inspect` reports one registered
+artifact's declared facts, byte status, and active roles. Neither command
+qualifies, activates, downloads, or reads as authority to mutate. `import-set` copies one exact local folder
 that matches a canonical multi-file manifest, then records only inert structural
 installation state. It does not reconcile, remove, qualify, activate, or
 run a set. `inventory-set` is read-only set-root inspection and does not grant a
