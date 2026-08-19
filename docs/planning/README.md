@@ -35,7 +35,8 @@ The current 0.2 build queue, in dependency order, is:
    crash-recoverable set removal without implying set authority.
 5. Escaped terminal rendering, `doctor`, `version`, `completions`, `man`,
    source `inspect`, `model list`, `model inspect`, and `rewrite` exist.
-   `inspect` is a pre-model inventory, not credential validation. `doctor` names
+   `inspect` inventories one file or a non-recursive directory without
+   credential validation or link following. `doctor` names
    recovery follow-up without mutation. Recovered fake-qualified
    bindings attach in-process conformance for `rewrite` and generative
    `rewrite-eval --baseline` kinds. Do not start a runtime.
