@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod conformance;
 mod contract;
 mod error;
 mod port;
@@ -12,6 +13,7 @@ mod structured;
 #[cfg(any(test, feature = "test-support"))]
 pub mod testing;
 
+pub use conformance::{CONFORMANCE_BACKEND_ID, ConformanceInferenceBackend};
 pub use contract::{
     BackendDiscovery, BackendId, BackendIdError, GENERATION_REQUEST_SCHEMA_VERSION,
     GenerationCandidate, GenerationRequest, GenerationResponse, InferenceCapabilities,

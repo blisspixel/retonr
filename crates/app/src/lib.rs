@@ -95,7 +95,8 @@ pub use claim_extraction::{
     PreparedClaimShadow, PreparedClaimShadowSet,
 };
 pub use grounded::{
-    GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteSelection, GroundedRewriteService,
+    AttachedConformanceRewrite, CONFORMANCE_PROMPT_TEMPLATE, GroundedRewriteRequest,
+    GroundedRewriteResult, GroundedRewriteSelection, GroundedRewriteService,
 };
 pub use rewrite_engine::{ClaimShadowObserver, EngineError, ProtectionError};
 pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};

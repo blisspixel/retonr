@@ -1282,6 +1282,7 @@ dependencies = [
  "predicates",
  "rewrite-app",
  "rewrite-model",
+ "rewrite-model-store",
  "rewrite-types",
  "rusqlite",
  "serde",

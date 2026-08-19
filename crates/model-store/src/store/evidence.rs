@@ -2,11 +2,11 @@ use rusqlite::{Connection, TransactionBehavior};
 
 use rewrite_model::{
     ArtifactSetId, ArtifactSetManifest, EffectivePackageEvidence, EffectivePackageEvidenceId,
-    EffectiveRuntimeState, EffectiveRuntimeStateId, QualificationRecordV2, QualificationV2Id,
-    RuntimeBuildId, RuntimeBuildIdentity,
+    EffectiveRuntimeState, EffectiveRuntimeStateId, QualificationId, QualificationRecord,
+    QualificationRecordV2, QualificationV2Id, RuntimeBuildId, RuntimeBuildIdentity,
 };
 
-use super::{ArtifactStateStore, WriteDisposition};
+use super::{ArtifactStateStore, WriteDisposition, load_qualification};
 use crate::{StoreError, StoreResult, record::immutable_disposition};
 
 mod read;
@@ -17,6 +17,19 @@ use read::{
 };
 
 impl ArtifactStateStore {
+    /// Reloads one qualification record and rechecks its content-derived identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when the record is absent, malformed, or no longer
+    /// matches its indexed identity.
+    pub fn qualification(
+        &self,
+        qualification_id: &QualificationId,
+    ) -> StoreResult<Option<QualificationRecord>> {
+        load_qualification(&self.connection, qualification_id)
+    }
+
     /// Stores one validated immutable artifact-set manifest.
     ///
     /// This record is inert evidence and does not install or activate its members.

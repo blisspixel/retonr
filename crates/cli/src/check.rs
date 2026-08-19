@@ -20,7 +20,7 @@ use crate::{
 
 mod escape;
 mod inspect;
-mod report;
+pub(crate) mod report;
 #[cfg(test)]
 mod tests;
 
@@ -91,6 +91,7 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
             &result.output,
             request.raw_terminal,
             request.confirmed,
+            CommandName::Check,
         )?;
     }
     if let Some(source_bytes) = source_for_diff.as_deref() {
@@ -102,8 +103,13 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
     if let Some(trace) = request.inspection.trace.as_ref() {
         inspect::write_trace(trace, &result.record)?;
     }
-    report::write(&result.record, format, report_target(&sink))
-        .map_err(|_| RunFailure::operational(CommandName::Check))?;
+    report::write(
+        CommandName::Check,
+        &result.record,
+        format,
+        report_target(&sink),
+    )
+    .map_err(|_| RunFailure::operational(CommandName::Check))?;
     Ok(exit_status(
         result.record.status,
         result.record.reason,
@@ -145,7 +151,7 @@ pub(crate) fn resolve_output_sink_for(
 }
 
 /// Reports are separated from document bytes so one stream is never both.
-const fn report_target(sink: &OutputSink) -> ReportTarget {
+pub(crate) const fn report_target(sink: &OutputSink) -> ReportTarget {
     match sink {
         OutputSink::Standard => ReportTarget::Diagnostic,
         OutputSink::None | OutputSink::File(_) => ReportTarget::Data,
@@ -189,15 +195,16 @@ const fn resolve_document_render(
 /// replaced. A terminal receives escaped rendering unless `--raw-terminal --yes`
 /// both appear. Either flag alone stays escaped. Raw terminal emission warns
 /// on standard error before the exact bytes.
-fn emit_document(
+pub(crate) fn emit_document(
     sink: &OutputSink,
     bytes: &[u8],
     raw_terminal: bool,
     confirmed: bool,
+    command: CommandName,
 ) -> Result<(), RunFailure> {
     match sink {
         OutputSink::None => Ok(()),
-        OutputSink::File(path) => write_new_file(path, bytes),
+        OutputSink::File(path) => write_new_file(path, bytes, command),
         OutputSink::Standard => {
             let terminal = io::stdout().is_terminal();
             let render = resolve_document_render(terminal, raw_terminal, confirmed);
@@ -207,38 +214,38 @@ fn emit_document(
                     stderr,
                     "warning: writing exact unescaped document bytes to a terminal"
                 )
-                .map_err(|_| RunFailure::operational(CommandName::Check))?;
+                .map_err(|_| RunFailure::operational(command))?;
             }
             let payload = match render {
                 DocumentRender::Exact => bytes.to_vec(),
                 DocumentRender::Escaped => escape::render_document_for_terminal(bytes)
-                    .map_err(|_| RunFailure::operational(CommandName::Check))?,
+                    .map_err(|_| RunFailure::operational(command))?,
             };
             let mut stdout = io::stdout().lock();
             stdout
                 .write_all(&payload)
                 .and_then(|()| stdout.flush())
-                .map_err(|_| RunFailure::operational(CommandName::Check))
+                .map_err(|_| RunFailure::operational(command))
         }
     }
 }
 
 /// Creates the destination exclusively so an existing file is never replaced.
-fn write_new_file(path: &Path, bytes: &[u8]) -> Result<(), RunFailure> {
+fn write_new_file(path: &Path, bytes: &[u8], command: CommandName) -> Result<(), RunFailure> {
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(path)
         .map_err(|error| {
             if error.kind() == io::ErrorKind::AlreadyExists {
-                RunFailure::output_exists()
+                RunFailure::output_exists_for(command)
             } else {
-                RunFailure::operational(CommandName::Check)
+                RunFailure::operational(command)
             }
         })?;
     file.write_all(bytes)
         .and_then(|()| file.sync_all())
-        .map_err(|_| RunFailure::operational(CommandName::Check))
+        .map_err(|_| RunFailure::operational(command))
 }
 
 pub(crate) fn exit_status(
