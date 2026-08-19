@@ -7,10 +7,11 @@ use crate::{StoreError, StoreResult};
 mod shape;
 
 pub(super) use shape::{
-    validate_schema_one, validate_schema_shape, validate_schema_three, validate_schema_two,
+    validate_schema_four, validate_schema_one, validate_schema_shape, validate_schema_three,
+    validate_schema_two,
 };
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 4;
+pub(super) const STORE_SCHEMA_VERSION: i64 = 5;
 
 pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
     configure(connection, true)?;
@@ -64,16 +65,26 @@ fn migrate_supported_schema(
             migrate_schema_two(connection)?;
             validate_schema_three(connection)?;
             migrate_schema_three(connection)?;
+            validate_schema_four(connection)?;
+            migrate_schema_four(connection)?;
         }
         2 => {
             validate_schema_two(connection)?;
             migrate_schema_two(connection)?;
             validate_schema_three(connection)?;
             migrate_schema_three(connection)?;
+            validate_schema_four(connection)?;
+            migrate_schema_four(connection)?;
         }
         3 => {
             validate_schema_three(connection)?;
             migrate_schema_three(connection)?;
+            validate_schema_four(connection)?;
+            migrate_schema_four(connection)?;
+        }
+        4 => {
+            validate_schema_four(connection)?;
+            migrate_schema_four(connection)?;
         }
         STORE_SCHEMA_VERSION => validate_schema_shape(connection)?,
         value if !(0..=STORE_SCHEMA_VERSION).contains(&value) => {
@@ -92,7 +103,8 @@ fn migrate_supported_schema(
 fn create_current_schema(connection: &Connection) -> StoreResult<()> {
     create_schema_two(connection)?;
     migrate_schema_two(connection)?;
-    migrate_schema_three(connection)
+    migrate_schema_three(connection)?;
+    migrate_schema_four(connection)
 }
 
 fn create_schema_two(connection: &Connection) -> StoreResult<()> {
@@ -259,6 +271,31 @@ fn migrate_schema_three(connection: &Connection) -> StoreResult<()> {
          ) STRICT;
 
          PRAGMA user_version = 4;",
+    )?;
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_four_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_two(connection)?;
+    migrate_schema_two(connection)?;
+    migrate_schema_three(connection)
+}
+
+fn migrate_schema_four(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(
+        "CREATE TABLE artifact_set_removals (
+             artifact_set_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_set_id) = 64),
+             installation_epoch INTEGER NOT NULL
+                 CHECK(installation_epoch BETWEEN 1 AND 9223372036854775807),
+             phase TEXT NOT NULL CHECK(phase IN ('prepared', 'completed')),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1024),
+             FOREIGN KEY(artifact_set_id)
+                 REFERENCES artifact_set_manifests(artifact_set_id)
+         ) STRICT;
+
+         PRAGMA user_version = 5;",
     )?;
     Ok(())
 }

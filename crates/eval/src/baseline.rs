@@ -10,6 +10,10 @@ use thiserror::Error;
 
 use crate::{EvaluationCase, EvaluationSuite};
 
+mod offline;
+
+pub use offline::{MAX_BASELINE_DEFINITION_BYTES, parse_baseline_definition, run_offline_baseline};
+
 /// Current baseline-runner contract version.
 pub const BASELINE_SCHEMA_VERSION: u32 = 1;
 const MAX_BASELINE_TEXT_BYTES: usize = 16 * 1024;
@@ -32,7 +36,8 @@ pub enum BaselineKind {
 }
 
 /// Exact inference policy shared by every generative baseline.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct BaselineInferencePolicy {
     /// Qualified artifact selected for the run.
     pub artifact_id: ArtifactId,
@@ -61,7 +66,8 @@ pub struct BaselineInferencePolicy {
 }
 
 /// Versioned baseline definition with explicit style and retrieval inputs.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct BaselineDefinition {
     /// Baseline contract version.
     pub schema_version: u32,
@@ -70,10 +76,13 @@ pub struct BaselineDefinition {
     /// Strategy being evaluated.
     pub kind: BaselineKind,
     /// Inference policy for generative strategies.
+    #[serde(default)]
     pub inference: Option<BaselineInferencePolicy>,
     /// Explicit fixed style description, if this baseline uses one.
+    #[serde(default)]
     pub style_description: Option<String>,
     /// Explicit retrieved examples, if this baseline uses them.
+    #[serde(default)]
     pub retrieved_examples: Vec<String>,
 }
 
@@ -191,6 +200,14 @@ pub struct BaselineReport {
     pub cases: Vec<BaselineCaseResult>,
 }
 
+impl BaselineReport {
+    /// Returns whether every case completed without an operational failure.
+    #[must_use]
+    pub const fn is_success(&self) -> bool {
+        self.statuses.failed == 0
+    }
+}
+
 /// Baseline definition or setup failure.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum BaselineError {
@@ -213,6 +230,12 @@ pub enum BaselineError {
     /// Selected artifact or capability was not present in discovery.
     #[error("baseline artifact is not available for structured generation")]
     ArtifactUnavailable,
+    /// Serialized definition exceeds the supported byte limit.
+    #[error("baseline definition exceeds the supported byte limit")]
+    TooLarge,
+    /// Definition JSON is invalid or contains an unknown field.
+    #[error("invalid baseline definition")]
+    InvalidJson,
 }
 
 /// Runs one baseline over a validated evaluation suite.

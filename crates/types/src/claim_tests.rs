@@ -4,6 +4,26 @@ use super::{
 };
 use crate::{Digest, DocumentId, RewriteUnitId, SourceSpan};
 
+#[test]
+fn from_canonical_rejects_confidence_above_one_million_ppm() {
+    assert_eq!(
+        ClaimEvidence::from_canonical(
+            Digest::sha256(b"claim"),
+            None,
+            Digest::sha256(b"predicate"),
+            None,
+            ClaimPolarity::Affirmed,
+            ClaimModality::Asserted,
+            0,
+            false,
+            vec![SourceSpan::new(0, 1).expect("span")],
+            1_000_001,
+        )
+        .err(),
+        Some(ClaimEvidenceError::InvalidConfidence)
+    );
+}
+
 fn claim(id: &[u8], spans: Vec<SourceSpan>) -> ClaimEvidence {
     ClaimEvidence::new(
         Digest::sha256(id),

@@ -295,6 +295,12 @@ impl RuntimeBuildIdentity {
         self.target
     }
 
+    /// Returns the exact launched entrypoint digest.
+    #[must_use]
+    pub const fn entrypoint_digest(&self) -> &Digest {
+        &self.entrypoint_digest
+    }
+
     fn canonical_bytes(&self) -> Vec<u8> {
         let mut output = Vec::new();
         output.extend_from_slice(b"retonr:runtime-build-identity:v1\0");

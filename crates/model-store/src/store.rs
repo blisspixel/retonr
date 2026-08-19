@@ -44,10 +44,13 @@ mod evidence;
 mod inventory;
 mod open;
 mod removal;
+mod set_inventory;
+mod set_removal;
 
 pub use inventory::StoredArtifactState;
 pub(crate) use open::{open_existing, read_only_flags, writable_flags};
 pub use removal::{RemovalCompletionDisposition, RemovalPreparationDisposition};
+pub use set_inventory::StoredArtifactSetState;
 
 /// SQLite-backed artifact state repository.
 pub struct ArtifactStateStore {

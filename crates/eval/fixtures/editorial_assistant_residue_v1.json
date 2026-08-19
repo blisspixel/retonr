@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "corpus_id": "synthetic-editorial-assistant-residue-v1",
+  "rule_catalog_version": 1,
+  "content_origin": "synthetic",
+  "license_spdx": "Apache-2.0",
+  "cases": [
+    {
+      "id": "finding-breakdown-meta-opener",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Here is a breakdown of the restore path. Snapshot, copy, then verify.",
+      "reference_revision": "Restore has three steps: snapshot, copy, then verify.",
+      "target_rules": ["breakdown_meta_opener"],
+      "expected_source_findings": [
+        {"rule_id": "breakdown_meta_opener", "evidence": "Here is a breakdown of", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-named-breakdown-field",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The cost breakdown field lists labor, storage, and transfer.",
+      "reference_revision": null,
+      "target_rules": ["breakdown_meta_opener"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-knowledge-cutoff-disclaimer",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "As of my last knowledge update, the protocol still uses TLS 1.2.",
+      "reference_revision": "As of 1 July 2026, the protocol still uses TLS 1.2.",
+      "target_rules": ["knowledge_cutoff_disclaimer"],
+      "expected_source_findings": [
+        {"rule_id": "knowledge_cutoff_disclaimer", "evidence": "As of my last knowledge update", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["TLS 1.2"]
+    },
+    {
+      "id": "clean-dated-as-of",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "As of 1 July 2026, 41 of 48 teams used the new client.",
+      "reference_revision": null,
+      "target_rules": ["knowledge_cutoff_disclaimer"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["1 July 2026", "41", "48"]
+    },
+    {
+      "id": "finding-source-gap-speculation",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "While specific details are limited in available sources, the vendor likely keeps a low profile.",
+      "reference_revision": "The 2026 filing does not list a public media contact.",
+      "target_rules": ["source_gap_speculation"],
+      "expected_source_findings": [
+        {"rule_id": "source_gap_speculation", "evidence": "While specific details are limited in available sources", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-documented-absence",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The 2026 filing does not list a public media contact.",
+      "reference_revision": null,
+      "target_rules": ["source_gap_speculation"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["2026"]
+    },
+    {
+      "id": "finding-canned-notability-blurb",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Independent coverage in trade publications and an active social media presence underscore her significance.",
+      "reference_revision": "The 3 March 2026 interview quotes her on the outage timeline.",
+      "target_rules": ["canned_notability_blurb"],
+      "expected_source_findings": [
+        {"rule_id": "canned_notability_blurb", "evidence": "Independent coverage in trade publications", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-named-interview",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The 3 March 2026 interview quotes her on the outage timeline.",
+      "reference_revision": null,
+      "target_rules": ["canned_notability_blurb"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["3 March 2026"]
+    },
+    {
+      "id": "finding-placeholder-template-residue",
+      "kind": "finding",
+      "language": "en",
+      "channel": "marketing",
+      "source": "[Company] is a leading provider of [value] for modern teams.",
+      "reference_revision": "Northwind ships a bounded import tool for operators.",
+      "target_rules": ["placeholder_template_residue"],
+      "expected_source_findings": [
+        {"rule_id": "placeholder_template_residue", "evidence": "[Company]", "occurrence": 0},
+        {"rule_id": "placeholder_template_residue", "evidence": "[value]", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-quoted-placeholder-docs",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The template file must keep the token [Company] until the operator fills it.",
+      "reference_revision": null,
+      "target_rules": ["placeholder_template_residue"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-scientific-register-padding",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "This is a causal, empirical correlate of the outage, not a guess.",
+      "reference_revision": "The incident report lists a causal chain: expired certificate, then retry storm.",
+      "target_rules": ["scientific_register_padding"],
+      "expected_source_findings": [
+        {"rule_id": "scientific_register_padding", "evidence": "causal, empirical correlate", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-named-causal-chain",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The 2026 incident report lists a causal chain: expired certificate, then retry storm.",
+      "reference_revision": null,
+      "target_rules": ["scientific_register_padding"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["2026"]
+    },
+    {
+      "id": "finding-roast-aside-padding",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Buckle up: the scheduler, in all its chaotic glory, still drops job zero.",
+      "reference_revision": "The scheduler still drops job zero.",
+      "target_rules": ["roast_aside_padding"],
+      "expected_source_findings": [
+        {"rule_id": "roast_aside_padding", "evidence": "Buckle up:", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["job zero"]
+    },
+    {
+      "id": "clean-quoted-standup-joke",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The standup notes quote the operator: \"Buckle up.\"",
+      "reference_revision": null,
+      "target_rules": ["roast_aside_padding"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-inline-bold-header-list",
+      "kind": "finding",
+      "language": "en",
+      "channel": "documentation",
+      "source": "- **Reliability:** the system is reliable.\n- **Safety:** the system is safe.",
+      "reference_revision": "- **Timeout:** 15 seconds\n- **Retries:** 2",
+      "target_rules": ["inline_bold_header_list"],
+      "expected_source_findings": [
+        {"rule_id": "inline_bold_header_list", "evidence": "**Reliability:** the system is reliable.", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-parameter-table-list",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "- **Timeout:** 15 seconds\n- **Retries:** 2",
+      "reference_revision": null,
+      "target_rules": ["inline_bold_header_list"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["15 seconds"]
+    },
+    {
+      "id": "finding-assistant-role-disclaimer",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "As an AI language model, I cannot inspect the cluster, but the lock still looks inverted.",
+      "reference_revision": "The 14:12 sample shows the writer still held the exclusive lock.",
+      "target_rules": ["assistant_role_disclaimer"],
+      "expected_source_findings": [
+        {"rule_id": "assistant_role_disclaimer", "evidence": "As an AI language model", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-named-human-disclaimer",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "Jane Chen, counsel, writes that this note is not legal advice.",
+      "reference_revision": null,
+      "target_rules": ["assistant_role_disclaimer"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["Jane Chen"]
+    },
+    {
+      "id": "finding-empty-it-depends",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "It depends on several factors, and there is no one-size-fits-all answer.",
+      "reference_revision": "It depends on lock wait: under 200 ms keep the batch, otherwise shrink it.",
+      "target_rules": ["empty_it_depends"],
+      "expected_source_findings": [
+        {"rule_id": "empty_it_depends", "evidence": "there is no one-size-fits-all answer", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-named-it-depends",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "It depends on lock wait: under 200 ms keep the batch, otherwise shrink it.",
+      "reference_revision": null,
+      "target_rules": ["empty_it_depends"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["200 ms"]
+    }
+  ]
+}

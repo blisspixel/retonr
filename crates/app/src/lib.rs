@@ -21,10 +21,15 @@ mod artifact_reconciliation;
 mod artifact_removal;
 mod artifact_repository;
 mod artifact_set_import;
+mod artifact_set_inventory;
+mod artifact_set_reconciliation;
+mod artifact_set_removal;
 mod artifact_storage;
+mod claim_extraction;
 mod grounded;
 mod runtime_artifact_lease;
 mod runtime_artifact_set_lease;
+mod runtime_attestation;
 #[cfg(test)]
 mod symlink_test_support;
 
@@ -56,18 +61,51 @@ pub use artifact_repository::{
     ArtifactRepositoryImportResult, ArtifactRepositoryMigrationDisposition,
     ArtifactRepositoryMigrationLimits, ArtifactRepositoryMigrationResult,
     ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
-    ArtifactRepositoryRemovalResult, ArtifactRepositorySetImportResult, ArtifactSetInstallationKey,
+    ArtifactRepositoryRemovalResult, ArtifactRepositorySchemaInspection,
+    ArtifactRepositorySchemaStatus, ArtifactRepositorySetImportResult,
+    ArtifactRepositorySetReconciliationResult, ArtifactRepositorySetRemovalResult,
+    ArtifactSetInstallationKey,
 };
 pub use artifact_set_import::{
     ArtifactSetImportDisposition, ArtifactSetImportError, ArtifactSetImportLimits,
     ArtifactSetImportProgress, ArtifactSetImportResult, ArtifactSetImportStage,
     OfflineArtifactSetImportRequest,
 };
-pub use grounded::{GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteService};
-pub use rewrite_engine::{EngineError, ProtectionError};
+pub use artifact_set_inventory::{
+    ArtifactSetInventoryError, ArtifactSetInventoryLimits, ArtifactSetInventoryProgress,
+    ArtifactSetInventoryReport, ArtifactSetInventoryService, ArtifactSetInventoryStage,
+    ArtifactSetTreeConflict, OversizedArtifactSet, RegisteredArtifactSetBytes,
+    RegisteredArtifactSetInspection, UnexpectedArtifactSetEntryCounts, VerifiedArtifactSetOrphan,
+};
+pub use artifact_set_reconciliation::{
+    ArtifactSetReconciliationError, ArtifactSetReconciliationLimits,
+    ArtifactSetReconciliationProgress, ArtifactSetReconciliationRequest,
+    ArtifactSetReconciliationResult, ArtifactSetReconciliationService,
+    ArtifactSetReconciliationStage,
+};
+pub use artifact_set_removal::{
+    ArtifactSetRemovalError, ArtifactSetRemovalLimits, ArtifactSetRemovalProgress,
+    ArtifactSetRemovalRecoveryError, ArtifactSetRemovalRequest, ArtifactSetRemovalResult,
+    ArtifactSetRemovalService, ArtifactSetRemovalStage,
+};
+pub use claim_extraction::{
+    CLAIM_PAIR_OPERATION_ID, CLAIM_PAIR_PROMPT_TEMPLATE, ClaimExtractionContext,
+    ClaimExtractionError, ClaimExtractionPair, ClaimExtractionRequest, ClaimExtractionService,
+    ClaimShadowJoinBinding, ClaimShadowJoinDisposition, ClaimShadowJoinService,
+    PreparedClaimShadow, PreparedClaimShadowSet,
+};
+pub use grounded::{
+    GroundedRewriteRequest, GroundedRewriteResult, GroundedRewriteSelection, GroundedRewriteService,
+};
+pub use rewrite_engine::{ClaimShadowObserver, EngineError, ProtectionError};
 pub use runtime_artifact_lease::{RuntimeArtifactLease, RuntimeArtifactLeaseLimits};
 pub use runtime_artifact_set_lease::{
     ArtifactSetLeaseError, RuntimeArtifactSetLease, RuntimeArtifactSetLeaseLimits,
+};
+pub use runtime_attestation::{
+    ManagedRuntimeAttestationRequest, ManagedRuntimeIdentityFacts, ManagedRuntimeStateFacts,
+    RuntimeAttestationError, RuntimeAttestationLimits, RuntimeAttestationPersistence,
+    RuntimeAttestationResult, RuntimeAttestationService, WriteDisposition, host_runtime_target,
 };
 
 /// Maximum accepted source or candidate size for the plain-text check service.
@@ -116,6 +154,21 @@ pub enum AppError {
     /// Grounded candidate generation failed before validation.
     #[error(transparent)]
     Grounded(#[from] rewrite_grounded::GroundedError),
+    /// No qualified local generation artifact is selected.
+    #[error("grounded rewrite requires a selected qualified local artifact")]
+    GroundedUnavailable,
+    /// A requested artifact identity does not match the active generation binding.
+    #[error("requested artifact is not the active qualified generation binding")]
+    GroundedSelectionMismatch,
+    /// A qualified generation artifact is selected, but no local runtime is attached.
+    #[error("grounded rewrite requires an attached local runtime")]
+    GroundedRuntimeUnavailable,
+    /// The artifact repository could not be inspected for a generation binding.
+    #[error("grounded rewrite could not inspect the artifact repository")]
+    GroundedRepository,
+    /// Independent claim extraction failed before an informational shadow join.
+    #[error(transparent)]
+    ClaimExtraction(#[from] claim_extraction::ClaimExtractionError),
 }
 
 /// Entry point for model-free validation of one supplied candidate.
@@ -146,6 +199,24 @@ impl CandidateCheckService {
         request: CandidateCheckRequest,
         cancellation: &CancellationToken,
     ) -> Result<CandidateCheckResult, AppError> {
+        Self::check_with_claim_shadow(request, cancellation, None)
+    }
+
+    /// Checks one candidate and records independently produced claim comparison.
+    ///
+    /// A present observer cannot authorize a rewrite. Literal-token failure
+    /// still abstains, and a claim conflict cannot reject a candidate that
+    /// already passed the hard gates.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppError`] for unsupported input or an operational engine
+    /// failure. Candidate policy rejection is returned as a successful abstention.
+    pub fn check_with_claim_shadow(
+        request: CandidateCheckRequest,
+        cancellation: &CancellationToken,
+        claim_shadow: Option<&dyn ClaimShadowObserver>,
+    ) -> Result<CandidateCheckResult, AppError> {
         let candidate = strip_utf8_bom_prefix(&request.candidate);
         if candidate.len() > MAX_CANDIDATE_CHECK_BYTES {
             return Err(AppError::CandidateTooLarge {
@@ -160,7 +231,7 @@ impl CandidateCheckService {
             protected_terms: request.protected_terms,
             ..RewriteOptions::default()
         };
-        run_plain_text_transaction(&parsed, &generator, &options, cancellation)
+        run_plain_text_transaction(&parsed, &generator, &options, claim_shadow, cancellation)
     }
 }
 
@@ -175,10 +246,14 @@ fn run_plain_text_transaction(
     parsed: &ParsedTextDocument,
     generator: &dyn CandidateGenerator,
     options: &RewriteOptions,
+    claim_shadow: Option<&dyn ClaimShadowObserver>,
     cancellation: &CancellationToken,
 ) -> Result<CandidateCheckResult, AppError> {
     let structure = PlainTextStructure { parsed };
-    let engine = RewriteEngine::new(generator, &LiteralSemanticEvaluator, &structure);
+    let mut engine = RewriteEngine::new(generator, &LiteralSemanticEvaluator, &structure);
+    if let Some(observer) = claim_shadow {
+        engine = engine.with_claim_shadow(observer);
+    }
     let outcome = engine.run(parsed.document(), options, cancellation)?;
     let proposed = TextAdapter::apply(parsed, &outcome.edits)?;
     let verification = TextAdapter::verify(parsed, &proposed, &outcome.edits);

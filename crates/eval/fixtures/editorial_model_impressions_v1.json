@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "corpus_id": "synthetic-editorial-model-impressions-v1",
+  "rule_catalog_version": 1,
+  "content_origin": "synthetic",
+  "license_spdx": "Apache-2.0",
+  "cases": [
+    {
+      "id": "finding-sycophantic-affirmation",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Great question! You are absolutely right that the timeout should be explicit.",
+      "reference_revision": "The timeout should be explicit.",
+      "target_rules": ["sycophantic_affirmation"],
+      "expected_source_findings": [
+        {"rule_id": "sycophantic_affirmation", "evidence": "Great question! You are absolutely right", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["timeout"]
+    },
+    {
+      "id": "clean-literal-agreement",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The review agrees with the measured timeout of 30 seconds.",
+      "reference_revision": null,
+      "target_rules": ["sycophantic_affirmation"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["30 seconds"]
+    },
+    {
+      "id": "finding-careful-hedge-open",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "I want to be careful here. It is worth noting that the lock is exclusive.",
+      "reference_revision": "The lock is exclusive.",
+      "target_rules": ["careful_hedge_open"],
+      "expected_source_findings": [
+        {"rule_id": "careful_hedge_open", "evidence": "I want to be careful here", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["lock"]
+    },
+    {
+      "id": "clean-named-caution",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The runbook requires a backup before the exclusive lock is taken.",
+      "reference_revision": null,
+      "target_rules": ["careful_hedge_open"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": ["backup"]
+    },
+    {
+      "id": "finding-assistant-capability-disclaimer",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "I don't have access to the production hosts, but the inventory job failed at 14:12.",
+      "reference_revision": "The inventory job failed at 14:12.",
+      "target_rules": ["assistant_capability_disclaimer"],
+      "expected_source_findings": [
+        {"rule_id": "assistant_capability_disclaimer", "evidence": "I don't have access to the production hosts", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["14:12"]
+    },
+    {
+      "id": "clean-access-denied-log",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The operator account does not have access to the production hosts.",
+      "reference_revision": null,
+      "target_rules": ["assistant_capability_disclaimer"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-key-takeaway-packaging",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Here are the key takeaways: measure lock wait, then raise the batch size.",
+      "reference_revision": "Measure lock wait, then raise the batch size.",
+      "target_rules": ["key_takeaway_packaging"],
+      "expected_source_findings": [
+        {"rule_id": "key_takeaway_packaging", "evidence": "Here are the key takeaways:", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["batch size"]
+    },
+    {
+      "id": "clean-named-takeaway-field",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The takeaways field in the report schema is a string array.",
+      "reference_revision": null,
+      "target_rules": ["key_takeaway_packaging"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-empty-both-sides",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "On one hand, smaller batches help. On the other hand, larger batches help too.",
+      "reference_revision": "Smaller batches reduce lock time; larger batches reduce setup cost.",
+      "target_rules": ["empty_both_sides"],
+      "expected_source_findings": [
+        {"rule_id": "empty_both_sides", "evidence": "On one hand", "occurrence": 0},
+        {"rule_id": "empty_both_sides", "evidence": "On the other hand", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "clean-literal-handedness",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "Place the sensor on one hand and the ground lead on the other hand.",
+      "reference_revision": null,
+      "target_rules": ["empty_both_sides"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-casual-direct-address",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "Look, the writer process held the exclusive lock. Honestly, the graphs showed it by 14:12.",
+      "reference_revision": "The writer process held the exclusive lock. The graphs showed it by 14:12.",
+      "target_rules": ["casual_direct_address"],
+      "expected_source_findings": [
+        {"rule_id": "casual_direct_address", "evidence": "Look,", "occurrence": 0},
+        {"rule_id": "casual_direct_address", "evidence": "Honestly,", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["14:12"]
+    },
+    {
+      "id": "clean-look-ahead-buffer",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The parser uses a one-token look-ahead buffer.",
+      "reference_revision": null,
+      "target_rules": ["casual_direct_address"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-certainty-theater",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "The short answer is that the lease must be held. In short, do not hash after unlock.",
+      "reference_revision": "The lease must be held. Do not hash after unlock.",
+      "target_rules": ["certainty_theater"],
+      "expected_source_findings": [
+        {"rule_id": "certainty_theater", "evidence": "The short answer is", "occurrence": 0},
+        {"rule_id": "certainty_theater", "evidence": "In short,", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["lease"]
+    },
+    {
+      "id": "clean-short-field-name",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "documentation",
+      "source": "The short answer field is optional in the JSON report.",
+      "reference_revision": null,
+      "target_rules": ["certainty_theater"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    },
+    {
+      "id": "finding-offered-followups",
+      "kind": "finding",
+      "language": "en",
+      "channel": "report",
+      "source": "The batch size is 32. If you would like, I can also draft a runbook and a dashboard spec.",
+      "reference_revision": "The batch size is 32.",
+      "target_rules": ["offered_followups"],
+      "expected_source_findings": [
+        {"rule_id": "offered_followups", "evidence": "If you would like, I can also", "occurrence": 0}
+      ],
+      "expected_reference_findings": [],
+      "protected_terms": ["32"]
+    },
+    {
+      "id": "clean-optional-follow-up-ticket",
+      "kind": "clean_control",
+      "language": "en",
+      "channel": "report",
+      "source": "The follow-up ticket can also include a runbook if operations requests one.",
+      "reference_revision": null,
+      "target_rules": ["offered_followups"],
+      "expected_source_findings": [],
+      "expected_reference_findings": [],
+      "protected_terms": []
+    }
+  ]
+}

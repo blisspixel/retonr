@@ -9,6 +9,7 @@ mod claim;
 mod claim_comparison;
 mod digest;
 mod document;
+mod extractor;
 mod record;
 mod rewrite;
 mod validation;
@@ -27,6 +28,10 @@ pub use digest::{Digest, DigestError};
 pub use document::{
     DocumentError, DocumentId, DocumentIr, IdentifierError, MediaType, RewriteUnit, RewriteUnitId,
     SourceSpan, SpanError, StructuralFingerprint,
+};
+pub use extractor::{
+    EXTRACTOR_MANIFEST_SCHEMA_VERSION, ExtractorManifest, ExtractorManifestError,
+    MAX_EXTRACTOR_MANIFEST_JSON_BYTES,
 };
 pub use record::{
     GENERATION_PROVENANCE_SCHEMA_VERSION, GenerationProvenance, GenerationRuntimeProvenance,

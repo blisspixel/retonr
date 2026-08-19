@@ -92,7 +92,8 @@ relationships. It does not project v2 evidence into v1 or create an active bindi
 - Decide acquisition and staged-download policy in a separate record.
 - The repository-owned artifact-set lease is implemented; it verifies bytes and
   holds the shared lifecycle boundary but grants no role authority.
-- Add application-owned live attestation before any
+- Application-owned managed-process attestation now produces inert
+  runtime-build and effective-state records. Keep those records out of
   claim-extraction activation.
 - Add invalidation inputs for runtime, prompt, threshold, license, and platform
   changes.

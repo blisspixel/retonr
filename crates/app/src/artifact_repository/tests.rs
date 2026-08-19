@@ -1,8 +1,10 @@
 use std::fs;
 
 use rewrite_model::{
-    ARTIFACT_MANIFEST_SCHEMA_VERSION, ArtifactId, ArtifactManifest, ArtifactRole, ArtifactSource,
-    DeclaredCapabilities, LicenseRecord,
+    ARTIFACT_MANIFEST_SCHEMA_VERSION, ActivationId, ArtifactId, ArtifactManifest, ArtifactRole,
+    ArtifactSource, DeclaredCapabilities, HardwareTier, InstalledArtifact, LicenseDecision,
+    LicenseRecord, QUALIFICATION_SCHEMA_VERSION, QualificationRecord, QualificationStatus,
+    RuntimeIdentity,
 };
 use rewrite_model_store::{ArtifactStateStore, RemovalPreparationDisposition};
 use rewrite_types::{CancellationToken, Digest};
@@ -12,13 +14,16 @@ use super::*;
 use crate::{
     ArtifactImportLimits, ArtifactInventoryLimits, ArtifactRemovalDisposition,
     ArtifactRemovalError, ArtifactRemovalLimits, ArtifactRemovalRecoveryError,
-    OfflineArtifactImportRequest, RegisteredArtifactBytes,
+    OfflineArtifactImportRequest, RegisteredArtifactBytes, artifact_storage::managed_storage_key,
 };
 
 const ARTIFACT_BYTES: &[u8] = b"repository facade artifact";
 
 mod migration;
 mod set_import;
+mod set_inventory;
+mod set_reconciliation;
+mod set_removal;
 
 fn manifest() -> ArtifactManifest {
     let digest = Digest::sha256(ARTIFACT_BYTES);
@@ -396,6 +401,108 @@ fn import_preserves_permissions_on_an_existing_selected_root() {
             & 0o777,
         0o755
     );
+}
+
+#[test]
+fn imported_artifact_is_not_an_active_generation_binding() {
+    let (_directory, repository, _imported) = imported_repository();
+    let binding = repository
+        .active_generation_binding()
+        .expect("imported repository is inspectable");
+    assert!(binding.is_none());
+}
+
+#[test]
+fn missing_repository_has_no_generation_binding() {
+    let directory = tempdir().expect("temporary directory");
+    let repository =
+        ArtifactRepository::new(directory.path().join("missing")).expect("derive repository");
+    assert!(matches!(
+        repository.active_generation_binding(),
+        Err(ArtifactRepositoryError::NotInitialized)
+    ));
+}
+
+#[test]
+fn recovered_generation_binding_requires_current_managed_bytes() {
+    let (directory, repository, imported) = imported_repository();
+    let installed = InstalledArtifact {
+        artifact_id: imported.key.artifact_id().clone(),
+        artifact_digest: imported.key.artifact_id().digest().clone(),
+        byte_size: u64::try_from(ARTIFACT_BYTES.len()).expect("fixture size"),
+        storage_key: managed_storage_key(imported.key.artifact_id().digest()),
+    };
+    let qualification = generation_qualification(&installed);
+    let qualification_id = qualification
+        .qualification_id()
+        .expect("fixture qualification");
+    {
+        let mut store =
+            ArtifactStateStore::open_existing_writable_exact(&repository.state_database())
+                .expect("open writable store");
+        store
+            .put_qualification(&qualification)
+            .expect("store qualification");
+        store
+            .activate(
+                ActivationId::from_digest(Digest::sha256(b"rewrite-selection")),
+                ArtifactRole::Generation,
+                &installed,
+                &qualification_id,
+            )
+            .expect("activate generation");
+    }
+    let binding = repository
+        .active_generation_binding()
+        .expect("inspect binding")
+        .expect("active generation binding");
+    assert_eq!(binding.artifact_id, installed.artifact_id);
+    assert_eq!(binding.role, ArtifactRole::Generation);
+    let data = directory.path().join("data");
+    assert!(matches!(
+        crate::GroundedRewriteSelection::require_ready(Some(&data), None),
+        Err(crate::AppError::GroundedRuntimeUnavailable)
+    ));
+    assert!(matches!(
+        crate::GroundedRewriteSelection::require_ready(Some(&data), Some(&installed.artifact_id)),
+        Err(crate::AppError::GroundedRuntimeUnavailable)
+    ));
+    let other = ArtifactId::from_digest(Digest::sha256(b"other"));
+    assert!(matches!(
+        crate::GroundedRewriteSelection::require_ready(Some(&data), Some(&other)),
+        Err(crate::AppError::GroundedSelectionMismatch)
+    ));
+
+    fs::remove_file(repository.managed_storage().join(&installed.storage_key))
+        .expect("remove managed bytes");
+    assert!(repository.active_generation_binding().is_err());
+}
+
+fn generation_qualification(installed: &InstalledArtifact) -> QualificationRecord {
+    QualificationRecord {
+        schema_version: QUALIFICATION_SCHEMA_VERSION,
+        artifact_id: installed.artifact_id.clone(),
+        artifact_digest: installed.artifact_digest.clone(),
+        runtime: RuntimeIdentity {
+            backend: "fake".to_owned(),
+            version: "1.0.0".to_owned(),
+            digest: Some(Digest::sha256(b"runtime")),
+        },
+        operating_system: "test".to_owned(),
+        hardware_tier: HardwareTier {
+            id: "test".to_owned(),
+            memory_mib: 8_192,
+            accelerator: "none".to_owned(),
+        },
+        supported_roles: vec![ArtifactRole::Generation],
+        source_byte_limit: 4_096,
+        context_token_limit: 8_192,
+        prompt_template_digest: Digest::sha256(b"prompt"),
+        request_policy_digest: Digest::sha256(b"request"),
+        threshold_policy_digest: Digest::sha256(b"threshold"),
+        license_decision: LicenseDecision::LocalUseOnly,
+        status: QualificationStatus::Qualified,
+    }
 }
 
 fn directory_snapshot(path: &std::path::Path) -> Vec<(std::path::PathBuf, u64)> {

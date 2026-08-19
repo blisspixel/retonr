@@ -194,15 +194,17 @@ claim-extraction role. It also binds source and context ceilings, prompt, claim-
 and claim-operation contracts, request and threshold policies, language policy,
 hardware envelope, qualification suite, result evidence, license decision, and
 qualification outcome. Its identifier and type are distinct from qualification v1; it
-has no authorization operation and cannot enter the v1 activation path. Live
-attestation, operation leases, pre-call checks, and post-call checks remain the
-responsibility of a later application runtime join.
+has no authorization operation and cannot enter the v1 activation path. The application can now attest one managed entrypoint and persist those two
+inert records. Operation leases, pre-call checks, and post-call checks remain
+the responsibility of a later application runtime join. The attestor does not
+authorize a role.
 Attached observed-only Ollama metadata cannot construct a runtime-build identity.
 
-The model store persists these five inert records under SQLite schema v4 in separate,
-immutable tables. Schema v4 also adds a separate artifact-set installation record
-with a unique portable set-root key and a distinct positive generation. Migration
-creates that table empty and does not infer installed state from evidence or legacy
+The model store persists these five inert records under SQLite schema v5 in separate,
+immutable tables. Schema v4 added a separate artifact-set installation record
+with a unique portable set-root key and a distinct positive generation. Schema v5
+adds a crash-recoverable artifact-set removal journal. Migration
+creates those tables empty and does not infer installed state from evidence or legacy
 single-file records. Higher-level writes begin an immediate transaction, reload every
 referenced lower-level record, require canonical serialized bytes and matching indexed
 identity columns, and rerun the domain relationship checks before commit. Reads repeat
@@ -581,9 +583,10 @@ deletion. A state failure after publication leaves an inert exact orphan that a 
 identical import can verify and register. The operation does not inspect
 package-completeness evidence, grant a set lease, qualify a runtime, activate a role,
 execute code, or use the network. Import itself grants no lease; a lease is a
-separate verified operation. No artifact-set import CLI exists yet.
-Runtime-native pulls, downloads, stale-root recovery, managed-set removal, set
-inventory and reconciliation, and repair remain later operations.
+separate verified operation. Offline CLI exposure is `model import-set`.
+Runtime-native pulls, downloads, stale-root recovery, and repair remain later
+operations. Selected set reconciliation and crash-recoverable set removal are
+implemented without granting set authority.
 
 A separate read-only artifact inventory uses the same pinned storage boundary,
 acquires the lifecycle lock in shared mode, and opens only existing storage. It
@@ -609,6 +612,29 @@ rename throughout the scan. This behavior is tested on the continuous-integratio
 NTFS configuration; other Windows filesystem drivers are not yet qualified. The
 dependency cost is accepted for the managed-storage trust boundary and remains
 subject to source, duplicate-version, and supply-chain review.
+
+A separate read-only artifact-set inventory uses the same shared lifecycle lock and
+opens only existing storage. It loads bounded set manifests and optional
+installation generations, freezes exact `sets` directory names, and verifies
+registered or manifest-associated canonical set roots by enumerating the planned
+tree and hashing eligible members. It reports registered tree status, manifest-only
+set state, independently verified orphan set roots, tree conflicts, oversized
+planned trees, and aggregate unexpected set-root counts. Canonical names without a
+matching durable manifest are counted and not descended into. The operation never
+creates, cleans, repairs, or deletes storage, and the report grants no lease,
+qualification, activation, or role authority. Single-file inventory does not
+inspect set roots, and set inventory does not inspect single-file artifacts.
+
+Selected set-root reconciliation is a separate existing-only mutation. It accepts
+one complete set manifest, derives only its content-derived set-root name, and
+reacquires the lifecycle lock exclusively. It ignores prior inventory evidence as
+authority, requires the current managed set root, and applies caller-owned member,
+tree, and byte ceilings. It enumerates the planned tree, verifies member sizes,
+single links, and SHA-256, rechecks the held storage boundary, and then atomically
+inserts any missing exact set-manifest and installation records or confirms that
+both existing records match. It never copies, replaces, deletes, qualifies,
+activates, or accesses the network. A state failure leaves the same managed tree.
+The result does not grant a lease, qualify a package, or authorize a role.
 
 Selected orphan reconciliation is a separate existing-only mutation. It accepts one
 complete manifest, derives only its canonical content-addressed name, and reacquires

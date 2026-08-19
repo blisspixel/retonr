@@ -16,6 +16,10 @@ use rewrite_model::{ArtifactId, ArtifactManifest};
 use rewrite_types::Digest;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error as _};
 
+mod set;
+
+pub use set::{ArtifactSetSelectionDto, parse_set_manifest_bounded, read_set_manifest_bounded};
+
 /// Current major version of the CLI JSON envelope.
 pub const CLI_SCHEMA_VERSION: u32 = 1;
 
@@ -34,7 +38,7 @@ pub const EXIT_RECOVERY_REQUIRED: u8 = 5;
 /// Cancellation observed before an irreversible boundary.
 pub const EXIT_CANCELLED: u8 = 130;
 
-/// Maximum accepted encoded artifact manifest size.
+/// Maximum accepted encoded artifact or artifact-set manifest size.
 pub const MAX_MANIFEST_BYTES: usize = 1024 * 1024;
 
 /// CLI report representation.
@@ -55,12 +59,21 @@ pub enum CommandName {
     /// Deterministic candidate validation.
     #[serde(rename = "check")]
     Check,
+    /// Grounded rewrite of one source document.
+    #[serde(rename = "rewrite")]
+    Rewrite,
     /// Offline single-file artifact import.
     #[serde(rename = "model.import")]
     ModelImport,
+    /// Offline exact artifact-set folder import.
+    #[serde(rename = "model.import_set")]
+    ModelImportSet,
     /// Read-only managed artifact inventory.
     #[serde(rename = "model.inventory")]
     ModelInventory,
+    /// Read-only managed artifact-set inventory.
+    #[serde(rename = "model.inventory_set")]
+    ModelInventorySet,
     /// Read-only inspection of operations requiring recovery.
     #[serde(rename = "model.pending_operations")]
     ModelPendingOperations,
@@ -70,15 +83,27 @@ pub enum CommandName {
     /// Selected exact artifact reconciliation.
     #[serde(rename = "model.reconcile")]
     ModelReconcile,
+    /// Selected exact artifact-set reconciliation.
+    #[serde(rename = "model.reconcile_set")]
+    ModelReconcileSet,
     /// Selected inactive installation removal.
     #[serde(rename = "model.remove")]
     ModelRemove,
     /// Forward recovery of one exact prepared removal.
     #[serde(rename = "model.recover_removal")]
     ModelRecoverRemoval,
+    /// Selected inactive artifact-set installation removal.
+    #[serde(rename = "model.remove_set")]
+    ModelRemoveSet,
+    /// Forward recovery of one exact prepared artifact-set removal.
+    #[serde(rename = "model.recover_set_removal")]
+    ModelRecoverSetRemoval,
     /// Product and machine-contract version inspection.
     #[serde(rename = "version")]
     Version,
+    /// Read-only local recovery inspection.
+    #[serde(rename = "doctor")]
+    Doctor,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -184,6 +209,8 @@ pub struct ErrorBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     recovery_selection: Option<ArtifactSelectionDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    set_recovery_selection: Option<set::ArtifactSetSelectionDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     migration_backup_key: Option<String>,
 }
 
@@ -196,6 +223,7 @@ impl ErrorBody {
             code,
             retryable,
             recovery_selection: None,
+            set_recovery_selection: None,
             migration_backup_key: None,
         }
     }
@@ -204,6 +232,13 @@ impl ErrorBody {
     #[must_use]
     pub fn with_recovery_selection(mut self, selection: ArtifactSelectionDto) -> Self {
         self.recovery_selection = Some(selection);
+        self
+    }
+
+    /// Attaches the exact prepared set generation required for safe recovery.
+    #[must_use]
+    pub fn with_set_recovery_selection(mut self, selection: set::ArtifactSetSelectionDto) -> Self {
+        self.set_recovery_selection = Some(selection);
         self
     }
 
@@ -255,10 +290,22 @@ impl ArtifactIdArgument {
         ArtifactId::from_digest(self.0.clone())
     }
 
+    /// Converts the validated digest into the domain artifact-set identity.
+    #[must_use]
+    pub fn to_artifact_set_id(&self) -> rewrite_model::ArtifactSetId {
+        rewrite_model::ArtifactSetId::from_digest(self.0.clone())
+    }
+
     /// Creates a CLI identity from a validated domain artifact identity.
     #[must_use]
     pub fn from_artifact_id(value: &ArtifactId) -> Self {
         Self(value.digest().clone())
+    }
+
+    /// Creates a CLI identity from a validated SHA-256 digest.
+    #[must_use]
+    pub fn from_digest(value: &Digest) -> Self {
+        Self(value.clone())
     }
 }
 

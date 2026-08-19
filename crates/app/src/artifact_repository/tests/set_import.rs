@@ -170,7 +170,9 @@ fn set_import_refuses_legacy_schema_without_implicit_migration() {
     let state_path = data.join("artifact-state.sqlite3");
     Connection::open(&state_path)
         .expect("open state fixture")
-        .execute_batch("DROP TABLE installed_artifact_sets; PRAGMA user_version = 3;")
+        .execute_batch(
+            "DROP TABLE artifact_set_removals; DROP TABLE installed_artifact_sets; PRAGMA user_version = 3;",
+        )
         .expect("restore exact schema three");
 
     let error = repository

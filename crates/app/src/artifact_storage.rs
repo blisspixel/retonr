@@ -28,6 +28,7 @@ pub(crate) use mutation::ExactEntryCapacity;
 pub(crate) use mutation::set_private_directory_permissions;
 pub(crate) use tree::{
     ManagedTreeEntryKind, ManagedTreeLimits, ManagedTreeSnapshot, OwnedStagingTree,
+    remove_verified_managed_tree,
 };
 pub(crate) use verification::{
     ExactArtifactExpectation, ExactArtifactSync, ExactArtifactVerificationError,
@@ -430,7 +431,7 @@ pub(super) fn validate_regular_file(
     }
 }
 
-fn hash_exact_bytes(
+pub(crate) fn hash_exact_bytes(
     file: &mut File,
     expected_size: u64,
     cancellation: &CancellationToken,

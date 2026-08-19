@@ -67,9 +67,8 @@ impl RuntimeArtifactSetLease {
 
     /// Exact installation key protected by this live lease.
     ///
-    /// Artifact-set removal is not implemented, so every set installation
-    /// generation is currently the first generation. The key does not yet
-    /// distinguish a reinstall.
+    /// After a completed set removal, a later exact reimport uses the next
+    /// generation so an old removal retry cannot delete the reinstall.
     #[must_use]
     pub const fn key(&self) -> &ArtifactSetInstallationKey {
         &self.key

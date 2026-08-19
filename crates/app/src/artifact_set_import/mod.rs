@@ -6,7 +6,9 @@ mod source;
 mod verify;
 
 pub(crate) use boundary::{map_managed_tree, map_set_capacity, map_storage_open};
-pub(crate) use manifest::{ArtifactSetPlanBounds, plan_artifact_set, validate_plan_bounds};
+pub(crate) use manifest::{
+    ArtifactSetPlanBounds, SET_STORAGE_KEY_PREFIX, plan_artifact_set, validate_plan_bounds,
+};
 pub(crate) use service::{OfflineArtifactSetImportService, SETS_DIRECTORY};
 pub(crate) use verify::verify_final_tree;
 

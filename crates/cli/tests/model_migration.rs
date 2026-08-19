@@ -65,7 +65,8 @@ fn downgrade_to_schema_two(data: &Path) {
         Connection::open(data.join("artifact-state.sqlite3")).expect("open current state fixture");
     connection
         .execute_batch(
-            "DROP TABLE installed_artifact_sets;
+            "DROP TABLE artifact_set_removals;
+             DROP TABLE installed_artifact_sets;
              DROP TABLE qualification_v2_records;
              DROP TABLE effective_package_evidence;
              DROP TABLE effective_runtime_states;
@@ -81,7 +82,8 @@ fn downgrade_to_schema_three(data: &Path) {
         Connection::open(data.join("artifact-state.sqlite3")).expect("open current state fixture");
     connection
         .execute_batch(
-            "DROP TABLE installed_artifact_sets;
+            "DROP TABLE artifact_set_removals;
+             DROP TABLE installed_artifact_sets;
              PRAGMA user_version = 3;",
         )
         .expect("restore canonical schema three shape");
@@ -130,7 +132,7 @@ fn migration_requires_confirmation_and_reports_current_state() {
         .success()
         .stderr(predicate::str::is_empty())
         .stdout(predicate::eq(
-            "disposition: already_current\nfrom_schema: 4\nto_schema: 4\n",
+            "disposition: already_current\nfrom_schema: 5\nto_schema: 5\n",
         ));
 }
 
@@ -156,7 +158,7 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
     assert_eq!(output["command"], "model.migrate");
     assert_eq!(output["result"]["disposition"], "migrated");
     assert_eq!(output["result"]["from_schema"], 2);
-    assert_eq!(output["result"]["to_schema"], 4);
+    assert_eq!(output["result"]["to_schema"], 5);
     let backup_key = output["result"]["backup_key"]
         .as_str()
         .expect("opaque backup key");
@@ -191,7 +193,7 @@ fn migrates_schema_three_with_a_schema_three_backup() {
     assert!(output.stderr.is_empty());
     let output: Value = serde_json::from_slice(&output.stdout).expect("parse migration JSON");
     assert_eq!(output["result"]["from_schema"], 3);
-    assert_eq!(output["result"]["to_schema"], 4);
+    assert_eq!(output["result"]["to_schema"], 5);
     let backup_key = output["result"]["backup_key"]
         .as_str()
         .expect("opaque backup key");
