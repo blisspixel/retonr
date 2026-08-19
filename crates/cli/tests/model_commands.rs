@@ -270,9 +270,100 @@ fn help_lists_only_the_implemented_offline_model_surface() {
         .stdout(predicate::str::contains("remove-set"))
         .stdout(predicate::str::contains("recover-removal"))
         .stdout(predicate::str::contains("recover-set-removal"))
+        .stdout(predicate::str::contains("device-evidence"))
+        .stdout(predicate::str::contains("fitr"))
         .stdout(predicate::str::contains("download").not())
         .stdout(predicate::str::contains("activate").not())
         .stdout(predicate::str::contains("qualify").not());
+}
+
+#[test]
+fn device_evidence_is_optional_and_is_not_a_qualification() {
+    let directory = tempdir().expect("temporary directory");
+    let evidence = directory.path().join("demo.retonr.json");
+    fs::write(
+        &evidence,
+        serde_json::to_vec(&serde_json::json!({
+            "schema": "fitr.retonr.evidence.v1",
+            "kind": "device_measurement",
+            "disclaimer": "This is a fitr measurement of one model on one device. It is not a retonr qualification, activation, or license decision.",
+            "model": "demo:8b",
+            "quant": "Q4_K_M",
+            "family": "qwen3",
+            "device": {
+                "host": "secret-laptop",
+                "os": "linux",
+                "cpu": "secret-cpu",
+                "gpu": "demo-gpu",
+                "ollama": "0.32.14",
+                "config": { "OLLAMA_MODELS": "/secret/models" }
+            },
+            "needs": {
+                "structured_output": { "state": "PASS", "why": "6/7" },
+                "vision": { "state": "n/a" }
+            },
+            "result": "/secret/home/.fitr/results/demo.json"
+        }))
+        .expect("encode evidence"),
+    )
+    .expect("write evidence");
+
+    let output = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .env_remove("RETONR_DATA_DIR")
+        .args(["model", "fitr"])
+        .arg(&evidence)
+        .output()
+        .expect("run device evidence");
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let text = String::from_utf8(output.stdout.clone()).expect("UTF-8");
+    assert!(text.contains("\"command\": \"model.device_evidence\""));
+    assert!(text.contains("\"kind\": \"device_measurement\""));
+    assert!(text.contains("\"qualified\": false"));
+    assert!(text.contains("\"qualification\": \"absent\""));
+    assert!(text.contains("demo:8b"));
+    assert!(text.contains("n/a"));
+    assert!(!text.contains("secret-laptop"));
+    assert!(!text.contains("secret-cpu"));
+    assert!(!text.contains("/secret/"));
+    assert!(!directory.path().join("repository").exists());
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "model", "device-evidence"])
+        .arg(&evidence)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("qualified: false"))
+        .stdout(predicate::str::contains(
+            "need structured_output state=PASS",
+        ));
+}
+
+#[test]
+fn device_evidence_refuses_a_qualification_claim() {
+    let directory = tempdir().expect("temporary directory");
+    let evidence = directory.path().join("bad.json");
+    fs::write(
+        &evidence,
+        serde_json::to_vec(&serde_json::json!({
+            "schema": "fitr.retonr.evidence.v1",
+            "kind": "device_measurement",
+            "disclaimer": "ready to qualify",
+            "model": "demo:8b"
+        }))
+        .expect("encode"),
+    )
+    .expect("write");
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["model", "fitr"])
+        .arg(&evidence)
+        .assert()
+        .code(4)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"code\": \"unsupported\""));
 }
 
 #[test]

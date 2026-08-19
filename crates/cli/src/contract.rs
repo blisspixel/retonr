@@ -91,6 +91,9 @@ pub enum CommandName {
     /// Read-only inspection of one registered artifact.
     #[serde(rename = "model.inspect")]
     ModelInspect,
+    /// Read-only inspection of optional fitr device-measurement evidence.
+    #[serde(rename = "model.device_evidence")]
+    ModelDeviceEvidence,
     /// Read-only managed artifact inventory.
     #[serde(rename = "model.inventory")]
     ModelInventory,
