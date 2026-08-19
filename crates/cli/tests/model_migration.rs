@@ -143,6 +143,22 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
     initialize_repository(directory.path(), &data, "legacy");
     downgrade_to_schema_two(&data);
 
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["doctor"])
+        .assert()
+        .code(4)
+        .stderr(predicate::str::is_empty())
+        .stdout(predicate::str::contains("\"command\": \"doctor\""))
+        .stdout(predicate::str::contains(
+            "\"status\": \"migration_required\"",
+        ))
+        .stdout(predicate::str::contains("\"recovery_actions\": ["))
+        .stdout(predicate::str::contains("model.migrate"))
+        .stdout(predicate::str::contains("pending_operations").not());
+
     let output = Command::cargo_bin("retonr")
         .expect("compiled CLI")
         .arg("--data-dir")
