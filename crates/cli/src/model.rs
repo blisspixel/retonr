@@ -16,6 +16,7 @@ use crate::contract::{
     read_manifest_bounded, read_set_manifest_bounded,
 };
 
+mod catalog;
 mod error;
 mod output;
 
@@ -37,6 +38,10 @@ pub(crate) enum ModelCommand {
     Import(ImportArgs),
     /// Import one exact local artifact-set folder without activation.
     ImportSet(ImportSetArgs),
+    /// List registered single-file installations without mutation.
+    List,
+    /// Inspect one registered artifact without qualification or activation.
+    Inspect(InspectArgs),
     /// Inspect managed artifact state and bytes without mutation.
     Inventory(InventoryArgs),
     /// Inspect managed artifact-set state and trees without mutation.
@@ -79,6 +84,14 @@ pub(crate) struct ImportSetArgs {
     /// Strict JSON manifest with exact member paths, digests, and sizes.
     #[arg(long, value_name = "MANIFEST_JSON")]
     manifest: PathBuf,
+}
+
+/// Inputs for one registered-artifact inspection.
+#[derive(Debug, Args)]
+pub(crate) struct InspectArgs {
+    /// Canonical lowercase SHA-256 artifact identity.
+    #[arg(value_name = "ARTIFACT_ID")]
+    artifact_id: ArtifactIdArgument,
 }
 
 /// Inputs for read-only managed artifact inventory.
@@ -192,6 +205,10 @@ pub(crate) fn run(
     match command {
         ModelCommand::Import(args) => import(&repository, args, cancellation),
         ModelCommand::ImportSet(args) => import_set(&repository, args, cancellation),
+        ModelCommand::List => catalog::list(&repository, cancellation),
+        ModelCommand::Inspect(args) => {
+            catalog::inspect(&repository, &args.artifact_id, cancellation)
+        }
         ModelCommand::Inventory(args) => inventory(&repository, &args, cancellation),
         ModelCommand::InventorySet(args) => inventory_set(&repository, &args, cancellation),
         ModelCommand::PendingOperations => pending_operations(&repository, cancellation),
@@ -210,6 +227,8 @@ impl ModelCommand {
         match self {
             Self::Import(_) => CommandName::ModelImport,
             Self::ImportSet(_) => CommandName::ModelImportSet,
+            Self::List => CommandName::ModelList,
+            Self::Inspect(_) => CommandName::ModelInspect,
             Self::Inventory(_) => CommandName::ModelInventory,
             Self::InventorySet(_) => CommandName::ModelInventorySet,
             Self::PendingOperations => CommandName::ModelPendingOperations,
