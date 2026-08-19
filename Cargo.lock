@@ -1338,6 +1338,7 @@ dependencies = [
  "rewrite-app",
  "rewrite-inference",
  "rewrite-model",
+ "rewrite-model-store",
  "rewrite-types",
  "serde",
  "serde_json",

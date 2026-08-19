@@ -16,9 +16,11 @@ use rewrite_eval::{
     MAX_BASELINE_DEFINITION_BYTES, MAX_CLAIM_SHADOW_CALIBRATION_BYTES, MAX_EDITORIAL_CORPUS_BYTES,
     MAX_EVALUATION_SUITE_BYTES, MAX_WATERMARK_RESEARCH_BYTES, MAX_WRITING_SAMPLE_LIBRARY_BYTES,
     parse_baseline_definition, parse_claim_shadow_calibration, parse_editorial_corpus, parse_suite,
-    parse_watermark_research_corpus, parse_writing_sample_library, run_claim_shadow_calibration,
-    run_offline_baseline, run_suite,
+    parse_watermark_research_corpus, parse_writing_sample_library, run_attached_baseline,
+    run_claim_shadow_calibration, run_suite,
 };
+use rewrite_model::ArtifactId;
+use rewrite_types::{CancellationToken, Digest};
 
 /// Runs a versioned fidelity suite, baseline, claim-shadow calibration, or corpus validation.
 #[derive(Debug, Parser)]
@@ -104,6 +106,12 @@ struct Cli {
         ]
     )]
     claim_shadow_calibration: Option<PathBuf>,
+    /// Explicit repository root used to attach recovered fake-backend conformance.
+    #[arg(long, value_name = "DIRECTORY")]
+    data_dir: Option<PathBuf>,
+    /// Exact installed artifact that must match the active generation binding.
+    #[arg(long, value_name = "ARTIFACT_ID", requires = "data_dir")]
+    artifact_id: Option<String>,
 }
 
 fn main() -> ExitCode {
@@ -163,7 +171,18 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
     if let Some(definition_path) = cli.baseline {
         let definition_input = read_bounded_utf8(definition_path, MAX_BASELINE_DEFINITION_BYTES)?;
         let definition = parse_baseline_definition(&definition_input)?;
-        let report = run_offline_baseline(&definition, &suite)?;
+        let requested = cli
+            .artifact_id
+            .as_deref()
+            .map(parse_artifact_id)
+            .transpose()?;
+        let report = run_attached_baseline(
+            &definition,
+            &suite,
+            cli.data_dir.as_deref(),
+            requested.as_ref(),
+            &CancellationToken::new(),
+        )?;
         let mut stdout = io::stdout().lock();
         serde_json::to_writer_pretty(&mut stdout, &report)?;
         writeln!(stdout)?;
@@ -182,6 +201,11 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
     } else {
         ExitCode::FAILURE
     })
+}
+
+fn parse_artifact_id(value: &str) -> Result<ArtifactId, Box<dyn Error>> {
+    let digest = Digest::from_sha256_hex(value).map_err(|_| "invalid artifact id")?;
+    Ok(ArtifactId::from_digest(digest))
 }
 
 fn read_bounded_utf8(path: PathBuf, maximum: usize) -> Result<String, Box<dyn Error>> {

@@ -168,6 +168,8 @@ fn direct_baseline_uses_inference_port_and_common_validation() {
     assert_eq!(report.statuses.rewritten, 1);
     assert_eq!(report.cases[0].status, Some(RewriteStatus::Rewritten));
     assert_eq!(fake.requests().expect("request record").len(), 1);
+    let input = &fake.requests().expect("request record")[0].input;
+    assert!(input.contains("\"masked_source\":\"Hello world\""));
     let serialized = serde_json::to_string(&report).expect("serialize report");
     assert!(!serialized.contains("Hello world"));
 }

@@ -10,8 +10,10 @@ use thiserror::Error;
 
 use crate::{EvaluationCase, EvaluationSuite};
 
+mod attached;
 mod offline;
 
+pub use attached::run_attached_baseline;
 pub use offline::{MAX_BASELINE_DEFINITION_BYTES, parse_baseline_definition, run_offline_baseline};
 
 /// Current baseline-runner contract version.
@@ -407,8 +409,9 @@ fn render_input(
 ) -> String {
     let style = definition.style_description.as_deref().unwrap_or("");
     let examples = definition.retrieved_examples.join("\n---\n");
+    let envelope = serde_json::json!({ "masked_source": case.source });
     format!(
-        "{}\n<source>\n{}\n</source>\n<style>\n{}\n</style>\n<examples>\n{}\n</examples>",
+        "{}\n<source>\n{}\n</source>\n<style>\n{}\n</style>\n<examples>\n{}\n</examples>\n{envelope}",
         policy.prompt_template, case.source, style, examples
     )
 }

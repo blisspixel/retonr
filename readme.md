@@ -146,6 +146,7 @@ cargo run --locked -p retonr-cli -- doctor --format text
 cargo run --locked -p retonr-cli -- model --help
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --baseline crates/eval/fixtures/no_rewrite_baseline_v1.json crates/eval/fixtures/core.json
+cargo run --locked -p rewrite-eval -- --data-dir <DIRECTORY> --baseline <DIRECT_PROMPT_JSON> crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_slop_v1.json
 cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_prose_v1.json
