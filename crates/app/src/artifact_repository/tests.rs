@@ -459,14 +459,10 @@ fn recovered_generation_binding_requires_current_managed_bytes() {
     assert_eq!(binding.artifact_id, installed.artifact_id);
     assert_eq!(binding.role, ArtifactRole::Generation);
     let data = directory.path().join("data");
-    assert!(matches!(
-        crate::GroundedRewriteSelection::require_ready(Some(&data), None),
-        Err(crate::AppError::GroundedRuntimeUnavailable)
-    ));
-    assert!(matches!(
-        crate::GroundedRewriteSelection::require_ready(Some(&data), Some(&installed.artifact_id)),
-        Err(crate::AppError::GroundedRuntimeUnavailable)
-    ));
+    crate::GroundedRewriteSelection::require_ready(Some(&data), None)
+        .expect("fake-qualified binding attaches conformance");
+    crate::GroundedRewriteSelection::require_ready(Some(&data), Some(&installed.artifact_id))
+        .expect("requested fake-qualified binding attaches conformance");
     let other = ArtifactId::from_digest(Digest::sha256(b"other"));
     assert!(matches!(
         crate::GroundedRewriteSelection::require_ready(Some(&data), Some(&other)),

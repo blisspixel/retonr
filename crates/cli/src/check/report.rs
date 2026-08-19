@@ -6,12 +6,13 @@ use super::ReportTarget;
 use crate::contract::{CommandName, ReportFormat, SuccessEnvelope};
 
 /// Writes one versioned report to the stream that does not carry document bytes.
-pub(super) fn write(
+pub(crate) fn write(
+    command: CommandName,
     record: &RewriteRecord,
     format: ReportFormat,
     target: ReportTarget,
 ) -> io::Result<()> {
-    let bytes = render(record, format)?;
+    let bytes = render(command, record, format)?;
     match target {
         ReportTarget::Data => {
             let mut stream = io::stdout().lock();
@@ -26,12 +27,15 @@ pub(super) fn write(
     }
 }
 
-fn render(record: &RewriteRecord, format: ReportFormat) -> io::Result<Vec<u8>> {
+fn render(
+    command: CommandName,
+    record: &RewriteRecord,
+    format: ReportFormat,
+) -> io::Result<Vec<u8>> {
     match format {
         ReportFormat::Json => {
-            let mut bytes =
-                serde_json::to_vec_pretty(&SuccessEnvelope::new(CommandName::Check, record))
-                    .map_err(io::Error::other)?;
+            let mut bytes = serde_json::to_vec_pretty(&SuccessEnvelope::new(command, record))
+                .map_err(io::Error::other)?;
             bytes.push(b'\n');
             Ok(bytes)
         }
