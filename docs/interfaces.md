@@ -29,8 +29,10 @@ implements `check` with file or standard-input documents, `--output` (`-o`),
 `--in-place` (`-i`), escaped terminal rendering, `--raw-terminal --yes`,
 `--diff`, `--dry-run`, `--trace`, fail-closed `rewrite`, pre-model `inspect`
 of a file or directory, `version`, `doctor`
-with recovery follow-up, `completions`, `man`, `model list`, and
-`model inspect`. See [current state](current-state.md).
+with recovery follow-up, `completions`, `man`, `model list`,
+`model inspect`, and optional `model device-evidence` (`fitr`). See
+[current state](current-state.md). Optional [fitr](fitr.md) evidence is
+device measurement, not qualification.
 
 The primary non-interactive forms are:
 

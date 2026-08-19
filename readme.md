@@ -206,9 +206,12 @@ retonr -D <DIRECTORY> model remove --artifact <SHA256> --generation <N> -y
 retonr -D <DIRECTORY> model recover --artifact <SHA256> --generation <N> -y
 retonr -D <DIRECTORY> model remove-set --set-id <SHA256> --generation <N> -y
 retonr -D <DIRECTORY> model recover-set --set-id <SHA256> --generation <N> -y
+retonr model fitr <EVIDENCE_JSON>
 ```
 
-These commands are offline and bounded. `list` reports registered single-file
+These commands are offline and bounded. Optional [fitr](https://github.com/blisspixel/fitr)
+device-measurement evidence can be inspected with `retonr model fitr` without a
+repository; it is not a qualification, and Retonr works without fitr. `list` reports registered single-file
 installations without storage-health findings. `inspect` reports one registered
 artifact's declared facts, byte status, and active roles. Neither command
 qualifies, activates, downloads, or reads as authority to mutate. `import-set` copies one exact local folder
