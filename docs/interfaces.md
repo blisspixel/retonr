@@ -28,7 +28,7 @@ The `rewrite` examples below are the planned 1.0 surface. The current binary
 implements `check` with file or standard-input documents, `--output`,
 escaped terminal rendering, `--raw-terminal --yes`, `--diff`, `--dry-run`,
 `--trace`, fail-closed `rewrite`, pre-model `inspect` of a file or
-non-recursive directory, `version`, `doctor`
+directory, `version`, `doctor`
 with recovery follow-up, `completions`, `man`, `model list`, and
 `model inspect`. See [current state](current-state.md).
 
