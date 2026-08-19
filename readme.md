@@ -171,9 +171,9 @@ creating `--output`. `--trace` writes the redacted rewrite record to a new file.
 `rewrite` validates one source, optionally inspects `--data-dir` for an
 active generation binding, and attaches in-process fake-backend
 conformance when that recovered qualification names the retained fake
-backend. It does not start a runtime or use the network. `inspect` inventories one
-source before rewrite without stripping bytes or validating a Content
-Credential. `version` and `doctor` are recovery commands. `doctor` names migrate or removal-recovery
+backend. It does not start a runtime or use the network. `inspect` inventories one source file or a non-recursive directory before
+rewrite without stripping bytes, following links, or validating a Content
+Credential. `--recursive` is refused. `version` and `doctor` are recovery commands. `doctor` names migrate or removal-recovery
 follow-up when `--data-dir` is current or requires migration; it does not
 mutate. `completions` writes a shell script and `man`
 writes a section-1 manual page; JSON wraps those bytes and `--format text`
