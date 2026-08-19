@@ -143,6 +143,8 @@ cargo run --locked -p retonr-cli -- rewrite fixtures/cli/source.txt --format tex
 cargo run --locked -p retonr-cli -- --data-dir <DIRECTORY> rewrite fixtures/cli/source.txt --format text
 cargo run --locked -p retonr-cli -- version --format text
 cargo run --locked -p retonr-cli -- doctor --format text
+cargo run --locked -p retonr-cli -- --format text completions powershell
+cargo run --locked -p retonr-cli -- --format text man
 cargo run --locked -p retonr-cli -- model --help
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
 cargo run --locked -p rewrite-eval -- --baseline crates/eval/fixtures/no_rewrite_baseline_v1.json crates/eval/fixtures/core.json
@@ -169,7 +171,9 @@ creating `--output`. `--trace` writes the redacted rewrite record to a new file.
 active generation binding, and attaches in-process fake-backend
 conformance when that recovered qualification names the retained fake
 backend. It does not start a runtime or use the network. `version` and
-`doctor` are recovery commands. `model --help`
+`doctor` are recovery commands. `completions` writes a shell script and `man`
+writes a section-1 manual page; JSON wraps those bytes and `--format text`
+emits them raw. `model --help`
 lists the implemented offline artifact commands. The remaining commands run the
 checked-in fidelity and synthetic editorial-quality suites, including an
 offline no-rewrite baseline and an independent claim-shadow calibration that
