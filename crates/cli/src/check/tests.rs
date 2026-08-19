@@ -5,9 +5,9 @@ use rewrite_types::{ReasonCode, RewriteStatus};
 use super::{
     DocumentRender, OutputSink, exit_status,
     report::{reason_name, status_name},
-    resolve_document_render, resolve_output_sink,
+    resolve_document_render, resolve_output_sink_for,
 };
-use crate::contract::{EXIT_CANCELLED, EXIT_POLICY, read_bounded};
+use crate::contract::{CommandName, EXIT_CANCELLED, EXIT_POLICY, read_bounded};
 
 #[test]
 fn stable_exit_code_policy() {
@@ -77,7 +77,7 @@ fn a_terminal_without_the_double_opt_in_uses_escaped_rendering() {
 
 #[test]
 fn absent_output_emits_no_document_bytes() {
-    let sink = resolve_output_sink(None).expect("no output is valid");
+    let sink = resolve_output_sink_for(None, CommandName::Check).expect("no output is valid");
     assert_eq!(sink, OutputSink::None);
 }
 
@@ -85,11 +85,12 @@ fn absent_output_emits_no_document_bytes() {
 fn a_new_destination_is_accepted_and_an_existing_one_is_refused() {
     let directory = tempfile::tempdir().expect("temporary directory");
     let fresh = directory.path().join("out.txt");
-    let sink = resolve_output_sink(Some(fresh.as_path())).expect("a new destination is valid");
+    let sink = resolve_output_sink_for(Some(fresh.as_path()), CommandName::Check)
+        .expect("a new destination is valid");
     assert_eq!(sink, OutputSink::File(fresh.clone()));
 
     std::fs::write(&fresh, b"existing").expect("create the destination");
-    let refused = resolve_output_sink(Some(fresh.as_path()))
+    let refused = resolve_output_sink_for(Some(fresh.as_path()), CommandName::Check)
         .expect_err("an existing destination is never replaced");
     assert_eq!(refused.exit_code, ExitCode::from(EXIT_POLICY));
 }
