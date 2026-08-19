@@ -171,7 +171,9 @@ creating `--output`. `--trace` writes the redacted rewrite record to a new file.
 active generation binding, and attaches in-process fake-backend
 conformance when that recovered qualification names the retained fake
 backend. It does not start a runtime or use the network. `version` and
-`doctor` are recovery commands. `completions` writes a shell script and `man`
+`doctor` are recovery commands. `doctor` names migrate or removal-recovery
+follow-up when `--data-dir` is current or requires migration; it does not
+mutate. `completions` writes a shell script and `man`
 writes a section-1 manual page; JSON wraps those bytes and `--format text`
 emits them raw. `model --help`
 lists the implemented offline artifact commands. The remaining commands run the

@@ -34,7 +34,8 @@ The current 0.2 build queue, in dependency order, is:
 4. Preserve read-only set inventory, selected set reconciliation, and
    crash-recoverable set removal without implying set authority.
 5. Escaped terminal rendering, `doctor`, `version`, `completions`, `man`,
-   `model list`, `model inspect`, and `rewrite` exist. Recovered fake-qualified
+   `model list`, `model inspect`, and `rewrite` exist. `doctor` names
+   recovery follow-up without mutation. Recovered fake-qualified
    bindings attach in-process conformance for `rewrite` and generative
    `rewrite-eval --baseline` kinds. Do not start a runtime.
 6. Qualify one exact local runtime and artifact combination before profiles or

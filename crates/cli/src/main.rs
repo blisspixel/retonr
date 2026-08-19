@@ -110,7 +110,7 @@ enum Command {
     },
     /// Report product and machine-contract versions without accessing storage.
     Version,
-    /// Inspect local CLI identity and optional repository schema without mutation.
+    /// Inspect local identity, optional repository schema, and recovery needs without mutation.
     Doctor,
     /// Write a completion script for one supported shell.
     ///
