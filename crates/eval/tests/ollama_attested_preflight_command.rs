@@ -13,13 +13,31 @@ use wiremock::{
 const MODEL: &str = "fixture:latest";
 const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
+async fn assert_preflight_requests(server: &MockServer) {
+    let requests = server
+        .received_requests()
+        .await
+        .expect("request recording enabled");
+    let request_count = |request_method: &str, request_path: &str| {
+        requests
+            .iter()
+            .filter(|request| {
+                request.method.as_str() == request_method && request.url.path() == request_path
+            })
+            .count()
+    };
+    assert_eq!(request_count("GET", "/api/version"), 2);
+    assert_eq!(request_count("GET", "/api/tags"), 2);
+    assert_eq!(request_count("POST", "/api/show"), 1);
+    assert_eq!(request_count("GET", "/api/ps"), 2);
+}
+
 #[tokio::test]
 async fn attached_preflight_process_respects_native_visibility_without_overstating_evidence() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/api/version"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({"version": "0.32.14"})))
-        .expect(2)
         .mount(&server)
         .await;
     Mock::given(method("GET"))
@@ -30,7 +48,6 @@ async fn attached_preflight_process_respects_native_visibility_without_overstati
             "size": 1024,
             "digest": DIGEST
         }]})))
-        .expect(2)
         .mount(&server)
         .await;
     Mock::given(method("POST"))
@@ -46,13 +63,11 @@ async fn attached_preflight_process_respects_native_visibility_without_overstati
             },
             "model_info": {"fixture.context_length": 4096}
         })))
-        .expect(1)
         .mount(&server)
         .await;
     Mock::given(method("GET"))
         .and(path("/api/ps"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({"models": []})))
-        .expect(2)
         .mount(&server)
         .await;
 
@@ -108,6 +123,7 @@ async fn attached_preflight_process_respects_native_visibility_without_overstati
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+    assert_preflight_requests(&server).await;
     let stdout = String::from_utf8(output.stdout).expect("utf-8 report");
     assert!(stdout.contains("\"process_evidence_level\": \"observed_native_listener\""));
     assert!(stdout.contains("\"response_bound\": false"));
