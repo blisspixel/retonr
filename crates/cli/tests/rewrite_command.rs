@@ -88,6 +88,143 @@ fn rewrite_inspects_a_repository_without_starting_a_runtime() {
 }
 
 #[test]
+fn rewrite_directory_requires_output_dir_and_dry_run() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("docs");
+    fs::create_dir(&source).expect("create docs");
+    fs::write(source.join("a.txt"), "alpha\n").expect("write a");
+
+    binary()
+        .args(["rewrite"])
+        .arg(&source)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
+
+    binary()
+        .args(["rewrite"])
+        .arg(&source)
+        .arg("--output-dir")
+        .arg(directory.path().join("out"))
+        .assert()
+        .code(4)
+        .stderr(predicate::str::contains("\"code\": \"unsupported\""));
+    assert!(!directory.path().join("out").exists());
+}
+
+#[test]
+fn rewrite_directory_dry_run_maps_destinations_without_mutation() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("docs");
+    let output = directory.path().join("rewritten");
+    fs::create_dir(&source).expect("create docs");
+    fs::write(source.join("a.txt"), "alpha\n").expect("write a");
+    fs::create_dir(source.join("nested")).expect("create nested");
+    fs::write(source.join("nested").join("inner.txt"), "inner\n").expect("write nested");
+    fs::create_dir(source.join("target")).expect("create target");
+    fs::write(source.join("target").join("built.txt"), "built\n").expect("write ignored");
+
+    let result = binary()
+        .args(["rewrite", "-r", "--dry-run", "--output-dir"])
+        .arg(&output)
+        .arg(&source)
+        .output()
+        .expect("run directory dry-run");
+    assert!(result.status.success());
+    let text = String::from_utf8(result.stdout).expect("UTF-8");
+    assert!(text.contains("\"command\": \"rewrite\""));
+    assert!(text.contains("\"mode\": \"dry_run\""));
+    assert!(text.contains("\"source\": \"a.txt\""));
+    assert!(text.contains("\"destination\": \"nested/inner.txt\""));
+    assert!(text.contains("\"reason\": \"ignored\""));
+    assert!(!text.contains("built.txt"));
+    assert!(!text.contains("alpha"));
+    assert!(!text.contains(&source.display().to_string()));
+    assert!(!output.exists(), "dry-run must not create output-dir");
+    assert_eq!(
+        fs::read(source.join("a.txt")).expect("source remains"),
+        b"alpha\n"
+    );
+
+    binary()
+        .args([
+            "--format",
+            "text",
+            "rewrite",
+            "-r",
+            "--dry-run",
+            "--output-dir",
+        ])
+        .arg(&output)
+        .arg(&source)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("planned a.txt destination=a.txt"))
+        .stdout(predicate::str::contains(
+            "planned nested/inner.txt destination=nested/inner.txt",
+        ))
+        .stdout(predicate::str::contains("skipped target reason=ignored"));
+}
+
+#[test]
+fn rewrite_directory_dry_run_reports_collisions_and_refuses_nested_roots() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("docs");
+    let output = directory.path().join("rewritten");
+    fs::create_dir(&source).expect("create docs");
+    fs::create_dir(&output).expect("create output");
+    fs::write(source.join("a.txt"), "alpha\n").expect("write a");
+    fs::write(output.join("a.txt"), "keep\n").expect("write collision");
+
+    binary()
+        .args(["rewrite", "--dry-run", "--output-dir"])
+        .arg(&output)
+        .arg(&source)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"reason\": \"collision\""))
+        .stdout(predicate::str::contains("\"planned_count\": \"0\""));
+    assert_eq!(
+        fs::read(output.join("a.txt")).expect("dest remains"),
+        b"keep\n"
+    );
+
+    binary()
+        .args(["rewrite", "--dry-run", "--output-dir"])
+        .arg(source.join("nested-out"))
+        .arg(&source)
+        .assert()
+        .code(3)
+        .stderr(predicate::str::contains("\"code\": \"policy_refusal\""));
+}
+
+#[test]
+fn rewrite_directory_rejects_in_place_and_file_output_dir() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("docs");
+    let file = directory.path().join("draft.txt");
+    fs::create_dir(&source).expect("create docs");
+    fs::write(source.join("a.txt"), "alpha\n").expect("write a");
+    fs::write(&file, "Hello world\n").expect("write file");
+
+    binary()
+        .args(["rewrite", "-i", "--dry-run", "--output-dir"])
+        .arg(directory.path().join("out"))
+        .arg(&source)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
+
+    binary()
+        .args(["rewrite", "--dry-run", "--output-dir"])
+        .arg(directory.path().join("out"))
+        .arg(&file)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
+}
+
+#[test]
 fn rewrite_standard_input_is_accepted_then_refused() {
     binary()
         .args(["rewrite", "-"])

@@ -172,7 +172,8 @@ rendering unless `--raw-terminal --yes` both appear. `--dry-run` reports without
 creating `--output`. `--trace` writes the redacted rewrite record to a new file.
 A terminal defaults to text reports; a pipe defaults to JSON. `-f` selects
 either. `rewrite` validates one source, supports `--diff`, `--dry-run`, and
-`--trace`, optionally inspects `--data-dir` (`-D`,
+`--trace`, and can dry-run a directory onto `--output-dir` without
+mutation. It optionally inspects `--data-dir` (`-D`,
 or `RETONR_DATA_DIR`) for an
 active generation binding, and attaches in-process fake-backend
 conformance when that recovered qualification names the retained fake

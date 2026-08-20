@@ -57,6 +57,9 @@ fn help_lists_completions_and_man() {
         .stdout(predicate::str::contains("inspect"))
         .stdout(predicate::str::contains("Examples:"))
         .stdout(predicate::str::contains("retonr rewrite draft.txt -i"))
+        .stdout(predicate::str::contains(
+            "retonr rewrite docs/ -r --output-dir rewritten --dry-run",
+        ))
         .stdout(predicate::str::contains("-D .retonr model list"));
 }
 
