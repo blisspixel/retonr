@@ -127,9 +127,12 @@ contract.
 The evaluation tool also validates five synthetic editorial-quality groups with named
 findings and clean controls, including a balanced 24-case current-slop group, a
 40-case structural, rhetorical, and evidential group, a 16-case assistant-impression
-group, and a 20-case later-residue group. A writing-sample library adds licensed pre-2018 human excerpts and synthetic
-model-style impressions. Those impressions are editorial fixtures, not vendor
-identifications. No editorial-lint rule has product authority yet.
+group, and a 20-case later-residue group. A writing-sample library adds licensed
+pre-2018 human excerpts and synthetic model-style impressions. Those impressions are
+editorial fixtures, not vendor identifications. A versioned local Ollama preflight
+can observe or verify bounded runtime, inventory, model-description, and residency
+evidence without generation. It always reports `qualified: false`. No
+editorial-lint rule has product authority yet.
 
 [![Retonr CLI help and a successful candidate check on Linux](docs/screenshots/cli-check-linux.png)](docs/screenshots/cli-check-linux.md)
 
@@ -158,6 +161,7 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo run --locked -p rewrite-eval -- --writing-samples crates/eval/fixtures/writing_samples/licensed_pre_ai_human_v1.json
 cargo run --locked -p rewrite-eval -- --watermark-research crates/eval/fixtures/watermark_research/style_is_not_a_watermark_v1.json
 cargo run --locked -p rewrite-eval -- --claim-shadow-calibration crates/eval/fixtures/claim_shadow_calibration_v1.json
+cargo run --locked -p rewrite-eval -- --ollama-preflight <PLAN_JSON>
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
@@ -188,7 +192,11 @@ wraps them. `model --help`
 lists the implemented offline artifact commands. The remaining commands run the
 checked-in fidelity and synthetic editorial-quality suites, including an
 offline no-rewrite baseline and an independent claim-shadow calibration that
-cannot change hard-gate acceptance.
+cannot change hard-gate acceptance. The Ollama preflight accepts only an explicit
+IP-literal loopback endpoint and frozen model inventory digests. It reads runtime
+state without generation, acquisition, activation, or qualification. The
+[plan contract and observe-to-verify workflow](docs/research/2026-08-20-main-readiness-and-next-slice.md#plan-contract-and-workflow)
+documents every required field and fixed bound.
 Profile, runtime management, agent, and desktop workflows are not yet implemented.
 
 The implemented model commands are intentionally narrow:
@@ -271,11 +279,14 @@ runtime-specific identity and policy evidence passes. Models are recommended and
 qualified by exact artifact set, runtime, language, mode, format, output policy, and
 measured hardware class rather than by a mutable model name or API shape.
 
-The first cross-tier development bakeoff targets Ministral 3 8B, Gemma 4 26B, and
-Qwen3.6 27B. Gemma and Qwen are currently installed; the previously observed Ministral
-package must be revalidated locally or separately reacquired before use. This is a local
-experiment, not a support claim. Small and medium first-party GGUF cohorts follow only
-after explicit acquisition approval. See the [local model tiers](docs/research/2026-08-13-local-model-tiers.md),
+The August 13 cross-tier development plan targeted Ministral 3 8B, Gemma 4 26B,
+and Qwen3.6 27B. That local inventory has expired: an August 20 read-only inspection
+found those tags absent and observed `qwen3.8:27b` without establishing its exact
+upstream revision, complete artifact-set identity, or local-only runtime controls.
+No current tag is a support claim or generation-eligible package. Small and medium
+first-party GGUF cohorts follow only after explicit acquisition approval. See the
+[main readiness and next-slice review](docs/research/2026-08-20-main-readiness-and-next-slice.md),
+[local model tiers](docs/research/2026-08-13-local-model-tiers.md),
 [evaluation protocol](docs/research/2026-08-13-local-model-evaluation.md), and
 [runtime matrix](docs/research/2026-08-13-local-runtime-matrix.md).
 

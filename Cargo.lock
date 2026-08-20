@@ -1355,16 +1355,20 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "clap",
+ "ctrlc",
  "predicates",
  "rewrite-app",
  "rewrite-inference",
  "rewrite-model",
  "rewrite-model-store",
+ "rewrite-ollama",
  "rewrite-types",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror",
+ "tokio",
+ "wiremock",
 ]
 
 [[package]]

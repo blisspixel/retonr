@@ -11,13 +11,29 @@ use rewrite_types::Digest;
 use serde::de::DeserializeOwned;
 
 use crate::{
-    contract::{MAX_REFERENCE_BYTES, OllamaModelBinding},
-    wire::{CandidateEnvelope, GenerateResponse, TagModel, TagsResponse},
+    contract::{MAX_REFERENCE_BYTES, OllamaInventoryEntry, OllamaModelBinding, OllamaRunningModel},
+    wire::{CandidateEnvelope, GenerateResponse, PsResponse, TagModel, TagsResponse},
 };
 
 const MAX_INVENTORY_ITEMS: usize = 512;
 
 pub(crate) fn parse_inventory(tags: &TagsResponse) -> Result<Vec<InventoryEntry>, InferenceError> {
+    parse_ollama_inventory(tags).map(|entries| {
+        entries
+            .into_iter()
+            .map(|entry| InventoryEntry {
+                reference: entry.reference,
+                artifact_id: ArtifactId::from_digest(entry.inventory_digest.clone()),
+                artifact_digest: entry.inventory_digest,
+                byte_size: Some(entry.byte_size),
+            })
+            .collect()
+    })
+}
+
+pub(crate) fn parse_ollama_inventory(
+    tags: &TagsResponse,
+) -> Result<Vec<OllamaInventoryEntry>, InferenceError> {
     if tags.models.len() > MAX_INVENTORY_ITEMS {
         return Err(malformed_error("inventory_too_large"));
     }
@@ -26,12 +42,10 @@ pub(crate) fn parse_inventory(tags: &TagsResponse) -> Result<Vec<InventoryEntry>
         .iter()
         .map(|model| {
             validate_tag(model, &mut references)?;
-            let digest = parse_ollama_digest(&model.digest)?;
-            Ok(InventoryEntry {
+            Ok(OllamaInventoryEntry {
                 reference: model.name.clone(),
-                artifact_id: ArtifactId::from_digest(digest.clone()),
-                artifact_digest: digest,
-                byte_size: Some(model.size),
+                inventory_digest: parse_ollama_digest(&model.digest)?,
+                byte_size: model.size,
             })
         })
         .collect()
@@ -57,16 +71,58 @@ pub(crate) fn confirm_binding_in_tags(
     binding: &OllamaModelBinding,
     tags: &TagsResponse,
 ) -> Result<(), InferenceError> {
+    confirm_inventory_digest(&binding.reference, &binding.artifact_digest, tags)
+}
+
+pub(crate) fn confirm_inventory_digest(
+    reference: &str,
+    expected_digest: &Digest,
+    tags: &TagsResponse,
+) -> Result<(), InferenceError> {
     let tag = tags
         .models
         .iter()
-        .find(|model| model.name == binding.reference)
+        .find(|model| model.name == reference)
         .ok_or_else(|| compatibility_error("bound_model_missing"))?;
     let digest = parse_ollama_digest(&tag.digest)?;
-    if digest != binding.artifact_digest {
+    if &digest != expected_digest {
         return Err(policy_error("bound_model_digest_changed"));
     }
     Ok(())
+}
+
+pub(crate) fn parse_running_models(
+    response: &PsResponse,
+) -> Result<Vec<OllamaRunningModel>, InferenceError> {
+    if response.models.len() > MAX_INVENTORY_ITEMS {
+        return Err(malformed_error("running_inventory_too_large"));
+    }
+    let mut references = BTreeSet::new();
+    let mut models = response
+        .models
+        .iter()
+        .map(|model| {
+            if !valid_text(&model.name, MAX_REFERENCE_BYTES)
+                || !valid_text(&model.model, MAX_REFERENCE_BYTES)
+                || model.size == 0
+                || model.context_length == 0
+                || !model.remote_model.is_empty()
+                || !model.remote_host.is_empty()
+                || !references.insert(model.name.as_str())
+            {
+                return Err(malformed_error("invalid_running_inventory_entry"));
+            }
+            Ok(OllamaRunningModel {
+                reference: model.name.clone(),
+                inventory_digest: parse_ollama_digest(&model.digest)?,
+                byte_size: model.size,
+                accelerator_bytes: model.size_vram,
+                context_tokens: model.context_length,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    models.sort_unstable_by(|left, right| left.reference.cmp(&right.reference));
+    Ok(models)
 }
 
 pub(crate) fn validate_generate_response(
@@ -86,9 +142,7 @@ pub(crate) fn validate_generate_response(
 }
 
 fn parse_ollama_digest(value: &str) -> Result<Digest, InferenceError> {
-    let hex = value
-        .strip_prefix("sha256:")
-        .ok_or_else(|| malformed_error("invalid_model_digest"))?;
+    let hex = value.strip_prefix("sha256:").unwrap_or(value);
     Digest::from_sha256_hex(hex.to_owned())
         .map_err(|_error| malformed_error("invalid_model_digest"))
 }

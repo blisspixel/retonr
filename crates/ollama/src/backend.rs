@@ -15,19 +15,22 @@ use tokio::sync::{Semaphore, SemaphorePermit};
 use crate::{
     OllamaEndpoint,
     contract::{
-        BACKEND_ID, MAX_METADATA_BYTES, MAX_VERSION_BYTES, OllamaLimits, OllamaModelBinding,
-        OllamaModelDetails,
+        BACKEND_ID, MAX_METADATA_BYTES, MAX_PREFLIGHT_TARGETS, MAX_VERSION_BYTES, OllamaLimits,
+        OllamaModelBinding, OllamaModelDetails, OllamaPreflightTarget, OllamaRunningModel,
     },
     response::{
         await_context, check_context, compatibility_error, confirm_binding_in_tags,
         decode_response, malformed_error, map_transport_error, parse_candidates, parse_inventory,
-        permanent_error, policy_error, valid_text, validate_generate_response,
+        parse_running_models, permanent_error, policy_error, valid_text,
+        validate_generate_response,
     },
     wire::{
         CandidateEnvelope, GenerateOptions, GenerateRequest as WireGenerateRequest,
-        GenerateResponse, ShowRequest, ShowResponse, TagsResponse, VersionResponse,
+        GenerateResponse, PsResponse, ShowRequest, ShowResponse, TagsResponse, VersionResponse,
     },
 };
+
+mod preflight;
 
 /// Bounded loopback-only implementation of the backend-neutral inference port.
 #[derive(Clone, Debug)]
@@ -36,6 +39,7 @@ pub struct OllamaBackend {
     client: Client,
     limits: OllamaLimits,
     bindings: Vec<OllamaModelBinding>,
+    preflight_targets: Vec<OllamaPreflightTarget>,
     permits: Arc<Semaphore>,
 }
 
@@ -60,6 +64,42 @@ impl OllamaBackend {
                 return Err(policy_error("duplicate_model_binding"));
             }
         }
+        Self::from_parts(endpoint, bindings, Vec::new(), limits)
+    }
+
+    /// Creates a read-only adapter that carries no Retonr artifact identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid limits, an empty or oversized target set, duplicate target
+    /// references or digests, or client setup.
+    pub fn new_preflight(
+        endpoint: OllamaEndpoint,
+        targets: Vec<OllamaPreflightTarget>,
+        limits: OllamaLimits,
+    ) -> Result<Self, InferenceError> {
+        let limits = limits.validate()?;
+        if targets.is_empty() || targets.len() > MAX_PREFLIGHT_TARGETS {
+            return Err(policy_error("invalid_preflight_targets"));
+        }
+        let mut references = BTreeSet::new();
+        let mut digests = BTreeSet::new();
+        for target in &targets {
+            if !references.insert(target.reference.as_str())
+                || !digests.insert(target.inventory_digest.as_str())
+            {
+                return Err(policy_error("duplicate_preflight_target"));
+            }
+        }
+        Self::from_parts(endpoint, Vec::new(), targets, limits)
+    }
+
+    fn from_parts(
+        endpoint: OllamaEndpoint,
+        bindings: Vec<OllamaModelBinding>,
+        preflight_targets: Vec<OllamaPreflightTarget>,
+        limits: OllamaLimits,
+    ) -> Result<Self, InferenceError> {
         let client = Client::builder()
             .no_proxy()
             .redirect(reqwest::redirect::Policy::none())
@@ -77,6 +117,7 @@ impl OllamaBackend {
             client,
             limits,
             bindings,
+            preflight_targets,
             permits: Arc::new(Semaphore::new(limits.max_concurrency)),
         })
     }
@@ -98,7 +139,7 @@ impl OllamaBackend {
             .find(|binding| binding.reference == reference)
             .ok_or_else(|| policy_error("unbound_model_reference"))?;
         self.confirm_binding(binding, context).await?;
-        self.show_details(binding, context).await
+        self.show_details(binding.reference(), context).await
     }
 
     async fn discover_inner(
@@ -112,7 +153,7 @@ impl OllamaBackend {
         let inventory = parse_inventory(&tags)?;
         for binding in &self.bindings {
             confirm_binding_in_tags(binding, &tags)?;
-            let details = self.show_details(binding, context).await?;
+            let details = self.show_details(binding.reference(), context).await?;
             if !details
                 .capabilities
                 .iter()
@@ -157,7 +198,7 @@ impl OllamaBackend {
             return Err(policy_error("artifact_digest_mismatch"));
         }
         self.confirm_binding(binding, context).await?;
-        let details = self.show_details(binding, context).await?;
+        let details = self.show_details(binding.reference(), context).await?;
         if !details
             .capabilities
             .iter()
@@ -255,7 +296,7 @@ impl OllamaBackend {
             return Err(policy_error("artifact_digest_mismatch"));
         }
         self.confirm_binding(binding, context).await?;
-        let details = self.show_details(binding, context).await?;
+        let details = self.show_details(binding.reference(), context).await?;
         if !details
             .capabilities
             .iter()
@@ -313,6 +354,16 @@ impl OllamaBackend {
             .await
     }
 
+    async fn running_models(
+        &self,
+        context: OperationContext<'_>,
+    ) -> Result<Vec<OllamaRunningModel>, InferenceError> {
+        let response: PsResponse = self
+            .get_json("api/ps", self.limits.discovery_body_bytes, context)
+            .await?;
+        parse_running_models(&response)
+    }
+
     async fn confirm_binding(
         &self,
         binding: &OllamaModelBinding,
@@ -325,11 +376,11 @@ impl OllamaBackend {
 
     async fn show_details(
         &self,
-        binding: &OllamaModelBinding,
+        reference: &str,
         context: OperationContext<'_>,
     ) -> Result<OllamaModelDetails, InferenceError> {
         let request = ShowRequest {
-            model: binding.reference(),
+            model: reference,
             verbose: true,
         };
         let response: ShowResponse = self
@@ -362,11 +413,13 @@ impl OllamaBackend {
         }
         let metadata = serde_json::to_vec(&response.model_info)
             .map_err(|_error| malformed_error("invalid_model_info"))?;
+        let mut capabilities = response.capabilities;
+        capabilities.sort_unstable();
         Ok(OllamaModelDetails {
             format: response.details.format,
             family: response.details.family,
             quantization: response.details.quantization_level,
-            capabilities: response.capabilities,
+            capabilities,
             license_digest: Digest::sha256(response.license.as_bytes()),
             template_digest: Digest::sha256(response.template.as_bytes()),
             metadata_digest: Digest::sha256(&metadata),

@@ -14,10 +14,11 @@ use std::{
 use clap::Parser;
 use rewrite_eval::{
     MAX_BASELINE_DEFINITION_BYTES, MAX_CLAIM_SHADOW_CALIBRATION_BYTES, MAX_EDITORIAL_CORPUS_BYTES,
-    MAX_EVALUATION_SUITE_BYTES, MAX_WATERMARK_RESEARCH_BYTES, MAX_WRITING_SAMPLE_LIBRARY_BYTES,
-    parse_baseline_definition, parse_claim_shadow_calibration, parse_editorial_corpus, parse_suite,
-    parse_watermark_research_corpus, parse_writing_sample_library, run_attached_baseline,
-    run_claim_shadow_calibration, run_suite,
+    MAX_EVALUATION_SUITE_BYTES, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES,
+    MAX_WATERMARK_RESEARCH_BYTES, MAX_WRITING_SAMPLE_LIBRARY_BYTES, parse_baseline_definition,
+    parse_claim_shadow_calibration, parse_editorial_corpus, parse_local_ollama_preflight_plan,
+    parse_suite, parse_watermark_research_corpus, parse_writing_sample_library,
+    run_attached_baseline, run_claim_shadow_calibration, run_local_ollama_preflight, run_suite,
 };
 use rewrite_model::ArtifactId;
 use rewrite_types::{CancellationToken, Digest};
@@ -33,13 +34,15 @@ struct Cli {
             "editorial_corpus",
             "writing_samples",
             "watermark_research",
-            "claim_shadow_calibration"
+            "claim_shadow_calibration",
+            "ollama_preflight"
         ],
         conflicts_with_all = [
             "editorial_corpus",
             "writing_samples",
             "watermark_research",
-            "claim_shadow_calibration"
+            "claim_shadow_calibration",
+            "ollama_preflight"
         ]
     )]
     suite: Option<PathBuf>,
@@ -106,6 +109,22 @@ struct Cli {
         ]
     )]
     claim_shadow_calibration: Option<PathBuf>,
+    /// Run one versioned read-only Ollama preflight without generation.
+    #[arg(
+        long,
+        value_name = "PLAN",
+        conflicts_with_all = [
+            "suite",
+            "editorial_corpus",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration",
+            "baseline",
+            "data_dir",
+            "artifact_id"
+        ]
+    )]
+    ollama_preflight: Option<PathBuf>,
     /// Explicit repository root used to attach recovered fake-backend conformance.
     #[arg(long, value_name = "DIRECTORY")]
     data_dir: Option<PathBuf>,
@@ -128,6 +147,21 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
+    if let Some(path) = cli.ollama_preflight {
+        let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES)?;
+        let plan = parse_local_ollama_preflight_plan(&input)?;
+        let cancellation = CancellationToken::new();
+        let signal_cancellation = cancellation.clone();
+        ctrlc::try_set_handler(move || signal_cancellation.cancel())?;
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+        let report = runtime.block_on(run_local_ollama_preflight(&plan, &cancellation))?;
+        let mut stdout = io::stdout().lock();
+        serde_json::to_writer_pretty(&mut stdout, &report)?;
+        writeln!(stdout)?;
+        return Ok(ExitCode::SUCCESS);
+    }
     if let Some(path) = cli.editorial_corpus {
         let input = read_bounded_utf8(path, MAX_EDITORIAL_CORPUS_BYTES)?;
         let corpus = parse_editorial_corpus(&input)?;
@@ -209,6 +243,10 @@ fn parse_artifact_id(value: &str) -> Result<ArtifactId, Box<dyn Error>> {
 }
 
 fn read_bounded_utf8(path: PathBuf, maximum: usize) -> Result<String, Box<dyn Error>> {
+    Ok(String::from_utf8(read_bounded_bytes(path, maximum)?)?)
+}
+
+fn read_bounded_bytes(path: PathBuf, maximum: usize) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut bytes = Vec::with_capacity(64 * 1024);
     File::open(path)?
         .take(u64::try_from(maximum).unwrap_or(u64::MAX).saturating_add(1))
@@ -216,5 +254,5 @@ fn read_bounded_utf8(path: PathBuf, maximum: usize) -> Result<String, Box<dyn Er
     if bytes.len() > maximum {
         return Err("input exceeds the supported byte limit".into());
     }
-    Ok(String::from_utf8(bytes)?)
+    Ok(bytes)
 }
