@@ -40,7 +40,8 @@ The current 0.2 build queue, in dependency order, is:
    replaces one regular file after a sibling backup. `doctor` names
    recovery follow-up without mutation. Optional fitr device-measurement
    evidence can be inspected without a repository and is not a
-   qualification. Recovered fake-qualified
+   qualification. `rewrite` shares `--diff`, `--dry-run`, and `--trace`
+   with `check`. Recovered fake-qualified
    bindings attach in-process conformance for `rewrite` and generative
    `rewrite-eval --baseline` kinds. Do not start a runtime.
 6. Qualify one exact local runtime and artifact combination before profiles or

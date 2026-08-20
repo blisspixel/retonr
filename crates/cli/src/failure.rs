@@ -180,10 +180,6 @@ impl RunFailure {
     }
 
     /// Refuses to replace an existing destination file.
-    pub fn output_exists() -> Self {
-        Self::output_exists_for(CommandName::Check)
-    }
-
     pub fn output_exists_for(command: CommandName) -> Self {
         Self {
             command,

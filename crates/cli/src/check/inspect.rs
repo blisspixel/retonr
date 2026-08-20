@@ -69,52 +69,60 @@ impl SafeDiff {
     }
 }
 
-pub(crate) fn write_trace(path: &Path, record: &RewriteRecord) -> Result<(), RunFailure> {
-    let mut bytes = serde_json::to_vec_pretty(&SuccessEnvelope::new(CommandName::Check, record))
-        .map_err(|_| RunFailure::operational(CommandName::Check))?;
+pub(crate) fn write_trace(
+    path: &Path,
+    record: &RewriteRecord,
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    let mut bytes = serde_json::to_vec_pretty(&SuccessEnvelope::new(command, record))
+        .map_err(|_| RunFailure::operational(command))?;
     bytes.push(b'\n');
-    write_new_file(path, &bytes)
+    write_new_file(path, &bytes, command)
 }
 
-pub(crate) fn write_diff(diff: &SafeDiff, target: ReportTarget) -> Result<(), RunFailure> {
+pub(crate) fn write_diff(
+    diff: &SafeDiff,
+    target: ReportTarget,
+    command: CommandName,
+) -> Result<(), RunFailure> {
     let bytes = diff.render_text().into_bytes();
     match target {
-        ReportTarget::Data => write_stdout(&bytes),
-        ReportTarget::Diagnostic => write_stderr(&bytes),
+        ReportTarget::Data => write_stdout(&bytes, command),
+        ReportTarget::Diagnostic => write_stderr(&bytes, command),
     }
 }
 
-fn write_new_file(path: &Path, bytes: &[u8]) -> Result<(), RunFailure> {
+fn write_new_file(path: &Path, bytes: &[u8], command: CommandName) -> Result<(), RunFailure> {
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(path)
         .map_err(|error| {
             if error.kind() == io::ErrorKind::AlreadyExists {
-                RunFailure::output_exists()
+                RunFailure::output_exists_for(command)
             } else {
-                RunFailure::operational(CommandName::Check)
+                RunFailure::operational(command)
             }
         })?;
     file.write_all(bytes)
         .and_then(|()| file.sync_all())
-        .map_err(|_| RunFailure::operational(CommandName::Check))
+        .map_err(|_| RunFailure::operational(command))
 }
 
-fn write_stdout(bytes: &[u8]) -> Result<(), RunFailure> {
+fn write_stdout(bytes: &[u8], command: CommandName) -> Result<(), RunFailure> {
     let mut stream = io::stdout().lock();
     stream
         .write_all(bytes)
         .and_then(|()| stream.flush())
-        .map_err(|_| RunFailure::operational(CommandName::Check))
+        .map_err(|_| RunFailure::operational(command))
 }
 
-fn write_stderr(bytes: &[u8]) -> Result<(), RunFailure> {
+fn write_stderr(bytes: &[u8], command: CommandName) -> Result<(), RunFailure> {
     let mut stream = io::stderr().lock();
     stream
         .write_all(bytes)
         .and_then(|()| stream.flush())
-        .map_err(|_| RunFailure::operational(CommandName::Check))
+        .map_err(|_| RunFailure::operational(command))
 }
 
 fn greedy_line_hunks(source: &[&str], output: &[&str]) -> Vec<DiffHunk> {
