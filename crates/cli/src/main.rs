@@ -35,6 +35,7 @@ Examples:
   retonr inspect draft.txt
   retonr rewrite draft.txt -o rewritten.txt
   retonr rewrite draft.txt -i
+  retonr rewrite docs/ -r --output-dir rewritten --dry-run
   retonr check original.txt candidate.txt --diff
   retonr -D .retonr model list
 ";
@@ -75,7 +76,7 @@ enum Command {
     /// A recovered generation binding can attach in-process fake-backend
     /// conformance. The command does not start a runtime or access the network.
     Rewrite {
-        /// UTF-8 source file, or - for standard input.
+        /// UTF-8 source file, directory, or - for standard input.
         #[arg(value_name = "SOURCE")]
         source: PathBuf,
         /// Write the accepted bytes to a new file, or to - for standard output.
@@ -118,6 +119,15 @@ enum Command {
         /// Write the redacted rewrite record to a new file.
         #[arg(long, value_name = "PATH")]
         trace: Option<PathBuf>,
+        /// Recurse into real child directories without following links.
+        #[arg(short, long)]
+        recursive: bool,
+        /// Map directory sources onto a separate output root.
+        ///
+        /// Required for directory rewrite. Existing files are not replaced.
+        /// Directory rewrite is dry-run only.
+        #[arg(long, value_name = "DIRECTORY")]
+        output_dir: Option<PathBuf>,
     },
     /// Validate a supplied plain-text candidate without using a model.
     Check {
@@ -266,6 +276,8 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             diff,
             dry_run,
             trace,
+            recursive,
+            output_dir,
         } => rewrite::run(&rewrite::RewriteRequest {
             source,
             output,
@@ -283,6 +295,10 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 diff,
                 dry_run,
                 trace,
+            },
+            directory: rewrite::DirectoryFlags {
+                recursive,
+                output_dir,
             },
             format,
         })

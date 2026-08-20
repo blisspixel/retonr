@@ -177,7 +177,10 @@ uses its own clean runner database.
   result paths stay out of the report. Missing fitr is not an error.
   `rewrite` accepts one source file or standard input under the same
   output and inspection policy as `check`, including `--diff`, `--dry-run`,
-  and `--trace`. Optional `--data-dir` inspects an existing repository for an
+  and `--trace`. A directory source is a dry-run destination manifest:
+  `--output-dir` is required, `--recursive` is bounded, collisions are
+  refused, and the output root cannot nest with the source. No files are
+  written. Optional `--data-dir` inspects an existing repository for an
   active generation binding. Optional `--artifact-id` must match that binding.
   When the recovered qualification names the retained fake backend, `rewrite`
   attaches in-process conformance, generates an identity candidate, and runs
@@ -360,7 +363,8 @@ is:
    prepared removal is pending. It does not migrate, recover, or activate.
    `rewrite` attaches in-process fake-backend conformance to a recovered
    fake-qualified binding and otherwise fails closed. It shares `--diff`,
-   `--dry-run`, and `--trace` with `check`. Generative baseline
+   `--dry-run`, and `--trace` with `check`. Directory rewrite dry-run
+   requires `--output-dir` and does not write files. Generative baseline
    kinds use that same recovered binding through `--data-dir` and otherwise
    fail closed. `list` and `inspect` are read-only and do not qualify or
    activate. Neither path starts a runtime or uses the network. Do not start

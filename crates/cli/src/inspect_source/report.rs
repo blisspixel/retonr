@@ -11,11 +11,13 @@ use crate::failure::RunFailure;
 
 const SIDECAR_SUFFIXES: [&str; 2] = [".c2pa", ".xmp"];
 
-pub(super) fn inspect_file(source: &Path) -> Result<InspectReport, RunFailure> {
+pub(super) fn inspect_file(
+    source: &Path,
+    command: CommandName,
+) -> Result<InspectReport, RunFailure> {
     let bytes = read_input_bounded(source, MAX_CANDIDATE_CHECK_BYTES)
-        .map_err(|error| RunFailure::input_read(CommandName::Inspect, &error))?;
-    let inventory = inspect_plain_text(&bytes)
-        .map_err(|error| RunFailure::app(CommandName::Inspect, &error))?;
+        .map_err(|error| RunFailure::input_read(command, &error))?;
+    let inventory = inspect_plain_text(&bytes).map_err(|error| RunFailure::app(command, &error))?;
     Ok(InspectReport::from_inventory(
         &inventory,
         sidecar_scan(source),
@@ -124,8 +126,16 @@ impl InspectReport {
         }
     }
 
-    pub(super) fn derivative(&self) -> &'static str {
+    pub(crate) fn derivative(&self) -> &'static str {
         self.derivative
+    }
+
+    pub(crate) fn encoding(&self) -> TextEncoding {
+        self.encoding
+    }
+
+    pub(crate) fn digest(&self) -> &str {
+        &self.digest
     }
 
     pub(super) fn text(&self) -> String {

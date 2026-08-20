@@ -8,7 +8,7 @@ use crate::contract::{
 use crate::failure::RunFailure;
 use crate::model::ModelOutput;
 
-mod directory;
+pub(crate) mod directory;
 mod report;
 
 /// Inventories one source file, standard input, or directory.
@@ -34,7 +34,7 @@ pub(crate) fn run(
     {
         return directory::inspect(source, false);
     }
-    let report = report::inspect_file(source)?;
+    let report = report::inspect_file(source, CommandName::Inspect)?;
     Ok((
         CommandName::Inspect,
         ModelOutput {
