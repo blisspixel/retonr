@@ -70,33 +70,38 @@ proceeds in this exact order:
    artifact-set manifest, runtime-build and effective-state identities, and
    relationship-checked effective-package evidence. Preserve the separate inert
    qualification v2 that binds all four identities and exact qualification policy
-   without rewriting v1 evidence. Preserve the completed schema-v4 persistence,
-   recursive relationship checks, distinct inert artifact-set installation
-   generations, bounded exact folder import, offline `import-set` CLI, explicit
-   v1/v2/v3 repository
-   migration path, repository-owned artifact-set leases, and read-only set
-   inventory without implying set authority. Next add live
-   attestation without enabling claim extraction. Only after those boundaries add the
-   exact effective extractor manifest, strict ephemeral wire contract, separately
-   cancellable pair operation, and two-phase engine evidence join. Calibrate it in
-   shadow mode before any semantic pass authority and never treat probabilistic
-   extraction as proof.
-5. Implement the versioned local evaluation plan, run the currently installed Gemma 4
-   26B and Qwen3.6 27B packages, and add the previously observed Ministral 3 8B only
-   after its local identity is revalidated or acquisition is separately approved.
-   Keep runtime strata separate and publish no support claim from this development run.
-6. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
+   without rewriting v1 evidence. Preserve current schema-v5 persistence, recursive
+   relationship checks, distinct inert artifact-set installation generations,
+   bounded exact folder import, the offline `import-set` CLI, explicit v1/v2/v3/v4
+   repository migration, repository-owned artifact-set leases, and read-only set
+   inventory without implying set authority. Preserve the completed managed-process
+   attestor, extractor manifest, strict ephemeral wire contract, cancellable pair
+   operation, two-phase informational engine evidence join, and independent shadow
+   calibration. Never treat probabilistic extraction as proof.
+5. Retain the versioned read-only Ollama preflight. It observes or verifies bounded
+   runtime, inventory, model-description, and residency evidence, rechecks stable
+   state, performs no generation, and always reports `qualified: false`.
+6. Bind a user-managed loopback listener to one exact process entrypoint, runtime
+   build, effective configuration, and complete canonical model artifact set. Prove
+   explicit cloud disablement and OS-enforced non-loopback denial before generation.
+   A mutable inventory tag or digest alone is not artifact or runtime qualification.
+7. Project the eight-case smoke and 39-case editorial protocol into versioned local
+   generation plans. Run only exact stacks that passed identity and isolation
+   preflight. The old Gemma 4, Qwen3.6, and Ministral observations have expired; do
+   not reacquire a candidate without separate approval. Keep runtime strata separate
+   and publish no support claim from a development run.
+8. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
    qualify one exact local runtime and artifact combination and retain complete
    cross-platform release evidence before adding profiles or another format.
-7. Establish the versioned editorial-quality corpus and the bounded editorial
+9. Establish the versioned editorial-quality corpus and the bounded editorial
    pattern graph during evaluation work. Keep model-family and population
    source-signal relationships in a separate research graph with no live rewrite
    authority. Do not give lint findings product authority until the 0.3 rule and
    profile contracts pass qualification.
-8. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-9. Let editorial lint guide or rank generated candidates in 0.5 only after the
+10. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+11. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
-10. Add agent packaging, rich document formats, and native presentation layers only
+12. Add agent packaging, rich document formats, and native presentation layers only
    after the underlying CLI and application contracts are proven.
 
 This sequencing makes three independent outcomes visible in every release report:

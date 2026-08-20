@@ -5,17 +5,36 @@ pub(crate) struct VersionResponse {
     pub(crate) version: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub(crate) struct TagsResponse {
     pub(crate) models: Vec<TagModel>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub(crate) struct TagModel {
     pub(crate) name: String,
     pub(crate) model: String,
     pub(crate) size: u64,
     pub(crate) digest: String,
+    #[serde(default)]
+    pub(crate) remote_model: String,
+    #[serde(default)]
+    pub(crate) remote_host: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct PsResponse {
+    pub(crate) models: Vec<RunningModel>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct RunningModel {
+    pub(crate) name: String,
+    pub(crate) model: String,
+    pub(crate) size: u64,
+    pub(crate) digest: String,
+    pub(crate) size_vram: u64,
+    pub(crate) context_length: u32,
     #[serde(default)]
     pub(crate) remote_model: String,
     #[serde(default)]

@@ -19,10 +19,10 @@ protocol, or stored-data contracts.
 | `rewrite-model-store` | Durable SQLite schema v5 for legacy artifact authority, inert artifact-set installation generations, crash-recoverable artifact-set removal journals, and artifact-set, runtime-build, effective-state, effective-package, and qualification-v2 evidence; exact supported-schema inspection; single-epoch exact-handle backup and atomic v1/v2/v3/v4 migration; transactional relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, a distinct claim-output contract, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
-| `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, and pre-call and post-call identity checks |
+| `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, pre-call and post-call identity checks, and coherent read-only runtime, inventory, model-description, and residency preflight |
 | `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, read-only artifact-set inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, selected set-root reconciliation, crash-recoverable inactive single-file and artifact-set removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, a repository-owned whole-tree artifact-set lease, an inert managed-process runtime attestor, a cancellable pair-extraction service, and an informational shadow join of independently produced claim comparison with no eligibility authority |
 | `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, opt-in `--in-place` (`-i`) with an implied sibling backup for a regular file, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a pre-model `inspect` command that inventories one file or directory: encoding, BOM, newline kind, control-class counts, sibling sidecar presence, and skipped child reasons, without stripping bytes, following links, or validating a Content Credential; `--recursive` is a bounded walk that skips hidden names, `target`, and `node_modules`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then attaches in-process fake-backend conformance when that recovered qualification names the retained fake backend, or fails closed otherwise; dedicated `version` and read-only `doctor` recovery commands that name migrate or removal-recovery follow-up without mutation; generated `completions` scripts and a section-1 `man` page from the live CLI definition; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, read-only `list` of registered single-file installations, read-only `inspect` of one registered artifact's declared facts, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, exact set-removal recovery, and optional read-only `device-evidence` (`fitr`) of `fitr.retonr.evidence.v1` without qualification or a repository |
-| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, and redacted aggregate reporting |
+| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, a versioned non-generative Ollama observe or verify preflight that always reports unqualified, and redacted aggregate reporting |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
@@ -103,61 +103,56 @@ migrate implicitly.
 
 ## Verified locally
 
-The August 16, 2026 Windows development checkpoint passes:
+The August 20, 2026 unpublished Windows development checkpoint passes:
 
 ```console
 cargo fmt --all -- --check
 cargo check --locked --workspace --all-targets --all-features
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo test --locked --workspace --all-features
-cargo nextest run --locked --workspace --all-features --no-fail-fast
 cargo llvm-cov --locked --workspace --all-features --fail-under-lines 80
-cargo test --locked --workspace --all-features --doc
 cargo doc --locked --workspace --all-features --no-deps
 cargo deny check
 cargo audit --db target/advisory-db-clean
 npm run lint:markdown
 pwsh -NoProfile -File scripts/check-repository.ps1
 cargo +nightly check --locked --manifest-path fuzz/Cargo.toml --bins
-cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_quality_v1.json
-cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/editorial_slop_v1.json
+cargo run --locked -p rewrite-eval -- --ollama-preflight <LOCAL_VERIFY_PLAN_JSON>
 cargo build --locked --workspace --release
 ```
 
-All 506 Rust unit, integration, and process tests pass. Two process helpers are
-intentionally ignored by the ordinary runner and exercised by isolated parent tests.
-Two further artifact-set lease cases are Unix only and run in continuous
-integration. Documentation tests also pass. The measured Rust line coverage is 91.44
-percent overall. The repository's 80 percent line coverage floor passes with margin.
+The workspace exposes 731 Rust unit, integration, and process tests. The ordinary
+Cargo run passes 729 and retains two process helpers as intentional ignores exercised
+by isolated parent tests. Two further artifact-set lease cases are Unix only and run
+in continuous integration. Documentation tests also pass. Measured Rust line
+coverage is 90.51 percent overall. New local preflight orchestration lines are 99.29
+percent covered, the extracted Ollama preflight operation is 97.62 percent, and the
+core Ollama adapter remains at 90.95 percent. The repository's 80 percent line
+coverage floor passes with margin.
 
-The local nightly toolchain can type-check both fuzz targets. The cargo-fuzz project
+The local nightly toolchain type-checks both fuzz targets. The cargo-fuzz project
 supports its libFuzzer execution path on Unix-like targets, so Windows is not
 reported as a local fuzz-execution result. Continuous integration runs both bounded
-targets under the Linux sanitizer-backed fuzz smoke job. The pinned `cargo-nextest`
-0.9.143 run also passes. Its Windows-only override gives the console-interrupt
-integration test exclusive test-thread capacity because the helper owns process-wide
-console state; the test remains concurrent with the full suite on macOS and Linux.
+targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
+installed on this development host; the exact public-main workflow remains the
+nextest authority.
 
-The editorial-pattern research package, portable artifact-set and runtime-identity
-slice, distinct inert claim-extraction role, Windows nextest isolation repair,
-effective-package evidence, qualification v2, schema-v4 artifact-set installation
-persistence, the explicit backup-backed repository migration, the
-repository-owned artifact-set lease, and the candidate-check standard-input and
-output policy passed at exact-main
-revision
-`c7f0a39ecdb7b9392b09ad49327369b5ab6bd857`
-in the passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/31956893414).
-The retained exact-main jobs cover Windows, macOS, and Linux Rust checks, repository
-policy, Markdown, coverage, dependency and supply-chain policy, fuzz smoke, proxy
-isolation, concurrency, and the Ubuntu loopback-only network namespace.
+At the review cutoff, local `origin/main` and GitHub both identify exact-main
+revision `bd9fb71ad7af09579dde60c4538f13a832db4de6`. Its passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32331755461)
+completed all 11 Windows, macOS, Linux, repository-policy, Markdown, coverage,
+dependency and supply-chain, fuzz-smoke, and loopback-only Ollama jobs. The Windows
+nextest job ran 716 tests and skipped the two intentional helpers. Exact-main line
+coverage is 90.52 percent. The unpublished workflow adds one stable `required`
+aggregate job; GitHub evidence for that new job does not exist until publication.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
-a duplicate advisory ID. The clean database loaded 1,216 advisories and the current
-243-crate graph passed. Dependency sources and licenses pass policy. Reviewed
-duplicate-version warnings now include the target-only capability filesystem
-dependency tree and the two transitive `syn` major versions. Continuous integration
-uses its own clean runner database.
+a duplicate advisory ID. The clean database loaded 1,225 advisories and the current
+246-dependency graph passed. Dependency sources and licenses pass policy. Reviewed
+duplicate-version warnings include the target-only capability filesystem tree,
+`ctrlc` and filesystem `nix` versions, Windows support versions, and the two
+transitive `syn` major versions. Continuous integration uses its own clean runner
+database.
 
 ## Deliberate limitations
 
@@ -264,9 +259,9 @@ uses its own clean runner database.
   attestor can hash one live regular entrypoint, bind `RuntimeBuildIdentity` and
   `EffectiveRuntimeState`, and optionally persist those inert records. It does not
   activate a role, admit observed-only Ollama identity, or enable claim extraction. The
-  CLI requires one explicit `--data-dir`; its twelve artifact commands do not use the
+  CLI requires one explicit `--data-dir`; its fourteen repository model commands do not use the
   network. Only confirmed `model migrate` can apply a supported schema migration,
-  and it first retains a verified repository-owned backup. The other eleven commands
+  and it first retains a verified repository-owned backup. The other thirteen commands
   remain exact-schema and non-migrating. `pending-operations` reads only bounded durable state and
   returns exact prepared single-file and artifact-set removal generations without
   opening or hashing model bytes. The current product ceilings are 256 GiB per artifact or set member, 4,096
@@ -278,8 +273,11 @@ uses its own clean runner database.
   configurations is
   within the current boundary; network filesystem semantics and other Windows
   filesystem drivers are not qualified.
-- The Ollama adapter is fake-server tested but has not been qualified against a real
-  pinned runtime and model artifact on the three operating systems.
+- The Ollama adapter is fake-server tested and its read-only preflight has observed
+  and verified one existing local Ollama 0.32.14 inventory without generation. That
+  evidence does not bind the listener to an exact attested process, establish a
+  complete artifact-set or upstream identity, prove cloud disablement, or qualify a
+  runtime and model on any operating system.
 - The grounded path can safely accept only literal-mode token-preserving changes
   under the current evaluator. Open-domain paraphrases and broader modes abstain.
 - The typed claim contract and deterministic comparator are implemented. The engine
@@ -318,62 +316,26 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Preserve the completed artifact lifecycle boundary, application-owned inventory
-   DTOs, offline `import-set` CLI, read-only `inventory-set` CLI, non-mutating
-   pending-operation inspection, and process-level signal
-   cancellation evidence as new consumers are added.
-2. Preserve the completed rewrite-record v2, typed invariant summaries, typed claim
-   evidence, and deterministic comparison boundary.
-3. Preserve the distinct inert claim-extraction role, canonical artifact-set
-   manifest, runtime-build and effective-state identities, relationship-checked
-   effective-package evidence, separate inert qualification v2, and schema-v5
-   relationship-checked persistence without rewriting v1 or schema-v3 evidence.
-   Preserve the distinct inert artifact-set installation generation, exact bounded
-   folder import, offline `import-set` CLI, explicit backup-backed repository
-   migration path,
-   repository-owned artifact-set leases, read-only set inventory, selected
-   set-root reconciliation, and crash-recoverable set removal without
-   implying set authority. Preserve the completed managed-process attestor that
-   writes inert runtime-build and effective-state records without role authority.
-   Preserve the cancellable pair-extraction service, the informational
-   shadow claim-comparison gate, the application shadow join, and the
-   independent claim-shadow calibration runner. That gate has no eligibility
-   authority.
-4. The extractor manifest, claim-output contract, cancellable pair
-   extraction service, engine shadow gate, application shadow join, and
-   independent claim-shadow calibration runner exist. Pair extraction can
-   compare completed evidence sets and record that comparison informatively.
-   Calibration assigns fixture claim identities separately from generation
-   and fails if the informational shadow changes hard-gate acceptance. It
-   has no activation authority and cannot change acceptance. Keep Ollama on
-   the candidate contract only.
-5. Add the local evaluation plan, run the currently installed 26B and 27B packages,
-   and add the previously observed 8B package only after revalidation or separately
-   approved acquisition. Start only after product-path evidence joins are complete.
-6. `check` output policy, `version`, `doctor`, `completions`, `man`,
-   `inspect`, `model list`, `model inspect`, and `rewrite-eval --baseline`
-   exist. `inspect` inventories one source or directory before rewrite.
-   `--recursive` is a bounded walk that does not follow links. It does not
-   parse credentials, follow external references, or strip bytes.
-   `--in-place` replaces one regular source file after retaining a
-   sibling backup. It is not a directory rewrite.
-   Optional `model device-evidence` reads fitr measurement JSON without a
-   repository and does not qualify. Missing fitr is not an error.
-   `doctor` names exact recovery follow-up when schema migration or a
-   prepared removal is pending. It does not migrate, recover, or activate.
-   `rewrite` attaches in-process fake-backend conformance to a recovered
-   fake-qualified binding and otherwise fails closed. It shares `--diff`,
-   `--dry-run`, and `--trace` with `check`. Directory rewrite dry-run
-   requires `--output-dir` and does not write files. Generative baseline
-   kinds use that same recovered binding through `--data-dir` and otherwise
-   fail closed. `list` and `inspect` are read-only and do not qualify or
-   activate. Neither path starts a runtime or uses the network. Do not start
-   Ollama or qualify a real model.
-7. Run exact artifact qualification and selective-risk reporting on declared
-   hardware tiers.
-8. Capture the model-backed rewrite, abstention, diff, and trace CLI screenshots only
-   after the 0.2 completion evidence passes. The current candidate-check rendering is
-   limited to already implemented model-free behavior.
+1. Preserve completed lifecycle, schema-v5 persistence, lease, migration, recovery,
+   cancellation, claim-comparison, and informational shadow boundaries.
+2. Retain the versioned read-only Ollama preflight. It performs no generation and
+   cannot qualify a runtime or package.
+3. Bind the loopback listener to the exact user-managed process, regular entrypoint,
+   runtime version, launch mode, and effective configuration through the attestation
+   boundary before and after use.
+4. Reconstruct the selected Ollama package as a complete canonical artifact set with
+   exact blob, tokenizer, template, license, upstream source, and transformation
+   evidence. Keep runtime identity separate from model-package identity.
+5. Prove explicit cloud disablement and OS-enforced denial of non-loopback outbound
+   traffic for every participating Retonr and runtime process.
+6. Project the existing eight-case smoke and 39-case editorial protocol into
+   versioned local generation plans. The old Gemma 4, Qwen3.6, and Ministral local
+   observations have expired. Do not reacquire a model without separate approval.
+7. Run smoke, locked evaluation, repeatability, and exact cross-platform
+   qualification in that order. Preserve the existing hard gates as the only
+   acceptance authority.
+8. Finish remaining CLI recovery and packaging evidence, then capture model-backed
+   screenshots only from the complete passing release path.
 
 Later work follows the dependency order in the
 [phase execution plan index](planning/README.md).
