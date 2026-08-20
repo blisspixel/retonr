@@ -18,13 +18,13 @@ Evidence in this review was refreshed on August 20, 2026.
 | Check | Evidence | Result |
 | --- | --- | --- |
 | Default branch | `main` | Correct |
-| Remote revision | `bd9fb71ad7af09579dde60c4538f13a832db4de6` | Local `origin/main` and GitHub match |
-| Latest quality run | [Run 32331755461](https://github.com/blisspixel/retonr/actions/runs/32331755461) | Passed |
+| Published implementation checkpoint | `450e58fd73d041e4964e1334214f2f04543861cd` | Ollama preflight and aggregate gate published |
+| Checkpoint quality run | [Run 32418672103](https://github.com/blisspixel/retonr/actions/runs/32418672103) | All 12 jobs passed |
 | Cross-platform Rust | Ubuntu, Windows, and macOS | Passed |
 | Policy and documentation | Three repository-policy jobs and Markdown | Passed |
-| Additional gates | Coverage, supply chain, fuzz smoke, and loopback-only Ollama | Passed |
-| Main coverage | 90.52 percent line coverage | Above the 80 percent floor |
-| Main test execution | 716 nextest tests, with two intentional helpers skipped | Passed |
+| Additional gates | Coverage, supply chain, fuzz smoke, loopback-only Ollama, and stable `required` aggregate | Passed |
+| Checkpoint coverage | 90.63 percent line coverage | Above the 80 percent floor |
+| Checkpoint test execution | 729 nextest tests, with two intentional helpers skipped | Passed |
 | Open work on GitHub | No open pull requests or issues | Clean |
 | Branch governance | No ruleset or branch protection | Action required |
 
@@ -39,7 +39,7 @@ governance.
 | README said Gemma 4 26B and Qwen3.6 27B were installed | Treat the August 13 inventory as expired historical evidence |
 | Roadmap queued attestation, extractor contracts, pair extraction, and the shadow join as future work | Those boundaries already exist and must be preserved |
 | Roadmap referred to current schema v4 work | Schema v5 is current; schema v4 remains migration history |
-| Current state cited an older revision, workflow, test count, and coverage result | Separate the exact public-main result from current unpublished branch verification |
+| Current state cited an older revision, workflow, test count, and coverage result | Record the published implementation checkpoint and its exact CI evidence |
 | Current state counted 12 repository model commands | There are 14 repository commands plus repository-free `device-evidence` |
 
 Historical research records remain dated observations. Current public-facing status
@@ -78,8 +78,8 @@ template, and policy satisfy a Retonr contract. See the
 
 ## Implemented read-only preflight
 
-This branch adds a versioned `rewrite-eval --ollama-preflight` plan and report with
-two modes:
+The published slice adds a versioned `rewrite-eval --ollama-preflight` plan and
+report with two modes:
 
 - `observe` records bounded, content-redacted runtime and model-description evidence.
 - `verify` requires every frozen description field and digest to match.
@@ -130,8 +130,7 @@ either model.
 
 ## Execution order
 
-1. Publish the read-only preflight and stable `required` aggregate gate
-   after local review and publication authorization.
+1. Retain the published read-only preflight and stable `required` aggregate gate.
 2. Extend runtime attestation to bind the loopback listener to the exact operating
    system process, regular entrypoint bytes, version, launch mode, and effective
    configuration. Recheck the binding before and after use.
@@ -160,7 +159,7 @@ score cannot be reproduced or safely activated.
 
 ## GitHub governance plan
 
-The workflow should expose one stable `required` job that depends on every Rust,
+The workflow now exposes one stable `required` job that depends on every Rust,
 repository-policy, Markdown, coverage, supply-chain, fuzz, and loopback-only job. A
 main ruleset should then:
 
