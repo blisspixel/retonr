@@ -62,6 +62,16 @@ an architecture decision and one quarantined adapter crate with a safe bounded
 facade, safety arguments, Miri where applicable, sanitizers on supported targets,
 fuzzing, and native platform tests.
 
+`rewrite-runtime-attestor` is the first quarantined exception. Its Windows-only FFI
+calls documented public process and owner-PID socket APIs through `windows-sys`.
+Every unsafe block has a local proof, and table extents are checked before unaligned
+row reads. Existing domain and application crates retain their unsafe prohibition.
+Native Windows and Linux tests exercise listener attachment and drift; macOS tests
+the deliberate unsupported result. Miri cannot execute the Windows kernel FFI, so
+the applicable safety evidence is native target testing and the bounded safe facade.
+The exact decision and revisit conditions are in
+[ADR 0008](decisions/0008-attached-process-witness.md).
+
 Release builds use stable Rust. Date-pinned nightly exists only for isolated Miri,
 fuzz, sanitizer, or diagnostic lanes. Moving stable and beta jobs are non-publishing
 canaries.
