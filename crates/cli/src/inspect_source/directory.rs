@@ -16,11 +16,23 @@ use crate::model::ModelOutput;
 const MAXIMUM_DIRECTORY_ENTRIES: usize = 4_096;
 const MAXIMUM_DIRECTORY_DEPTH: usize = 8;
 
+pub(crate) struct Discovery {
+    pub documents: Vec<DiscoveredDocument>,
+    pub skipped: Vec<SkippedEntry>,
+}
+
+pub(crate) struct DiscoveredDocument {
+    pub relative_path: String,
+    pub encoding: rewrite_app::TextEncoding,
+    pub digest: String,
+    pub derivative: &'static str,
+}
+
 pub(super) fn inspect(
     directory: &Path,
     recursive: bool,
 ) -> Result<(CommandName, ModelOutput, ExitCode), RunFailure> {
-    let (mut documents, mut skipped) = walk(directory, recursive)?;
+    let (mut documents, mut skipped) = walk(directory, recursive, CommandName::Inspect)?;
     documents.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     skipped.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     let derivative = if documents
@@ -53,15 +65,39 @@ pub(super) fn inspect(
     ))
 }
 
+pub(crate) fn discover(
+    directory: &Path,
+    recursive: bool,
+    command: CommandName,
+) -> Result<Discovery, RunFailure> {
+    let (mut documents, mut skipped) = walk(directory, recursive, command)?;
+    documents.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    skipped.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    Ok(Discovery {
+        documents: documents
+            .into_iter()
+            .map(|document| DiscoveredDocument {
+                relative_path: document.relative_path,
+                encoding: document.report.encoding(),
+                digest: document.report.digest().to_owned(),
+                derivative: document.report.derivative(),
+            })
+            .collect(),
+        skipped,
+    })
+}
+
 fn walk(
     directory: &Path,
     recursive: bool,
+    command: CommandName,
 ) -> Result<(Vec<DirectoryDocument>, Vec<SkippedEntry>), RunFailure> {
     walk_bounded(
         directory,
         recursive,
         MAXIMUM_DIRECTORY_ENTRIES,
         MAXIMUM_DIRECTORY_DEPTH,
+        command,
     )
 }
 
@@ -70,6 +106,7 @@ fn walk_bounded(
     recursive: bool,
     max_entries: usize,
     max_depth: usize,
+    command: CommandName,
 ) -> Result<(Vec<DirectoryDocument>, Vec<SkippedEntry>), RunFailure> {
     let mut pending = vec![Frame {
         path: directory.to_path_buf(),
@@ -80,10 +117,10 @@ fn walk_bounded(
     let mut skipped = Vec::new();
     let mut seen = 0_usize;
     while let Some(frame) = pending.pop() {
-        let mut entries = read_sorted_entries(&frame.path)?;
+        let mut entries = read_sorted_entries(&frame.path, command)?;
         seen = seen.saturating_add(entries.len());
         if seen > max_entries {
-            return Err(directory_limit());
+            return Err(directory_limit(command));
         }
         for entry in entries.drain(..) {
             match classify_entry(&entry, &frame.relative) {
@@ -91,7 +128,7 @@ fn walk_bounded(
                     relative_path,
                     path,
                 } => {
-                    let report = inspect_file(&path)?;
+                    let report = inspect_file(&path, command)?;
                     documents.push(DirectoryDocument {
                         relative_path,
                         report,
@@ -127,12 +164,15 @@ fn walk_bounded(
     Ok((documents, skipped))
 }
 
-fn read_sorted_entries(directory: &Path) -> Result<Vec<DirEntry>, RunFailure> {
+fn read_sorted_entries(
+    directory: &Path,
+    command: CommandName,
+) -> Result<Vec<DirEntry>, RunFailure> {
     let mut entries = Vec::new();
-    let reader = fs::read_dir(directory)
-        .map_err(|error| RunFailure::input_read(CommandName::Inspect, &error))?;
+    let reader =
+        fs::read_dir(directory).map_err(|error| RunFailure::input_read(command, &error))?;
     for entry in reader {
-        entries.push(entry.map_err(|error| RunFailure::input_read(CommandName::Inspect, &error))?);
+        entries.push(entry.map_err(|error| RunFailure::input_read(command, &error))?);
     }
     entries.sort_by_key(DirEntry::file_name);
     Ok(entries)
@@ -216,9 +256,9 @@ fn join_relative(prefix: &str, name: &str) -> String {
     }
 }
 
-fn directory_limit() -> RunFailure {
+fn directory_limit(command: CommandName) -> RunFailure {
     RunFailure {
-        command: CommandName::Inspect,
+        command,
         body: ErrorBody::new(
             ErrorCategory::Compatibility,
             ErrorCode::ResourceLimitExceeded,
@@ -254,11 +294,11 @@ struct DirectoryDocument {
     report: InspectReport,
 }
 
-#[derive(Eq, Ord, PartialEq, PartialOrd, Serialize)]
-struct SkippedEntry {
+#[derive(Clone, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+pub(crate) struct SkippedEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
-    relative_path: Option<String>,
-    reason: &'static str,
+    pub relative_path: Option<String>,
+    pub reason: &'static str,
 }
 
 #[derive(Serialize)]
@@ -329,6 +369,7 @@ mod tests {
             true,
             MAXIMUM_DIRECTORY_ENTRIES,
             MAXIMUM_DIRECTORY_DEPTH,
+            CommandName::Inspect,
         )
         .expect("walk");
         let document_paths: Vec<&str> = documents
@@ -355,8 +396,14 @@ mod tests {
         fs::create_dir_all(&nested).expect("create nested");
         fs::write(nested.join("leaf.txt"), "leaf\n").expect("write leaf");
 
-        let (documents, skipped) =
-            walk_bounded(path, true, MAXIMUM_DIRECTORY_ENTRIES, 1).expect("walk");
+        let (documents, skipped) = walk_bounded(
+            path,
+            true,
+            MAXIMUM_DIRECTORY_ENTRIES,
+            1,
+            CommandName::Inspect,
+        )
+        .expect("walk");
         assert!(documents.is_empty());
         assert!(
             skipped
@@ -374,7 +421,9 @@ mod tests {
         fs::write(path.join("b.txt"), "b\n").expect("write b");
         fs::write(path.join("c.txt"), "c\n").expect("write c");
 
-        let Err(failure) = walk_bounded(path, true, 2, MAXIMUM_DIRECTORY_DEPTH) else {
+        let Err(failure) =
+            walk_bounded(path, true, 2, MAXIMUM_DIRECTORY_DEPTH, CommandName::Inspect)
+        else {
             panic!("entry limit should refuse");
         };
         assert_eq!(failure.exit_code, ExitCode::from(EXIT_COMPATIBILITY));
@@ -394,6 +443,7 @@ mod tests {
             false,
             MAXIMUM_DIRECTORY_ENTRIES,
             MAXIMUM_DIRECTORY_DEPTH,
+            CommandName::Inspect,
         )
         .expect("walk");
         assert_eq!(documents.len(), 1);

@@ -2,6 +2,8 @@
 
 use std::{path::PathBuf, process::ExitCode};
 
+mod directory;
+
 use rewrite_app::{GroundedRewriteRequest, GroundedRewriteSelection, MAX_CANDIDATE_CHECK_BYTES};
 use rewrite_types::{CancellationToken, ReasonCode, RewriteMode};
 
@@ -25,18 +27,32 @@ pub(crate) struct RewriteRequest {
     pub(crate) raw_terminal: bool,
     pub(crate) confirmed: bool,
     pub(crate) inspection: CheckInspection,
+    pub(crate) directory: DirectoryFlags,
     pub(crate) format: ReportFormat,
+}
+
+/// Directory discovery and destination-root options.
+pub(crate) struct DirectoryFlags {
+    pub(crate) recursive: bool,
+    pub(crate) output_dir: Option<PathBuf>,
 }
 
 /// Reads one source document and rewrites it only after a recovered fake binding attaches.
 ///
 /// The command uses the same output-destination and inspection policy as `check`.
-/// `--diff`, `--dry-run`, and `--trace` do not change acceptance. An existing
+/// `--diff`, `--dry-run`, and `--trace` do not change acceptance. A directory
+/// source is a dry-run destination manifest and does not mutate. An existing
 /// file is never replaced unless `--in-place` retains a sibling copy of the
 /// original first. It attaches in-process fake-backend conformance when a
 /// recovered generation binding names that backend. It does not start a runtime,
 /// open a network path, or invent a production backend.
 pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
+    if directory::is_real_directory(&request.source) {
+        return directory::run(request);
+    }
+    if request.directory.output_dir.is_some() || request.directory.recursive {
+        return Err(RunFailure::usage_for(CommandName::Rewrite));
+    }
     if request.artifact_id.is_some() && request.data_directory.is_none() {
         return Err(RunFailure::usage_for(CommandName::Rewrite));
     }
