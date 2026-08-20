@@ -98,6 +98,26 @@ enum Command {
         /// Exact term that must be preserved. May be repeated.
         #[arg(long = "protect", value_name = "TERM")]
         protected_terms: Vec<String>,
+        /// Return exit code 3 when validation safely abstains.
+        #[arg(long)]
+        fail_on_abstain: bool,
+        /// Permit exact unescaped bytes on a terminal. Requires --yes.
+        ///
+        /// Without both flags, a terminal receives escaped rendering.
+        #[arg(long)]
+        raw_terminal: bool,
+        /// Confirm the raw terminal output opt-in.
+        #[arg(short = 'y', long)]
+        yes: bool,
+        /// Write an escaped linear diff of source versus accepted output.
+        #[arg(long)]
+        diff: bool,
+        /// Compute the report without writing --output or replacing the source.
+        #[arg(long)]
+        dry_run: bool,
+        /// Write the redacted rewrite record to a new file.
+        #[arg(long, value_name = "PATH")]
+        trace: Option<PathBuf>,
     },
     /// Validate a supplied plain-text candidate without using a model.
     Check {
@@ -240,6 +260,12 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             backup,
             artifact_id,
             protected_terms,
+            fail_on_abstain,
+            raw_terminal,
+            yes,
+            diff,
+            dry_run,
+            trace,
         } => rewrite::run(&rewrite::RewriteRequest {
             source,
             output,
@@ -250,6 +276,14 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             data_directory: cli.data_dir,
             artifact_id,
             protected_terms,
+            fail_on_abstain,
+            raw_terminal,
+            confirmed: yes,
+            inspection: check::CheckInspection {
+                diff,
+                dry_run,
+                trace,
+            },
             format,
         })
         .map_err(|error| (error, format)),

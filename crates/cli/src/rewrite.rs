@@ -6,7 +6,9 @@ use rewrite_app::{GroundedRewriteRequest, GroundedRewriteSelection, MAX_CANDIDAT
 use rewrite_types::{CancellationToken, ReasonCode, RewriteMode};
 
 use crate::{
-    check::{destination_report_target, emit_destination, replace, report},
+    check::{
+        CheckInspection, destination_report_target, emit_destination, inspect, replace, report,
+    },
     contract::{ArtifactIdArgument, CommandName, ReportFormat, read_input_bounded},
     failure::RunFailure,
 };
@@ -19,12 +21,17 @@ pub(crate) struct RewriteRequest {
     pub(crate) data_directory: Option<PathBuf>,
     pub(crate) artifact_id: Option<ArtifactIdArgument>,
     pub(crate) protected_terms: Vec<String>,
+    pub(crate) fail_on_abstain: bool,
+    pub(crate) raw_terminal: bool,
+    pub(crate) confirmed: bool,
+    pub(crate) inspection: CheckInspection,
     pub(crate) format: ReportFormat,
 }
 
 /// Reads one source document and rewrites it only after a recovered fake binding attaches.
 ///
-/// The command uses the same output-destination policy as `check`. An existing
+/// The command uses the same output-destination and inspection policy as `check`.
+/// `--diff`, `--dry-run`, and `--trace` do not change acceptance. An existing
 /// file is never replaced unless `--in-place` retains a sibling copy of the
 /// original first. It attaches in-process fake-backend conformance when a
 /// recovered generation binding names that backend. It does not start a runtime,
@@ -72,15 +79,29 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
     if result.record.reason == Some(ReasonCode::Cancelled) {
         return Err(RunFailure::cancelled(CommandName::Rewrite));
     }
-    let backup = emit_destination(
-        &destination,
-        &request.source,
-        &source,
-        &result.output,
-        false,
-        false,
-        CommandName::Rewrite,
-    )?;
+    let backup = if request.inspection.dry_run {
+        None
+    } else {
+        emit_destination(
+            &destination,
+            &request.source,
+            &source,
+            &result.output,
+            request.raw_terminal,
+            request.confirmed,
+            CommandName::Rewrite,
+        )?
+    };
+    if request.inspection.diff {
+        inspect::write_diff(
+            &inspect::SafeDiff::compare(&source, &result.output),
+            crate::check::ReportTarget::Diagnostic,
+            CommandName::Rewrite,
+        )?;
+    }
+    if let Some(trace) = request.inspection.trace.as_ref() {
+        inspect::write_trace(trace, &result.record, CommandName::Rewrite)?;
+    }
     report::write(
         CommandName::Rewrite,
         &result.record,
@@ -92,7 +113,7 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
     Ok(crate::check::exit_status(
         result.record.status,
         result.record.reason,
-        false,
+        request.fail_on_abstain,
     ))
 }
 

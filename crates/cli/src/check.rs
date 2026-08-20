@@ -18,7 +18,7 @@ use crate::{
 };
 
 mod escape;
-mod inspect;
+pub(crate) mod inspect;
 pub(crate) mod replace;
 pub(crate) mod report;
 #[cfg(test)]
@@ -108,10 +108,11 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         inspect::write_diff(
             &inspect::SafeDiff::compare(diff_source, &result.output),
             ReportTarget::Diagnostic,
+            CommandName::Check,
         )?;
     }
     if let Some(trace) = request.inspection.trace.as_ref() {
-        inspect::write_trace(trace, &result.record)?;
+        inspect::write_trace(trace, &result.record, CommandName::Check)?;
     }
     report::write(
         CommandName::Check,

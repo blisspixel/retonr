@@ -240,3 +240,72 @@ fn rewrite_attaches_fake_conformance_to_a_recovered_binding() {
     assert!(report.contains("\"backend\": \"fake\""));
     assert!(!report.contains("Hello world"));
 }
+
+#[test]
+fn rewrite_dry_run_diff_and_trace_are_safe_and_non_replacing() {
+    let directory = tempdir().expect("temporary directory");
+    let source_doc = directory.path().join("source.txt");
+    let output = directory.path().join("out.txt");
+    let trace = directory.path().join("trace.json");
+    fs::write(&source_doc, "Hello world\n").expect("write source");
+    let data = activate_imported_fake(directory.path());
+
+    binary()
+        .arg("-D")
+        .arg(&data)
+        .args(["rewrite", "--diff", "--dry-run"])
+        .arg(&source_doc)
+        .arg("-o")
+        .arg(&output)
+        .arg("--trace")
+        .arg(&trace)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"command\": \"rewrite\""))
+        .stdout(predicate::str::contains("Hello world").not())
+        .stderr(predicate::str::contains("diff: unchanged"));
+    assert!(!output.exists(), "dry-run must not create --output");
+    let trace_text = fs::read_to_string(&trace).expect("read trace");
+    assert!(trace_text.contains("\"command\": \"rewrite\""));
+    assert!(!trace_text.contains("Hello world"));
+    assert_eq!(
+        fs::read(&source_doc).expect("source remains"),
+        b"Hello world\n"
+    );
+
+    fs::write(&output, b"keep existing").expect("write existing destination");
+    binary()
+        .arg("-D")
+        .arg(&data)
+        .args(["rewrite"])
+        .arg(&source_doc)
+        .arg("-o")
+        .arg(&output)
+        .assert()
+        .code(3)
+        .stderr(predicate::str::contains("\"command\": \"rewrite\""))
+        .stderr(predicate::str::contains("\"code\": \"output_exists\""));
+    assert_eq!(fs::read(&output).expect("dest remains"), b"keep existing");
+}
+
+#[test]
+fn rewrite_in_place_dry_run_does_not_mutate() {
+    let directory = tempdir().expect("temporary directory");
+    let source_doc = directory.path().join("draft.txt");
+    fs::write(&source_doc, "Hello world\n").expect("write source");
+    let data = activate_imported_fake(directory.path());
+
+    binary()
+        .arg("-D")
+        .arg(&data)
+        .args(["rewrite", "-i", "--dry-run"])
+        .arg(&source_doc)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"command\": \"rewrite\""));
+    assert_eq!(
+        fs::read(&source_doc).expect("source remains"),
+        b"Hello world\n"
+    );
+    assert!(!directory.path().join("draft.txt.retonr-backup").exists());
+}
