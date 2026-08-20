@@ -435,9 +435,19 @@ fn encoded_local_address(endpoint: SocketAddr) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::net::{Ipv4Addr, Ipv6Addr};
+    use std::{
+        fs,
+        net::{Ipv4Addr, Ipv6Addr, TcpListener},
+        os::fd::AsRawFd,
+        time::Instant,
+    };
 
-    use super::encoded_local_address;
+    use rewrite_types::CancellationToken;
+
+    use super::{
+        ListenerOwner, encoded_local_address, observe_process, open_entrypoint, process_has_inode,
+    };
+    use crate::{AttachedProcessWitnessLimits, ListenerEndpoint};
 
     #[test]
     fn proc_addresses_use_native_word_byte_order() {
@@ -449,5 +459,49 @@ mod tests {
             encoded_local_address((Ipv6Addr::LOCALHOST, 11_434).into()),
             "00000000000000000000000001000000:2CAA"
         );
+    }
+
+    #[test]
+    fn current_process_descriptor_and_executable_produce_native_evidence() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("bind listener");
+        let endpoint = ListenerEndpoint::new(listener.local_addr().expect("listener address"))
+            .expect("loopback endpoint");
+        let target = fs::read_link(format!("/proc/self/fd/{}", listener.as_raw_fd()))
+            .expect("listener descriptor link");
+        let target = target.to_str().expect("socket descriptor text");
+        let inode = target
+            .strip_prefix("socket:[")
+            .and_then(|value| value.strip_suffix(']'))
+            .expect("socket inode wrapper")
+            .parse::<u64>()
+            .expect("socket inode");
+        let limits = AttachedProcessWitnessLimits::default();
+        let cancellation = CancellationToken::new();
+        assert!(
+            process_has_inode(
+                std::process::id(),
+                inode,
+                limits.maximum_descriptors_per_process,
+                &cancellation,
+                Instant::now(),
+                limits,
+            )
+            .expect("inspect current descriptors")
+        );
+        let mut entrypoint = open_entrypoint(std::process::id()).expect("open current executable");
+        let evidence = observe_process(
+            endpoint,
+            ListenerOwner {
+                pid: std::process::id(),
+                socket_inode: inode,
+            },
+            &mut entrypoint,
+            limits,
+            &cancellation,
+            Instant::now(),
+        )
+        .expect("observe current process");
+        assert_eq!(evidence.owner_pid(), std::process::id());
+        assert!(evidence.entrypoint_bytes() > 0);
     }
 }

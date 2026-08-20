@@ -14,7 +14,7 @@ const MODEL: &str = "fixture:latest";
 const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 #[tokio::test]
-async fn attached_preflight_runs_as_a_process_without_overstating_evidence() {
+async fn attached_preflight_process_respects_native_visibility_without_overstating_evidence() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/api/version"))
@@ -90,6 +90,19 @@ async fn attached_preflight_runs_as_a_process_without_overstating_evidence() {
     })
     .await
     .expect("join evaluation process");
+    #[cfg(target_os = "linux")]
+    if !output.status.success() {
+        assert!(output.stdout.is_empty());
+        let stderr = String::from_utf8(output.stderr).expect("utf-8 error");
+        assert!(
+            stderr
+                == "error: attached Ollama process witness failed: attached process witness process access was denied\n"
+                || stderr
+                    == "error: attached Ollama process witness failed: attached process witness listener snapshot is incomplete\n",
+            "unexpected Linux failure: {stderr}"
+        );
+        return;
+    }
     assert!(
         output.status.success(),
         "stderr: {}",

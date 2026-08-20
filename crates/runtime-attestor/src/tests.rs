@@ -120,13 +120,22 @@ fn native_observer_retains_and_rechecks_the_current_listener_process() {
     let address = listener.local_addr().expect("listener address");
     let endpoint = ListenerEndpoint::new(address).expect("loopback endpoint");
     let cancellation = CancellationToken::new();
-    let mut lease = NativeAttachedProcessObserver
-        .attach(
-            endpoint,
-            AttachedProcessWitnessLimits::default(),
-            &cancellation,
-        )
-        .expect("attach current listener");
+    let attached = NativeAttachedProcessObserver.attach(
+        endpoint,
+        AttachedProcessWitnessLimits::default(),
+        &cancellation,
+    );
+    #[cfg(target_os = "linux")]
+    let mut lease = match attached {
+        Ok(lease) => lease,
+        Err(
+            AttachedProcessWitnessError::ProcessAccessDenied
+            | AttachedProcessWitnessError::ListenerSnapshotIncomplete,
+        ) => return,
+        Err(error) => panic!("unexpected Linux witness result: {error}"),
+    };
+    #[cfg(windows)]
+    let mut lease = attached.expect("attach current listener");
     assert_eq!(lease.initial_evidence().owner_pid(), std::process::id());
     let initial_digest = lease.initial_evidence().entrypoint_digest().clone();
     assert_eq!(

@@ -109,8 +109,9 @@ also requires one exact executable digest.
 - A process-reported image path plus an opened disk file is not proof of every loaded
   executable page or native dependency.
 - Linux depends on same-user `/proc` visibility in the same PID and network
-  namespaces. Cross-user descriptor passing and forwarding topologies are outside
-  this witness.
+  namespaces. Linux ptrace policy can deny even a same-user sibling or parent
+  process, in which case the command fails closed. Cross-user descriptor passing and
+  forwarding topologies are outside this witness.
 - macOS attached-process observation is unavailable through this command.
 - The Windows adapter contains reviewed first-party unsafe FFI.
 

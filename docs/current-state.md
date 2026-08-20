@@ -282,6 +282,8 @@ database.
   separate attached preflight brackets that HTTP work with point-in-time listener,
   process-incarnation, and executable evidence on Windows and Linux. macOS returns
   unsupported because no admitted public unprivileged listener-owner API exists.
+  Linux also fails closed when ptrace or proc policy prevents a complete same-user
+  ownership view.
   Independent HTTP requests are not bound to one accepted server socket, Windows
   cannot identify same-process socket replacement through the owner-PID table, and
   executable bytes are not loaded-component closure. The report therefore remains

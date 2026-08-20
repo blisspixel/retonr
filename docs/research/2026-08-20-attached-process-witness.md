@@ -61,6 +61,10 @@ The kernel calls `/proc/net/tcp` deprecated in favor of TCP diagnostics, so
 [`NETLINK_SOCK_DIAG`](https://man7.org/linux/man-pages/man7/sock_diag.7.html) is the
 planned replacement.
 
+Linux ptrace policy can deny `/proc/PID/fd` and `/proc/PID/exe` inspection even when
+both processes have the same effective user. That is an expected fail-closed platform
+result, not a reason to fall back to PID-only evidence.
+
 Apple's own
 [`libproc` header](https://github.com/apple-oss-distributions/xnu/blob/main/libsyscall/wrappers/libproc/libproc.h)
 states that the interface is private and subject to change. Endpoint Security can
