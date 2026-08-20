@@ -11,6 +11,7 @@ use thiserror::Error;
 mod baseline;
 mod claim_shadow_calibration;
 mod editorial_corpus;
+mod local_ollama_preflight;
 mod watermark_research;
 mod writing_sample_library;
 
@@ -31,6 +32,13 @@ pub use editorial_corpus::{
     EditorialCorpusError, EditorialCorpusOrigin, EditorialCorpusSummary,
     EditorialFindingExpectation, MAX_EDITORIAL_CASES, MAX_EDITORIAL_CORPUS_BYTES,
     parse_editorial_corpus,
+};
+pub use local_ollama_preflight::{
+    LOCAL_OLLAMA_PREFLIGHT_PLAN_SCHEMA_VERSION, LOCAL_OLLAMA_PREFLIGHT_REPORT_SCHEMA_VERSION,
+    LocalOllamaModelPlan, LocalOllamaPreflightError, LocalOllamaPreflightMode,
+    LocalOllamaPreflightPlan, LocalOllamaPreflightReport, MAX_LOCAL_OLLAMA_MODELS,
+    MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES, parse_local_ollama_preflight_plan,
+    run_local_ollama_preflight,
 };
 pub use watermark_research::{
     MAX_WATERMARK_RESEARCH_BYTES, WATERMARK_RESEARCH_SCHEMA_VERSION, WatermarkResearchCorpus,

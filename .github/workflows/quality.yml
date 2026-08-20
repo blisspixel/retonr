@@ -292,3 +292,25 @@ jobs:
       - name: Check RustSec advisories
         if: steps.rust_policy.outputs.exists == 'true'
         run: cargo audit
+
+  required:
+    name: required
+    if: ${{ always() }}
+    needs:
+      - repository-policy
+      - markdown
+      - rust
+      - ollama-loopback-only
+      - coverage
+      - fuzz-smoke
+      - supply-chain
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify every required job passed
+        env:
+          RETONR_REQUIRED_RESULTS: ${{ toJSON(needs) }}
+        shell: bash
+        run: >-
+          jq -e
+          'all(.[]; .result == "success")'
+          <<<"$RETONR_REQUIRED_RESULTS"

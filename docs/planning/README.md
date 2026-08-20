@@ -23,30 +23,24 @@ tests, repository policy, and already-installed artifacts.
 
 The current 0.2 build queue, in dependency order, is:
 
-1. Keep the completed artifact lifecycle, `import-set` CLI, `check --diff` /
-   `--dry-run` / `--trace`, inventory DTOs, and cancellation evidence intact.
-2. Preserve the managed-process attestor. It remains inert and grants no role.
-3. Preserve the extractor manifest, claim-output schema, pair-extraction
-   service, the informational engine shadow claim-comparison gate, the
-   application shadow join, and the independent claim-shadow calibration
-   runner. Keep Ollama on the candidate contract only. Do not give pair
-   extraction or shadow comparison acceptance authority.
-4. Preserve read-only set inventory, selected set reconciliation, and
-   crash-recoverable set removal without implying set authority.
-5. Escaped terminal rendering, `doctor`, `version`, `completions`, `man`,
-   source `inspect`, `model list`, `model inspect`, and `rewrite` exist.
-   `inspect` inventories one file or directory without credential validation
-   or link following. `--recursive` is bounded. `--in-place`
-   replaces one regular file after a sibling backup. `doctor` names
-   recovery follow-up without mutation. Optional fitr device-measurement
-   evidence can be inspected without a repository and is not a
-   qualification. `rewrite` shares `--diff`, `--dry-run`, and `--trace`
-   with `check`. Directory rewrite dry-run maps a source tree onto
-   `--output-dir` without mutation. Recovered fake-qualified
-   bindings attach in-process conformance for `rewrite` and generative
-   `rewrite-eval --baseline` kinds. Do not start a runtime.
-6. Qualify one exact local runtime and artifact combination before profiles or
-   another format.
+1. Preserve the completed lifecycle, schema-v5 persistence, leases, migration,
+   recovery, cancellation, extractor, pair-comparison, informational shadow, and
+   plain-text CLI boundaries.
+2. Retain the versioned read-only Ollama preflight. It observes or verifies one
+   existing user-managed loopback service without generation, runtime management,
+   artifact authority, or qualification.
+3. Bind the loopback listener to the exact process, regular entrypoint, runtime
+   build, launch mode, and effective configuration before and after use.
+4. Reconstruct the selected Ollama model as one complete canonical artifact set
+   with exact blobs, tokenizer, template, license, upstream source, and
+   transformation evidence. Keep runtime identity separate from package identity.
+5. Require explicit cloud disablement and OS-enforced non-loopback denial for every
+   participating Retonr and runtime process.
+6. Project the existing eight-case smoke and 39-case editorial protocol into frozen
+   local generation plans. Run smoke, locked evaluation, repeatability, and
+   cross-platform qualification in that order.
+7. Complete the remaining CLI model-management, transaction, packaging, and release
+   evidence only after one exact local runtime and artifact combination qualifies.
 
 Later phases stay blocked on their entry evidence. Do not implement Markdown,
 DOCX, profiles, MCP, desktop, or signed installers as if they were the next 0.2

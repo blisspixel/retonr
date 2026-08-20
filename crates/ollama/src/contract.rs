@@ -1,8 +1,9 @@
 use std::time::Duration;
 
 use rewrite_inference::InferenceError;
-use rewrite_model::ArtifactId;
+use rewrite_model::{ArtifactId, RuntimeIdentity};
 use rewrite_types::Digest;
+use serde::{Deserialize, Serialize};
 
 use crate::response::{policy_error, valid_text};
 
@@ -10,6 +11,9 @@ pub(crate) const BACKEND_ID: &str = "ollama_native";
 pub(crate) const MAX_REFERENCE_BYTES: usize = 256;
 pub(crate) const MAX_VERSION_BYTES: usize = 128;
 pub(crate) const MAX_METADATA_BYTES: usize = 256;
+const MAX_DISCOVERY_BODY_BYTES: usize = 16 * 1024 * 1024;
+const MAX_GENERATION_BODY_BYTES: usize = 16 * 1024 * 1024;
+pub(crate) const MAX_PREFLIGHT_TARGETS: usize = 64;
 
 /// Resource and timeout limits applied to every Ollama request.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,7 +35,7 @@ pub struct OllamaLimits {
 impl Default for OllamaLimits {
     fn default() -> Self {
         Self {
-            discovery_body_bytes: 2 * 1024 * 1024,
+            discovery_body_bytes: 16 * 1024 * 1024,
             generation_body_bytes: 8 * 1024 * 1024,
             connect_timeout: Duration::from_secs(2),
             request_timeout: Duration::from_mins(2),
@@ -45,6 +49,8 @@ impl OllamaLimits {
     pub(crate) fn validate(self) -> Result<Self, InferenceError> {
         if self.discovery_body_bytes == 0
             || self.generation_body_bytes == 0
+            || self.discovery_body_bytes > MAX_DISCOVERY_BODY_BYTES
+            || self.generation_body_bytes > MAX_GENERATION_BODY_BYTES
             || self.connect_timeout.is_zero()
             || self.request_timeout.is_zero()
             || self.read_timeout.is_zero()
@@ -108,8 +114,52 @@ impl OllamaModelBinding {
     }
 }
 
-/// Redacted, bounded model metadata returned by explicit inspection.
+/// Runtime-local model address and expected inventory digest for read-only preflight.
+///
+/// This target deliberately carries no Retonr artifact identity. An Ollama inventory digest is
+/// insufficient to identify a complete artifact set.
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OllamaPreflightTarget {
+    pub(crate) reference: String,
+    pub(crate) inventory_digest: Digest,
+}
+
+impl OllamaPreflightTarget {
+    /// Creates and validates one read-only preflight target.
+    ///
+    /// # Errors
+    ///
+    /// Returns a policy error when the runtime-local reference is invalid.
+    pub fn new(
+        reference: impl Into<String>,
+        inventory_digest: Digest,
+    ) -> Result<Self, InferenceError> {
+        let reference = reference.into();
+        if !valid_text(&reference, MAX_REFERENCE_BYTES) {
+            return Err(policy_error("invalid_preflight_target"));
+        }
+        Ok(Self {
+            reference,
+            inventory_digest,
+        })
+    }
+
+    /// Returns the runtime-local mutable model reference.
+    #[must_use]
+    pub fn reference(&self) -> &str {
+        &self.reference
+    }
+
+    /// Returns the exact expected Ollama inventory digest.
+    #[must_use]
+    pub const fn inventory_digest(&self) -> &Digest {
+        &self.inventory_digest
+    }
+}
+
+/// Redacted, bounded model metadata returned by explicit inspection.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct OllamaModelDetails {
     /// Intrinsic model format reported by the runtime.
     pub format: String,
@@ -125,4 +175,54 @@ pub struct OllamaModelDetails {
     pub template_digest: Digest,
     /// Digest of canonical detailed model metadata.
     pub metadata_digest: Digest,
+}
+
+/// One bounded model-residency observation from Ollama.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct OllamaRunningModel {
+    /// Runtime-local mutable reference.
+    pub reference: String,
+    /// Runtime-reported package digest.
+    pub inventory_digest: Digest,
+    /// Runtime-reported complete model byte size.
+    pub byte_size: u64,
+    /// Runtime-reported bytes resident in accelerator memory.
+    pub accelerator_bytes: u64,
+    /// Effective context length reported for the loaded model.
+    pub context_tokens: u32,
+}
+
+/// One bounded inventory observation without implying Retonr artifact identity.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct OllamaInventoryEntry {
+    /// Runtime-local mutable reference.
+    pub reference: String,
+    /// Runtime-reported package digest.
+    pub inventory_digest: Digest,
+    /// Runtime-reported package byte size.
+    pub byte_size: u64,
+}
+
+/// Exact configured binding and bounded model-description evidence observed in one preflight.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct OllamaPreflightBinding {
+    /// Runtime-local mutable reference that was resolved twice.
+    pub reference: String,
+    /// Exact configured runtime inventory digest.
+    pub inventory_digest: Digest,
+    /// Content-redacted model-description evidence.
+    pub details: OllamaModelDetails,
+}
+
+/// Coherent read-only Ollama discovery evidence captured without generation.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct OllamaPreflight {
+    /// Runtime identity observed before and after the preflight.
+    pub runtime: RuntimeIdentity,
+    /// Complete bounded runtime inventory.
+    pub inventory: Vec<OllamaInventoryEntry>,
+    /// Exact configured bindings and their redacted model-description evidence.
+    pub bindings: Vec<OllamaPreflightBinding>,
+    /// Models resident when the preflight inspected the runtime.
+    pub running: Vec<OllamaRunningModel>,
 }
