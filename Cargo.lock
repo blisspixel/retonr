@@ -1362,6 +1362,7 @@ dependencies = [
  "rewrite-model",
  "rewrite-model-store",
  "rewrite-ollama",
+ "rewrite-runtime-attestor",
  "rewrite-types",
  "serde",
  "serde_json",
@@ -1434,6 +1435,20 @@ dependencies = [
  "thiserror",
  "tokio",
  "wiremock",
+]
+
+[[package]]
+name = "rewrite-runtime-attestor"
+version = "0.1.0"
+dependencies = [
+ "rewrite-types",
+ "rustix",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "windows-sys 0.61.2",
+ "winx",
 ]
 
 [[package]]

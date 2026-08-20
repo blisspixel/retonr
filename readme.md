@@ -131,8 +131,12 @@ group, and a 20-case later-residue group. A writing-sample library adds licensed
 pre-2018 human excerpts and synthetic model-style impressions. Those impressions are
 editorial fixtures, not vendor identifications. A versioned local Ollama preflight
 can observe or verify bounded runtime, inventory, model-description, and residency
-evidence without generation. It always reports `qualified: false`. No
-editorial-lint rule has product authority yet.
+evidence without generation. A separate attached preflight brackets that observation
+with point-in-time native listener-owner, process-incarnation, and executable evidence
+on Windows and Linux. macOS fails closed because the required public unprivileged
+listener-owner API is unavailable. Both reports always remain unqualified, and the
+attached report explicitly sets `response_bound: false`. No editorial-lint rule has
+product authority yet.
 
 [![Retonr CLI help and a successful candidate check on Linux](docs/screenshots/cli-check-linux.png)](docs/screenshots/cli-check-linux.md)
 
@@ -162,6 +166,7 @@ cargo run --locked -p rewrite-eval -- --writing-samples crates/eval/fixtures/wri
 cargo run --locked -p rewrite-eval -- --watermark-research crates/eval/fixtures/watermark_research/style_is_not_a_watermark_v1.json
 cargo run --locked -p rewrite-eval -- --claim-shadow-calibration crates/eval/fixtures/claim_shadow_calibration_v1.json
 cargo run --locked -p rewrite-eval -- --ollama-preflight <PLAN_JSON>
+cargo run --locked -p rewrite-eval -- --ollama-attested-preflight <PLAN_JSON>
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
@@ -194,9 +199,14 @@ checked-in fidelity and synthetic editorial-quality suites, including an
 offline no-rewrite baseline and an independent claim-shadow calibration that
 cannot change hard-gate acceptance. The Ollama preflight accepts only an explicit
 IP-literal loopback endpoint and frozen model inventory digests. It reads runtime
-state without generation, acquisition, activation, or qualification. The
+state without generation, acquisition, activation, or qualification. The attached
+preflight adds an exact expected executable digest in verify mode, but does not bind
+HTTP responses to the observed process or construct runtime-build identity. The
 [plan contract and observe-to-verify workflow](docs/research/2026-08-20-main-readiness-and-next-slice.md#plan-contract-and-workflow)
-documents every required field and fixed bound.
+documents the base plan. The
+[attached-process witness review](docs/research/2026-08-20-attached-process-witness.md)
+documents the native evidence, plan extension, limitations, and next trust-boundary
+work.
 Profile, runtime management, agent, and desktop workflows are not yet implemented.
 
 The implemented model commands are intentionally narrow:
@@ -286,6 +296,7 @@ upstream revision, complete artifact-set identity, or local-only runtime control
 No current tag is a support claim or generation-eligible package. Small and medium
 first-party GGUF cohorts follow only after explicit acquisition approval. See the
 [main readiness and next-slice review](docs/research/2026-08-20-main-readiness-and-next-slice.md),
+[attached-process witness review](docs/research/2026-08-20-attached-process-witness.md),
 [local model tiers](docs/research/2026-08-13-local-model-tiers.md),
 [evaluation protocol](docs/research/2026-08-13-local-model-evaluation.md), and
 [runtime matrix](docs/research/2026-08-13-local-runtime-matrix.md).
