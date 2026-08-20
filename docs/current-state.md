@@ -101,9 +101,10 @@ reservation. The result reports the exact source and target schemas plus an opaq
 retained backup key. Ordinary repository commands remain exact-schema and never
 migrate implicitly.
 
-## Verified locally
+## Verification
 
-The August 20, 2026 unpublished Windows development checkpoint passes:
+The August 20, 2026 Windows development checkpoint for the published Ollama
+preflight passes:
 
 ```console
 cargo fmt --all -- --check
@@ -137,14 +138,13 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed on this development host; the exact public-main workflow remains the
 nextest authority.
 
-At the review cutoff, local `origin/main` and GitHub both identify exact-main
-revision `bd9fb71ad7af09579dde60c4538f13a832db4de6`. Its passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32331755461)
-completed all 11 Windows, macOS, Linux, repository-policy, Markdown, coverage,
-dependency and supply-chain, fuzz-smoke, and loopback-only Ollama jobs. The Windows
-nextest job ran 716 tests and skipped the two intentional helpers. Exact-main line
-coverage is 90.52 percent. The unpublished workflow adds one stable `required`
-aggregate job; GitHub evidence for that new job does not exist until publication.
+The published implementation checkpoint is
+`450e58fd73d041e4964e1334214f2f04543861cd`. Its passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32418672103)
+completed all 12 Windows, macOS, Linux, repository-policy, Markdown, coverage,
+dependency and supply-chain, fuzz-smoke, loopback-only Ollama, and stable aggregate
+`required` jobs. The Windows nextest job ran 729 tests and skipped the two
+intentional helpers. Checkpoint line coverage is 90.63 percent.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,225 advisories and the current
