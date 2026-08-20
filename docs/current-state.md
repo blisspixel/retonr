@@ -176,7 +176,8 @@ uses its own clean runner database.
   measurement only. `qualified` stays false. Host names, config paths, and
   result paths stay out of the report. Missing fitr is not an error.
   `rewrite` accepts one source file or standard input under the same
-  output policy. Optional `--data-dir` inspects an existing repository for an
+  output and inspection policy as `check`, including `--diff`, `--dry-run`,
+  and `--trace`. Optional `--data-dir` inspects an existing repository for an
   active generation binding. Optional `--artifact-id` must match that binding.
   When the recovered qualification names the retained fake backend, `rewrite`
   attaches in-process conformance, generates an identity candidate, and runs
@@ -358,7 +359,8 @@ is:
    `doctor` names exact recovery follow-up when schema migration or a
    prepared removal is pending. It does not migrate, recover, or activate.
    `rewrite` attaches in-process fake-backend conformance to a recovered
-   fake-qualified binding and otherwise fails closed. Generative baseline
+   fake-qualified binding and otherwise fails closed. It shares `--diff`,
+   `--dry-run`, and `--trace` with `check`. Generative baseline
    kinds use that same recovered binding through `--data-dir` and otherwise
    fail closed. `list` and `inspect` are read-only and do not qualify or
    activate. Neither path starts a runtime or uses the network. Do not start
