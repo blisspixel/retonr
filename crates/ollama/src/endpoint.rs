@@ -1,10 +1,13 @@
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 
 use thiserror::Error;
 
 /// Validated loopback-only Ollama base URL.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct OllamaEndpoint(reqwest::Url);
+pub struct OllamaEndpoint {
+    url: reqwest::Url,
+    socket: SocketAddr,
+}
 
 impl OllamaEndpoint {
     /// Parses and normalizes an HTTP endpoint with an IP-literal loopback host.
@@ -36,22 +39,35 @@ impl OllamaEndpoint {
         if !host.is_loopback() {
             return Err(OllamaEndpointError);
         }
+        if url.port() == Some(0) {
+            return Err(OllamaEndpointError);
+        }
         if url.port().is_none() {
             url.set_port(Some(11_434))
                 .map_err(|()| OllamaEndpointError)?;
         }
         url.set_path("/");
-        Ok(Self(url))
+        let port = url.port().ok_or(OllamaEndpointError)?;
+        Ok(Self {
+            url,
+            socket: SocketAddr::new(host, port),
+        })
     }
 
     pub(crate) fn join(&self, path: &str) -> Result<reqwest::Url, OllamaEndpointError> {
-        self.0.join(path).map_err(|_error| OllamaEndpointError)
+        self.url.join(path).map_err(|_error| OllamaEndpointError)
     }
 
     /// Returns the normalized endpoint string.
     #[must_use]
     pub fn as_str(&self) -> &str {
-        self.0.as_str()
+        self.url.as_str()
+    }
+
+    /// Returns the exact normalized loopback socket address.
+    #[must_use]
+    pub const fn socket_addr(&self) -> SocketAddr {
+        self.socket
     }
 }
 
@@ -78,5 +94,12 @@ mod tests {
         assert!(OllamaEndpoint::parse("https://127.0.0.1:11434").is_err());
         assert!(OllamaEndpoint::parse("http://user@127.0.0.1:11434").is_err());
         assert!(OllamaEndpoint::parse("http://127.0.0.1:11434/api").is_err());
+        assert!(OllamaEndpoint::parse("http://127.0.0.1:0").is_err());
+        assert_eq!(
+            OllamaEndpoint::parse("http://127.0.0.1")
+                .expect("loopback endpoint")
+                .socket_addr(),
+            "127.0.0.1:11434".parse().expect("socket address")
+        );
     }
 }

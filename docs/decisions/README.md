@@ -30,3 +30,4 @@ success and stop conditions.
 | [0005](0005-grounded-strategy-authority.md) | Proposed | Grounded strategies propose but cannot accept or apply |
 | [0006](0006-retonr-public-identity.md) | Accepted | Retonr public project identity and namespace migration |
 | [0007](0007-development-host-identity.md) | Proposed | Development host identity and hardware-probe privacy fields |
+| [0008](0008-attached-process-witness.md) | Proposed | Bounded native witness for an attached runtime process |

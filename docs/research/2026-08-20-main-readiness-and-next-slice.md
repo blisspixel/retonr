@@ -2,10 +2,15 @@
 
 ## Decision
 
-The highest-value next slice is trustworthy attachment to a user-managed Ollama
-runtime. Model acquisition and generative evaluation must wait until Retonr can bind
-the listener, runtime build, complete model package, effective configuration, and
-local-only controls into one reproducible evidence chain.
+The selected next slice was trustworthy attachment to a user-managed Ollama runtime.
+Implementation research narrowed that slice to a point-in-time native
+listener-owner and executable witness because current public platform APIs cannot
+support exact cross-platform response binding or complete runtime identity. The
+witness is documented in the
+[attached-process review](2026-08-20-attached-process-witness.md). Model acquisition
+and generative evaluation must still wait until Retonr binds the exact response,
+runtime build, complete model package, effective configuration, and local-only
+controls into one reproducible evidence chain.
 
 This ordering protects the local-first contract and prevents a mutable Ollama tag or
 one successful response from being mistaken for qualification. It also keeps the
@@ -18,8 +23,8 @@ Evidence in this review was refreshed on August 20, 2026.
 | Check | Evidence | Result |
 | --- | --- | --- |
 | Default branch | `main` | Correct |
-| Published implementation checkpoint | `450e58fd73d041e4964e1334214f2f04543861cd` | Ollama preflight and aggregate gate published |
-| Checkpoint quality run | [Run 32418672103](https://github.com/blisspixel/retonr/actions/runs/32418672103) | All 12 jobs passed |
+| Published implementation checkpoint | `5515e5cdfec9408b6662191ee927528aeff49843` | Readiness documentation and aggregate gate published |
+| Checkpoint quality run | [Run 32420257385](https://github.com/blisspixel/retonr/actions/runs/32420257385) | All 12 jobs passed |
 | Cross-platform Rust | Ubuntu, Windows, and macOS | Passed |
 | Policy and documentation | Three repository-policy jobs and Markdown | Passed |
 | Additional gates | Coverage, supply chain, fuzz smoke, loopback-only Ollama, and stable `required` aggregate | Passed |
@@ -131,25 +136,26 @@ either model.
 ## Execution order
 
 1. Retain the published read-only preflight and stable `required` aggregate gate.
-2. Extend runtime attestation to bind the loopback listener to the exact operating
-   system process, regular entrypoint bytes, version, launch mode, and effective
-   configuration. Recheck the binding before and after use.
-3. Reconstruct the complete external Ollama package as a canonical artifact-set
+2. Retain the attached-process witness on Windows and Linux and deterministic macOS
+   refusal. It does not claim that an observed process served an HTTP response.
+3. Bind the preflight to one persistent TCP connection and prove that its exact
+   accepted server socket belongs to the retained process.
+4. Reconstruct the complete external Ollama package as a canonical artifact-set
    manifest. Bind every blob, manifest, tokenizer, template, license decision, and
    upstream source revision. Keep runtime-build identity separate from package
    identity.
-4. Prove local-only operation. Require explicit Ollama cloud disablement and
+5. Prove local-only operation. Require explicit Ollama cloud disablement and
    OS-enforced denial of non-loopback outbound traffic for Retonr and the runtime.
-5. Project the existing eight-case smoke and 39-case editorial protocol into
+6. Project the existing eight-case smoke and 39-case editorial protocol into
    versioned local generation plans. Fix seed, reasoning, context, output schema,
    concurrency, residency, timeout, and resource policy.
-6. Run the eight-case smoke only after steps 2 through 4 pass. Any identity,
+7. Run the eight-case smoke only after steps 3 through 5 pass. Any identity,
    isolation, malformed-output, fidelity, cancellation, or resource failure stops
    the run.
-7. Advance clean smoke results to the locked 39-case projection, repeatability runs,
+8. Advance clean smoke results to the locked 39-case projection, repeatability runs,
    and risk-stratified reporting. Keep model output proposal-only and preserve the
    existing hard gates.
-8. Create qualification and activation evidence only after exact thresholds pass on
+9. Create qualification and activation evidence only after exact thresholds pass on
    each declared operating system and hardware tier. A development lead is not a
    support claim.
 

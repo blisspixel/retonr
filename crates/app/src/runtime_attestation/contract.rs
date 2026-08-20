@@ -52,6 +52,8 @@ pub struct ManagedRuntimeStateFacts {
     pub provider_snapshot_digest: Digest,
     /// Digest of normalized launch arguments, environment, and lifecycle policy.
     pub launch_policy_digest: Digest,
+    /// Digest of actually loaded code components and native dependencies.
+    pub loaded_components_digest: Digest,
     /// Digest of effective output-affecting runtime defaults and configuration.
     pub effective_configuration_digest: Digest,
     /// Digest of exact operating-system, framework, and driver evidence.

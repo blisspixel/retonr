@@ -51,6 +51,7 @@ fn request(entrypoint: std::path::PathBuf) -> ManagedRuntimeAttestationRequest {
             provider_snapshot_schema_version: 1,
             provider_snapshot_digest: digest("provider snapshot"),
             launch_policy_digest: digest("launch"),
+            loaded_components_digest: digest("loaded components"),
             effective_configuration_digest: digest("effective configuration"),
             platform_digest: digest("platform"),
             execution_class_digest: digest("execution class"),
@@ -93,6 +94,31 @@ fn attests_a_managed_entrypoint_without_granting_authority() {
         result.state.runtime_build_id(),
         &result.build.runtime_build_id()
     );
+}
+
+#[test]
+fn loaded_component_evidence_is_caller_supplied() {
+    let directory = tempdir().expect("temporary directory");
+    let entrypoint = write_entrypoint(directory.path());
+    let baseline = RuntimeAttestationService::attest_managed(
+        &request(entrypoint.clone()),
+        limits(),
+        None,
+        &CancellationToken::new(),
+    )
+    .expect("attest baseline");
+    let mut changed = request(entrypoint);
+    changed.state.loaded_components_digest = digest("different loaded components");
+    let changed = RuntimeAttestationService::attest_managed(
+        &changed,
+        limits(),
+        None,
+        &CancellationToken::new(),
+    )
+    .expect("attest changed loaded components");
+
+    assert_eq!(baseline.build, changed.build);
+    assert_ne!(baseline.state, changed.state);
 }
 
 #[test]

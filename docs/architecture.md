@@ -68,12 +68,14 @@ flowchart TD
     Inference --> Types
     subgraph Infrastructure["Infrastructure adapters"]
         Ollama["rewrite-ollama"]
+        RuntimeAttestor["rewrite-runtime-attestor"]
         Llama["planned llama.cpp sidecar adapter"]
         Text["rewrite-text-adapter"]
         Markdown["rewrite-markdown-adapter"]
         Docx["rewrite-docx-adapter"]
     end
     Ollama --> Inference
+    RuntimeAttestor --> Types
     Llama --> Inference
     Text --> App
     Markdown --> App
@@ -84,6 +86,7 @@ flowchart TD
         Compat["compatibility suites"]
     end
     Eval --> App
+    Eval --> RuntimeAttestor
     Fuzz --> Engine
     Compat --> App
 ```
@@ -199,6 +202,26 @@ inert records. Operation leases, pre-call checks, and post-call checks remain
 the responsibility of a later application runtime join. The attestor does not
 authorize a role.
 Attached observed-only Ollama metadata cannot construct a runtime-build identity.
+
+The development-only attached Ollama preflight now composes the Ollama observation
+with `rewrite-runtime-attestor`. The attestor is a quarantined infrastructure crate
+with a safe bounded facade. On Windows it uses the public owner-PID table, a retained
+process handle and creation time, and a retained executable file handle. On Linux it
+uses an exact proc socket inode, unique same-user descriptor ownership, a retained
+pidfd and process start time, same-network-namespace evidence, and a retained
+`/proc/PID/exe` file. macOS returns a stable unsupported result rather than using
+private `libproc` interfaces.
+
+The observer attaches before the first HTTP request and rechecks after the existing
+preflight. It fails on process exit, ownership drift, process-incarnation drift,
+executable-object or byte drift, incomplete visibility, permission loss, cancellation,
+deadline, or a configured resource ceiling. The serialized witness omits paths,
+arguments, environments, user names, and raw native errors. It is point-in-time
+listener evidence only. Independent HTTP calls are not bound to an accepted
+server-side socket, Windows does not expose a socket object identity through the
+selected table, and executable-file evidence does not prove loaded components. The
+report therefore sets `response_bound: false` and `qualified: false` and creates no
+runtime-build, effective-state, package, qualification, activation, or role record.
 
 The model store persists these five inert records under SQLite schema v5 in separate,
 immutable tables. Schema v4 added a separate artifact-set installation record

@@ -26,8 +26,6 @@ pub use contract::{
 pub use rewrite_model_store::WriteDisposition;
 
 const HASH_BUFFER_BYTES: usize = 1024 * 1024;
-const LOADED_COMPONENTS_DOMAIN: &[u8] = b"retonr:runtime-attestation:loaded-components:v1\0";
-
 /// Service that attests one managed entrypoint without granting a role.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct RuntimeAttestationService;
@@ -81,7 +79,7 @@ impl RuntimeAttestationService {
                 provider_snapshot_schema_version: request.state.provider_snapshot_schema_version,
                 provider_snapshot_digest: request.state.provider_snapshot_digest.clone(),
                 launch_policy_digest: request.state.launch_policy_digest.clone(),
-                loaded_components_digest: loaded_components_digest(&first.digest),
+                loaded_components_digest: request.state.loaded_components_digest.clone(),
                 effective_configuration_digest: request
                     .state
                     .effective_configuration_digest
@@ -176,13 +174,6 @@ fn hash_entrypoint(
         digest,
         byte_size: total,
     })
-}
-
-fn loaded_components_digest(entrypoint: &Digest) -> Digest {
-    let mut material = Vec::with_capacity(LOADED_COMPONENTS_DOMAIN.len() + 64);
-    material.extend_from_slice(LOADED_COMPONENTS_DOMAIN);
-    material.extend_from_slice(entrypoint.as_str().as_bytes());
-    Digest::sha256(&material)
 }
 
 fn persist_records(
