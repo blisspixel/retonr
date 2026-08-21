@@ -93,6 +93,83 @@ impl LocalOllamaPreflightReport {
     }
 }
 
+/// Opaque proof that the local Ollama preflight runner produced one exact report.
+///
+/// This capability is neither cloneable nor serializable. Its fields are private,
+/// and it is issued only after the runner completes every bounded backend request
+/// and report validation. Consuming code must still validate the plan and report.
+#[derive(Debug, Eq, PartialEq)]
+pub struct LocalOllamaPreflightExecutionReceipt {
+    plan_digest: Digest,
+    report_digest: Digest,
+}
+
+/// One executed local Ollama preflight report and its opaque provenance capability.
+///
+/// The outcome is neither cloneable nor serializable. Use [`Self::report`] to
+/// inspect or serialize the unchanged v1 report, or [`Self::into_parts`] when an
+/// exact downstream binding must consume the receipt.
+#[derive(Debug, Eq, PartialEq)]
+pub struct LocalOllamaPreflightExecutionOutcome {
+    report: LocalOllamaPreflightReport,
+    receipt: LocalOllamaPreflightExecutionReceipt,
+}
+
+impl LocalOllamaPreflightExecutionOutcome {
+    /// Returns the unchanged v1 preflight report.
+    #[must_use]
+    pub const fn report(&self) -> &LocalOllamaPreflightReport {
+        &self.report
+    }
+
+    /// Splits this single-use outcome into its report and provenance capability.
+    #[must_use]
+    pub fn into_parts(
+        self,
+    ) -> (
+        LocalOllamaPreflightReport,
+        LocalOllamaPreflightExecutionReceipt,
+    ) {
+        (self.report, self.receipt)
+    }
+
+    fn into_report(self) -> LocalOllamaPreflightReport {
+        self.report
+    }
+}
+
+impl LocalOllamaPreflightExecutionReceipt {
+    fn issue(
+        plan: &LocalOllamaPreflightPlan,
+        report: &LocalOllamaPreflightReport,
+    ) -> Result<Self, LocalOllamaPreflightError> {
+        Ok(Self {
+            plan_digest: execution_value_digest(
+                b"retonr:local-ollama-preflight-execution-plan:v1\0",
+                plan,
+            )?,
+            report_digest: execution_value_digest(
+                b"retonr:local-ollama-preflight-execution-report:v1\0",
+                report,
+            )?,
+        })
+    }
+
+    pub(crate) fn validates(
+        &self,
+        plan: &LocalOllamaPreflightPlan,
+        report: &LocalOllamaPreflightReport,
+    ) -> Result<bool, LocalOllamaPreflightError> {
+        Ok(self.plan_digest
+            == execution_value_digest(b"retonr:local-ollama-preflight-execution-plan:v1\0", plan)?
+            && self.report_digest
+                == execution_value_digest(
+                    b"retonr:local-ollama-preflight-execution-report:v1\0",
+                    report,
+                )?)
+    }
+}
+
 /// Local preflight plan, transport, or evidence mismatch.
 #[derive(Debug, Error)]
 pub enum LocalOllamaPreflightError {
@@ -157,6 +234,26 @@ pub async fn run_local_ollama_preflight(
     plan: &LocalOllamaPreflightPlan,
     cancellation: &CancellationToken,
 ) -> Result<LocalOllamaPreflightReport, LocalOllamaPreflightError> {
+    run_local_ollama_preflight_with_receipt(plan, cancellation)
+        .await
+        .map(LocalOllamaPreflightExecutionOutcome::into_report)
+}
+
+/// Executes a non-generative local Ollama preflight and retains runner provenance.
+///
+/// The returned receipt is a single-use, in-process capability for joining this
+/// exact plan and report to stronger static package evidence. It does not prove
+/// model loading, model use, handler execution, effective identity, or qualification.
+///
+/// # Errors
+///
+/// Returns [`LocalOllamaPreflightError`] when the plan, endpoint, bounded adapter
+/// requests, runtime version, model details, idle requirement, or receipt encoding
+/// fail closed.
+pub async fn run_local_ollama_preflight_with_receipt(
+    plan: &LocalOllamaPreflightPlan,
+    cancellation: &CancellationToken,
+) -> Result<LocalOllamaPreflightExecutionOutcome, LocalOllamaPreflightError> {
     validate_local_ollama_preflight_plan(plan)?;
     let endpoint = OllamaEndpoint::parse(&plan.endpoint)
         .map_err(|_error| LocalOllamaPreflightError::InvalidEndpoint)?;
@@ -167,7 +264,17 @@ pub async fn run_local_ollama_preflight(
         .preflight(OperationContext::new(cancellation, None))
         .await
         .map_err(LocalOllamaPreflightError::Backend)?;
-    local_ollama_preflight_report(plan, observed)
+    let report = local_ollama_preflight_report(plan, observed)?;
+    let receipt = LocalOllamaPreflightExecutionReceipt::issue(plan, &report)?;
+    Ok(LocalOllamaPreflightExecutionOutcome { report, receipt })
+}
+
+#[cfg(test)]
+pub(crate) fn issue_local_ollama_preflight_test_receipt(
+    plan: &LocalOllamaPreflightPlan,
+    report: &LocalOllamaPreflightReport,
+) -> Result<LocalOllamaPreflightExecutionReceipt, LocalOllamaPreflightError> {
+    LocalOllamaPreflightExecutionReceipt::issue(plan, report)
 }
 
 pub(crate) fn local_ollama_preflight_targets(
@@ -293,6 +400,18 @@ fn valid_label(value: &str) -> bool {
 
 fn valid_text(value: &str, maximum: usize) -> bool {
     !value.is_empty() && value.len() <= maximum && !value.chars().any(char::is_control)
+}
+
+fn execution_value_digest(
+    domain: &[u8],
+    value: &impl Serialize,
+) -> Result<Digest, LocalOllamaPreflightError> {
+    let encoded =
+        serde_json::to_vec(value).map_err(|_error| LocalOllamaPreflightError::InvalidPlan)?;
+    let mut bytes = Vec::with_capacity(domain.len().saturating_add(encoded.len()));
+    bytes.extend_from_slice(domain);
+    bytes.extend_from_slice(&encoded);
+    Ok(Digest::sha256(&bytes))
 }
 
 #[cfg(test)]

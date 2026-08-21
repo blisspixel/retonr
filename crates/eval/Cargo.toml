@@ -20,6 +20,7 @@ rewrite-inference = { path = "../inference", version = "0.1.0" }
 rewrite-model = { path = "../model", version = "0.1.0" }
 rewrite-ollama = { path = "../ollama", version = "0.1.0" }
 rewrite-runtime-attestor = { path = "../runtime-attestor", version = "0.1.0" }
+rewrite-runtime-isolation = { path = "../runtime-isolation", version = "0.1.0" }
 rewrite-types = { path = "../types", version = "0.1.0" }
 serde.workspace = true
 serde_json.workspace = true
@@ -32,6 +33,7 @@ predicates.workspace = true
 tempfile.workspace = true
 rewrite-inference = { path = "../inference", version = "0.1.0", features = ["test-support"] }
 rewrite-model-store = { path = "../model-store", version = "0.1.0" }
+rewrite-ollama-package = { path = "../ollama-package", version = "0.1.0" }
 wiremock.workspace = true
 
 [lints]

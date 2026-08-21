@@ -9,13 +9,14 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+rewrite-model = { path = "../model", version = "0.1.0" }
 rewrite-types = { path = "../types", version = "0.1.0" }
 serde.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
-rustix = { workspace = true, features = ["event", "process"] }
+rustix = { workspace = true, features = ["event", "net", "process"] }
 
 [target.'cfg(windows)'.dependencies]
 winx.workspace = true
@@ -23,11 +24,13 @@ windows-sys = { workspace = true, features = [
     "Win32_Foundation",
     "Win32_NetworkManagement_IpHelper",
     "Win32_Networking_WinSock",
+    "Win32_Storage_FileSystem",
     "Win32_System_Threading",
 ] }
 
 [dev-dependencies]
 serde_json.workspace = true
+tempfile.workspace = true
 
 [lints.rust]
 unsafe_code = "allow"

@@ -1,0 +1,6 @@
+flowchart LR
+    Existing[Already-running attached process] --> Filter[Install platform filter]
+    Filter --> Observe[Observe later flows]
+    Observe --> Report[Unqualified report]
+    Earlier[Preexisting flows and inherited handles] -. bypass .-> Report
+    Children[Unknown child executables and brokers] -. bypass .-> Report

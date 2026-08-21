@@ -30,8 +30,9 @@ path. A popular package or compatible API shape is not enough.
 | Persistence | rusqlite 0.40.2 with bundled SQLite | Artifact state implemented; profiles planned |
 | Markdown | pulldown-cmark 0.13.x with source offsets | Planned bounded adapter |
 | DOCX | zip 8.x plus quick-xml 0.41.x | Planned bounded adapter |
-| First attached runtime | Ollama native API | Implemented candidate |
-| Portable runtime | Pinned `llama-server` sidecar | Second qualification target |
+| First attached runtime | Ollama native API | Implemented observation-only candidate |
+| First managed runtime | Exact Ollama package under Linux namespace isolation | Implemented inert preflight and runtime-build binding; empty production cloud allowlist |
+| Portable runtime | Pinned `llama-server` sidecar | Later qualification target |
 | Local API | axum 0.8.x, tower 0.5.x, tower-http 0.7.x | After stdio agents |
 | MCP | Official `rmcp` 3.1.2 candidate | Planned exact pin and revalidation |
 | Agent package | Agent Plugins 1.0.0 schemas | Working-draft compatibility target |
@@ -107,6 +108,45 @@ Qualification still requires stronger effective identity than a mutable tag or
 reported version. It binds the source artifact set, Ollama inventory digest, complete
 effective model-description digest, runtime package identity where available,
 running context, residency, and CPU, GPU, or hybrid execution class.
+
+The current trust primitives add strict runtime and model package contracts, offline
+Ollama model reconstruction, schema-6 persistence, retained package objects, Linux
+SOCK_DIAG, managed namespace isolation, process and connection attestation, exact
+native-load observation, version-gated provider declaration evidence, and a
+Linux-only read-only managed preflight that joins those runtime-side boundaries. The
+managed target inherits a seccomp `socket()` allowlist for only `AF_INET` and
+`AF_INET6`; every other family and `io_uring_setup` are denied, and target
+reobservation requires seccomp mode 2. Its report remains inert and unqualified,
+proves neither model use nor effective-runtime identity, and has no CLI surface. The
+production cloud-disable allowlist is empty, so its provider status remains
+unreviewed. Attached evidence remains observation-only. Windows managed isolation and
+exact native-load binding are unsupported, and macOS runtime trust observation is
+unsupported.
+
+An opt-in managed outcome also constructs a package-declared typed
+`RuntimeBuildIdentity` after the exact package, process, and native-load join. Only the
+exact package entrypoint is joined to live process and load evidence; other package
+semantics are not independently live-observed. Cleanup finishes before return, no
+effective runtime state is constructed, and model use, handler execution, and
+qualification remain false.
+
+The development stack also has a v0.32.15-only static import-to-inventory and details
+binding, a provider-neutral local-judge output contract, and a typed executor over one
+already-preflighted retained Ollama stream. The static binding consumes the opaque,
+nonserializable, single-use receipt from the exact preflight runner. Retained-session
+input has an absolute 4 MiB UTF-8 ceiling enforced before wire serialization or
+completion traffic. The executor's nonserializable receipt binds exact preflight,
+request, response, and ordinal evidence. It remains separate from the caller-declared,
+triage-only scorecard and proves no managed isolation, handler execution, model load
+or use, candidate generation, effective identity, semantics, or qualification. These
+library surfaces are not runtime selection or CLI support claims.
+
+A separate v0.32.15 source-scoped completion profile requests a five-minute keep-alive
+and binds two equal singleton `/api/ps` reports after generation on the same retained
+transport. Its nonserializable receipt proves only stable runtime-reported residency.
+Reported size is runtime memory, not package inventory size; handler execution, model
+use, resident-page identity, effective identity, and qualification remain false. The
+legacy seven-response completion remains unchanged.
 
 ### Pinned llama.cpp sidecar
 

@@ -5,7 +5,7 @@ use super::ArtifactStateStore;
 use crate::StoreError;
 
 #[test]
-fn corrupt_schema_two_is_rejected_without_partial_migration() {
+fn compatibility_open_refuses_corrupt_older_schema_without_inspecting_its_shape() {
     let directory = tempdir().expect("temporary directory");
     let path = directory.path().join("corrupt-schema-two.db");
     let connection = Connection::open(&path).expect("create schema-two fixture");
@@ -23,7 +23,10 @@ fn corrupt_schema_two_is_rejected_without_partial_migration() {
 
     assert!(matches!(
         ArtifactStateStore::open_existing_and_migrate(&path),
-        Err(StoreError::CorruptRecord)
+        Err(StoreError::MigrationRequired {
+            found: 2,
+            current: 6
+        })
     ));
     let connection = Connection::open(&path).expect("reopen rejected schema");
     let version: i64 = connection
@@ -48,7 +51,7 @@ fn current_version_with_missing_or_altered_schema_is_corrupt() {
     let missing = directory.path().join("missing-schema.db");
     let connection = Connection::open(&missing).expect("create database");
     connection
-        .pragma_update(None, "user_version", 5)
+        .pragma_update(None, "user_version", 6)
         .expect("set current version");
     drop(connection);
     assert!(matches!(
@@ -92,7 +95,7 @@ fn current_version_with_missing_or_altered_schema_is_corrupt() {
                  artifact_id TEXT,
                  record_json TEXT
              );
-             PRAGMA user_version = 5;",
+             PRAGMA user_version = 6;",
         )
         .expect("create lax current-version state");
     drop(connection);

@@ -60,6 +60,8 @@ flowchart TD
     App --> Engine["rewrite-engine"]
     App --> Grounded["rewrite-grounded"]
     App --> Profile["rewrite-profile"]
+    App --> ModelStore["rewrite-model-store"]
+    App --> OllamaPackage["rewrite-ollama-package"]
     Grounded --> Inference["rewrite-inference"]
     Profile --> Store["rewrite-store"]
     Engine --> Types["rewrite-types"]
@@ -68,6 +70,7 @@ flowchart TD
     Inference --> Types
     subgraph Infrastructure["Infrastructure adapters"]
         Ollama["rewrite-ollama"]
+        Isolation["rewrite-runtime-isolation"]
         RuntimeAttestor["rewrite-runtime-attestor"]
         Llama["planned llama.cpp sidecar adapter"]
         Text["rewrite-text-adapter"]
@@ -75,6 +78,9 @@ flowchart TD
         Docx["rewrite-docx-adapter"]
     end
     Ollama --> Inference
+    OllamaPackage --> Model
+    Isolation --> Types
+    RuntimeAttestor --> Model
     RuntimeAttestor --> Types
     Llama --> Inference
     Text --> App
@@ -166,13 +172,42 @@ binding the complete request. Adapters and orchestrators compare the observed ru
 with discovery. Its debug representation retains only identities, limits, usage, and
 byte counts. It does not parse a domain envelope or grant semantic authority.
 
+The inference layer also defines one provider-neutral local-judge attempt contract.
+Its strict JSON schema admits a blinded-order choice, a sorted nonempty set of rubric
+clause identifiers, and sorted non-overlapping half-open byte spans into the separately
+presented source and candidates. The neutral parser enforces shape and structural
+bounds. The evaluation layer additionally checks case identity, admitted clauses,
+input lengths, and UTF-8 boundaries. Neither layer evaluates whether the choice,
+citations, or meaning are correct.
+
+The retained Ollama session owns one already-connected loopback HTTP/1 stream. It runs
+one preflight, then bounded structured completions with monotonically increasing
+response ordinals and an observer callback around each response. Every completion
+returns a nonserializable, content-free receipt binding the preflight, complete
+request, complete structured response, and ordinal span. The session has no connector,
+pool, retry, reconnect, or fallback path and is permanently invalidated on failure.
+
+The legacy completion uses seven ordered responses and remains unchanged. A separate
+opt-in resident-completion profile is admitted only for Ollama v0.32.15 at reviewed
+source revision `b7871fc0d1d82fe109536efa3e0e8e411c766c75`, after an idle preflight.
+It requests `keep_alive: 5m` and requires the exact nine-response order `version`,
+`tags`, `show`, `generate`, `ps`, `version`, `tags`, `show`, `ps`. Both singleton
+post-generation `/api/ps` reports must match the exact reference, manifest digest,
+requested context, and each other, with valid runtime memory fields. Its separate
+nonserializable receipt proves only stable runtime-reported residency on the retained
+transport. The reported memory size is not package inventory size. Application
+handler, model use, resident-page identity, effective runtime identity, and
+qualification remain false.
+
 The model domain defines a distinct claim-extraction artifact role without activating
 or invoking it. Qualification schema v1 rejects that role because its runtime identity
 is observational rather than a complete runtime-build and effective-state identity.
-The Ollama adapter still admits only generation and the candidate-output contract. A
-future claim extractor receives its own schema, effective manifest, application
-orchestrator, and stronger qualification identity. It will not be hidden behind the
-synchronous semantic port or silently reuse a generation binding.
+The ordinary Ollama backend still admits only generation and the candidate-output
+contract. The separate retained session additionally admits the exact neutral judge
+output contract for the development executor. A future claim extractor receives its
+own schema, effective manifest, application orchestrator, and stronger qualification
+identity. It will not be hidden behind the synchronous semantic port or silently
+reuse a generation or judge binding.
 
 The model layer defines inert content identities before granting any new authority.
 An artifact-set manifest contains a strictly ordered, bounded list of immutable file
@@ -185,6 +220,26 @@ resolved configuration, platform evidence, execution class, isolation policy, an
 effective context. All three use domain-separated, versioned canonical identity
 material and byte-bounded validated JSON decoding. None is proof that the supplied
 evidence is true or complete.
+
+The additive runtime-package and model-package manifests make static package meaning
+explicit. Each is a complete ordered semantic overlay of one canonical artifact set.
+Runtime packages identify one entrypoint, executable-code roles, helpers, native
+dependencies, static load policy, source, transformations, target, and exact build
+configuration. Model packages identify weights, tokenizer, prompt templates,
+parameters, license, source, transformations, weight layout, and embedded
+components. Evidence-only members remain distinct from output-affecting members.
+Neither manifest claims that a process loaded or used its bytes.
+
+A native-load observation binds a retained process evidence digest, an exact
+runtime-package manifest, and one bounded complete view of admitted file-backed
+executable mappings. Linux resolves `/proc/PID/map_files` entries and compares each
+mapping to retained package-member file objects or a frozen list of admitted external
+platform components. Windows returns unsupported because the selected public APIs
+expose mapped paths but not section-bound file identities. macOS returns unsupported.
+Typed builders can derive runtime-build and effective-state fields from package and
+load records, but those derived identities remain inert until the complete operation
+joins every required trust boundary.
+
 An effective-package evidence record then joins the exact artifact set, runtime build,
 and effective state. It requires canonical purpose coverage for every member and binds
 retained evidence for artifact-set completeness, acquisition, license review,
@@ -197,20 +252,42 @@ claim-extraction role. It also binds source and context ceilings, prompt, claim-
 and claim-operation contracts, request and threshold policies, language policy,
 hardware envelope, qualification suite, result evidence, license decision, and
 qualification outcome. Its identifier and type are distinct from qualification v1; it
-has no authorization operation and cannot enter the v1 activation path. The application can now attest one managed entrypoint and persist those two
-inert records. Operation leases, pre-call checks, and post-call checks remain
-the responsibility of a later application runtime join. The attestor does not
-authorize a role.
+has no authorization operation and cannot enter the v1 activation path. The
+application can statically attest complete runtime and model packages over live
+managed-set leases. Runtime attestation retains exact code-member file objects and
+can clone the entrypoint for handle-based launch and all native members for Linux
+load observation. An older application service can also hash one caller-selected
+managed entrypoint and persist caller-supplied runtime facts. Neither service
+authorizes a role. Complete operation composition, pre-call checks, post-call checks,
+and generation receipts remain separate.
 Attached observed-only Ollama metadata cannot construct a runtime-build identity.
 
 The development-only attached Ollama preflight now composes the Ollama observation
 with `rewrite-runtime-attestor`. The attestor is a quarantined infrastructure crate
 with a safe bounded facade. On Windows it uses the public owner-PID table, a retained
 process handle and creation time, and a retained executable file handle. On Linux it
-uses an exact proc socket inode, unique same-user descriptor ownership, a retained
-pidfd and process start time, same-network-namespace evidence, and a retained
-`/proc/PID/exe` file. macOS returns a stable unsupported result rather than using
-private `libproc` interfaces.
+uses a bounded `NETLINK_SOCK_DIAG` listener dump and exact connection queries, a
+retained kernel socket cookie, unique visible same-UID descriptor ownership, a
+retained pidfd and process start time, same-network-namespace evidence, and a
+retained `/proc/PID/exe` file. macOS returns a stable unsupported result rather than
+using private `libproc` interfaces.
+
+The Linux process-holder scanner opens and retains one `/proc` root directory for
+each bounded scan. For each numeric entry it opens a pidfd before opening the process
+directory relative to that root, then confirms liveness. It reads `status` relative
+to the held directory under a 64 KiB ceiling and admits exactly one `Uid:` row with
+four unsigned decimal fields; the second field is the effective UID. Descriptor
+enumeration and `readlink` stay relative to the held process directory and continue
+through the admitted view after a socket match. Once a pidfd exists, a missing entry
+is classified as process exit only when that pidfd proves the process is dead.
+Permission denial is `ProcessAccessDenied`, descriptor or memory exhaustion is
+`ResourceLimit`, and malformed or otherwise incomplete state is
+`ListenerSnapshotIncomplete`. None is converted into weaker evidence.
+
+For an admitted holder, descriptor traversal is bracketed by two bounded status
+reads through the retained process directory, each with exactly one strict four-field
+`Uid:` row. The effective UID must match exactly
+across both observations or the snapshot is incomplete.
 
 The observer attaches before the first HTTP request and rechecks after the existing
 preflight. It fails on process exit, ownership drift, process-incarnation drift,
@@ -233,10 +310,12 @@ before application traffic and after every drained response.
 
 The runtime attestor consumes the exact client and server endpoints without
 serializing them. Windows requires the exact reverse established row's documented
-context-binding PID to match the retained process incarnation. Linux requires the
-exact reverse established row and socket inode plus exactly one visible same-user
-descriptor holder matching the retained process. The Linux check cannot exclude
-holders hidden by UID, ptrace, proc mount, PID namespace, or other security policy.
+context-binding PID to match the retained process incarnation. Linux issues an exact
+reverse-tuple SOCK_DIAG query before and after the visible-holder scan and requires
+stable state, UID, inode, interface, and retained socket cookie plus exactly one
+visible same-UID descriptor holder matching the retained process. The Linux check
+cannot exclude holders hidden by UID, ptrace, proc mount, PID namespace, or other
+security policy.
 macOS returns unsupported before HTTP because the admitted public unprivileged APIs
 cannot map an arbitrary established tuple to a process.
 
@@ -246,16 +325,114 @@ that all accepted response bytes used one retained client transport and that nat
 attribution matched at every checkpoint. It does not claim exclusive socket
 ownership, absence of invisible holders, or application-handler execution. It stays
 `qualified: false` and creates no runtime-build, effective-state, package,
-qualification, activation, or role record. Linux row selection moves next to bounded
-`NETLINK_SOCK_DIAG`; complete package, provider configuration, and OS isolation
-evidence remain prerequisites for effective runtime identity and generation.
+qualification, activation, or role record. Complete package, provider configuration,
+and OS isolation evidence remain prerequisites for effective runtime identity and
+generation.
 
-The model store persists these five inert records under SQLite schema v5 in separate,
-immutable tables. Schema v4 added a separate artifact-set installation record
-with a unique portable set-root key and a distinct positive generation. Schema v5
-adds a crash-recoverable artifact-set removal journal. Migration
-creates those tables empty and does not infer installed state from evidence or legacy
-single-file records. Higher-level writes begin an immediate transaction, reload every
+The separate managed Linux boundary owns process creation rather than attaching to
+an ambient service. A retained helper establishes user, network, and PID namespaces,
+maps the caller identity, enables loopback as the only network interface, sets
+no-new-privileges, removes capabilities, seals every ambient descriptor as
+close-on-exec, verifies the descriptor postcondition, applies process and
+file-descriptor limits, and launches an already-open executable object. Stage two
+exec closes the sealed descriptors before target launch.
+Before launch, namespace init installs a target-inherited seccomp socket allowlist.
+The target's `socket()` calls admit only `AF_INET` and `AF_INET6`; every other socket
+family and `io_uring_setup` are denied. The retained lease captures bounded startup
+streams, reobserves target and namespace identity, requires seccomp mode 2 on target
+reobservation, owns teardown of the process tree, and can request exactly one
+loopback TCP connection and namespace-local SOCK_DIAG descriptor. The guardian owns
+that diagnostic capability outside the target filter. Host policy that denies the
+required namespace operation or socket policy returns a typed failure; the operation
+never falls back to the host network.
+
+The managed Linux process observer consumes exact target, executable, namespace,
+UID, endpoint, and diagnostics facts from that lease. It rechecks the managed process
+and exact retained connection and can bracket the Linux native-load observation.
+These infrastructure records are stronger than attached observation because the
+launch and network namespace are retained, but they remain inert and Linux-only.
+Windows managed isolation and exact native-load binding are unsupported. macOS
+managed isolation, attached observation, and native-load binding are unsupported.
+
+The CI architecture distinguishes an uncontrolled host limitation from native proof.
+Ordinary hosted tests may treat only the exact `ProcessAccessDenied` result as an
+environment compatibility outcome when proc visibility is blocked. They cannot turn
+that outcome into evidence. A separate mandatory networkless container runs the
+managed attestor tests as the caller UID with all capabilities dropped and
+no-new-privileges set, and requires the native success path. The coverage job runs
+the same controlled gate with the workspace LLVM profile before applying the line
+floor, so the proof path is included in coverage rather than hidden behind a host
+skip.
+
+Ollama provider evidence is a separate trust boundary. It accepts only an exact
+stable version and runtime-package identity admitted by a source-controlled review
+policy, exactly one `OLLAMA_NO_CLOUD=1` declaration in the cleared managed
+environment, and exactly one bounded cloud-disabled startup marker across captured
+standard output and standard error. The production reviewed-runtime allowlist is
+empty. Provider evidence always states that it does not enforce network isolation or
+qualify the runtime; Linux namespace evidence must be joined separately.
+
+The development-only `rewrite-eval` managed preflight performs that Linux join for
+read-only observation. It binds a retained runtime-package lease, prepared isolation
+and retained launch, namespace-local process and exact connection evidence, the
+provider declaration and startup marker, read-only Ollama observation, and exact
+native-load evidence in one redacted report and requires the production backend
+identity `ollama_native`. It reobserves the process, isolation, connection, and
+package boundaries and owns process-tree cleanup. The report is not a CLI surface or
+authority record. With the reviewed-runtime allowlist empty, its provider disposition
+is unreviewed. It also records false for application-handler proof, exclusive socket
+ownership, model load or use, effective-runtime identity, and qualification.
+
+An opt-in managed-preflight entry point returns that unchanged version 1 report with a
+separate redacted, inert `LocalOllamaManagedBuildBinding`. After the exact package,
+managed process, and native-load relationships pass, it constructs one typed
+`RuntimeBuildIdentity` in managed-process mode from package declarations. The exact
+package entrypoint is joined to managed process and native-load evidence, but target,
+revision, and other package semantics are not independently observed from the live
+process. Mandatory process-tree cleanup then completes before the outcome returns, so
+`process_retained_after_return` is false. The binding cannot construct
+`EffectiveRuntimeState`. Its closed missing set is a generation-bound provider
+snapshot, effective output configuration, direct platform, framework, and driver
+evidence, compute backend and device placement, effective context capacity, and a
+retained live runtime. Model load or use, application handler, effective state, and
+qualification remain false. Existing version 1 report and identity bytes are
+unchanged.
+
+A separate version-gated evaluation binding relates one inert installed-Ollama import
+to one exact verified idle v0.32.15 inventory entry and details observation. It checks
+the reviewed manifest-size rule for that exact runtime revision, raw manifest and GGUF
+identity and size, license, `gguf` format, and a unique explicit-layer or embedded-GGUF
+template match. The serialized evidence binds the exact model package, artifact set,
+installation generation, package source, runtime reference, and observation digests.
+The join consumes the opaque, nonserializable, single-use execution receipt issued by
+the preflight runner for the exact plan and report. It proves only that static
+import-to-inventory relationship. Model loaded, model used, application handler,
+effective identity, and qualification remain false.
+
+The typed local-judge executor is another separate evaluation boundary. It validates
+the exact scorecard plan, rubric, model reference and digest, deadlines, input limits,
+prompt contract, and neutral output contract. Deterministic hard-gate failure causes
+no judge request. Otherwise it executes each admitted case once in both blinded
+orders over one already-preflighted retained session, validates every cited span, and
+invalidates the stream after the run. Every retained-session completion enforces an
+absolute 4 MiB UTF-8 input ceiling before wire serialization or completion traffic.
+The executor returns the serializable version 1 scorecard, which still labels
+observations caller-declared and triage-only, plus a distinct nonserializable receipt
+binding the plan, rubric, observation batch, retained-session preflight, ordered
+request and response receipts, and ordinal range. That receipt does not prove managed
+isolation, handler execution, model load or use, candidate generation, effective
+identity, semantic correctness, or qualification. Its evidence class is
+`RetainedTransportBindingOnly`. The static model binding, managed runtime-build
+binding, resident-completion receipt, and judge receipt are implemented but not yet
+joined in one retained managed execution.
+
+The model store persists these inert records under SQLite schema 6 in separate,
+immutable tables. Schema 4 added a separate artifact-set installation record with a
+unique portable set-root key and a distinct positive generation. Schema 5 added a
+crash-recoverable artifact-set removal journal. Schema 6 adds runtime-package,
+model-package, and native-load tables with relationship foreign keys. Migration
+creates additive tables empty and does not infer package, load, installation, or
+authority evidence from legacy state. Higher-level writes begin an immediate transaction, reload every
 referenced lower-level record, require canonical serialized bytes and matching indexed
 identity columns, and rerun the domain relationship checks before commit. Reads repeat
 the recursive validation. The migration adds evidence tables without rewriting the v1
@@ -638,6 +815,21 @@ Runtime-native pulls, downloads, stale-root recovery, and repair remain later
 operations. Selected set reconciliation and crash-recoverable set removal are
 implemented without granting set authority.
 
+The installed-Ollama import is a separate offline application boundary over that
+set importer. The caller supplies only one pinned models root and validated logical
+registry, namespace, model, and tag components. The service derives every manifest
+and content-addressed blob path, opens source boundaries without following links,
+requires the strict admitted manifest-v2 layer shape, streams bounded GGUF-v3
+structure, and reconstructs a canonical six-member set in application-owned staging.
+After managed publication it writes and reads back the semantic model-package
+manifest under schema 6. Config `rootfs.diff_ids` comparison is informational only.
+The result is inert structural evidence and has no CLI exposure, network access,
+qualification, activation, lease, load, or execution authority.
+
+The evaluation-only v0.32.15 binding described above can compare this exact import
+with one verified idle Ollama inventory and model-details observation. It does not
+change the import's authority, activate the package, or prove residency or use.
+
 A separate read-only artifact inventory uses the same pinned storage boundary,
 acquires the lifecycle lock in shared mode, and opens only existing storage. It
 loads manifests, optional installations, and active bindings in a bounded database
@@ -754,8 +946,8 @@ the storage lifecycle lock, in that order. It is point-in-time byte evidence. It
 does not qualify a set, attest a live runtime, authorize a role, prove that the
 manifest lists every file that can affect runtime output, or protect managed bytes
 from a non-cooperating same-user process outside the pinned boundary. Managed-set
-removal does not exist, so every set installation generation is currently the first
-generation and the key cannot yet distinguish a reinstall.
+removal is generation-bound and crash recoverable. A later exact reimport advances
+the generation so an old retry cannot delete a deliberate reinstall.
 
 The unpublished SQLite adapter requires a live
 `ExclusiveArtifactLifecycleLock` reference for both journal transitions. This
@@ -1026,6 +1218,15 @@ arbitrary executable markup.
 
 ## Cross-platform constraints
 
+The runtime trust primitives have a narrower current matrix than the intended
+cross-platform product. Linux supports managed namespace isolation, managed process
+attestation, SOCK_DIAG connection attribution, and retained-object native-load
+binding when host policy permits. Windows supports attached observation and retained
+connection attribution, but managed isolation and exact native-load binding are
+unsupported. macOS supports none of those runtime trust primitives. Attached
+evidence is observation-only on every platform and never substitutes for a managed
+qualification boundary.
+
 - Paths remain `PathBuf` and `OsString` through core and process boundaries.
 - Application directories come from platform APIs rather than hard-coded paths.
 - Source line endings and final newline state are preserved.
@@ -1043,7 +1244,8 @@ arbitrary executable markup.
 - Final product and crate name
 - Encryption and key-recovery design for desktop and headless use
 - Exact semantic evaluator ensemble and calibration policy
-- Model manifest, artifact drift, and qualification invalidation policy
+- Exact production runtime-package review, platform isolation breadth, and
+  qualification invalidation policy
 - Initial supported Markdown extension set
 - DOCX validation and office-compatibility tooling
 - Native Rust desktop toolkit, renderer, accessible component system, packaging,

@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use rewrite_types::CancellationToken;
+use rewrite_types::Digest;
 
 use crate::{
     AttachedProcessEvidence, AttachedProcessWitnessError, AttachedProcessWitnessLimits,
@@ -52,5 +53,20 @@ impl Lease {
         _started: Instant,
     ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
         Err(AttachedProcessWitnessError::Unsupported)
+    }
+
+    #[expect(
+        clippy::unused_self,
+        reason = "the platform lease facade has one method shape on every target"
+    )]
+    pub(crate) fn observe_native_load(
+        &mut self,
+        _request: &crate::NativeLoadObservationRequest<'_>,
+        _limits: crate::NativeLoadObservationLimits,
+        _cancellation: &CancellationToken,
+        _started: Instant,
+        _process_evidence_digest: &Digest,
+    ) -> Result<rewrite_model::NativeLoadObservation, crate::NativeLoadObserverError> {
+        Err(crate::NativeLoadObserverError::Unsupported)
     }
 }

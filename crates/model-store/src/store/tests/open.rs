@@ -64,7 +64,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 1,
-                    current: 5
+                    current: 6
                 }
             )
         },
@@ -77,7 +77,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 2,
-                    current: 5
+                    current: 6
                 }
             )
         },
@@ -90,7 +90,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 3,
-                    current: 5
+                    current: 6
                 }
             )
         },
@@ -103,19 +103,32 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 4,
-                    current: 5
+                    current: 6
                 }
             )
         },
         "schema-four-read-only.db",
+    );
+    assert_read_only_schema_rejection(
+        5,
+        |error| {
+            matches!(
+                error,
+                StoreError::MigrationRequired {
+                    found: 5,
+                    current: 6
+                }
+            )
+        },
+        "schema-five-read-only.db",
     );
 }
 
 #[test]
 fn read_only_open_rejects_future_schema_without_mutation() {
     assert_read_only_schema_rejection(
-        6,
-        |error| matches!(error, StoreError::UnsupportedSchema(6)),
+        7,
+        |error| matches!(error, StoreError::UnsupportedSchema(7)),
         "future-read-only.db",
     );
 }
@@ -158,13 +171,16 @@ fn exact_schema_writable_open_never_migrates_legacy_state() {
         ArtifactStateStore::open_existing_writable_exact(&path),
         Err(StoreError::MigrationRequired {
             found: 1,
-            current: 5
+            current: 6
         })
     ));
     assert_eq!(fs::read(&path).expect("reread legacy state"), before);
     assert!(matches!(
         ArtifactStateStore::open_existing_and_migrate(&path),
-        Err(StoreError::CorruptRecord)
+        Err(StoreError::MigrationRequired {
+            found: 1,
+            current: 6
+        })
     ));
     assert_eq!(fs::read(&path).expect("reread rejected state"), before);
 }
@@ -202,7 +218,7 @@ fn interrupted_empty_initialization_can_resume_but_arbitrary_version_zero_cannot
 }
 
 #[test]
-fn migrates_schema_two_without_rewriting_v1_records() {
+fn compatibility_opens_reject_schema_two_without_rewriting_v1_records() {
     let directory = tempdir().expect("temporary directory");
     let path = directory.path().join("schema-two.db");
     let fixture = fixture();
@@ -236,21 +252,29 @@ fn migrates_schema_two_without_rewriting_v1_records() {
         )
         .expect("insert legacy qualification");
     drop(connection);
+    let before = fs::read(&path).expect("read schema two before rejected opens");
 
-    let store = ArtifactStateStore::open_existing_and_migrate(&path).expect("migrate schema two");
-    assert_eq!(
-        store
-            .manifest(&fixture.manifest.artifact_id)
-            .expect("load manifest"),
-        Some(fixture.manifest.clone())
-    );
-    let version: i64 = store
-        .connection()
+    for result in [
+        ArtifactStateStore::open(&path),
+        ArtifactStateStore::open_or_create_and_migrate(&path),
+        ArtifactStateStore::open_existing_and_migrate(&path),
+    ] {
+        assert!(matches!(
+            result,
+            Err(StoreError::MigrationRequired {
+                found: 2,
+                current: 6
+            })
+        ));
+        assert_eq!(fs::read(&path).expect("reread rejected schema two"), before);
+    }
+
+    let unchanged = Connection::open(&path).expect("reopen unchanged schema two");
+    let version: i64 = unchanged
         .pragma_query_value(None, "user_version", |row| row.get(0))
-        .expect("read migrated version");
-    assert_eq!(version, 5);
-    let stored_qualification: String = store
-        .connection()
+        .expect("read unchanged version");
+    assert_eq!(version, 2);
+    let stored_qualification: String = unchanged
         .query_row(
             "SELECT record_json FROM qualification_records WHERE qualification_id = ?1",
             [qualification_id.digest().as_str()],

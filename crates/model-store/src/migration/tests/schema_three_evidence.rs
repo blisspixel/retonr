@@ -25,7 +25,7 @@ struct EvidenceFixture {
 }
 
 #[test]
-fn bytes_survive_verified_backup_and_schema_four_migration() {
+fn bytes_survive_verified_backup_and_current_migration() {
     let directory = tempdir().expect("temporary directory");
     let source = directory.path().join("schema-three-evidence.db");
     let backup = directory.path().join("schema-three-evidence-backup.db");
@@ -39,7 +39,7 @@ fn bytes_survive_verified_backup_and_schema_four_migration() {
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("retain verified schema-three backup");
-    session.migrate().expect("migrate schema three to five");
+    session.migrate().expect("migrate schema three to six");
 
     let backup_connection = Connection::open(&backup).expect("open retained schema-three backup");
     assert_eq!(schema_version(&backup), 3);
@@ -47,8 +47,8 @@ fn bytes_survive_verified_backup_and_schema_four_migration() {
     assert!(!table_exists(&backup_connection, "installed_artifact_sets"));
     assert!(!table_exists(&backup_connection, "artifact_set_removals"));
 
-    let migrated = Connection::open(&source).expect("open migrated schema-five source");
-    assert_eq!(schema_version(&source), 5);
+    let migrated = Connection::open(&source).expect("open migrated schema-six source");
+    assert_eq!(schema_version(&source), 6);
     assert_eq!(evidence_rows(&migrated), before);
     assert!(table_exists(&migrated, "installed_artifact_sets"));
     assert!(table_exists(&migrated, "artifact_set_removals"));
@@ -83,7 +83,10 @@ fn seed_schema_three_evidence(path: &Path) {
     Connection::open(path)
         .expect("open evidence store for schema-three fixture")
         .execute_batch(
-            "DROP TABLE artifact_set_removals;
+            "DROP TABLE native_load_observations;
+             DROP TABLE model_package_manifests;
+             DROP TABLE runtime_package_manifests;
+             DROP TABLE artifact_set_removals;
              DROP TABLE installed_artifact_sets;
              PRAGMA user_version = 3;",
         )

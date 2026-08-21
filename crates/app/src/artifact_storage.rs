@@ -23,9 +23,9 @@ pub(crate) use entry::is_indirect;
 use errors::{map_active_error, map_initial_error};
 pub(crate) use existing::{ExistingArtifactStorage, LIFECYCLE_LOCK_FILE, LifecycleLockMode};
 pub(crate) use fingerprint::{MetadataFingerprint, StableMetadataFingerprint};
-pub(crate) use mutation::ExactEntryCapacity;
 #[cfg(unix)]
 pub(crate) use mutation::set_private_directory_permissions;
+pub(crate) use mutation::{ExactEntryCapacity, ManagedFile};
 pub(crate) use tree::{
     ManagedTreeEntryKind, ManagedTreeLimits, ManagedTreeSnapshot, OwnedStagingTree,
     remove_verified_managed_tree,

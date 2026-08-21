@@ -80,6 +80,8 @@ pub(crate) struct GenerateRequest<'a> {
     pub(crate) format: serde_json::Value,
     pub(crate) think: bool,
     pub(crate) raw: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) keep_alive: Option<&'a str>,
     pub(crate) options: GenerateOptions,
 }
 

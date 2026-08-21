@@ -27,6 +27,8 @@ mod artifact_set_removal;
 mod artifact_storage;
 mod claim_extraction;
 mod grounded;
+mod installed_ollama_import;
+mod package_attestation;
 mod runtime_artifact_lease;
 mod runtime_artifact_set_lease;
 mod runtime_attestation;
@@ -98,6 +100,16 @@ pub use claim_extraction::{
 pub use grounded::{
     AttachedConformanceRewrite, CONFORMANCE_PROMPT_TEMPLATE, GroundedRewriteRequest,
     GroundedRewriteResult, GroundedRewriteSelection, GroundedRewriteService,
+};
+pub use installed_ollama_import::{
+    InstalledOllamaModelSource, OllamaModelImportError, OllamaModelImportEvidence,
+    OllamaModelImportLimits, OllamaModelImportResult, OllamaModelReference,
+    PackageManifestWriteDisposition,
+};
+pub use package_attestation::{
+    ModelPackageAttestationEvidence, ModelPackageLease, PACKAGE_ATTESTATION_SCHEMA_VERSION,
+    PackageAttestationError, PackageAttestationScope, PackageAttestationService,
+    RuntimePackageAttestationEvidence, RuntimePackageLease, RuntimePackageLeaseLimits,
 };
 pub use rewrite_engine::{ClaimShadowObserver, EngineError, ProtectionError};
 pub use rewrite_text_adapter::{

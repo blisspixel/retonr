@@ -8,9 +8,13 @@ mod artifact;
 mod artifact_set;
 mod effective_package;
 mod installed_artifact_set;
+mod model_package;
+mod native_load;
+mod package_source;
 mod qualification;
 mod qualification_v2;
 mod runtime_identity;
+mod runtime_package;
 
 pub use activation::{
     ActivationAction, ActivationDecision, ActivationDecisionError, ActivationError, ActivationId,
@@ -40,6 +44,22 @@ pub use installed_artifact_set::{
     INSTALLED_ARTIFACT_SET_SCHEMA_VERSION, InstalledArtifactSet, InstalledArtifactSetError,
     MAX_INSTALLED_ARTIFACT_SET_JSON_BYTES,
 };
+pub use model_package::{
+    EMBEDDED_MODEL_COMPONENT_LIMIT, EmbeddedModelComponent, EmbeddedModelComponentPurpose,
+    MAX_MODEL_PACKAGE_MANIFEST_JSON_BYTES, MODEL_PACKAGE_MANIFEST_SCHEMA_VERSION,
+    ModelPackageManifest, ModelPackageManifestError, ModelPackageManifestId, ModelPackageMember,
+    ModelPackageMemberRole, ModelWeightLayout,
+};
+pub use native_load::{
+    MAX_NATIVE_LOAD_COMPONENTS, MAX_NATIVE_LOAD_OBSERVATION_JSON_BYTES,
+    NATIVE_LOAD_OBSERVATION_SCHEMA_VERSION, NativeLoadEvidenceClass, NativeLoadObservation,
+    NativeLoadObservationError, NativeLoadObservationId, NativeLoadObservationInput,
+    NativeLoadOrigin, NativeLoadVisibilityScope, NativeLoadedComponent, NativeMappingClass,
+};
+pub use package_source::{
+    MAX_PACKAGE_SOURCE_JSON_BYTES, PACKAGE_SOURCE_SCHEMA_VERSION, PackageSource,
+    PackageSourceError, PackageSourceId, PackageSourceKind, PackageTransformation,
+};
 pub use qualification::{
     HardwareTier, LicenseDecision, QUALIFICATION_SCHEMA_VERSION, QualificationId,
     QualificationRecord, QualificationRecordError, QualificationStatus, RuntimeIdentity,
@@ -51,9 +71,14 @@ pub use qualification_v2::{
 };
 pub use runtime_identity::{
     ComputeBackend, EFFECTIVE_RUNTIME_STATE_SCHEMA_VERSION, EffectiveRuntimeState,
-    EffectiveRuntimeStateError, EffectiveRuntimeStateId, EffectiveRuntimeStateInput,
-    ExecutionPlacement, MAX_RUNTIME_IDENTITY_JSON_BYTES, RUNTIME_BUILD_IDENTITY_SCHEMA_VERSION,
-    RuntimeAbi, RuntimeArchitecture, RuntimeBuildId, RuntimeBuildIdentity,
-    RuntimeBuildIdentityError, RuntimeBuildIdentityInput, RuntimeBuildMode, RuntimeOperatingSystem,
-    RuntimeTarget, RuntimeTargetError,
+    EffectiveRuntimeStateError, EffectiveRuntimeStateFromLoadInput, EffectiveRuntimeStateId,
+    EffectiveRuntimeStateInput, ExecutionPlacement, MAX_RUNTIME_IDENTITY_JSON_BYTES,
+    RUNTIME_BUILD_IDENTITY_SCHEMA_VERSION, RuntimeAbi, RuntimeArchitecture, RuntimeBuildId,
+    RuntimeBuildIdentity, RuntimeBuildIdentityError, RuntimeBuildIdentityInput, RuntimeBuildMode,
+    RuntimeOperatingSystem, RuntimeTarget, RuntimeTargetError,
+};
+pub use runtime_package::{
+    MAX_RUNTIME_PACKAGE_MANIFEST_JSON_BYTES, RUNTIME_PACKAGE_MANIFEST_SCHEMA_VERSION,
+    RuntimePackageLoadPolicy, RuntimePackageManifest, RuntimePackageManifestError,
+    RuntimePackageManifestId, RuntimePackageMember, RuntimePackageMemberRole,
 };

@@ -40,12 +40,13 @@ pub use contract::{ArtifactSetLeaseError, RuntimeArtifactSetLeaseLimits};
 /// file that can affect runtime output, or protect managed bytes from a
 /// non-cooperating same-user process outside the pinned boundary.
 pub struct RuntimeArtifactSetLease {
-    _set_root: PinnedDirectory,
-    _sets: PinnedDirectory,
-    _storage_root: PinnedDirectory,
-    _lifecycle_lock: File,
+    set_root: PinnedDirectory,
+    sets: PinnedDirectory,
+    storage_root: PinnedDirectory,
+    lifecycle_lock: File,
     _repository: DataDirectoryGuard,
     key: ArtifactSetInstallationKey,
+    limits: RuntimeArtifactSetLeaseLimits,
     manifest: ArtifactSetManifest,
 }
 
@@ -55,12 +56,13 @@ impl RuntimeArtifactSetLease {
         acquired: AcquiredArtifactSet,
     ) -> Self {
         Self {
-            _set_root: acquired.set_root,
-            _sets: acquired.sets,
-            _storage_root: acquired.storage_root,
-            _lifecycle_lock: acquired.lifecycle_lock,
+            set_root: acquired.set_root,
+            sets: acquired.sets,
+            storage_root: acquired.storage_root,
+            lifecycle_lock: acquired.lifecycle_lock,
             _repository: repository,
             key: acquired.key,
+            limits: acquired.limits,
             manifest: acquired.manifest,
         }
     }
@@ -78,6 +80,84 @@ impl RuntimeArtifactSetLease {
     #[must_use]
     pub const fn manifest(&self) -> &ArtifactSetManifest {
         &self.manifest
+    }
+
+    pub(crate) fn open_member(
+        &self,
+        relative_path: &rewrite_model::ArtifactSetRelativePath,
+    ) -> Result<crate::artifact_storage::ManagedFile, ArtifactSetLeaseError> {
+        self.set_root
+            .open_relative_regular_file(relative_path)
+            .map_err(|error| map_set_lease_error(map_managed_tree(error)))
+    }
+
+    pub(crate) fn recheck_member(
+        &self,
+        relative_path: &rewrite_model::ArtifactSetRelativePath,
+        fingerprint: &crate::artifact_storage::MetadataFingerprint,
+    ) -> Result<(), ArtifactSetLeaseError> {
+        self.set_root
+            .recheck_relative_regular_file(relative_path, fingerprint)
+            .map_err(|error| map_set_lease_error(map_managed_tree(error)))
+    }
+
+    pub(crate) fn revalidate(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<(), ArtifactSetLeaseError> {
+        let plan = plan_artifact_set(&self.manifest, self.limits.plan_bounds())
+            .map_err(map_set_lease_error)?;
+        let tree_limits = ManagedTreeLimits::new(self.limits.maximum_tree_entries)
+            .map_err(|error| map_set_lease_error(map_managed_tree(error)))?;
+        verify_final_tree(
+            &self.set_root,
+            &self.manifest,
+            &plan,
+            tree_limits,
+            cancellation,
+        )
+        .map_err(map_set_lease_error)?;
+        self.recheck_boundary(OsStr::new(&plan.storage_key))
+    }
+
+    fn recheck_boundary(&self, set_name: &OsStr) -> Result<(), ArtifactSetLeaseError> {
+        let map = |error| map_set_lease_error(map_managed_tree(error));
+        let exact_name = self
+            .sets
+            .exact_entry_capacity(
+                set_name,
+                self.limits.maximum_storage_entries,
+                &CancellationToken::new(),
+            )
+            .map_err(|error| map_set_lease_error(map_set_capacity(error)))?
+            == ExactEntryCapacity::Present;
+        let named_set = self
+            .sets
+            .child_directory_fingerprint(set_name)
+            .map_err(map)?;
+        let held_set = self.set_root.fingerprint().map_err(map)?;
+        let sets = self.sets.fingerprint().map_err(map)?;
+        let named_sets = self
+            .storage_root
+            .child_directory_fingerprint(OsStr::new(SETS_DIRECTORY))
+            .map_err(map)?;
+        let root = self.storage_root.fingerprint().map_err(map)?;
+        let lock_path = self
+            .storage_root
+            .child_file_fingerprint(OsStr::new(LIFECYCLE_LOCK_FILE))
+            .map_err(map)?;
+        let lock_handle = fingerprint_std_file(&self.lifecycle_lock).map_err(map)?;
+        if exact_name
+            && held_set.same_identity(&named_set)
+            && held_set.same_filesystem(&sets)
+            && sets == named_sets
+            && sets.same_filesystem(&root)
+            && lock_path == lock_handle
+        {
+            Ok(())
+        } else {
+            Err(ArtifactSetLeaseError::StorageChanged)
+        }
     }
 }
 
@@ -97,6 +177,7 @@ pub(crate) struct AcquiredArtifactSet {
     storage_root: PinnedDirectory,
     lifecycle_lock: File,
     key: ArtifactSetInstallationKey,
+    limits: RuntimeArtifactSetLeaseLimits,
     manifest: ArtifactSetManifest,
 }
 
@@ -160,6 +241,7 @@ pub(crate) fn acquire_artifact_set(
 
     Ok(AcquiredArtifactSet {
         key: ArtifactSetInstallationKey::from_stored(&installation),
+        limits,
         manifest,
         set_root,
         sets: storage.sets,

@@ -1,0 +1,8 @@
+flowchart LR
+    Session[Retained SOCK_DIAG session] --> Dump[Bounded listener and connection dumps]
+    Dump --> Parse[Strict netlink parser]
+    Parse --> Match[Match tuple, state, UID, inode, cookie]
+    Match --> ProcFd[Scan visible same-UID proc fd links]
+    ProcFd --> Lease[Retained process lease]
+    Lease --> Evidence[Unqualified connection evidence]
+    Scale[Whole-table scale and reuse window] -. limits .-> Evidence

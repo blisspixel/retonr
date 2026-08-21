@@ -29,5 +29,6 @@ Thumbs.db
 
 # Temporary files
 *.bak
+*.profraw
 *.tmp
 *.temp

@@ -23,23 +23,39 @@ tests, repository policy, and already-installed artifacts.
 
 The current 0.2 build queue, in dependency order, is:
 
-1. Preserve the completed lifecycle, schema-v5 persistence, leases, migration,
+1. Preserve the completed lifecycle, schema-6 persistence, leases, migration,
    recovery, cancellation, extractor, pair-comparison, informational shadow, and
    plain-text CLI boundaries.
 2. Retain the versioned read-only Ollama preflight. It observes or verifies one
    existing user-managed loopback service without generation, runtime management,
    artifact authority, or qualification.
-3. Bind the loopback listener to the exact process, regular entrypoint, runtime
-   build, launch mode, and effective configuration before and after use.
-4. Reconstruct the selected Ollama model as one complete canonical artifact set
-   with exact blobs, tokenizer, template, license, upstream source, and
-   transformation evidence. Keep runtime identity separate from package identity.
-5. Require explicit cloud disablement and OS-enforced non-loopback denial for every
-   participating Retonr and runtime process.
-6. Project the existing eight-case smoke and 39-case editorial protocol into frozen
-   local generation plans. Run smoke, locked evaluation, repeatability, and
-   cross-platform qualification in that order.
-7. Complete the remaining CLI model-management, transaction, packaging, and release
+3. Retain attached evidence as observation-only. Linux uses bounded SOCK_DIAG;
+   Windows uses documented owner-PID tables; macOS is unsupported.
+4. Retain the completed package, retained-handle, offline Ollama model
+   reconstruction, Linux managed isolation and attestation, native-load, provider,
+   persistence, version-gated v0.32.15 static model binding, neutral judge output, and
+   retained-session judge-execution and runtime-reported residency contracts. The
+   static binding, transport receipt, and residency receipt remain inert. Windows
+   managed isolation and exact native-load binding are unsupported; macOS is
+   unsupported.
+5. Retain the Linux managed preflight that joins runtime-package, isolation, process,
+   connection, provider-declaration, read-only API, and native-load evidence without
+   an attached fallback. Its report is inert, unqualified, and outside the CLI.
+   Retain the opt-in managed binding that constructs only `RuntimeBuildIdentity` after
+   those checks; cleanup completes before return and effective state remains false.
+   Freeze and review one exact Ollama runtime package before changing the empty
+   production cloud-disable allowlist.
+6. Extend the managed operation to retain the process through generation. Join its
+   runtime build, exact model-package lease, static binding, runtime-reported
+   residency, and implemented local-judge transport receipt while directly observing
+   all missing effective-state relationships. Then add a distinct candidate-generation
+   receipt. The serializable scorecard remains caller-declared and triage-only, and no
+   receipt proves semantics or qualification by itself.
+7. Project the existing eight-case smoke and 39-case editorial protocol into frozen
+   local generation plans backed by the 49 deterministic and 120 synthetic editorial
+   development cases, 169 total. Run smoke, locked evaluation, repeatability, and
+   supported-platform qualification in that order.
+8. Complete the remaining CLI model-management, transaction, packaging, and release
    evidence only after one exact local runtime and artifact combination qualifies.
 
 Later phases stay blocked on their entry evidence. Do not implement Markdown,
@@ -59,7 +75,9 @@ slice.
 | [0.8 native desktop](0.8-desktop.md) | Deliver an accessible installed Rust application without an embedded browser |
 | [0.9 release qualification](0.9-release-qualification.md) | Freeze contracts and qualify signed cross-platform release artifacts |
 
-Current research baselines are the August 12 and 13 records and
+Current research baselines include the August 12 and 13 records, the
+[effective runtime trust-chain review](../research/2026-08-21-effective-runtime-trust-chain/context.md),
+the [hybrid rewrite evaluation plan](../research/2026-08-21-hybrid-rewrite-evaluation.md), and
 [External change watch](../external-change-watch.md). The
 [August 11 next-phase ledger](../research/2026-08-11-next-phases.md) is retained
 historical evidence only. It is superseded for MCP, desktop toolkit, runtime

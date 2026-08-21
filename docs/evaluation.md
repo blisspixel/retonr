@@ -80,6 +80,34 @@ calibration runner assigns fixture claim identities separately from generation
 and fails if attaching the informational shadow changes hard-gate acceptance.
 See [Writing-sample library](evaluation-style-library.md).
 
+The current checked-in development foundation contains 49 deterministic fidelity
+and structure cases plus 120 synthetic editorial cases across five groups, 169 total.
+The versioned hybrid scorecard executes and binds two exact deterministic suites
+before it normalizes blinded, order-swapped structured judge observations. The
+observation batch and serializable report remain caller-declared and triage-only. A
+separate provider-neutral attempt contract and typed executor now run both orders
+over one already-preflighted retained Ollama stream after deterministic gates pass.
+The executor returns a nonserializable content-free receipt binding the exact plan,
+rubric, observation batch, retained preflight, requests, responses, and response
+ordinals. Retained-session input has an absolute 4 MiB UTF-8 ceiling enforced before
+wire serialization or completion traffic. That receipt does not prove managed
+isolation, application-handler execution, model load or use, candidate generation,
+effective identity, semantic correctness, or qualification. No judge output can
+override a hard gate or replace human release adjudication. The exact contract and locked-run order are in the
+[hybrid rewrite evaluation plan](research/2026-08-21-hybrid-rewrite-evaluation.md).
+
+Runtime-side development evidence remains separate from that scorecard. A successful
+managed preflight can now derive inert typed runtime-build identity from package
+declarations after joining the exact entrypoint to managed process and native-load
+evidence. Target, revision, and other package semantics are not independently
+live-observed; cleanup finishes before return and effective runtime state remains
+absent. The static v0.32.15 model-package join separately consumes an opaque,
+nonserializable, single-use receipt from the exact preflight runner. A v0.32.15 opt-in
+completion receipt can prove stable runtime-reported residency on one retained
+transport, but not model use or resident-page identity. Qualification evaluation must
+first join those records to a retained managed execution and direct effective-state
+evidence.
+
 ### Authorized user corpus
 
 Product validation uses a predeclared minimum effect size and power analysis to set

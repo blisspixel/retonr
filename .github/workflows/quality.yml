@@ -165,6 +165,109 @@ jobs:
             done < "$RETONR_TEST_BINARIES"
           '
 
+  runtime-isolation-native:
+    name: managed Linux native gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+
+      - name: Compile the native isolation and attestor tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t isolation_tests < <(
+            cargo test --locked -p rewrite-runtime-isolation \
+              --test linux_managed --no-run --message-format=json |
+              jq -r 'select(.reason == "compiler-artifact" and .target.name == "linux_managed" and .executable != null) | .executable'
+          )
+          test "${#isolation_tests[@]}" -eq 1
+          test -x "${isolation_tests[0]}"
+          printf '%s\n' "${isolation_tests[0]}" > "$RUNNER_TEMP/retonr-isolation-test-binary"
+          mapfile -t attestor_tests < <(
+            cargo test --locked -p rewrite-runtime-attestor \
+              --lib --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "rewrite_runtime_attestor"
+                  and (.target.kind | index("lib"))
+                  and .profile.test
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#attestor_tests[@]}" -eq 1
+          test -x "${attestor_tests[0]}"
+          printf '%s\n' "${attestor_tests[0]}" > "$RUNNER_TEMP/retonr-attestor-test-binary"
+
+      - name: Build the admitted native isolation test environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag retonr-native-isolation - <<'DOCKERFILE'
+          FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
+          RUN apt-get update \
+              && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends python3 \
+              && rm -rf /var/lib/apt/lists/*
+          DOCKERFILE
+
+      - name: Run the forced native isolation gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          isolation_test="$(cat "$RUNNER_TEMP/retonr-isolation-test-binary")"
+          docker run --rm --privileged \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            --network none \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            retonr-native-isolation \
+            "$isolation_test" --test-threads=1
+
+      - name: Run the forced native attestor gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          attestor_test="$(cat "$RUNNER_TEMP/retonr-attestor-test-binary")"
+          expected_attestor_tests=(
+            'platform::linux_managed::tests::closed_diagnostics_number_cannot_authorize_a_reused_file'
+            'platform::linux_managed::tests::descriptor_substitution_flags_binding_peer_and_consumption_fail_closed'
+            'platform::linux_managed::tests::expected_start_executable_namespace_uid_and_listener_are_exact'
+            'platform::linux_managed::tests::fresh_diagnostics_descriptor_has_the_required_native_shape'
+            'platform::linux_managed::tests::host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available'
+            'platform::linux_managed::tests::incomplete_managed_listener_snapshots_retry_selectively_within_the_bound'
+            'platform::linux_managed::tests::managed_connection_uses_the_supplied_diagnostics_session'
+            'platform::linux_managed::tests::managed_current_process_is_retained_and_reobserved'
+            'platform::linux_managed::tests::visible_holder_must_be_the_exact_expected_outer_pid'
+          )
+          mapfile -t observed_attestor_tests < <(
+            "$attestor_test" 'platform::linux_managed::tests::' --list --format terse |
+              sed -n 's/: test$//p' |
+              LC_ALL=C sort
+          )
+          test "${#observed_attestor_tests[@]}" -eq "${#expected_attestor_tests[@]}"
+          for index in "${!expected_attestor_tests[@]}"; do
+            test "${observed_attestor_tests[$index]}" = "${expected_attestor_tests[$index]}"
+          done
+          docker run --rm \
+            --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env REWRITE_ATTESTOR_REQUIRE_NATIVE=1 \
+            retonr-native-isolation \
+            "$attestor_test" 'platform::linux_managed::tests::' --test-threads=1
+
   coverage:
     name: coverage
     runs-on: ubuntu-latest
@@ -194,11 +297,94 @@ jobs:
         with:
           tool: cargo-llvm-cov@0.8.7
 
+      - name: Build the admitted native isolation test environment
+        if: steps.rust_workspace.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag retonr-native-isolation - <<'DOCKERFILE'
+          FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
+          RUN apt-get update \
+              && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends python3 \
+              && rm -rf /var/lib/apt/lists/*
+          DOCKERFILE
+
       - name: Enforce coverage floor
         if: steps.rust_workspace.outputs.exists == 'true'
-        run: >-
-          cargo llvm-cov --locked --workspace --all-features
-          --fail-under-lines 80
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo llvm-cov clean --workspace
+          eval "$(cargo llvm-cov show-env --export-prefix)"
+          test "${LLVM_PROFILE_FILE#/}" != "$LLVM_PROFILE_FILE"
+          mkdir -p "$(dirname "$LLVM_PROFILE_FILE")"
+          mapfile -t isolation_tests < <(
+            cargo test --locked -p rewrite-runtime-isolation \
+              --test linux_managed --no-run --message-format=json |
+              jq -r 'select(.reason == "compiler-artifact" and .target.name == "linux_managed" and .executable != null) | .executable'
+          )
+          test "${#isolation_tests[@]}" -eq 1
+          test -x "${isolation_tests[0]}"
+          mapfile -t attestor_tests < <(
+            cargo test --locked -p rewrite-runtime-attestor \
+              --lib --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "rewrite_runtime_attestor"
+                  and (.target.kind | index("lib"))
+                  and .profile.test
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#attestor_tests[@]}" -eq 1
+          test -x "${attestor_tests[0]}"
+          expected_attestor_tests=(
+            'platform::linux_managed::tests::closed_diagnostics_number_cannot_authorize_a_reused_file'
+            'platform::linux_managed::tests::descriptor_substitution_flags_binding_peer_and_consumption_fail_closed'
+            'platform::linux_managed::tests::expected_start_executable_namespace_uid_and_listener_are_exact'
+            'platform::linux_managed::tests::fresh_diagnostics_descriptor_has_the_required_native_shape'
+            'platform::linux_managed::tests::host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available'
+            'platform::linux_managed::tests::incomplete_managed_listener_snapshots_retry_selectively_within_the_bound'
+            'platform::linux_managed::tests::managed_connection_uses_the_supplied_diagnostics_session'
+            'platform::linux_managed::tests::managed_current_process_is_retained_and_reobserved'
+            'platform::linux_managed::tests::visible_holder_must_be_the_exact_expected_outer_pid'
+          )
+          mapfile -t observed_attestor_tests < <(
+            "${attestor_tests[0]}" 'platform::linux_managed::tests::' --list --format terse |
+              sed -n 's/: test$//p' |
+              LC_ALL=C sort
+          )
+          test "${#observed_attestor_tests[@]}" -eq "${#expected_attestor_tests[@]}"
+          for index in "${!expected_attestor_tests[@]}"; do
+            test "${observed_attestor_tests[$index]}" = "${expected_attestor_tests[$index]}"
+          done
+          cargo test --locked --workspace --all-targets --all-features
+          docker run --rm \
+            --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env CARGO_LLVM_COV=1 \
+            --env LLVM_PROFILE_FILE="$LLVM_PROFILE_FILE" \
+            --env REWRITE_ATTESTOR_REQUIRE_NATIVE=1 \
+            retonr-native-isolation \
+            "${attestor_tests[0]}" 'platform::linux_managed::tests::' --test-threads=1
+          docker run --rm --privileged \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            --network none \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env CARGO_LLVM_COV=1 \
+            --env LLVM_PROFILE_FILE="$LLVM_PROFILE_FILE" \
+            --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            retonr-native-isolation \
+            "${isolation_tests[0]}" --test-threads=1
+          cargo llvm-cov report --fail-under-lines 80
 
   fuzz-smoke:
     name: fuzz target smoke tests
@@ -301,6 +487,7 @@ jobs:
       - markdown
       - rust
       - ollama-loopback-only
+      - runtime-isolation-native
       - coverage
       - fuzz-smoke
       - supply-chain

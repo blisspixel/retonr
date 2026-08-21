@@ -1,4 +1,9 @@
-use std::{collections::BTreeSet, error::Error, fmt, net::SocketAddr};
+use std::{
+    collections::BTreeSet,
+    error::Error,
+    fmt,
+    net::{SocketAddr, TcpStream},
+};
 
 use rewrite_inference::{InferenceError, OperationContext};
 
@@ -17,9 +22,23 @@ use crate::{
 
 use self::transport::SingleConnectionTransport;
 
+mod receipt;
+mod session;
+#[cfg(test)]
+mod session_tests;
 #[cfg(test)]
 mod tests;
 mod transport;
+
+pub use receipt::{
+    OLLAMA_RESIDENT_COMPLETION_KEEP_ALIVE, OLLAMA_RESIDENT_COMPLETION_RUNTIME_VERSION,
+    OLLAMA_RESIDENT_COMPLETION_SOURCE_REVISION, OllamaResidentSessionExecutionReceipt,
+    OllamaSessionExecutionReceipt,
+};
+pub use session::{
+    OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES, OllamaObservedSessionError,
+    OllamaRetainedStreamSession, OllamaRetainedStreamSessionConfig,
+};
 
 const MAX_PREFLIGHT_SESSION_BODY_BYTES: usize = 256 * 1024 * 1024;
 
@@ -178,18 +197,64 @@ impl OllamaSingleConnectionPreflight {
     pub async fn preflight_with_observer<F, E>(
         &self,
         context: OperationContext<'_>,
-        mut observer: F,
+        observer: F,
     ) -> Result<OllamaPreflight, OllamaObservedPreflightError<E>>
     where
         F: FnMut(OllamaResponseObservation) -> Result<(), E>,
     {
-        let mut transport = SingleConnectionTransport::connect(
+        let transport = SingleConnectionTransport::connect(
             &self.endpoint,
             self.limits,
             self.session_body_bytes,
             context,
         )
         .await?;
+        self.run_with_transport(context, transport, observer).await
+    }
+
+    /// Runs the exact read-only sequence on a caller-supplied connected TCP stream.
+    ///
+    /// The stream is consumed, must already be connected from loopback to the exact
+    /// configured endpoint, and is the only transport available to the operation.
+    /// No connector or reconnect path is constructed. This permits a managed
+    /// isolation layer to create the connection inside a retained network namespace.
+    /// Observation semantics are identical to [`Self::preflight_with_observer`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OllamaObservedPreflightError::Preflight`] when the supplied stream
+    /// is not the exact loopback connection, cannot enter asynchronous mode, fails
+    /// the HTTP handshake, or any preflight invariant fails. Returns
+    /// [`OllamaObservedPreflightError::Observation`] when the callback fails.
+    pub async fn preflight_on_connected_stream_with_observer<F, E>(
+        &self,
+        context: OperationContext<'_>,
+        stream: TcpStream,
+        observer: F,
+    ) -> Result<OllamaPreflight, OllamaObservedPreflightError<E>>
+    where
+        F: FnMut(OllamaResponseObservation) -> Result<(), E>,
+    {
+        let transport = SingleConnectionTransport::from_connected_stream(
+            &self.endpoint,
+            self.limits,
+            self.session_body_bytes,
+            context,
+            stream,
+        )
+        .await?;
+        self.run_with_transport(context, transport, observer).await
+    }
+
+    async fn run_with_transport<F, E>(
+        &self,
+        context: OperationContext<'_>,
+        mut transport: SingleConnectionTransport,
+        mut observer: F,
+    ) -> Result<OllamaPreflight, OllamaObservedPreflightError<E>>
+    where
+        F: FnMut(OllamaResponseObservation) -> Result<(), E>,
+    {
         let addresses = transport.addresses();
         observer(OllamaResponseObservation {
             phase: OllamaResponseObservationPhase::BeforeResponses,

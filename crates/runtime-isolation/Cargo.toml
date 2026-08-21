@@ -1,0 +1,27 @@
+[package]
+name = "rewrite-runtime-isolation"
+description = "Fail-closed managed runtime network isolation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+rewrite-types = { path = "../types", version = "0.1.0" }
+sha2.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+close_fds.workspace = true
+libc.workspace = true
+rustix = { workspace = true, features = ["event", "fs", "net", "process", "thread"] }
+seccompiler.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "rewrite-runtime-isolation-helper"
+path = "src/bin/helper.rs"

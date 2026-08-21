@@ -14,7 +14,7 @@ pub(super) struct QualificationDependencies {
     pub(super) package: EffectivePackageEvidence,
 }
 
-pub(super) fn load_artifact_set(
+pub(in crate::store) fn load_artifact_set(
     connection: &Connection,
     key: &str,
 ) -> StoreResult<Option<ArtifactSetManifest>> {

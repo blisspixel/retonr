@@ -120,16 +120,55 @@ text. Completed comparison evidence can be joined onto an informational
 engine shadow gate. That evidence has no acceptance authority and is not
 semantic proof.
 
+The model layer also has strict runtime-package, model-package, package-source,
+transformation, and native-load evidence contracts. SQLite schema 6 persists those
+immutable records without backfilling or granting authority to older state. A
+separate offline application service can reconstruct the supported Ollama
+manifest-v2 and GGUF-v3 shape into one canonical six-member model package, publish
+it through the existing exact set import, and read back the semantic package
+manifest. Imported package evidence remains inert: it does not qualify, activate,
+lease, load, or execute the model, and it is not exposed as a snapshot CLI command.
+Runtime-package and model-package leases independently revalidate exact managed
+bytes. The runtime lease retains executable-code file objects for handle-based
+launch and Linux native-load observation.
+
+A separate development-only binding can join that inert model import to one exact
+verified idle Ollama v0.32.15 inventory entry and model-details observation. It checks
+the production backend identity `ollama_native`, reviewed source revision
+`b7871fc0d1d82fe109536efa3e0e8e411c766c75`, version-scoped manifest-size rule,
+and exact manifest, GGUF, license, format, and unique template relationships. This is
+static import-to-inventory evidence only. The binding must consume the opaque,
+nonserializable, single-use receipt issued by the exact preflight runner for its plan
+and report; a caller-constructed report alone is insufficient. Its report keeps model
+loaded, model used, application handler, effective identity, and qualification false,
+and it has no CLI surface.
+
 Artifact inventory crosses the application boundary through persistence-neutral
 installation keys. SQLite records and storage-layout fields are not part of the CLI
 contract.
 
-The evaluation tool also validates five synthetic editorial-quality groups with named
-findings and clean controls, including a balanced 24-case current-slop group, a
-40-case structural, rhetorical, and evidential group, a 16-case assistant-impression
-group, and a 20-case later-residue group. A writing-sample library adds licensed
+The evaluation tool runs 49 deterministic fidelity and structure cases with exact
+status, reason, and output expectations, category pass counts, and transformation
+coverage. It also validates 120 synthetic editorial-quality cases across five groups
+with named findings and clean controls: a 20-case core editorial-quality group, a
+balanced 24-case current-slop group, a 40-case structural, rhetorical, and evidential
+group, a 16-case assistant-impression group, and a 20-case later-residue group. A
+writing-sample library adds licensed
 pre-2018 human excerpts and synthetic model-style impressions. Those impressions are
-editorial fixtures, not vendor identifications. A versioned local Ollama preflight
+editorial fixtures, not vendor identifications. A versioned hybrid scorecard now
+executes two exact deterministic suites, binds their complete plan and fixed gate
+policy, and normalizes blinded, order-swapped, caller-declared structured
+observations into redacted triage results. A provider-neutral judge-output contract
+now admits one bounded choice, sorted rubric clauses, and validated cited byte spans.
+A separate typed local-judge executor runs deterministic gates first, then both
+blinded presentation orders over one already-preflighted retained Ollama stream. It
+returns the same caller-declared, triage-only scorecard plus a deliberately
+nonserializable receipt that binds the exact retained preflight, request and response
+digests, and response ordinals. The receipt does not prove managed isolation,
+application-handler execution, model load or use, candidate generation, effective
+runtime identity, semantic correctness, or qualification. Deterministic gates and
+human adjudication retain release authority. None of these judge libraries has a CLI
+execution surface. A versioned local Ollama preflight
 can observe or verify bounded runtime, inventory, model-description, and residency
 evidence without generation. A separate attached preflight brackets that observation
 with point-in-time native listener-owner, process-incarnation, and executable evidence
@@ -141,7 +180,72 @@ platform observer to attribute the exact reverse established connection to the
 retained process evidence. The base, attached, and bound reports remain unqualified.
 The attached report remains explicitly response-unbound. The bound report states
 that neither exclusive socket ownership nor application-handler execution is proven.
-No editorial-lint rule has product authority yet.
+Linux attached listener and connection row selection use bounded
+`NETLINK_SOCK_DIAG` with exact tuple, UID, inode, interface, and retained socket
+cookie checks; visible same-UID descriptor ownership is still subject to host
+visibility policy. Each Linux holder scan starts from a retained `/proc` directory,
+anchors a numeric process with a pidfd before opening its directory, reads the
+effective UID from an exactly shaped row in each strictly bounded `status` record, and inspects descriptor
+links relative to that process directory. A second anchored status read must confirm
+the same effective UID after descriptor inspection. Once a pidfd exists, a missing process
+record is treated as exit only when the pidfd confirms exit. Access denial, resource
+exhaustion, malformed state, and incomplete visibility fail closed rather than
+weakening the evidence. A separate Linux managed-isolation library can launch an exact
+retained executable inside user, network, and PID namespaces, bring up loopback as
+the only interface, reduce privileges, retain the process tree, capture bounded
+startup output, and return one namespace-local loopback stream plus socket-diagnostics
+capability. Before target launch, the namespace init installs a target-inherited
+seccomp socket allowlist: `socket()` permits only `AF_INET` and `AF_INET6`, every
+other socket family is denied, and `io_uring_setup` is denied. Target reobservation
+also requires seccomp mode 2. The managed Linux attestor consumes the namespace-local
+capability and exact launch facts. A development-only `rewrite-eval` library API now
+joins the retained runtime package, managed launch and isolation, process and
+connection evidence, exact cloud-disable declaration and startup marker, read-only
+Ollama observation, and native-load evidence in one Linux-only managed preflight. It
+reobserves the retained boundaries and closes the managed process tree on every
+outcome. The report is inert and unqualified, is not exposed as a CLI command, and
+explicitly does not prove the application handler, exclusive socket ownership, model
+load or use, or effective runtime identity. These Linux boundaries are supported when
+host namespace and process-visibility policy permit them. Windows managed isolation
+and exact native-load binding are unsupported. macOS managed isolation, attached
+attribution, and native-load binding are unsupported.
+
+Linux CI keeps host compatibility separate from proof. Ordinary tests may accept only
+the exact typed access-denied outcome when an uncontrolled worker blocks required proc
+visibility. A mandatory networkless controlled gate requires the native managed
+attestor path to succeed under a dropped-capability, no-new-privileges process, and
+that same gate contributes its profile data to the workspace 80 percent line-coverage
+check.
+
+An opt-in managed-preflight API now returns that unchanged version 1 report with a
+separate redacted, inert build binding. It constructs a typed `RuntimeBuildIdentity`
+from package declarations after the managed package, process, and native-load join.
+Only the exact package entrypoint is joined to the managed process and native-load
+evidence. Runtime target, revision, and other package semantics are not independently
+observed from the live process. The process tree is already closed when the outcome
+returns. The binding does not construct `EffectiveRuntimeState`; it records missing
+generation-bound provider, effective output configuration, platform and driver,
+compute placement, effective context, and retained-live-runtime evidence. Model load
+or use, application handler, effective state, and qualification remain false.
+
+The retained Ollama session also has a separate opt-in v0.32.15 residency profile at
+that exact source revision. After an idle preflight it sends the exact `version`,
+`tags`, `show`, `generate`,
+`ps`, `version`, `tags`, `show`, `ps` sequence with explicit `keep_alive: 5m` and
+requires two equal singleton runtime memory reports for the exact reference, manifest
+digest, and requested context. Its nonserializable receipt proves only stable
+runtime-reported post-generation residency on that retained transport. Runtime memory
+size is not package inventory size. Application handler, model use, resident-page
+identity, effective identity, and qualification remain false. The legacy
+seven-response completion path is unchanged. Both retained-session completion paths
+enforce an absolute 4 MiB UTF-8 input ceiling before wire serialization or any
+completion request traffic.
+
+The Ollama adapter has strict, version-gated provider cloud-disable evidence that
+joins an exact runtime-package identity, managed `OLLAMA_NO_CLOUD=1` declaration,
+and one bounded startup marker. Its production reviewed-runtime allowlist is empty,
+and provider evidence explicitly reports that network isolation is not enforced and
+the runtime is not qualified. No editorial-lint rule has product authority yet.
 
 [![Retonr CLI help and a successful candidate check on Linux](docs/screenshots/cli-check-linux.png)](docs/screenshots/cli-check-linux.md)
 
@@ -170,6 +274,7 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo run --locked -p rewrite-eval -- --writing-samples crates/eval/fixtures/writing_samples/licensed_pre_ai_human_v1.json
 cargo run --locked -p rewrite-eval -- --watermark-research crates/eval/fixtures/watermark_research/style_is_not_a_watermark_v1.json
 cargo run --locked -p rewrite-eval -- --claim-shadow-calibration crates/eval/fixtures/claim_shadow_calibration_v1.json
+cargo run --locked -p rewrite-eval -- --hybrid-scorecard <PLAN_JSON_FILE> --candidate-a-suite <SUITE_JSON_FILE> --candidate-b-suite <SUITE_JSON_FILE> --judge-observations <BATCH_JSON_FILE>
 cargo run --locked -p rewrite-eval -- --ollama-preflight <PLAN_JSON_FILE>
 cargo run --locked -p rewrite-eval -- --ollama-attested-preflight <PLAN_JSON_FILE>
 cargo run --locked -p rewrite-eval -- --ollama-bound-preflight <PLAN_JSON_FILE>
@@ -203,7 +308,10 @@ wraps them. `model --help`
 lists the implemented offline artifact commands. The remaining commands run the
 checked-in fidelity and synthetic editorial-quality suites, including an
 offline no-rewrite baseline and an independent claim-shadow calibration that
-cannot change hard-gate acceptance. The Ollama preflight accepts only an explicit
+cannot change hard-gate acceptance. The hybrid scorecard command executes both
+exact deterministic suites itself, rejects corpus, policy, plan, candidate, or
+observation drift, and emits a content-free report. Successful output still requires
+human adjudication and is not release qualification. The Ollama preflight accepts only an explicit
 IP-literal loopback endpoint and frozen model inventory digests. It reads runtime
 state without generation, acquisition, activation, or qualification. The attached
 preflight adds an exact expected executable digest in verify mode, but does not bind
@@ -230,20 +338,26 @@ Profile, runtime management, agent, and desktop workflows are not yet implemente
 
 The next trust-boundary sequence is dependency ordered:
 
-1. Replace Linux proc TCP row selection with bounded `NETLINK_SOCK_DIAG`. The proc
-   TCP table is deprecated, and every stronger Linux runtime claim depends on stable
-   exact-row evidence.
-2. Reconstruct one selected Ollama runtime and model as complete canonical runtime
-   and artifact-set manifests, including native dependencies, upstream source,
-   transformations, tokenizer, template, and license disposition. Connection
-   attribution does not identify the code or model package.
-3. Add version-gated provider cloud-disable evidence and OS-enforced non-loopback
-   outbound denial for every participating process. Configuration alone is not proof
-   of local-only execution.
-4. Join transport, package, configuration, and isolation evidence into effective
-   runtime identity, then run smoke evaluation, locked evaluation, repeatability,
-   and cross-platform qualification. Generation stays ineligible until the preceding
-   trust boundaries pass without drift.
+1. Freeze and review one complete Ollama runtime package, including its helpers,
+   native dependencies, source, transformations, and license disposition. The model
+   reconstruction path exists, but imported model evidence remains inert and no
+   exact runtime package is admitted by the cloud-disable policy.
+2. Extend the managed operation so its process remains retained through execution and
+   effective-state observation. Join the proven runtime build, v0.32.15 static model
+   binding, exact model-package lease, residency receipt, and local-judge receipt while
+   directly observing the six effective-state relationships listed above. This is the
+   next priority because the current managed outcome completes cleanup before return,
+   and neither static inventory nor runtime-reported residency proves model use.
+3. Add a separate candidate-generation receipt over that same retained runtime and
+   model boundary. Keep the serializable scorecard caller-declared and triage-only;
+   all separate receipts establish bounded equality relationships, not semantic
+   correctness or qualification.
+4. Run the 169-case development foundation, then freeze and run smoke, the locked
+   hybrid scorecard, repeatability, and supported-platform
+   qualification in that order. Deterministic fidelity and structure gates run
+   first, and human adjudication retains release authority. Windows and macOS require
+   separate admitted isolation and native-load designs before the Linux managed claim
+   can be broadened.
 
 The implemented model commands are intentionally narrow:
 
@@ -319,11 +433,14 @@ upstream model request. Completed-unit event streams graduate separately after t
 framing, ordering, cancellation, and atomic-output contracts pass.
 
 Windows, macOS, and Linux are first-class release targets. The first qualification
-targets are a user-managed Ollama service and a pinned llama.cpp sidecar. LM Studio,
-vLLM, MLX LM, and compatible local endpoints remain named candidates until their
-runtime-specific identity and policy evidence passes. Models are recommended and
-qualified by exact artifact set, runtime, language, mode, format, output policy, and
-measured hardware class rather than by a mutable model name or API shape.
+experiment is one Retonr-managed exact Ollama package on Linux hosts that admit the
+required namespace boundary. A user-managed Ollama service remains attached
+observation-only. A pinned llama.cpp sidecar and every Windows or macOS managed path
+remain future qualification work. LM Studio, vLLM, MLX LM, and compatible local
+endpoints remain named candidates until their runtime-specific identity and policy
+evidence passes. Models are recommended and qualified by exact artifact set, runtime,
+language, mode, format, output policy, and measured hardware class rather than by a
+mutable model name or API shape.
 
 The August 13 cross-tier development plan targeted Ministral 3 8B, Gemma 4 26B,
 and Qwen3.6 27B. That local inventory has expired: an August 20 read-only inspection
@@ -333,6 +450,7 @@ No current tag is a support claim or generation-eligible package. Small and medi
 first-party GGUF cohorts follow only after explicit acquisition approval. See the
 [main readiness and next-slice review](docs/research/2026-08-20-main-readiness-and-next-slice.md),
 [attached-process witness review](docs/research/2026-08-20-attached-process-witness.md),
+[effective runtime trust-chain review](docs/research/2026-08-21-effective-runtime-trust-chain/context.md),
 [local model tiers](docs/research/2026-08-13-local-model-tiers.md),
 [evaluation protocol](docs/research/2026-08-13-local-model-evaluation.md), and
 [runtime matrix](docs/research/2026-08-13-local-runtime-matrix.md).
@@ -399,7 +517,7 @@ conversion.
 | Installers, signatures, updates, and targets | [Installation and distribution](docs/distribution.md) |
 | Testing a development snapshot build | [Snapshot testing guide](docs/testing-snapshot.md) |
 | Stack decisions | [Technology](docs/technology.md) |
-| Evaluation and qualification | [Evaluation](docs/evaluation.md) |
+| Evaluation and qualification | [Evaluation](docs/evaluation.md) and [hybrid scorecard plan](docs/research/2026-08-21-hybrid-rewrite-evaluation.md) |
 | Security and privacy | [Security](docs/security.md) |
 | Testing and quality gates | [Engineering quality](docs/quality.md) |
 | Version order through 1.0 | [Roadmap](docs/roadmap.md) |

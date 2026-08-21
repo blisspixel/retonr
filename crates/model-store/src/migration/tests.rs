@@ -16,13 +16,15 @@ use tempfile::tempdir;
 use super::{StoreMigrationDisposition, StoreSchemaStatus};
 use crate::{ArtifactStateStore, StoreError};
 
+#[path = "tests/schema_five_packages.rs"]
+mod schema_five_packages;
 #[path = "tests/schema_three_evidence.rs"]
 mod schema_three_evidence;
 
 #[test]
 fn inspection_accepts_each_supported_schema_without_mutation() {
     let directory = tempdir().expect("temporary directory");
-    for version in 1..=5 {
+    for version in 1..=6 {
         let path = directory.path().join(format!("schema-{version}.db"));
         create_schema(&path, version);
         let before = fs::read(&path).expect("read before inspection");
@@ -30,7 +32,7 @@ fn inspection_accepts_each_supported_schema_without_mutation() {
             ArtifactStateStore::inspect_existing_schema(&path).expect("inspect supported schema"),
             StoreSchemaStatus {
                 found: version,
-                current: 5,
+                current: 6,
             }
         );
         assert_eq!(fs::read(&path).expect("read after inspection"), before);
@@ -38,9 +40,36 @@ fn inspection_accepts_each_supported_schema_without_mutation() {
 }
 
 #[test]
-fn session_migrates_v1_through_current_v5_after_verified_backup() {
+fn compatibility_opens_require_the_explicit_session_for_every_older_schema() {
     let directory = tempdir().expect("temporary directory");
-    for version in 1..=5 {
+    for version in 1..6 {
+        let path = directory
+            .path()
+            .join(format!("compatibility-schema-{version}.db"));
+        create_schema(&path, version);
+        let before = fs::read(&path).expect("read older schema before compatibility opens");
+        for result in [
+            ArtifactStateStore::open(&path),
+            ArtifactStateStore::open_or_create_and_migrate(&path),
+            ArtifactStateStore::open_existing_and_migrate(&path),
+        ] {
+            assert!(matches!(
+                result,
+                Err(StoreError::MigrationRequired { found, current: 6 }) if found == i64::from(version)
+            ));
+            assert_eq!(
+                fs::read(&path).expect("reread rejected older schema"),
+                before
+            );
+            assert_eq!(schema_version(&path), i64::from(version));
+        }
+    }
+}
+
+#[test]
+fn session_migrates_v1_through_current_v6_after_verified_backup() {
+    let directory = tempdir().expect("temporary directory");
+    for version in 1..=6 {
         let source = directory.path().join(format!("source-{version}.db"));
         let backup = directory.path().join(format!("backup-{version}.db"));
         create_schema(&source, version);
@@ -52,16 +81,16 @@ fn session_migrates_v1_through_current_v5_after_verified_backup() {
             .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
             .expect("write verified backup");
         let result = session.migrate().expect("migrate supported schema");
-        assert_eq!((result.from_schema, result.to_schema), (version, 5));
+        assert_eq!((result.from_schema, result.to_schema), (version, 6));
         assert_eq!(
             result.disposition,
-            if version == 5 {
+            if version == 6 {
                 StoreMigrationDisposition::AlreadyCurrent
             } else {
                 StoreMigrationDisposition::Migrated
             }
         );
-        assert_eq!(schema_version(&source), 5);
+        assert_eq!(schema_version(&source), 6);
         assert_eq!(schema_version(&backup), i64::from(version));
     }
 }
@@ -307,18 +336,18 @@ fn corrupt_zero_future_and_missing_state_never_start_a_session() {
         ArtifactStateStore::begin_existing_migration(&zero),
         Err(StoreError::MigrationRequired {
             found: 0,
-            current: 5
+            current: 6
         })
     ));
 
     let future = directory.path().join("future.db");
     Connection::open(&future)
         .expect("create future fixture")
-        .pragma_update(None, "user_version", 6)
+        .pragma_update(None, "user_version", 7)
         .expect("set future version");
     assert!(matches!(
         ArtifactStateStore::begin_existing_migration(&future),
-        Err(StoreError::UnsupportedSchema(6))
+        Err(StoreError::UnsupportedSchema(7))
     ));
 
     let missing = directory.path().join("missing.db");
@@ -376,6 +405,9 @@ fn create_schema(path: &Path, version: u32) {
             crate::schema::create_schema_four_fixture(&connection).expect("create schema four");
         }
         5 => {
+            crate::schema::create_schema_five_fixture(&connection).expect("create schema five");
+        }
+        6 => {
             drop(connection);
             drop(
                 ArtifactStateStore::open_existing_or_initialize_empty(path)

@@ -155,6 +155,18 @@ impl Lease {
             },
         )
     }
+
+    pub(crate) fn observe_native_load(
+        &mut self,
+        _request: &crate::NativeLoadObservationRequest<'_>,
+        _limits: crate::NativeLoadObservationLimits,
+        _cancellation: &CancellationToken,
+        _started: Instant,
+        _process_evidence_digest: &Digest,
+    ) -> Result<rewrite_model::NativeLoadObservation, crate::NativeLoadObserverError> {
+        ensure_process_alive(&self.process).map_err(crate::map_native_process_error)?;
+        Err(crate::NativeLoadObserverError::Unsupported)
+    }
 }
 
 fn listener_owner(

@@ -44,6 +44,8 @@ impl ProductIdentity {
 
 #[cfg(test)]
 mod tests {
+    use rewrite_app::ArtifactRepository;
+
     use super::ProductIdentity;
 
     #[test]
@@ -53,7 +55,10 @@ mod tests {
         assert_eq!(identity.product_version, "0.1.0");
         assert_eq!(identity.rust_version, "1.97.1");
         assert_eq!(identity.cli_schema_version, 1);
-        assert!(identity.store_schema_version >= 5);
+        assert_eq!(
+            identity.store_schema_version,
+            ArtifactRepository::required_schema_version()
+        );
         assert!(identity.local_only);
         assert!(identity.text().contains("local_only: true"));
     }

@@ -15,15 +15,17 @@ protocol, or stored-data contracts.
 | `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, content-redacted typed claim-evidence contracts, and an inert extractor manifest |
 | `rewrite-text-adapter` | Bounded UTF-8 parsing, optional BOM retention, newline fingerprints, exact no-edit output, apply, reparse, verification, and a content-redacted pre-model inventory of encoding, controls, and possible unstructured-text Content Credential wrappers |
 | `rewrite-engine` | Cancellation, typed value protection, sentinel integrity, hard gates, closed structure and semantic evidence boundaries, deterministic claim comparison, an informational shadow claim-comparison gate with no eligibility authority, reason priority, lexicographic selection, and document-atomic abstention |
-| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities; a structurally validated inert installed-set record; content-addressed runtime-build, effective-state, and effective-package evidence; frozen qualification v1 authority; and a distinct inert claim-extraction qualification v2 record and ID that cannot enter v1 activation |
-| `rewrite-model-store` | Durable SQLite schema v5 for legacy artifact authority, inert artifact-set installation generations, crash-recoverable artifact-set removal journals, and artifact-set, runtime-build, effective-state, effective-package, and qualification-v2 evidence; exact supported-schema inspection; single-epoch exact-handle backup and atomic v1/v2/v3/v4 migration; transactional relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
-| `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, a distinct claim-output contract, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
+| `rewrite-model` | Separate immutable single-file and canonical artifact-set identities; strict package-source and transformation evidence; complete runtime-package and model-package manifests; inert native-load observations; typed runtime-build and effective-state derivation from package and load evidence; frozen qualification v1 authority; and a distinct inert claim-extraction qualification v2 record and ID that cannot enter v1 activation |
+| `rewrite-model-store` | Durable SQLite schema 6 for legacy artifact authority, inert artifact-set installation generations, crash-recoverable artifact-set removal journals, runtime-build, effective-state, effective-package, qualification-v2, runtime-package, model-package, and native-load evidence; exact supported-schema inspection; single-epoch exact-handle backup and atomic migration from schemas 1 through 5; recursive relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
+| `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, a distinct claim-output contract, structured completion, and a provider-neutral local-judge attempt contract with exact choices, sorted rubric clauses, and bounded cited byte spans; content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
-| `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, pre-call and post-call identity checks, coherent read-only runtime, inventory, model-description, and residency preflight, plus a separate directly connected retained HTTP/1 preflight with one handshake and no pool, retry, or reconnect path |
-| `rewrite-runtime-attestor` | Safe bounded facade over native attached-listener and exact established-connection evidence: Windows owner-PID tables plus retained process and executable handles; Linux proc socket inode plus exactly one visible same-user descriptor holder, pidfd, namespace, and retained executable object; deterministic unsupported result on macOS; redacted inert witnesses only |
-| `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, read-only artifact-set inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, selected set-root reconciliation, crash-recoverable inactive single-file and artifact-set removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, a repository-owned whole-tree artifact-set lease, an inert managed-process runtime attestor with caller-supplied loaded-component evidence, a cancellable pair-extraction service, and an informational shadow join of independently produced claim comparison with no eligibility authority |
+| `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, pre-call and post-call identity checks, coherent read-only runtime, inventory, model-description, and residency preflight; a caller-supplied retained HTTP/1 session with one preflight, an absolute 4 MiB UTF-8 completion-input ceiling enforced before wire serialization or completion traffic, structured completions, connection callbacks, monotonically ordered response checkpoints, nonserializable content-free request and response receipts, and an opt-in v0.32.15 nine-response completion profile that binds two equal post-generation runtime-reported residency observations while proving neither handler, model use, resident-page identity, effective identity, nor qualification; no connector, pool, retry, reconnect, or fallback path; and inert exact-version cloud-disable declaration and startup-marker evidence whose production reviewed-runtime allowlist is empty |
+| `rewrite-ollama-package` | Strict bounded parsing of the admitted Ollama manifest-v2 layer shape and GGUF v3 metadata and tensor table, followed by deterministic reconstruction of one canonical six-member model artifact set and semantic model-package manifest; no network, mutable tag authority, qualification, activation, load, or execution |
+| `rewrite-runtime-isolation` | Linux managed prelaunch isolation with retained-helper validation, user, network, and PID namespaces, loopback-only networking, ambient descriptor close-on-exec sealing with verified stage-two closure before target launch, no-new-privileges and capability reduction, a target-inherited seccomp allowlist that permits only `AF_INET` and `AF_INET6` through `socket()`, denies every other socket family and `io_uring_setup`, and requires seccomp mode 2 during target reobservation, retained-handle target launch, bounded startup streams, one namespace-local loopback and socket-diagnostics capability, reobservation, and process-tree teardown; deterministic unsupported results on Windows and macOS |
+| `rewrite-runtime-attestor` | Safe bounded facade over native attached-listener and exact established-connection evidence: Windows owner-PID tables plus retained process and executable handles; Linux bounded `NETLINK_SOCK_DIAG` dump and exact retained-cookie queries plus a proc-root-relative holder scan anchored by pidfds, strict bounded effective-UID status parsing, relative descriptor inspection, namespace evidence, and a retained executable object; a Linux managed observer that consumes exact launch facts and a namespace-local diagnostics capability; Linux object-bound native-load observation; deterministic unsupported results for exact native-load binding on Windows and for attached, managed, and native-load observation on macOS; redacted inert evidence only |
+| `rewrite-app` | Model-free candidate check; provisional grounded path; exact offline single-file and artifact-set lifecycle; schema-6 migration; whole-tree runtime and model package leases; retained runtime code-member handles; static package attestation; inert installed-Ollama model reconstruction, managed import, package persistence, and readback; an older inert managed-process attestor with caller-supplied loaded-component evidence; a cancellable pair-extraction service; and an informational shadow join with no eligibility authority. It does not compose the managed Linux trust chain into generation |
 | `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, opt-in `--in-place` (`-i`) with an implied sibling backup for a regular file, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a pre-model `inspect` command that inventories one file or directory: encoding, BOM, newline kind, control-class counts, sibling sidecar presence, and skipped child reasons, without stripping bytes, following links, or validating a Content Credential; `--recursive` is a bounded walk that skips hidden names, `target`, and `node_modules`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then attaches in-process fake-backend conformance when that recovered qualification names the retained fake backend, or fails closed otherwise; dedicated `version` and read-only `doctor` recovery commands that name migrate or removal-recovery follow-up without mutation; generated `completions` scripts and a section-1 `man` page from the live CLI definition; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, read-only `list` of registered single-file installations, read-only `inspect` of one registered artifact's declared facts, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, exact set-removal recovery, and optional read-only `device-evidence` (`fitr`) of `fitr.retonr.evidence.v1` without qualification or a repository |
-| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, a versioned non-generative Ollama observe or verify preflight, a separate native attached-process preflight that remains response-unbound, and a retained-connection preflight with repeated native attribution; every preflight remains unqualified |
+| `rewrite-eval` | A 49-case versioned positive and hard-negative suite with exact expectation results and transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, 120 cases across five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, a versioned hybrid scorecard library and CLI that bind and execute exact deterministic suite pairs before normalizing blinded order-swapped triage observations, a typed retained-session local-judge executor that runs both orders after hard gates and returns a separate limited transport receipt, a version-gated v0.32.15 static installed-package-to-inventory binding that consumes an opaque nonserializable exact-runner receipt, a versioned non-generative Ollama observe or verify preflight, a separate native attached-process preflight that remains response-unbound, a retained-connection preflight with repeated native attribution, and a Linux-only managed preflight library that binds retained runtime-package, isolation, process, connection, provider-declaration, read-only API, and native-load evidence and can additionally return an inert package-declared typed `RuntimeBuildIdentity`; the scorecard remains caller-declared and triage-only, runtime target and revision semantics in that build identity are not independently live-observed, the managed process is closed before the build binding returns, no effective state is constructed, the new execution and binding surfaces have no CLI, and every preflight remains unqualified |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
@@ -69,6 +71,17 @@ comparisons portable across Windows, macOS, and Linux. These records are inert
 evidence vocabulary. They do not attest a live process, prove that supplied evidence
 is true or complete, authorize a role, or upgrade a v1 qualification.
 
+Additive semantic package contracts now distinguish an exact runtime package from
+an exact model package. Runtime members have complete static roles and load policy;
+model members bind weights, tokenizer, prompt templates, parameters, license, source,
+and transformation evidence without pretending that evidence-only files affect
+output. A native-load observation separately binds one retained process witness to
+the exact reviewed runtime package and observed executable mappings. Linux can build
+that observation from retained package-member file objects and `/proc/PID/map_files`
+under strict limits. Windows returns unsupported because its admitted public mapping
+APIs do not bind a mapped section to an exact retained file object. macOS returns
+unsupported. These records remain evidence, not activation or qualification.
+
 Qualification v2 is a separate, inert, content-addressed record for exactly the
 claim-extraction role. It binds the artifact set, effective-package evidence, runtime
 build, effective state, source and context ceilings, prompt, claim-output and
@@ -76,11 +89,13 @@ claim-operation contracts, request and threshold policies, language policy, hard
 envelope, qualification suite, retained result evidence, license decision, and
 qualification outcome. Its bounded decoder reloads and rechecks all four subject
 records. It has no `authorizes` method and cannot enter existing v1 activation or
-recovery. SQLite schema v4 persists the five immutable evidence records
+recovery. SQLite schema 4 persists the five immutable evidence records
 in separate tables and adds a bounded installed-set table with a unique portable
-set-root key and distinct positive generation. Schema v5 adds a separate
-artifact-set removal journal. Migration creates those tables empty and
-never infers installation from evidence or legacy single-file state. Every dependent
+set-root key and distinct positive generation. Schema 5 adds a separate
+artifact-set removal journal. Schema 6 adds immutable runtime-package,
+model-package, and native-load tables with relationship foreign keys. Migration
+creates all additive tables empty and never infers package, load, installation, or
+authority evidence from legacy state. Every dependent
 write and read reloads canonical record bytes,
 recomputes indexed identities, and recursively cross-checks the complete subject. The
 v1 tables and serialized records remain unchanged, and migration grants no authority.
@@ -89,8 +104,9 @@ root or member bytes exist, grant a lease, attest a runtime, qualify a package, 
 authorize claim extraction. A lease is a separate verified operation that reads that
 record and independently reverifies the managed bytes. The application now writes it only after an exact local
 folder import verifies and publishes every manifest member under the content-derived
-managed root. That observation does not turn the durable record into authority, and
-no runtime consumer uses it yet.
+managed root. That observation does not turn the durable record into authority.
+Package leases and the inert installed-Ollama import consume managed-set state, but
+no user-facing generation path consumes it yet.
 The application and CLI now expose migration only as an explicit confirmed operation
 against an initialized repository. A current schema is an exact no-op. A supported
 older schema is inspected under both exclusive lifecycle locks and one retained
@@ -104,8 +120,7 @@ migrate implicitly.
 
 ## Verification
 
-The August 20, 2026 Windows development checkpoint for the retained-connection
-witness passes:
+The complete current trust-chain slice is held to these repository gates:
 
 ```console
 cargo fmt --all -- --check
@@ -124,40 +139,45 @@ cargo +nightly check --locked --manifest-path fuzz/Cargo.toml --bins
 cargo build --locked --workspace --release
 ```
 
-The workspace exposes 771 Rust unit, integration, and process tests on Windows. The
-ordinary Cargo run passes 769 and retains two process helpers as intentional ignores
-exercised by isolated parent tests. Linux-native connection fixtures and macOS
-attached and bound command refusals are target-specific and run in continuous
-integration. Documentation tests also pass. Measured Rust line coverage is 90.53
-percent overall. The bound-preflight orchestration is 95.12 percent covered, the
-retained HTTP session is 87.34 percent, its transport is 90.18 percent, the portable
-connection-evidence contract is 93.66 percent, and the Windows established-row
-observer is 96.85 percent. The repository's 80 percent line coverage floor passes
-with margin.
+Exact test and coverage totals are intentionally not copied from the previous
+schema-5 checkpoint because the trust-chain slice adds target-specific crates and
+fixtures. The release evidence is the passing workflow for the merged revision, not
+a count embedded before that workflow finishes. Linux-native CI exercises SOCK_DIAG,
+managed namespaces, retained launch, namespace-local attestation, and native-load
+fixtures. An uncontrolled hosted test may accept only the exact typed access-denied
+result when proc policy blocks the required observation. A separate mandatory
+networkless container gate drops all capabilities, sets no-new-privileges, runs as the
+caller UID, and requires the managed attestor tests to exercise their native success
+path. The coverage job runs that controlled attestor gate with the same LLVM profile
+as the workspace suite before enforcing the 80 percent line floor. Windows and macOS
+exercise their exact supported and unsupported contracts. Warnings are treated as
+errors. The local nightly check only type-checks fuzz targets on Windows; Linux CI
+runs the bounded sanitizer-backed fuzz smoke.
 
-The local nightly toolchain type-checks both fuzz targets. The cargo-fuzz project
-supports its libFuzzer execution path on Unix-like targets, so Windows is not
-reported as a local fuzz-execution result. Continuous integration runs both bounded
-targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
-installed on this development host; the exact public-main workflow remains the
-nextest authority.
+The last completed public-main baseline before this slice is
+`c3657edd126f164facc311719b831d6926e7c06d`. Its passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32440174921)
+is historical baseline evidence only. The new trust-chain implementation must not be
+described as public-main verified until its own merged `required` workflow passes.
 
-The published retained-connection checkpoint is
-`1ec96d1a1cbc1d8d77b736f0b28a2c53564cf8fc`. Its passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32439664137)
-completed all 12 Windows, macOS, Linux, repository-policy, Markdown, coverage,
-dependency and supply-chain, fuzz-smoke, loopback-only Ollama, and stable aggregate
-`required` jobs. That checkpoint includes the one-retained-connection milestone
-described in this document while keeping every resulting report inert and
-unqualified.
+## Runtime trust support matrix
 
-The custom audit database path bypasses a corrupt user-level RustSec cache containing
-a duplicate advisory ID. The clean database loaded 1,225 advisories and the current
-247-dependency graph passed. Dependency sources and licenses pass policy. Reviewed
-duplicate-version warnings include the target-only capability filesystem tree,
-`ctrlc` and filesystem `nix` versions, Windows support versions, and the two
-transitive `syn` major versions. Continuous integration uses its own clean runner
-database.
+| Capability | Linux | Windows | macOS |
+| --- | --- | --- | --- |
+| Attached listener and retained connection observation | Supported when socket, process, and descriptor visibility is complete; observation-only | Supported through documented owner-PID tables; observation-only | Unsupported |
+| Managed prelaunch isolation and process attestation | Supported when unprivileged user, network, and PID namespaces and required process visibility are available | Unsupported | Unsupported |
+| Exact native-load binding to retained package objects | Supported for the admitted file-backed executable mapping scope | Unsupported | Unsupported |
+| Managed runtime-build identity | Supported as an inert package-declared binding after successful managed package, process, and native-load checks; only the exact entrypoint is joined to live evidence, other package semantics are not independently live-observed, and the process is closed before return | Unsupported | Unsupported |
+| Qualified managed generation | Not implemented | Unsupported | Unsupported |
+
+Support in this table describes the individual infrastructure contract, not model
+qualification. Attached evidence is observation-only on every platform. Linux
+managed evidence is also inert. The current read-only preflight composes the runtime
+package, provider, isolation, native-load, and transport side and can construct a typed
+runtime-build identity. The process is closed before that outcome returns. Separate
+static model binding, runtime-reported residency, and retained-transport judge
+receipts now exist, but they are not joined to that managed evidence. No effective
+runtime state or model-use proof exists.
 
 ## Deliberate limitations
 
@@ -226,8 +246,8 @@ database.
   bytes, journals preparation before deletion, resumes after interruption, and uses
   generation ordering so an old retry cannot delete a reinstall. The runtime lease
   boundary verifies current durable state and bytes, then retains the shared
-  lifecycle lock and file handle until use ends. No real runtime consumer uses that
-  lease yet. Exact manifest-driven artifact-set folder import is implemented at the
+  lifecycle lock and file handle until use ends. No user-facing runtime operation
+  uses that single-file lease yet. Exact manifest-driven artifact-set folder import is implemented at the
   application boundary and exposed as offline `model import-set`. The command
   verifies the complete local source tree, publishes the whole content-derived set
   root, and records only inert structural installation state. It does not qualify,
@@ -255,15 +275,31 @@ database.
   do not inspect or mutate single-file artifacts. A repository-owned
   artifact-set lease reverifies the complete registered tree under the shared
   repository and storage lifecycle locks and retains that boundary for its lifetime,
-  so exclusive operations fail while it is live. No real runtime consumer uses it
-  yet. Downloads,
+  so exclusive operations fail while it is live. Package attestation and the inert
+  installed-Ollama import use managed-set boundaries, but no user-facing runtime
+  operation does. Downloads,
   runtime-native pulls, bulk reconciliation, orphan deletion, runtime commands, and
   exact real-artifact qualification are not implemented. Effective-package evidence
   and qualification v2 have durable inert persistence but no production evidence
   producer, activation path, or CLI surface. An application-owned managed-process
   attestor can hash one live regular entrypoint, bind `RuntimeBuildIdentity` and
   `EffectiveRuntimeState`, and optionally persist those inert records. It does not
-  activate a role, admit observed-only Ollama identity, or enable claim extraction. The
+  activate a role, admit observed-only Ollama identity, or enable claim extraction.
+  A newer static package service retains exact runtime code-member objects and model
+  bytes but also grants no runtime authority. An offline installed-Ollama import
+  reconstructs only the admitted manifest-v2 and GGUF-v3 package shape, publishes a
+  canonical six-member managed set, and persists and reads back its inert model
+  package. It has no CLI surface and does not qualify, activate, lease, load, or
+  execute the model. A separate evaluation library can bind one such import to one
+  exact verified idle Ollama v0.32.15 inventory and model-details observation. It
+  requires the production backend identity `ollama_native` and reviewed source
+  revision `b7871fc0d1d82fe109536efa3e0e8e411c766c75`. The version-scoped
+  relationship checks the raw manifest digest, the exact config-plus-layers inventory
+  size, GGUF, license, format, and a unique template match. The binding must consume
+  the opaque, nonserializable receipt issued by the exact preflight runner for the
+  plan and report. It proves only that static import-to-inventory relationship; model
+  loaded, model used, application handler, effective identity, and qualification
+  remain false. It also has no CLI surface. The
   CLI requires one explicit `--data-dir`; its fourteen repository model commands do not use the
   network. Only confirmed `model migrate` can apply a supported schema migration,
   and it first retains a verified repository-owned backup. The other thirteen commands
@@ -279,12 +315,18 @@ database.
   within the current boundary; network filesystem semantics and other Windows
   filesystem drivers are not qualified.
 - The Ollama adapter is fake-server tested and its read-only preflight has observed
-  and verified one existing local Ollama 0.32.14 inventory without generation. The
+  and verified existing local inventory without generation. The
   separate attached preflight brackets that HTTP work with point-in-time listener,
   process-incarnation, and executable evidence on Windows and Linux. macOS returns
   unsupported because no admitted public unprivileged listener-owner API exists.
-  Linux also fails closed when ptrace or proc policy prevents a complete same-user
-  ownership view.
+  Linux now selects listener and connection rows through bounded SOCK_DIAG. Its
+  holder scan retains the proc root, anchors each process with a pidfd, parses exactly
+  one four-field `Uid:` row from each bounded status record for the effective UID, and inspects
+  descriptor links relative to the retained process directory. A second anchored
+  status read must confirm that the effective UID did not drift. It scans the complete
+  admitted descriptor view even after a match. Once a pidfd exists, missing process
+  state is accepted as exit only when that pidfd confirms exit. Access denial,
+  resource exhaustion, malformed state, and incomplete visibility fail closed.
   That attached report uses independent requests, remains `response_bound: false`
   and `qualified: false`, and creates no runtime identity. The separate
   `--ollama-bound-preflight` command uses one retained direct HTTP/1 connection and
@@ -297,8 +339,29 @@ database.
   that exclusive socket ownership and application-handler execution are not proven.
   It remains `qualified: false` and creates no runtime, package, qualification,
   activation, or role identity. Executable bytes are not loaded-component closure.
-  No current evidence establishes complete artifact-set or upstream identity,
-  provider cloud disablement, OS isolation, or a qualified runtime and model.
+  A separate development-only library preflight now joins a retained runtime-package
+  lease, Linux managed launch and isolation, namespace-local process and connection
+  evidence, cloud-disable declaration and startup marker, read-only API observation,
+  and exact native-load evidence. It reobserves the retained boundaries and closes the
+  process tree. Its report remains inert and explicitly leaves application-handler
+  proof, exclusive socket ownership, model load or use, effective-runtime identity,
+  and qualification false. It has no CLI surface and does not consume the inert
+  model-package import. The production cloud-disable allowlist is empty, so its exact
+  runtime disposition remains unreviewed. No runtime and model combination is
+  qualified.
+  The managed target inherits a seccomp socket allowlist installed before launch.
+  `socket()` permits only `AF_INET` and `AF_INET6`; every other socket family and
+  `io_uring_setup` are denied, and reobservation requires seccomp mode 2.
+  An opt-in API returns the unchanged report plus a separate redacted, inert managed
+  build binding. That binding constructs only a package-declared typed
+  `RuntimeBuildIdentity` after the managed package, process, and native-load join.
+  The exact entrypoint is joined to live process and load evidence, but target,
+  revision, and other package semantics are not independently live-observed. Cleanup
+  is complete and `process_retained_after_return` is false. It explicitly lacks a
+  generation-bound provider snapshot, effective output configuration, platform,
+  framework, and driver evidence, compute backend and device placement, effective
+  context capacity, and a retained live runtime. Effective runtime state, model load
+  or use, application-handler execution, and qualification remain false.
 - The grounded path can safely accept only literal-mode token-preserving changes
   under the current evaluator. Open-domain paraphrases and broader modes abstain.
 - The typed claim contract and deterministic comparator are implemented. The engine
@@ -330,6 +393,27 @@ database.
   complete release-build behaviors under the screenshot policy.
 - Evaluation data and user-research policies are proposed, not approved. No
   non-synthetic collection is authorized.
+- The versioned hybrid scorecard executes two exact deterministic suites, requires
+  their complete corpus and fixed policy digests to match the selected plan, and
+  reports exact expectation results and transformation coverage. It normalizes
+  blinded, order-swapped structured judge observations only after both suites pass.
+  Its serializable report still labels judge observations caller-declared and
+  triage-only. A separate typed executor now runs both orders over one already
+  preflighted retained Ollama stream and returns a nonserializable receipt binding the
+  plan, rubric, observation batch, retained preflight, exact request and response
+  digests, and response ordinals. That receipt does not prove managed isolation,
+  handler execution, model load or use, candidate generation, effective identity,
+  semantics, or qualification. Neither the scorecard nor the receipt can override
+  hard gates or replace human release adjudication. The executor has no CLI surface.
+  Every retained-session completion rejects UTF-8 input above the absolute 4 MiB
+  ceiling before wire serialization or completion traffic.
+  A separate opt-in retained-session profile for reviewed Ollama v0.32.15 sends one
+  structured completion followed by two exact, equal singleton `/api/ps` observations
+  around final version, inventory, and details checks. Its nonserializable receipt
+  proves only stable runtime-reported post-generation residency on that transport.
+  Runtime memory size is not package inventory size. Handler execution, model use,
+  resident-page identity, effective identity, and qualification remain false. This
+  profile is not joined to the local-judge executor or managed preflight.
 
 ## Next logical operations
 
@@ -337,37 +421,32 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-1. Preserve completed lifecycle, schema-v5 persistence, lease, migration, recovery,
-   cancellation, claim-comparison, and informational shadow boundaries.
-2. Retain the versioned read-only Ollama preflight. It performs no generation and
-   cannot qualify a runtime or package.
-3. Retain the native attached-process witness and the separate retained-connection
-   preflight on Windows and Linux, plus deterministic macOS refusal. Neither report
-   constructs runtime identity. Only the bound report claims one retained client
-   transport with repeated native attribution, and it explicitly disclaims exclusive
-   ownership and handler execution.
-4. Replace Linux proc TCP row selection with bounded `NETLINK_SOCK_DIAG`, retaining
-   the exact tuple, kernel socket cookie, inode, UID, and namespace scope. This is
-   first because the proc TCP table is deprecated and every stronger Linux claim
-   depends on reliable row selection.
-5. Reconstruct the selected Ollama runtime and model as complete canonical runtime
-   and artifact-set manifests with
-   exact blob, tokenizer, template, license, upstream source, and transformation
-   evidence, including native dependencies and runtime load closure. This must precede
-   effective identity because a socket witness does not identify the complete code or
-   model package.
-6. Add version-gated provider cloud-disable evidence and OS-enforced denial of
-   non-loopback outbound traffic for every participating Retonr and runtime process.
-   Configuration claims alone cannot establish local-only execution.
-7. Construct effective runtime identity only after transport, package,
-   configuration, and isolation evidence join without drift. Then project the
-   existing eight-case smoke and 39-case editorial protocol into
-   versioned local generation plans. The old Gemma 4, Qwen3.6, and Ministral local
-   observations have expired. Do not reacquire a model without separate approval.
-8. Run smoke, locked evaluation, repeatability, and exact cross-platform
-   qualification in that order. Preserve the existing hard gates as the only
-   acceptance authority.
-9. Finish remaining CLI recovery and packaging evidence, then capture model-backed
+1. Preserve schema-6 lifecycle, migration, retained package-object, SOCK_DIAG,
+   isolation, attestation, redaction, cancellation, and informational shadow
+   boundaries.
+2. Freeze and review one complete Ollama runtime package. The model-package import
+   exists, but a runtime package still needs complete helpers, native dependencies,
+   source, transformation, and license disposition. Add an exact runtime to the
+   production cloud-disable allowlist only after that review passes.
+3. Extend the managed operation so its process remains retained through execution and
+   direct effective-state observation. Join its proven runtime build, the v0.32.15
+   static model binding, exact model-package lease, runtime-reported residency, and
+   local-judge receipt while collecting all six missing effective-state relationships.
+   This is the next priority because the current managed outcome completes cleanup
+   before return and neither static inventory nor API residency proves model use.
+4. Keep attached Windows and Linux evidence as observation-only. Do not use it as a
+   fallback for a failed managed launch. Windows exact native-load binding and
+   managed isolation remain unsupported; macOS remains unsupported.
+5. Add a distinct candidate-generation receipt over that same retained runtime and
+   model boundary. Keep scorecard batches caller-declared and triage-only because the
+   separate evidence bindings do not prove semantics or qualification.
+6. Project the existing 49 deterministic and 120 editorial development cases, 169
+   total, into preregistered smoke, calibration, and locked manifests without opening
+   locked data during tuning.
+7. Run smoke, the locked hybrid scorecard, repeatability, and supported-platform
+   qualification in that order. Deterministic gates remain the only machine
+   acceptance authority, and human adjudication remains the release authority.
+8. Finish remaining CLI recovery and packaging evidence, then capture model-backed
    screenshots only from the complete passing release path.
 
 Later work follows the dependency order in the

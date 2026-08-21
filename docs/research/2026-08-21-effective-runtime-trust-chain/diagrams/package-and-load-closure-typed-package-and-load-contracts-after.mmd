@@ -1,0 +1,10 @@
+flowchart LR
+    Bytes[Canonical ArtifactSetManifest v1] --> Runtime[RuntimePackageManifestV1]
+    Bytes --> Model[ModelPackageManifestV1]
+    Runtime --> Builder[Typed runtime identity builder]
+    Lease[Retained process and code-member lease] --> Observer[NativeLoadObservationV1]
+    Observer --> State[Typed effective-state builder]
+    Model --> Future[Future model-load observation]
+    Builder --> Store[Inert evidence store]
+    State --> Store
+    Future -. required before qualification .-> Store

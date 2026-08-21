@@ -3,7 +3,7 @@ use std::sync::{Arc, atomic::Ordering};
 use rewrite_types::CancellationToken;
 
 use super::{OllamaObservedPreflightError, OllamaResponseObservationPhase};
-use crate::{OllamaBackend, OllamaLimits};
+use crate::{OllamaBackend, OllamaEndpoint, OllamaLimits};
 
 use self::fixture::{FirstResponseMode, FixtureServer, context, preflight, target};
 
@@ -61,6 +61,63 @@ async fn one_connection_yields_exact_ordered_response_checkpoints() {
             "GET /api/ps",
         ]
     );
+}
+
+#[tokio::test]
+async fn caller_supplied_connection_is_the_only_transport() {
+    let server = FixtureServer::start(FirstResponseMode::Normal).await;
+    let endpoint = server.endpoint.clone();
+    let stream = tokio::net::TcpStream::connect(endpoint.socket_addr())
+        .await
+        .expect("connect supplied stream")
+        .into_std()
+        .expect("convert supplied stream");
+    let token = CancellationToken::new();
+    let mut addresses = Vec::new();
+    let report = preflight(endpoint.clone(), 1024 * 1024)
+        .preflight_on_connected_stream_with_observer(context(&token), stream, |observation| {
+            addresses.push(observation.addresses());
+            Ok::<(), ()>(())
+        })
+        .await
+        .expect("preflight on supplied stream");
+    assert_eq!(report.runtime.version, "0.32.14");
+    assert_eq!(addresses.len(), 8);
+    assert!(addresses.iter().all(|value| value == &addresses[0]));
+    assert_eq!(addresses[0].server(), endpoint.socket_addr());
+    let result = server.finish().await;
+    assert_eq!(result.accepts, 1);
+    assert_eq!(result.requests.len(), 7);
+}
+
+#[tokio::test]
+async fn caller_supplied_connection_must_match_the_configured_endpoint() {
+    let server = FixtureServer::start(FirstResponseMode::Normal).await;
+    let actual = server.endpoint.socket_addr();
+    let stream = tokio::net::TcpStream::connect(actual)
+        .await
+        .expect("connect supplied stream")
+        .into_std()
+        .expect("convert supplied stream");
+    let wrong_port = if actual.port() == u16::MAX {
+        actual.port() - 1
+    } else {
+        actual.port() + 1
+    };
+    let configured = OllamaEndpoint::parse(&format!("http://{}:{wrong_port}", actual.ip()))
+        .expect("different configured endpoint");
+    let token = CancellationToken::new();
+    let error = preflight(configured, 1024 * 1024)
+        .preflight_on_connected_stream_with_observer(context(&token), stream, |_| Ok::<(), ()>(()))
+        .await
+        .expect_err("peer mismatch fails before HTTP");
+    let OllamaObservedPreflightError::Preflight(error) = error else {
+        panic!("unexpected observation failure");
+    };
+    assert_eq!(error.code, "connection_endpoint_mismatch");
+    let result = server.finish().await;
+    assert_eq!(result.accepts, 1);
+    assert!(result.requests.is_empty());
 }
 
 #[tokio::test]

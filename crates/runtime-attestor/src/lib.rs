@@ -4,6 +4,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::{
+    fs::File,
     thread,
     time::{Duration, Instant},
 };
@@ -12,6 +13,8 @@ use rewrite_types::CancellationToken;
 
 mod connection;
 mod contract;
+mod managed_contract;
+mod native_load;
 mod platform;
 
 /// Maximum native snapshots used to admit initial connection-table publication delay.
@@ -30,14 +33,27 @@ pub use contract::{
     ATTACHED_PROCESS_WITNESS_SCHEMA_VERSION, AttachedProcessEvidence, AttachedProcessEvidenceClass,
     AttachedProcessEvidenceInput, AttachedProcessLaunchMode, AttachedProcessLease,
     AttachedProcessObserver, AttachedProcessWitnessError, AttachedProcessWitnessLimits,
-    ListenerEndpoint, MAXIMUM_DESCRIPTORS_PER_PROCESS, MAXIMUM_ENTRYPOINT_BYTES,
-    MAXIMUM_OBSERVATION_MILLIS, MAXIMUM_OBSERVED_PROCESSES, MAXIMUM_SOCKET_TABLE_BYTES,
-    MAXIMUM_SOCKET_TABLE_ENTRIES,
+    ListenerEndpoint, MANAGED_LINUX_PROCESS_WITNESS_SCHEMA_VERSION,
+    MAXIMUM_DESCRIPTORS_PER_PROCESS, MAXIMUM_ENTRYPOINT_BYTES, MAXIMUM_OBSERVATION_MILLIS,
+    MAXIMUM_OBSERVED_PROCESSES, MAXIMUM_SOCKET_TABLE_BYTES, MAXIMUM_SOCKET_TABLE_ENTRIES,
+};
+pub use managed_contract::ManagedLinuxProcessExpectation;
+pub use native_load::{
+    ExpectedExternalNativeComponent, MAXIMUM_NATIVE_LOAD_HASH_BYTES,
+    MAXIMUM_NATIVE_LOAD_OBSERVATION_MILLIS, MAXIMUM_NATIVE_LOADED_COMPONENTS,
+    MAXIMUM_NATIVE_MAPPING_METADATA_BYTES, MAXIMUM_NATIVE_MAPPING_REGIONS,
+    NativeLoadObservationLimits, NativeLoadObservationRequest, NativeLoadObserverError,
+    RetainedNativePackageMember,
 };
 
 /// Native observer selected for the current operating system.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct NativeAttachedProcessObserver;
+
+/// Linux-only observer for an explicitly identified managed process and a
+/// caller-supplied namespace-local socket-diagnostics capability.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct NativeManagedLinuxProcessObserver;
 
 /// Retained native listener-owner capability.
 pub struct NativeAttachedProcessLease {
@@ -46,6 +62,138 @@ pub struct NativeAttachedProcessLease {
     platform: platform::Lease,
     limits: AttachedProcessWitnessLimits,
     started: Instant,
+}
+
+/// Retained managed Linux process capability.
+pub struct NativeManagedLinuxProcessLease {
+    initial: AttachedProcessEvidence,
+    endpoint: ListenerEndpoint,
+    platform: platform::ManagedLease,
+    limits: AttachedProcessWitnessLimits,
+    started: Instant,
+}
+
+impl NativeManagedLinuxProcessObserver {
+    /// Attaches to one exact managed Linux target using its namespace-local
+    /// socket-diagnostics descriptor.
+    ///
+    /// The descriptor is consumed and retained. This operation never creates a
+    /// host-namespace socket-diagnostics fallback.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AttachedProcessWitnessError`] unless every descriptor, process,
+    /// executable, namespace, listener, UID, holder, and resource invariant is met.
+    pub fn attach(
+        &self,
+        endpoint: ListenerEndpoint,
+        diagnostics: File,
+        expected: ManagedLinuxProcessExpectation,
+        limits: AttachedProcessWitnessLimits,
+        cancellation: &CancellationToken,
+    ) -> Result<NativeManagedLinuxProcessLease, AttachedProcessWitnessError> {
+        let limits = limits.validate()?;
+        let started = Instant::now();
+        ensure_active(cancellation, started, limits)?;
+        let platform = platform::ManagedLease::attach(
+            endpoint,
+            diagnostics,
+            expected,
+            limits,
+            cancellation,
+            started,
+        )?;
+        let initial = platform.initial_evidence().clone();
+        Ok(NativeManagedLinuxProcessLease {
+            initial,
+            endpoint,
+            platform,
+            limits,
+            started,
+        })
+    }
+}
+
+impl AttachedProcessLease for NativeManagedLinuxProcessLease {
+    fn initial_evidence(&self) -> &AttachedProcessEvidence {
+        &self.initial
+    }
+
+    fn reobserve(
+        &mut self,
+        cancellation: &CancellationToken,
+    ) -> Result<AttachedProcessEvidence, AttachedProcessWitnessError> {
+        ensure_active(cancellation, self.started, self.limits)?;
+        let observed = self
+            .platform
+            .reobserve(self.limits, cancellation, self.started)?;
+        compare_evidence(&self.initial, &observed)?;
+        Ok(observed)
+    }
+
+    fn observe_connection(
+        &mut self,
+        connection: RetainedTcpConnection,
+        cancellation: &CancellationToken,
+    ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
+        ensure_active(cancellation, self.started, self.limits)?;
+        if connection.server() != self.endpoint.socket() {
+            return Err(AttachedProcessWitnessError::ConnectionProcessMismatch);
+        }
+        observe_initial_connection(cancellation, self.started, self.limits, || {
+            self.platform
+                .observe_connection(connection, self.limits, cancellation, self.started)
+        })
+    }
+
+    fn reobserve_connection(
+        &mut self,
+        connection: RetainedTcpConnection,
+        initial: &RetainedTcpConnectionEvidence,
+        cancellation: &CancellationToken,
+    ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
+        ensure_active(cancellation, self.started, self.limits)?;
+        if connection.server() != self.endpoint.socket() {
+            return Err(AttachedProcessWitnessError::ConnectionProcessMismatch);
+        }
+        reobserve_connection_once(initial, || {
+            self.platform
+                .observe_connection(connection, self.limits, cancellation, self.started)
+        })
+    }
+
+    fn observe_native_load(
+        &mut self,
+        request: &NativeLoadObservationRequest<'_>,
+        cancellation: &CancellationToken,
+    ) -> Result<rewrite_model::NativeLoadObservation, NativeLoadObserverError> {
+        let limits = request.validate()?;
+        let native_started = Instant::now();
+        ensure_native_active(cancellation, native_started, limits)?;
+        let before = self
+            .platform
+            .reobserve(self.limits, cancellation, self.started)
+            .map_err(map_native_process_error)?;
+        compare_evidence(&self.initial, &before).map_err(map_native_process_error)?;
+        let observation = self.platform.observe_native_load(
+            request,
+            limits,
+            cancellation,
+            native_started,
+            self.initial.evidence_digest(),
+        )?;
+        let after = self
+            .platform
+            .reobserve(self.limits, cancellation, self.started)
+            .map_err(map_native_process_error)?;
+        compare_evidence(&self.initial, &after).map_err(map_native_process_error)?;
+        if observation.process_evidence_digest() != self.initial.evidence_digest()
+            || observation.runtime_package_manifest_id() != request.expected_package_id
+        {
+            return Err(NativeLoadObserverError::InvalidObservation);
+        }
+        Ok(observation)
+    }
 }
 
 impl AttachedProcessObserver for NativeAttachedProcessObserver {
@@ -118,6 +266,70 @@ impl AttachedProcessLease for NativeAttachedProcessLease {
             self.platform
                 .observe_connection(connection, self.limits, cancellation, self.started)
         })
+    }
+
+    fn observe_native_load(
+        &mut self,
+        request: &NativeLoadObservationRequest<'_>,
+        cancellation: &CancellationToken,
+    ) -> Result<rewrite_model::NativeLoadObservation, NativeLoadObserverError> {
+        let limits = request.validate()?;
+        let native_started = Instant::now();
+        ensure_native_active(cancellation, native_started, limits)?;
+        let before = self
+            .platform
+            .reobserve(self.limits, cancellation, self.started)
+            .map_err(map_native_process_error)?;
+        compare_evidence(&self.initial, &before).map_err(map_native_process_error)?;
+        let observation = self.platform.observe_native_load(
+            request,
+            limits,
+            cancellation,
+            native_started,
+            self.initial.evidence_digest(),
+        )?;
+        let after = self
+            .platform
+            .reobserve(self.limits, cancellation, self.started)
+            .map_err(map_native_process_error)?;
+        compare_evidence(&self.initial, &after).map_err(map_native_process_error)?;
+        if observation.process_evidence_digest() != self.initial.evidence_digest()
+            || observation.runtime_package_manifest_id() != request.expected_package_id
+        {
+            return Err(NativeLoadObserverError::InvalidObservation);
+        }
+        Ok(observation)
+    }
+}
+
+pub(crate) fn ensure_native_active(
+    cancellation: &CancellationToken,
+    started: Instant,
+    limits: NativeLoadObservationLimits,
+) -> Result<(), NativeLoadObserverError> {
+    if cancellation.is_cancelled() {
+        return Err(NativeLoadObserverError::Cancelled);
+    }
+    if started.elapsed() > limits.maximum_elapsed {
+        return Err(NativeLoadObserverError::DeadlineExceeded);
+    }
+    Ok(())
+}
+
+fn map_native_process_error(error: AttachedProcessWitnessError) -> NativeLoadObserverError {
+    match error {
+        AttachedProcessWitnessError::Cancelled => NativeLoadObserverError::Cancelled,
+        AttachedProcessWitnessError::DeadlineExceeded => NativeLoadObserverError::DeadlineExceeded,
+        AttachedProcessWitnessError::ProcessAccessDenied => {
+            NativeLoadObserverError::ProcessVisibilityInsufficient
+        }
+        AttachedProcessWitnessError::ProcessExited
+        | AttachedProcessWitnessError::ProcessInstanceChanged
+        | AttachedProcessWitnessError::ListenerRebound
+        | AttachedProcessWitnessError::EntrypointChanged => NativeLoadObserverError::ProcessChanged,
+        AttachedProcessWitnessError::ResourceLimit
+        | AttachedProcessWitnessError::EntrypointTooLarge => NativeLoadObserverError::ResourceLimit,
+        _ => NativeLoadObserverError::PlatformObservationFailed,
     }
 }
 

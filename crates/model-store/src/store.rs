@@ -43,6 +43,7 @@ mod artifact_set;
 mod evidence;
 mod inventory;
 mod open;
+mod package_contracts;
 mod removal;
 mod set_inventory;
 mod set_removal;

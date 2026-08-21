@@ -1,4 +1,4 @@
-//! Command-line runner for deterministic suites, offline baselines, and corpus validation.
+//! Command-line runner for deterministic suites, hybrid scorecards, baselines, and corpora.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -14,20 +14,21 @@ use std::{
 use clap::Parser;
 use rewrite_eval::{
     MAX_BASELINE_DEFINITION_BYTES, MAX_CLAIM_SHADOW_CALIBRATION_BYTES, MAX_EDITORIAL_CORPUS_BYTES,
-    MAX_EVALUATION_SUITE_BYTES, MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES,
-    MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES,
-    MAX_WATERMARK_RESEARCH_BYTES, MAX_WRITING_SAMPLE_LIBRARY_BYTES, parse_baseline_definition,
-    parse_claim_shadow_calibration, parse_editorial_corpus,
+    MAX_EVALUATION_SUITE_BYTES, MAX_HYBRID_SCORECARD_BYTES,
+    MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES, MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES,
+    MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES, MAX_WATERMARK_RESEARCH_BYTES,
+    MAX_WRITING_SAMPLE_LIBRARY_BYTES, parse_baseline_definition, parse_claim_shadow_calibration,
+    parse_editorial_corpus, parse_hybrid_scorecard_plan, parse_judge_observation_batch,
     parse_local_ollama_attested_preflight_plan, parse_local_ollama_bound_preflight_plan,
     parse_local_ollama_preflight_plan, parse_suite, parse_watermark_research_corpus,
     parse_writing_sample_library, run_attached_baseline, run_claim_shadow_calibration,
-    run_local_ollama_attested_preflight, run_local_ollama_bound_preflight,
+    run_hybrid_scorecard, run_local_ollama_attested_preflight, run_local_ollama_bound_preflight,
     run_local_ollama_preflight, run_suite,
 };
 use rewrite_model::ArtifactId;
 use rewrite_types::{CancellationToken, Digest};
 
-/// Runs a versioned fidelity suite, baseline, claim-shadow calibration, or corpus validation.
+/// Runs versioned fidelity, scorecard, baseline, calibration, or corpus operations.
 #[derive(Debug, Parser)]
 #[command(name = "rewrite-eval", version, about)]
 struct Cli {
@@ -39,6 +40,7 @@ struct Cli {
             "writing_samples",
             "watermark_research",
             "claim_shadow_calibration",
+            "hybrid_scorecard",
             "ollama_preflight",
             "ollama_attested_preflight",
             "ollama_bound_preflight"
@@ -48,12 +50,46 @@ struct Cli {
             "writing_samples",
             "watermark_research",
             "claim_shadow_calibration",
+            "hybrid_scorecard",
             "ollama_preflight",
             "ollama_attested_preflight",
             "ollama_bound_preflight"
         ]
     )]
     suite: Option<PathBuf>,
+    /// Run a bound deterministic and structured-observation hybrid scorecard.
+    #[arg(
+        long,
+        value_name = "PLAN",
+        requires_all = [
+            "candidate_a_suite",
+            "candidate_b_suite",
+            "judge_observations"
+        ],
+        conflicts_with_all = [
+            "suite",
+            "baseline",
+            "editorial_corpus",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration",
+            "ollama_preflight",
+            "ollama_attested_preflight",
+            "ollama_bound_preflight",
+            "data_dir",
+            "artifact_id"
+        ]
+    )]
+    hybrid_scorecard: Option<PathBuf>,
+    /// Exact deterministic suite for candidate A.
+    #[arg(long, value_name = "SUITE", requires = "hybrid_scorecard")]
+    candidate_a_suite: Option<PathBuf>,
+    /// Exact deterministic suite for candidate B.
+    #[arg(long, value_name = "SUITE", requires = "hybrid_scorecard")]
+    candidate_b_suite: Option<PathBuf>,
+    /// Caller-declared, exact-plan-bound structured judge observation batch.
+    #[arg(long, value_name = "BATCH", requires = "hybrid_scorecard")]
+    judge_observations: Option<PathBuf>,
     /// Run a versioned offline baseline definition against SUITE.
     #[arg(
         long,
@@ -63,6 +99,7 @@ struct Cli {
             "writing_samples",
             "watermark_research",
             "claim_shadow_calibration",
+            "hybrid_scorecard",
             "ollama_attested_preflight",
             "ollama_bound_preflight"
         ]
@@ -78,6 +115,7 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "baseline",
+            "hybrid_scorecard",
             "ollama_attested_preflight",
             "ollama_bound_preflight"
         ]
@@ -93,6 +131,7 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "baseline",
+            "hybrid_scorecard",
             "ollama_attested_preflight",
             "ollama_bound_preflight"
         ]
@@ -108,6 +147,7 @@ struct Cli {
             "writing_samples",
             "claim_shadow_calibration",
             "baseline",
+            "hybrid_scorecard",
             "ollama_attested_preflight",
             "ollama_bound_preflight"
         ]
@@ -122,6 +162,7 @@ struct Cli {
             "editorial_corpus",
             "writing_samples",
             "baseline",
+            "hybrid_scorecard",
             "ollama_attested_preflight",
             "ollama_bound_preflight"
         ]
@@ -138,6 +179,7 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "baseline",
+            "hybrid_scorecard",
             "ollama_attested_preflight",
             "ollama_bound_preflight",
             "data_dir",
@@ -156,6 +198,7 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "baseline",
+            "hybrid_scorecard",
             "ollama_preflight",
             "ollama_bound_preflight",
             "data_dir",
@@ -174,6 +217,7 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "baseline",
+            "hybrid_scorecard",
             "ollama_preflight",
             "ollama_attested_preflight",
             "data_dir",
@@ -202,7 +246,10 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
+fn run(mut cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
+    if let Some(code) = run_requested_hybrid_scorecard(&mut cli)? {
+        return Ok(code);
+    }
     if let Some(path) = cli.ollama_bound_preflight {
         return run_ollama_bound_preflight_command(path);
     }
@@ -293,6 +340,56 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
     serde_json::to_writer_pretty(&mut stdout, &report)?;
     writeln!(stdout)?;
     Ok(if report.is_success() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
+}
+
+fn run_requested_hybrid_scorecard(cli: &mut Cli) -> Result<Option<ExitCode>, Box<dyn Error>> {
+    let Some(path) = cli.hybrid_scorecard.take() else {
+        return Ok(None);
+    };
+    let code = run_hybrid_scorecard_command(
+        path,
+        cli.candidate_a_suite
+            .take()
+            .ok_or("candidate A suite path is required")?,
+        cli.candidate_b_suite
+            .take()
+            .ok_or("candidate B suite path is required")?,
+        cli.judge_observations
+            .take()
+            .ok_or("judge observation batch path is required")?,
+    )?;
+    Ok(Some(code))
+}
+
+fn run_hybrid_scorecard_command(
+    plan_path: PathBuf,
+    candidate_a_path: PathBuf,
+    candidate_b_path: PathBuf,
+    observations_path: PathBuf,
+) -> Result<ExitCode, Box<dyn Error>> {
+    let plan =
+        parse_hybrid_scorecard_plan(&read_bounded_utf8(plan_path, MAX_HYBRID_SCORECARD_BYTES)?)?;
+    let candidate_a = parse_suite(&read_bounded_utf8(
+        candidate_a_path,
+        MAX_EVALUATION_SUITE_BYTES,
+    )?)?;
+    let candidate_b = parse_suite(&read_bounded_utf8(
+        candidate_b_path,
+        MAX_EVALUATION_SUITE_BYTES,
+    )?)?;
+    let observations = parse_judge_observation_batch(&read_bounded_utf8(
+        observations_path,
+        MAX_HYBRID_SCORECARD_BYTES,
+    )?)?;
+    let report = run_hybrid_scorecard(&plan, &candidate_a, &candidate_b, &observations)?;
+    let mut stdout = io::stdout().lock();
+    serde_json::to_writer_pretty(&mut stdout, &report)?;
+    writeln!(stdout)?;
+    Ok(if report.hard_gates_passed() {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE

@@ -1,0 +1,7 @@
+flowchart LR
+    User[User-managed Ollama] --> Listener[Loopback listener]
+    Listener --> Bound[Bound preflight]
+    Bound --> Process[Attached process evidence]
+    Process --> Report[Unqualified report]
+    Ollama[Provider cloud setting unknown or declared] -. does not enforce .-> Network[Host outbound network]
+    Network -. prevents qualification .-> Report

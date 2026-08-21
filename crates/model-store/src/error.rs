@@ -5,8 +5,9 @@ use thiserror::Error;
 use rewrite_model::{
     ActivationDecisionError, ArtifactSetManifestError, EffectivePackageEvidenceError,
     EffectiveRuntimeStateError, InstallationError, InstalledArtifactSetError, ManifestError,
-    QualificationInvalidationError, QualificationRecordError, QualificationRecordV2Error,
-    RuntimeBuildIdentityError,
+    ModelPackageManifestError, NativeLoadObservationError, QualificationInvalidationError,
+    QualificationRecordError, QualificationRecordV2Error, RuntimeBuildIdentityError,
+    RuntimePackageManifestError,
 };
 
 /// Result returned by the durable artifact state adapter.
@@ -34,6 +35,15 @@ pub enum StoreError {
     /// An artifact-set manifest failed domain validation.
     #[error("artifact-set manifest is invalid")]
     InvalidArtifactSet(#[source] ArtifactSetManifestError),
+    /// A runtime-package manifest failed domain or relationship validation.
+    #[error("runtime-package manifest is invalid")]
+    InvalidRuntimePackage(#[source] RuntimePackageManifestError),
+    /// A model-package manifest failed domain or relationship validation.
+    #[error("model-package manifest is invalid")]
+    InvalidModelPackage(#[source] ModelPackageManifestError),
+    /// A native-load observation failed domain or relationship validation.
+    #[error("native-load observation is invalid")]
+    InvalidNativeLoad(#[source] NativeLoadObservationError),
     /// Installed artifact-set state failed domain validation.
     #[error("installed artifact-set state is invalid")]
     InvalidArtifactSetInstallation(#[source] InstalledArtifactSetError),

@@ -3,7 +3,7 @@
 - Status: proposed
 - Decision owners: project maintainers
 - Decision checkpoint: roadmap milestone 0.2 implementation
-- Last reviewed: 2026-08-20
+- Last reviewed: 2026-08-21
 
 ## Context
 
@@ -74,12 +74,13 @@ process-reported image path, and hash a retained read-only single-link regular f
 handle. Recheck listener ownership, process liveness, process creation time, file
 identity, and bytes after the HTTP preflight.
 
-On Linux, use the same-network-namespace `/proc/net/tcp` or `/proc/net/tcp6` table,
-retain the exact socket inode, require a unique same-user process descriptor owner,
-retain a pidfd, record process start ticks, open `/proc/PID/exe`, and hash that
-single-link regular file object. Recheck the socket inode, process, namespace, file
-identity, and bytes after the HTTP preflight. The kernel documents the proc TCP table
-as deprecated, so a reviewed `NETLINK_SOCK_DIAG` replacement remains follow-up work.
+On Linux, use a bounded same-network-namespace `NETLINK_SOCK_DIAG` listener dump,
+retain the exact socket inode and kernel socket cookie, require a unique visible
+same-UID process descriptor owner, retain a pidfd, record process start ticks, open
+`/proc/PID/exe`, and hash that single-link regular file object. Recheck the exact
+listener through socket diagnostics plus the process, namespace, file identity, and
+bytes after the HTTP preflight. Do not fall back to deprecated `/proc/net/tcp*` row
+selection when socket diagnostics is unavailable.
 
 On macOS, return the stable `Unsupported` error. Do not use Apple's private
 `libproc` listener-ownership interfaces in a qualification boundary. An entitled
@@ -98,7 +99,8 @@ also requires one exact executable digest.
 - Windows and Linux gain bounded native evidence derived from the listener owner.
 - PID reuse, process exit, owner drift, executable-object drift, byte drift, limits,
   cancellation, and redaction have deterministic failure contracts.
-- Linux detects same-process listener replacement through the socket inode.
+- Linux detects same-process listener replacement through the socket inode and
+  retained kernel socket cookie.
 - macOS does not receive an overstated or private-API-based support claim.
 - The existing Ollama preflight remains a separate published version 1 contract.
 
@@ -121,13 +123,21 @@ also requires one exact executable digest.
   [ADR 0009](0009-retained-connection-attribution.md) now sends one read-only
   operation over one direct HTTP/1 connection and repeats exact native attribution.
   This does not change the attached report's `response_bound: false` contract.
-- Replace Linux proc TCP parsing with bounded `NETLINK_SOCK_DIAG` evidence.
+- Retain bounded SOCK_DIAG parsing, sender and sequence validation, exact tuple and
+  state checks, and fail-closed behavior without a proc TCP fallback.
 - Decide whether an entitled macOS helper is justified before claiming parity.
-- Build complete runtime package, loaded-component, effective-configuration, and
-  isolation evidence before constructing attached runtime-build or effective-state
-  identities.
-- Prove provider cloud disablement and OS-enforced non-loopback denial before local
-  generation becomes eligible.
+- Keep this attached report observation-only. The separate Linux managed-isolation
+  and managed-attestation path must not promote or silently replace attached evidence.
+- Extend the managed operation so the process remains live after its implemented
+  package-declared runtime-build binding. Only its exact entrypoint is joined to live
+  process and native-load evidence; other package semantics are not independently
+  live-observed. Join exact model-package, runtime-reported residency, local-judge
+  receipt, direct effective-state, and candidate-generation evidence before local
+  generation becomes eligible. The model-package binding consumes an opaque,
+  nonserializable receipt from the exact preflight runner. Retained-session input has
+  an absolute 4 MiB UTF-8 ceiling before wire serialization or completion traffic.
+  The separate receipts do not upgrade attached evidence or prove managed isolation
+  by themselves.
 
 ## Validation
 
@@ -146,8 +156,8 @@ Miri cannot execute the Windows kernel FFI used here. The unsafe surface is
 target-only and receives native Windows tests plus explicit table-length validation
 before every unaligned row read. Revisit this decision if a maintained safe public-API
 wrapper removes the first-party unsafe code, if Windows exposes socket object
-identity, if Linux removes the proc TCP interface, or if macOS adds an appropriate
-public API.
+identity, if Linux changes the admitted SOCK_DIAG or proc descriptor-visibility
+interfaces, or if macOS adds an appropriate public API.
 
 ## References
 
@@ -158,5 +168,5 @@ public API.
 - [Linux pidfd_open](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
 - [Linux proc process executable](https://man7.org/linux/man-pages/man5/proc_pid_exe.5.html)
 - [Linux network namespaces](https://man7.org/linux/man-pages/man7/network_namespaces.7.html)
-- [Linux proc TCP table](https://docs.kernel.org/networking/proc_net_tcp.html)
+- [Linux internet socket diagnostics UAPI](https://github.com/torvalds/linux/blob/master/include/uapi/linux/inet_diag.h)
 - [Apple XNU libproc header](https://github.com/apple-oss-distributions/xnu/blob/main/libsyscall/wrappers/libproc/libproc.h)

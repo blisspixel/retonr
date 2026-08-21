@@ -7,8 +7,9 @@ use rewrite_types::Digest;
 mod state;
 
 pub use state::{
-    ComputeBackend, EffectiveRuntimeState, EffectiveRuntimeStateError, EffectiveRuntimeStateId,
-    EffectiveRuntimeStateInput, ExecutionPlacement,
+    ComputeBackend, EffectiveRuntimeState, EffectiveRuntimeStateError,
+    EffectiveRuntimeStateFromLoadInput, EffectiveRuntimeStateId, EffectiveRuntimeStateInput,
+    ExecutionPlacement,
 };
 
 /// Current runtime-build identity contract version.
@@ -219,6 +220,29 @@ impl RuntimeBuildIdentity {
         Self::from_wire(RUNTIME_BUILD_IDENTITY_SCHEMA_VERSION, input)
     }
 
+    /// Creates a build identity whose digest fields are derived from one runtime package.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RuntimeBuildIdentityError`] if derived package metadata cannot form
+    /// a valid runtime-build identity.
+    pub fn new_from_package_manifest(
+        mode: RuntimeBuildMode,
+        package: &crate::RuntimePackageManifest,
+    ) -> Result<Self, RuntimeBuildIdentityError> {
+        Self::new(RuntimeBuildIdentityInput {
+            mode,
+            runtime_family: package.runtime_family().to_owned(),
+            reported_version: package.reported_version().to_owned(),
+            build_revision: package.build_revision().map(str::to_owned),
+            target: package.target(),
+            package_manifest_digest: package.runtime_package_manifest_id().digest().clone(),
+            entrypoint_digest: package.entrypoint().artifact_id().digest().clone(),
+            packaged_dependencies_digest: package.packaged_dependencies_digest(),
+            build_configuration_digest: package.build_configuration_digest(),
+        })
+    }
+
     fn from_wire(
         schema_version: u32,
         input: RuntimeBuildIdentityInput,
@@ -295,10 +319,28 @@ impl RuntimeBuildIdentity {
         self.target
     }
 
+    /// Returns the canonical runtime-package manifest digest.
+    #[must_use]
+    pub const fn package_manifest_digest(&self) -> &Digest {
+        &self.package_manifest_digest
+    }
+
     /// Returns the exact launched entrypoint digest.
     #[must_use]
     pub const fn entrypoint_digest(&self) -> &Digest {
         &self.entrypoint_digest
+    }
+
+    /// Returns the canonical packaged-dependency subset digest.
+    #[must_use]
+    pub const fn packaged_dependencies_digest(&self) -> &Digest {
+        &self.packaged_dependencies_digest
+    }
+
+    /// Returns the output-affecting build-configuration subset digest.
+    #[must_use]
+    pub const fn build_configuration_digest(&self) -> &Digest {
+        &self.build_configuration_digest
     }
 
     fn canonical_bytes(&self) -> Vec<u8> {

@@ -1,0 +1,7 @@
+flowchart LR
+    Caller[Caller declarations] --> Digests[Opaque package and state digests]
+    Path[Caller entrypoint path] --> Hash[Point-in-time file hash]
+    Digests --> Identity[Runtime identity records]
+    Hash --> Identity
+    Identity --> Store[Inert evidence store]
+    Gap[No typed package roles or native load observation] -. limits .-> Identity
