@@ -126,7 +126,11 @@ runtime identity, and artifact identity it used.
 ### Pass 5: unit and region validation
 
 Each proposal passes the common literal, invariant, structure, semantic, style, and
-edit-cost gates. A region pass then checks relationships that one unit cannot prove,
+edit-cost gates. Independent unit validation may later run in a bounded worker pool
+whose results join by stable unit ID; document consistency remains a serial final
+gate. Parallel rewriting is allowed only within the qualified concurrency envelope
+and must not oversubscribe cores already used by a generating local runtime. A
+region pass then checks relationships that one unit cannot prove,
 including terminology, abbreviations, numbering, references, list parallelism,
 heading intent, and repeated claims.
 

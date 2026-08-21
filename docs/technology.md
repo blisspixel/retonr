@@ -21,7 +21,8 @@ path. A popular package or compatible API shape is not enough.
 | Layer | Choice | Status |
 | --- | --- | --- |
 | Language | Rust 1.97.1, edition 2024, resolver 3 | Exact current pin |
-| Async runtime | Tokio 1.53.x | Chosen |
+| Async runtime | Tokio 1.53.x current-thread for retained loopback sessions | Chosen |
+| CPU worker pool | None in shipping product paths | Later bounded envelope for independent hashing and deterministic-suite cases |
 | Serialization | Serde, serde_json, schemars | Chosen by contract need |
 | Errors | thiserror in libraries, anyhow at binary boundaries | Chosen |
 | CLI | clap 4.6.x | Chosen |
@@ -75,7 +76,19 @@ The exact decision and revisit conditions are in
 
 Release builds use stable Rust. Date-pinned nightly exists only for isolated Miri,
 fuzz, sanitizer, or diagnostic lanes. Moving stable and beta jobs are non-publishing
-canaries.
+canaries. Release `codegen-units = 1` and thin LTO are compile-time size and
+reproducibility choices. They do not limit runtime cores.
+
+The shipping eval and Ollama preflight CLIs build a current-thread Tokio runtime
+because the retained HTTP/1 adapter admits `max_concurrency: 1` and has no
+connector pool. A multi-thread runtime would not make that session faster. Cargo
+and nextest already use host cores; Linux isolation and managed-attestor tests pin
+to one thread because they share process or namespace state.
+
+A later CPU worker pool, if added, is a bounded dependency for independent hashing
+and deterministic evaluation cases only. It is not a second product runtime, not a
+substitute for the model process's own threads or GPU, and not permission to
+parallelize exclusive lifecycle or attestation work.
 
 ## Local inference
 

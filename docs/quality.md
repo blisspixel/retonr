@@ -238,6 +238,11 @@ changes.
 
 ## Test strategy
 
+Ordinary `cargo` and nextest jobs use the host's available cores. Isolation and
+managed-attestor tests that share a process, namespace, or diagnostics session pin
+to one thread through nextest overrides or `--test-threads=1`. That pin is a
+correctness requirement, not a product claim that Retonr should stay single-core.
+
 ### Unit tests
 
 Use small deterministic tests for domain types, rule precedence, plans, gates,

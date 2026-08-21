@@ -377,6 +377,16 @@ runtime state or model-use proof exists.
   structured-completion port has no semantic authority. The Ollama adapter admits
   only the exact candidate contract currently advertised by discovery. This
   backend-wide admission does not qualify every inventoried artifact for that role.
+- CPU-bound product paths are serial today: engine unit and candidate assessment,
+  `rewrite-eval` suite cases, directory inspect walks, and artifact-set member
+  hashing. The eval and Ollama preflight CLIs use a current-thread Tokio runtime
+  because the retained HTTP/1 session has `max_concurrency: 1` and no connector
+  pool. Compilation and ordinary tests already use host cores; Linux isolation and
+  managed-attestor tests pin to one thread because they share process or namespace
+  state. A bounded worker pool for independent hashing and deterministic-suite
+  cases is planned after the concurrency envelope is specified. It must not
+  parallelize retained inference, managed isolation, or exclusive lifecycle work,
+  and it must not oversubscribe cores while a local runtime is generating.
 - UTF-16, Markdown, DOCX, profiles, persistence, document briefs, file and folder
   transactions, API, MCP, Agent Skills, Agent Plugins, and native desktop are not
   implemented yet.

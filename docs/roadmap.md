@@ -138,6 +138,13 @@ proceeds in this exact order:
     Then add a separate candidate-generation receipt. The scorecard remains
     caller-declared and triage-only; receipts do not prove handler execution, model
     use, semantics, or qualification by themselves.
+    Independent CPU-bound work (frozen-file hashing, deterministic evaluation
+    cases, later independent unit validation) may use a bounded worker pool whose
+    results join by stable identifier. Retained inference sessions, managed
+    isolation, exclusive lifecycle mutations, and document-atomic short-circuit
+    stay serial. Do not default to oversubscribing cores while a local runtime is
+    generating. This is reversible 0.x work; it does not jump runtime-package
+    review or managed execution evidence.
 12. Project the eight-case smoke and 39-case editorial protocol into versioned local
     generation plans. Run only exact stacks that passed identity and isolation
     preflight. The old Gemma 4, Qwen3.6, and Ministral observations have expired; do
@@ -414,6 +421,11 @@ path, and no dependency on a provider-specific output policy.
 - Hierarchical long-document planning, bounded unit context, region consistency,
   document verification, and measured context-window qualification as defined by
   the [document transaction contract](document-transactions.md)
+- Bounded CPU parallelism for independent unit validation, folder hashing, and
+  deterministic evaluation cases, with results joined by stable identifiers.
+  Retained inference sessions, managed isolation, and exclusive lifecycle remain
+  serial. The worker cap is explicit and must not oversubscribe cores already used
+  by a generating local runtime.
 - Evaluation of document-derived clarification against no-question, fixed-question,
   and full-brief baselines under the
   [guided editorial brief contract](editorial-brief.md)

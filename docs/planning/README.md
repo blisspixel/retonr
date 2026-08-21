@@ -58,6 +58,12 @@ The current 0.2 build queue, in dependency order, is:
 8. Complete the remaining CLI model-management, transaction, packaging, and release
    evidence only after one exact local runtime and artifact combination qualifies.
 
+Compilation, ordinary tests, and the model runtime already use host cores. A
+bounded worker pool for independent hashing and deterministic-suite cases is
+reversible 0.x work after the envelope is specified. It does not replace items 5
+through 7 and must not parallelize retained inference, managed isolation, or
+exclusive lifecycle mutations.
+
 Later phases stay blocked on their entry evidence. Do not implement Markdown,
 DOCX, profiles, MCP, desktop, or signed installers as if they were the next 0.2
 slice.

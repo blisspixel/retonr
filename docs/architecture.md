@@ -22,6 +22,32 @@ The design is ordered by these priorities:
 
 Style quality cannot compensate for a fidelity failure.
 
+Latency and core use are last because a faster path that races a trust boundary is
+not an improvement. Hosts with 6 to 16 or more cores are the expected development
+and laptop class. Retonr already uses those cores for compilation, most tests, and
+the model runtime's own thread pool or accelerator. It does not automatically
+saturate every core inside a rewrite, inspect, import, or attestation transaction.
+
+Independent CPU-bound work may later run in a bounded worker pool: hashing distinct
+frozen files, validating independent deterministic evaluation cases, and assessing
+independent candidates or units whose results join by stable identifier. The worker
+cap is explicit, finite, and no larger than the independent work items. Results are
+merged in identifier order so parallel execution cannot change lexicographic
+selection, rewrite records, or suite reports.
+
+These surfaces stay single-threaded or single-session on purpose:
+
+- One retained HTTP/1 inference connection, with no pool, retry, or reconnect
+- Linux managed isolation, process attestation, and native-load observation
+- Exclusive artifact lifecycle locks and SQLite mutations
+- Document-atomic engine short-circuit until unit independence is proven
+- Native attestor and isolation tests that share process or namespace state
+
+A local model runtime may already occupy many CPU threads or a GPU. Retonr must not
+default to oversubscribing the same cores while that runtime is generating. Bounded
+parallelism is a later 0.x envelope, not a reason to add an unbounded thread pool or
+to jump the runtime-package and managed-execution work.
+
 ## System context
 
 ```mermaid
