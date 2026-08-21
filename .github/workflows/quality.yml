@@ -317,7 +317,7 @@ jobs:
           cargo llvm-cov clean --workspace
           eval "$(cargo llvm-cov show-env --export-prefix)"
           test "${LLVM_PROFILE_FILE#/}" != "$LLVM_PROFILE_FILE"
-          cargo test --locked --workspace --all-targets --all-features
+          mkdir -p "$(dirname "$LLVM_PROFILE_FILE")"
           mapfile -t isolation_tests < <(
             cargo test --locked -p rewrite-runtime-isolation \
               --test linux_managed --no-run --message-format=json |
@@ -360,6 +360,7 @@ jobs:
           for index in "${!expected_attestor_tests[@]}"; do
             test "${observed_attestor_tests[$index]}" = "${expected_attestor_tests[$index]}"
           done
+          cargo test --locked --workspace --all-targets --all-features
           docker run --rm \
             --network none \
             --cap-drop ALL \
