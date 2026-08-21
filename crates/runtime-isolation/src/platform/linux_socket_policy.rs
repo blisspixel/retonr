@@ -15,11 +15,22 @@ const SECCOMP_FILTER_MODE: &str = "2";
 
 pub(super) fn install_target_socket_policy() -> Result<(), HelperFailure> {
     let program = target_socket_filter()?;
-    seccompiler::apply_filter(&program).map_err(|_error| HelperFailure::SocketPolicy)?;
+    seccompiler::apply_filter(&program).map_err(classify_filter_error)?;
     if !socket_policy_is_active(std::process::id())? || !socket_policy_behaves_as_required() {
         return Err(HelperFailure::SocketPolicy);
     }
     Ok(())
+}
+
+fn classify_filter_error(error: seccompiler::Error) -> HelperFailure {
+    match error {
+        seccompiler::Error::Prctl(error) | seccompiler::Error::Seccomp(error)
+            if matches!(error.raw_os_error(), Some(libc::EPERM | libc::EACCES)) =>
+        {
+            HelperFailure::HostPolicyDenied
+        }
+        _ => HelperFailure::SocketPolicy,
+    }
 }
 
 pub(super) fn socket_policy_is_active(pid: u32) -> Result<bool, HelperFailure> {
@@ -83,10 +94,35 @@ fn allowed_socket(family: AddressFamily) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::target_socket_filter;
+    use std::io;
+
+    use super::{HelperFailure, classify_filter_error, target_socket_filter};
 
     #[test]
     fn target_filter_compiles_for_the_current_architecture() {
         assert!(!target_socket_filter().expect("compile filter").is_empty());
+    }
+
+    #[test]
+    fn installation_permission_failures_are_host_policy_denials() {
+        for error in [
+            seccompiler::Error::Prctl(io::Error::from_raw_os_error(libc::EPERM)),
+            seccompiler::Error::Seccomp(io::Error::from_raw_os_error(libc::EACCES)),
+        ] {
+            assert_eq!(
+                classify_filter_error(error),
+                HelperFailure::HostPolicyDenied
+            );
+        }
+    }
+
+    #[test]
+    fn other_installation_failures_remain_socket_policy_failures() {
+        assert_eq!(
+            classify_filter_error(seccompiler::Error::Seccomp(io::Error::from_raw_os_error(
+                libc::EINVAL
+            ),)),
+            HelperFailure::SocketPolicy
+        );
     }
 }

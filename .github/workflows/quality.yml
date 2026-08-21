@@ -190,12 +190,27 @@ jobs:
           test -x "${isolation_tests[0]}"
           printf '%s\n' "${isolation_tests[0]}" > "$RUNNER_TEMP/retonr-isolation-test-binary"
 
+      - name: Build the admitted native isolation test environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag retonr-native-isolation - <<'DOCKERFILE'
+          FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
+          RUN apt-get update \
+              && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends python3 \
+              && rm -rf /var/lib/apt/lists/*
+          DOCKERFILE
+
       - name: Run the forced native isolation gate
         shell: bash
         run: |
           set -euo pipefail
           isolation_test="$(cat "$RUNNER_TEMP/retonr-isolation-test-binary")"
-          sudo env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+          docker run --rm --privileged --network none \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            retonr-native-isolation \
             "$isolation_test" --test-threads=1
 
   coverage:
@@ -227,6 +242,18 @@ jobs:
         with:
           tool: cargo-llvm-cov@0.8.7
 
+      - name: Build the admitted native isolation test environment
+        if: steps.rust_workspace.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag retonr-native-isolation - <<'DOCKERFILE'
+          FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
+          RUN apt-get update \
+              && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends python3 \
+              && rm -rf /var/lib/apt/lists/*
+          DOCKERFILE
+
       - name: Enforce coverage floor
         if: steps.rust_workspace.outputs.exists == 'true'
         shell: bash
@@ -243,8 +270,13 @@ jobs:
           )
           test "${#isolation_tests[@]}" -eq 1
           test -x "${isolation_tests[0]}"
-          sudo env CARGO_LLVM_COV=1 LLVM_PROFILE_FILE="$LLVM_PROFILE_FILE" \
-            REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+          docker run --rm --privileged --network none \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env CARGO_LLVM_COV=1 \
+            --env LLVM_PROFILE_FILE="$LLVM_PROFILE_FILE" \
+            --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            retonr-native-isolation \
             "${isolation_tests[0]}" --test-threads=1
           cargo llvm-cov report --locked --workspace --all-targets \
             --all-features --fail-under-lines 80
