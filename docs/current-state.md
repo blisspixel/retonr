@@ -142,14 +142,14 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed on this development host; the exact public-main workflow remains the
 nextest authority.
 
-The published attached-process checkpoint is
-`a58e07473eb558e3e38aa382de59af909f4a647b`. Its passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32425854751)
+The published retained-connection checkpoint is
+`1ec96d1a1cbc1d8d77b736f0b28a2c53564cf8fc`. Its passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32439664137)
 completed all 12 Windows, macOS, Linux, repository-policy, Markdown, coverage,
 dependency and supply-chain, fuzz-smoke, loopback-only Ollama, and stable aggregate
-`required` jobs. The retained-connection changes described in this document are the
-next development slice and are not included in that earlier published checkpoint's
-evidence.
+`required` jobs. That checkpoint includes the one-retained-connection milestone
+described in this document while keeping every resulting report inert and
+unqualified.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,225 advisories and the current
