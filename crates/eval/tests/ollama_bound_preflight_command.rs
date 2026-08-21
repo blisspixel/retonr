@@ -13,11 +13,30 @@ use wiremock::{
 const MODEL: &str = "fixture:latest";
 const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
+async fn assert_preflight_requests(server: &MockServer) {
+    let requests = server
+        .received_requests()
+        .await
+        .expect("request recording enabled");
+    let request_count = |request_method: &str, request_path: &str| {
+        requests
+            .iter()
+            .filter(|request| {
+                request.method.as_str() == request_method && request.url.path() == request_path
+            })
+            .count()
+    };
+    assert_eq!(requests.len(), 7);
+    assert_eq!(request_count("GET", "/api/version"), 2);
+    assert_eq!(request_count("GET", "/api/tags"), 2);
+    assert_eq!(request_count("POST", "/api/show"), 1);
+    assert_eq!(request_count("GET", "/api/ps"), 2);
+}
+
 async fn mount_preflight(server: &MockServer) {
     Mock::given(method("GET"))
         .and(path("/api/version"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({"version": "0.32.14"})))
-        .expect(2)
         .mount(server)
         .await;
     Mock::given(method("GET"))
@@ -28,7 +47,6 @@ async fn mount_preflight(server: &MockServer) {
             "size": 1024,
             "digest": DIGEST
         }]})))
-        .expect(2)
         .mount(server)
         .await;
     Mock::given(method("POST"))
@@ -44,13 +62,11 @@ async fn mount_preflight(server: &MockServer) {
             },
             "model_info": {"fixture.context_length": 4096}
         })))
-        .expect(1)
         .mount(server)
         .await;
     Mock::given(method("GET"))
         .and(path("/api/ps"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({"models": []})))
-        .expect(2)
         .mount(server)
         .await;
 }
@@ -108,6 +124,14 @@ async fn bound_preflight_process_emits_redacted_inert_connection_evidence() {
                     == "error: bound Ollama native witness failed: attached process witness connection snapshot is incomplete\n",
             "unexpected Linux failure: {stderr}"
         );
+        assert!(
+            server
+                .received_requests()
+                .await
+                .expect("request recording enabled")
+                .is_empty(),
+            "native witness failure must precede HTTP"
+        );
         return;
     }
     assert!(
@@ -115,6 +139,7 @@ async fn bound_preflight_process_emits_redacted_inert_connection_evidence() {
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+    assert_preflight_requests(&server).await;
     let report: Value = serde_json::from_slice(&output.stdout).expect("bound report JSON");
     assert_eq!(report["schema_version"], 1);
     assert_eq!(
