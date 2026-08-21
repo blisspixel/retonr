@@ -24,6 +24,16 @@ gives you back the exact original bytes instead.
 
 The snapshot does not generate text. It never contacts the network.
 
+The source repository also contains a development-only
+`rewrite-eval --ollama-bound-preflight` command. It is not part of this snapshot CLI
+workflow. When a developer explicitly supplies a versioned plan, that command may
+contact only its IP-literal loopback Ollama endpoint. It sends the complete read-only
+preflight over one directly connected retained HTTP/1 transport and checks native
+connection attribution before traffic and after every fully drained response. It
+does not generate, acquire, activate, qualify, or authorize a model. macOS refuses
+the command before HTTP. Successful Windows and Linux reports remain unqualified and
+explicitly do not prove exclusive socket ownership or application-handler execution.
+
 The same snapshot also administers exact local model artifacts offline. These
 commands copy, inspect, migrate, or remove local files. They do not download,
 qualify, activate, or run a model:

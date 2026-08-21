@@ -223,6 +223,33 @@ selected table, and executable-file evidence does not prove loaded components. T
 report therefore sets `response_bound: false` and `qualified: false` and creates no
 runtime-build, effective-state, package, qualification, activation, or role record.
 
+A separate development-only bound preflight leaves that attached report unchanged.
+The Ollama adapter opens one IP-literal loopback TCP stream directly, performs one
+HTTP/1 handshake, and sends the complete ordered read-only preflight through the one
+retained sender. The transport has no DNS, ambient proxy, redirect, connector pool,
+retry, or reconnect path. Each response must be fully drained before the next request
+and both individual and aggregate body ceilings apply. An observation callback runs
+before application traffic and after every drained response.
+
+The runtime attestor consumes the exact client and server endpoints without
+serializing them. Windows requires the exact reverse established row's documented
+context-binding PID to match the retained process incarnation. Linux requires the
+exact reverse established row and socket inode plus exactly one visible same-user
+descriptor holder matching the retained process. The Linux check cannot exclude
+holders hidden by UID, ptrace, proc mount, PID namespace, or other security policy.
+macOS returns unsupported before HTTP because the admitted public unprivileged APIs
+cannot map an arbitrary established tuple to a process.
+
+The bound report joins the redacted API observation, process witness, ordered
+connection-attribution evidence, and a domain-separated binding digest. It states
+that all accepted response bytes used one retained client transport and that native
+attribution matched at every checkpoint. It does not claim exclusive socket
+ownership, absence of invisible holders, or application-handler execution. It stays
+`qualified: false` and creates no runtime-build, effective-state, package,
+qualification, activation, or role record. Linux row selection moves next to bounded
+`NETLINK_SOCK_DIAG`; complete package, provider configuration, and OS isolation
+evidence remain prerequisites for effective runtime identity and generation.
+
 The model store persists these five inert records under SQLite schema v5 in separate,
 immutable tables. Schema v4 added a separate artifact-set installation record
 with a unique portable set-root key and a distinct positive generation. Schema v5

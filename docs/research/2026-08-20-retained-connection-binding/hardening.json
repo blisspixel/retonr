@@ -1,0 +1,287 @@
+{
+  "documentType": "retonr.security-hardening-analysis",
+  "schemaVersion": "1.0",
+  "analysisId": "hardening_20260820_retained_connection_binding",
+  "sourceEvidence": {
+    "kind": "source_collection",
+    "label": "Retained Ollama connection attribution source review",
+    "collectionSha256": "e2663f4f1db2b548c38226c431caa8ae94f1fee74d364ad7b7f0ec208ea54a37",
+    "artifactCount": 8,
+    "targetRevision": "a58e07473eb558e3e38aa382de59af909f4a647b",
+    "sourceDrift": "none"
+  },
+  "assessment": {
+    "outcome": "opportunities_identified",
+    "summary": "The read-only attached preflight can be narrowed to one retained HTTP/1 connection with point-in-time kernel attribution, while remaining inert and unqualified."
+  },
+  "constraints": {
+    "profile": "security_first_bounded_local",
+    "changeHorizons": [
+      "incremental",
+      "medium_term",
+      "foundational"
+    ],
+    "nonNegotiables": [
+      "The endpoint remains an explicit HTTP IP-literal loopback address.",
+      "The operation performs no generation, acquisition, activation, or runtime lifecycle mutation.",
+      "No transport failure may trigger an implicit retry or reconnect.",
+      "Windows evidence is described as a context-binding PID, not exclusive socket ownership.",
+      "Linux evidence requires exactly one visible same-UID holder under the current proc, PID namespace, and network namespace policy and fails closed on observed permission or enumeration gaps.",
+      "macOS attached response attribution remains unsupported without a reviewed public mechanism.",
+      "The report remains inert with qualified set to false.",
+      "Errors and traces remain content-free and path-free."
+    ],
+    "assumptions": [
+      "No measured latency, memory, or owner-observation budget was supplied.",
+      "Other authorized local processes and malicious administrators remain outside the repository threat model.",
+      "Point-in-time snapshots cannot prove continuous exclusive ownership or application-handler execution."
+    ]
+  },
+  "opportunities": [
+    {
+      "opportunityId": "retained-connection-attribution",
+      "title": "Bind read-only preflight traffic to one retained connection",
+      "summary": "Replace opaque pooled transport for attached preflight with one direct HTTP/1 session whose reverse 4-tuple receives bounded kernel attribution before traffic and after every response.",
+      "diagnosis": "The process witness brackets an HTTP preflight whose pooled client does not expose the selected TCP connection, so listener stability cannot be promoted into response attribution.",
+      "evidence": [
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E01",
+          "path": "crates/ollama/src/backend.rs",
+          "claim": "The adapter sends requests through a reusable reqwest client and does not expose the selected connection."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E02",
+          "path": "crates/ollama/src/backend/preflight.rs",
+          "claim": "One preflight performs several ordered HTTP requests without a connection lease."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E03",
+          "path": "crates/eval/src/local_ollama_attested_preflight.rs",
+          "claim": "The bracketed report explicitly records response_bound and qualified as false."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E04",
+          "path": "crates/runtime-attestor/src/platform/windows.rs",
+          "claim": "Windows listener observation uses an owner-PID table and retained process handle."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E05",
+          "path": "crates/runtime-attestor/src/platform/linux.rs",
+          "claim": "Linux listener observation maps a socket inode to visible descriptor owners and retains a pidfd."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E06",
+          "path": "crates/runtime-attestor/src/platform/macos.rs",
+          "claim": "macOS attached-process observation is intentionally unsupported."
+        },
+        {
+          "claimType": "inferred",
+          "sourceKind": "source",
+          "evidenceId": "E07",
+          "path": "crates/runtime-attestor/src/contract.rs",
+          "claim": "The existing listener witness vocabulary can be extended with a distinct connection-attribution lease without granting authority."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "document",
+          "evidenceId": "E08",
+          "path": "docs/decisions/0008-attached-process-witness.md",
+          "claim": "The existing proposed decision reserves one persistent HTTP connection and exact 4-tuple attribution as follow-up work."
+        }
+      ],
+      "desiredInvariants": [
+        "One attached preflight opens exactly one direct TCP connection and performs exactly one HTTP/1 handshake.",
+        "Every request and response in the operation uses that retained client socket object.",
+        "The reverse established 4-tuple has the same admissible kernel-attributed process instance before application traffic and after every complete response.",
+        "A missing, closed, ambiguous, incomplete, or changed connection observation terminates the operation without reconnecting.",
+        "The listener, process, executable, runtime, inventory, model details, and residency remain stable through the final observation.",
+        "Successful evidence remains point-in-time, inert, response-limited, and unqualified."
+      ],
+      "proposalPath": "proposals/retained-connection-attribution.md",
+      "options": [
+        {
+          "optionId": "pooled-snapshots",
+          "title": "Keep pooled reqwest with listener snapshots",
+          "kind": "baseline",
+          "summary": "Retain the current client and add more listener observations around opaque requests.",
+          "diagramPaths": {
+            "before": "diagrams/retained-connection-attribution-before.mmd",
+            "after": "diagrams/retained-connection-attribution-pooled-snapshots-after.mmd"
+          },
+          "evidenceCoverage": [
+            { "evidenceId": "E01", "effect": "unaffected", "tacticalFixRequired": true, "rationale": "The pool still selects connections invisibly and may reconnect after a close." },
+            { "evidenceId": "E02", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "More listener snapshots narrow drift windows but do not identify the connection carrying a response." },
+            { "evidenceId": "E03", "effect": "unaffected", "tacticalFixRequired": false, "rationale": "The report must continue to state response_bound false and qualified false." },
+            { "evidenceId": "E04", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Windows process drift remains observable, but connection ownership is not established." },
+            { "evidenceId": "E05", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Linux listener drift remains observable, but no accepted connection inode is selected." },
+            { "evidenceId": "E06", "effect": "unaffected", "tacticalFixRequired": false, "rationale": "macOS remains unsupported." },
+            { "evidenceId": "E07", "effect": "unaffected", "tacticalFixRequired": true, "rationale": "No connection-attribution vocabulary or lease is introduced." },
+            { "evidenceId": "E08", "effect": "unaffected", "tacticalFixRequired": true, "rationale": "The persistent-connection follow-up remains incomplete." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "medium", "basis": "source-derived", "assessment": "Additional snapshots reduce the interval in which listener drift can remain unnoticed, but they cannot attribute a response to a selected connection.", "validationPlan": "Run listener-replacement and server-close fixtures and confirm that successful responses can still cross different pooled connections." },
+            { "dimension": "performance", "direction": "neutral", "confidence": "high", "basis": "source-derived", "assessment": "The existing connection pool and request path remain unchanged; added listener snapshots add platform observation cost.", "validationPlan": "Measure preflight wall time and kernel-observation time for one and eight target models." },
+            { "dimension": "memory", "direction": "neutral", "confidence": "medium", "basis": "source-derived", "assessment": "The client pool and bounded response buffers remain; each added snapshot temporarily allocates its existing bounded platform buffer.", "validationPlan": "Compare peak resident memory for one and eight target preflights." },
+            { "dimension": "reliability", "direction": "improves", "confidence": "low", "basis": "hypothetical", "assessment": "More drift checks can reject unstable runtimes, while reqwest can still recover transport availability through an opaque new connection.", "validationPlan": "Exercise graceful close, reset, idle expiry, and listener replacement without wall-clock sleeps." },
+            { "dimension": "operability", "direction": "neutral", "confidence": "medium", "basis": "source-derived", "assessment": "No new transport subsystem appears, but snapshot failures still cannot explain which connection carried a response.", "validationPlan": "Review stable reason codes produced by every platform fixture." },
+            { "dimension": "migration", "direction": "neutral", "confidence": "high", "basis": "source-derived", "assessment": "The public preflight shape and adapter transport remain compatible.", "validationPlan": "Run existing preflight process and serialization tests unchanged." }
+          ],
+          "residualRisks": [
+            "A response can arrive over a connection that was never attributed.",
+            "The pool can reconnect between snapshots.",
+            "Listener ownership does not identify an accepted socket or handler."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["crates/eval/src/local_ollama_attested_preflight.rs"],
+            "workPackages": ["Add listener reobservation after each opaque request group."],
+            "acceptanceCriteria": ["The report continues to set response_bound and qualified to false."],
+            "migrationNotes": ["This option preserves the current transport but does not complete retained response attribution."],
+            "rollback": "Remove the additional snapshots and retain the current bracket."
+          }
+        },
+        {
+          "optionId": "single-retained-session",
+          "title": "Use one retained HTTP/1 session with kernel attribution",
+          "kind": "structural",
+          "summary": "Create a direct loopback TCP connection, retain it for all ordered preflight requests, and attribute its reverse established 4-tuple before traffic and after every response.",
+          "diagramPaths": {
+            "before": "diagrams/retained-connection-attribution-before.mmd",
+            "after": "diagrams/retained-connection-attribution-single-retained-session-after.mmd"
+          },
+          "implementationPlanPath": "implementation/single-retained-session.md",
+          "evidenceCoverage": [
+            { "evidenceId": "E01", "effect": "addresses", "tacticalFixRequired": true, "rationale": "The attached preflight bypasses the opaque pool and owns one direct session." },
+            { "evidenceId": "E02", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Every ordered request is serialized on one retained sender and fully drained before the next." },
+            { "evidenceId": "E03", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "The report can record bounded response attribution but remains inert and qualified false because snapshots are not exclusive proof." },
+            { "evidenceId": "E04", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Windows can bind the connection row to a context PID and retained process instance, not prove exclusive handle ownership." },
+            { "evidenceId": "E05", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Linux can require exactly one visible same-UID holder under the current proc and namespace policy and fail closed on observed permission or enumeration gaps, but cannot prove that no invisible holder exists." },
+            { "evidenceId": "E06", "effect": "unaffected", "tacticalFixRequired": false, "rationale": "macOS remains explicitly unsupported for attached response attribution." },
+            { "evidenceId": "E07", "effect": "addresses", "tacticalFixRequired": true, "rationale": "A separate bounded connection lease and redacted reason taxonomy extend the safe facade." },
+            { "evidenceId": "E08", "effect": "addresses", "tacticalFixRequired": true, "rationale": "The selected option implements the reserved persistent-connection follow-up without overstating its strength." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "high", "basis": "source-derived", "assessment": "The client socket becomes an owned capability and implicit reconnects become impossible; point-in-time platform attribution still cannot prove exclusive accepted-socket ownership or handler execution.", "validationPlan": "Use retry-canary, owner-change, descriptor-handoff, proxy, and listener-replacement fixtures with exact stable failure reasons." },
+            { "dimension": "performance", "direction": "regresses", "confidence": "medium", "basis": "hypothetical", "assessment": "Per-response kernel attribution adds table or descriptor scans, while one retained connection avoids repeated handshakes during an operation.", "validationPlan": "Benchmark one and eight models, record total time, per-response owner-check time, and request throughput against the pooled baseline." },
+            { "dimension": "memory", "direction": "neutral", "confidence": "medium", "basis": "source-derived", "assessment": "The operation retains one socket, one HTTP driver, one process lease, and bounded observer buffers; it removes no existing response buffering.", "validationPlan": "Measure peak resident memory and maximum aggregate buffered response bytes for one and eight models." },
+            { "dimension": "reliability", "direction": "regresses", "confidence": "medium", "basis": "source-derived", "assessment": "A server close, owner-view gap, or connection-state transition becomes a terminal failure instead of an opportunity to reconnect, producing deterministic evidence at the cost of availability.", "validationPlan": "Run graceful close, FIN, reset, idle expiry, permission denial, and observation-deadline cases under paused time." },
+            { "dimension": "operability", "direction": "regresses", "confidence": "medium", "basis": "source-derived", "assessment": "The project owns a small transport and a new platform connection observer with more diagnostic stages and native CI obligations.", "validationPlan": "Audit error-code coverage, native fixture stability, redaction, and platform unsupported behavior." },
+            { "dimension": "migration", "direction": "regresses", "confidence": "medium", "basis": "source-derived", "assessment": "The attached preflight gains a dedicated session path and connection witness while ordinary discovery and generation remain on reqwest until separately reviewed.", "validationPlan": "Run old and new preflight schemas side by side, preserve existing v1 decoding, and compare canonical reports." }
+          ],
+          "residualRisks": [
+            "Windows exposes a context-binding PID rather than an exclusive set of accepted-socket holders.",
+            "Linux attribution names exactly one visible same-UID holder under the current proc and namespace policy but cannot exclude invisible holders.",
+            "Snapshots can miss transient handoff between observations.",
+            "The immediate peer can proxy to another process or remote service.",
+            "Connection attribution does not prove which application handler generated response bytes.",
+            "macOS remains unsupported."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": [
+              "crates/ollama/src/backend.rs",
+              "crates/ollama/src/backend/preflight.rs",
+              "crates/eval/src/local_ollama_attested_preflight.rs",
+              "crates/runtime-attestor/src/contract.rs",
+              "crates/runtime-attestor/src/platform/windows.rs",
+              "crates/runtime-attestor/src/platform/linux.rs"
+            ],
+            "workPackages": [
+              "Define the retained-session and connection-attribution contracts.",
+              "Implement one direct bounded HTTP/1 preflight session without a reconnect path.",
+              "Add Windows context-PID and Linux conditional holder attribution for the reverse established 4-tuple.",
+              "Join response checks to the existing listener and executable witness.",
+              "Add deterministic transport, platform, redaction, cancellation, and resource tests."
+            ],
+            "acceptanceCriteria": [
+              "One preflight performs exactly one TCP connect and one HTTP handshake.",
+              "Every request uses the retained socket and no failure reaches a second listener.",
+              "The reverse 4-tuple attribution matches the retained process before traffic and after every complete response, subject to the explicit platform evidence scope.",
+              "Any close, absence, ambiguity, incomplete view, drift, cancellation, or deadline fails closed.",
+              "The report remains inert and qualified false."
+            ],
+            "migrationNotes": [
+              "Keep the existing pooled adapter for non-attached operations during the first slice.",
+              "Version the new response-attribution evidence without reinterpreting prior reports."
+            ],
+            "rollback": "Disable the new attached response-attribution command path and retain the published listener-witness preflight with response_bound false."
+          }
+        },
+        {
+          "optionId": "managed-runtime-chain",
+          "title": "Move to a managed runtime chain",
+          "kind": "foundational",
+          "summary": "Verify and launch the runtime under application-owned lifecycle, package, listener, process, and retained-connection capabilities.",
+          "diagramPaths": {
+            "before": "diagrams/retained-connection-attribution-before.mmd",
+            "after": "diagrams/retained-connection-attribution-managed-runtime-chain-after.mmd"
+          },
+          "evidenceCoverage": [
+            { "evidenceId": "E01", "effect": "addresses", "tacticalFixRequired": true, "rationale": "The managed chain can own its connection transport rather than use an opaque shared pool." },
+            { "evidenceId": "E02", "effect": "addresses", "tacticalFixRequired": true, "rationale": "The operation can retain lifecycle and transport capabilities across all requests." },
+            { "evidenceId": "E03", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Managed ownership strengthens process evidence, but qualification still requires package, isolation, and evaluation closure." },
+            { "evidenceId": "E04", "effect": "mitigates", "tacticalFixRequired": false, "rationale": "A child process handle supplies stronger process identity, though Windows socket duplication remains a separate fact." },
+            { "evidenceId": "E05", "effect": "mitigates", "tacticalFixRequired": false, "rationale": "A retained child and known listener creation reduce dependence on system-wide proc ownership enumeration." },
+            { "evidenceId": "E06", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Managed launch can supply process identity on macOS, but accepted-connection attribution still needs a supported design." },
+            { "evidenceId": "E07", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Managed lifecycle requires distinct capability contracts rather than attached witness reinterpretation." },
+            { "evidenceId": "E08", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "The persistent connection becomes one part of a larger managed package and isolation chain." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "medium", "basis": "source-derived", "assessment": "Application-owned package, launch, lifetime, listener, and connection capabilities reduce ambient attachment ambiguity; handler execution and proxy exclusion still require explicit mechanisms.", "validationPlan": "Threat-model launch inheritance, package replacement, child escape, socket passing, proxying, and shutdown recovery before implementation." },
+            { "dimension": "performance", "direction": "regresses", "confidence": "low", "basis": "hypothetical", "assessment": "Managed startup, package verification, readiness, and shutdown add work outside the request loop; a retained process may improve repeated-operation latency.", "validationPlan": "Measure cold start, warm operation, idle residency, and shutdown across supported platforms and hardware classes." },
+            { "dimension": "memory", "direction": "regresses", "confidence": "medium", "basis": "hypothetical", "assessment": "Retaining a managed runtime consumes model and process memory for a policy-defined lifetime.", "validationPlan": "Measure peak and idle resident memory under one-operation and repeated-operation policies." },
+            { "dimension": "reliability", "direction": "unknown", "confidence": "low", "basis": "hypothetical", "assessment": "Lifecycle ownership makes restart and cleanup explicit but introduces child supervision, readiness, crash recovery, and update coordination.", "validationPlan": "Run crash, hung startup, partial update, locked executable, orphan, and interrupted shutdown fixtures." },
+            { "dimension": "operability", "direction": "regresses", "confidence": "high", "basis": "source-derived", "assessment": "The product becomes responsible for installation boundaries, launch policy, logs, resource policy, upgrades, and support across platforms.", "validationPlan": "Define support, diagnostics, recovery, update, and uninstallation runbooks before selecting this option." },
+            { "dimension": "migration", "direction": "regresses", "confidence": "high", "basis": "source-derived", "assessment": "This changes the user-managed runtime constraint and depends on package-manifest and isolation milestones not yet complete.", "validationPlan": "Prototype as a separate managed mode while retaining attached observation as an explicit compatibility path." }
+          ],
+          "residualRisks": [
+            "Managed launch does not by itself prove which handler produced a response.",
+            "Socket inheritance and child helper topology need explicit policy.",
+            "Package, effective configuration, and network isolation evidence remain separate prerequisites.",
+            "The option materially expands product lifecycle authority."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": [
+              "crates/app",
+              "crates/model",
+              "crates/model-store",
+              "crates/ollama",
+              "crates/runtime-attestor"
+            ],
+            "workPackages": [
+              "Complete package-manifest and isolation design before runtime management.",
+              "Define child lifecycle, readiness, connection, recovery, and update capabilities.",
+              "Implement a separate managed mode without reinterpreting attached evidence."
+            ],
+            "acceptanceCriteria": [
+              "The application retains package, process, listener, and connection capabilities for the complete operation.",
+              "Crash recovery and shutdown leave no ambiguous runtime authority.",
+              "Qualification remains blocked until package, isolation, and evaluation evidence pass."
+            ],
+            "migrationNotes": ["Reserve this option for the later managed-runtime milestone."],
+            "rollback": "Keep managed mode separately selectable and return users to the inert attached preflight without migrating authority records."
+          }
+        }
+      ],
+      "recommendedOptionId": "single-retained-session",
+      "recommendation": "Select one retained HTTP/1 session for the next read-only slice. It closes implicit reconnect ambiguity at proportionate scope while preserving explicit platform limitations and qualified false."
+    }
+  ],
+  "openQuestions": [
+    "What owner-observation latency budget is acceptable after each response?",
+    "Should the first retained-session implementation support IPv6 and IPv4 together or ship them behind separate native fixtures?",
+    "Can Windows expose a stronger supported accepted-socket identity than a context-binding PID without expanding privilege?",
+    "Which proc visibility profiles will be supported on Linux?",
+    "What public mechanism, if any, would justify macOS attached response attribution?"
+  ]
+}

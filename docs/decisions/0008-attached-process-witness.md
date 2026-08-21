@@ -117,8 +117,10 @@ also requires one exact executable digest.
 
 ### Follow-up
 
-- Own one persistent HTTP connection and bind its exact client and server 4-tuple to
-  the retained process before setting `response_bound: true`.
+- The separate retained-connection preflight in
+  [ADR 0009](0009-retained-connection-attribution.md) now sends one read-only
+  operation over one direct HTTP/1 connection and repeats exact native attribution.
+  This does not change the attached report's `response_bound: false` contract.
 - Replace Linux proc TCP parsing with bounded `NETLINK_SOCK_DIAG` evidence.
 - Decide whether an entitled macOS helper is justified before claiming parity.
 - Build complete runtime package, loaded-component, effective-configuration, and

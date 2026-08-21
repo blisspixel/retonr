@@ -84,27 +84,34 @@ proceeds in this exact order:
 6. Retain the attached-process witness. Windows and Linux bracket preflight with
    listener-owner, process-incarnation, and executable evidence; macOS fails closed.
    The report remains `response_bound: false` and `qualified: false`.
-7. Bind one retained HTTP connection to its exact accepted server socket owner, then
-   complete runtime-build, effective-configuration, and canonical model artifact-set
-   evidence. Prove explicit cloud disablement and OS-enforced non-loopback denial
-   before generation. A mutable inventory tag or digest alone is not qualification.
-8. Project the eight-case smoke and 39-case editorial protocol into versioned local
+7. Retain the separate bound preflight. It sends the complete read-only sequence over
+   one direct retained HTTP/1 connection and checks exact reverse established-row
+   attribution before traffic and after every fully drained response. It rejects
+   reconnect, drift, ambiguity, incomplete required visibility, and unsupported
+   platforms. It remains unqualified and does not prove exclusive socket ownership
+   or application-handler execution.
+8. Replace Linux proc TCP row selection with bounded `NETLINK_SOCK_DIAG`, then
+   reconstruct the selected Ollama runtime and model as complete canonical runtime
+   and artifact-set manifests. Add version-gated provider cloud-disable evidence and
+   OS-enforced non-loopback denial before constructing effective runtime identity or
+   running generation. A mutable inventory tag or digest alone is not qualification.
+9. Project the eight-case smoke and 39-case editorial protocol into versioned local
    generation plans. Run only exact stacks that passed identity and isolation
    preflight. The old Gemma 4, Qwen3.6, and Ministral observations have expired; do
    not reacquire a candidate without separate approval. Keep runtime strata separate
    and publish no support claim from a development run.
-9. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
+10. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
    qualify one exact local runtime and artifact combination and retain complete
    cross-platform release evidence before adding profiles or another format.
-10. Establish the versioned editorial-quality corpus and the bounded editorial
+11. Establish the versioned editorial-quality corpus and the bounded editorial
    pattern graph during evaluation work. Keep model-family and population
    source-signal relationships in a separate research graph with no live rewrite
    authority. Do not give lint findings product authority until the 0.3 rule and
    profile contracts pass qualification.
-11. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-12. Let editorial lint guide or rank generated candidates in 0.5 only after the
+12. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+13. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
-13. Add agent packaging, rich document formats, and native presentation layers only
+14. Add agent packaging, rich document formats, and native presentation layers only
    after the underlying CLI and application contracts are proven.
 
 This sequencing makes three independent outcomes visible in every release report:

@@ -13,6 +13,7 @@ pub(crate) const MAX_VERSION_BYTES: usize = 128;
 pub(crate) const MAX_METADATA_BYTES: usize = 256;
 const MAX_DISCOVERY_BODY_BYTES: usize = 16 * 1024 * 1024;
 const MAX_GENERATION_BODY_BYTES: usize = 16 * 1024 * 1024;
+const MAX_REQUEST_TIMEOUT: Duration = Duration::from_hours(24);
 pub(crate) const MAX_PREFLIGHT_TARGETS: usize = 64;
 
 /// Resource and timeout limits applied to every Ollama request.
@@ -54,6 +55,7 @@ impl OllamaLimits {
             || self.connect_timeout.is_zero()
             || self.request_timeout.is_zero()
             || self.read_timeout.is_zero()
+            || self.request_timeout > MAX_REQUEST_TIMEOUT
             || self.max_concurrency == 0
             || self.connect_timeout > self.request_timeout
             || self.read_timeout > self.request_timeout

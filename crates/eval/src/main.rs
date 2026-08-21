@@ -15,12 +15,14 @@ use clap::Parser;
 use rewrite_eval::{
     MAX_BASELINE_DEFINITION_BYTES, MAX_CLAIM_SHADOW_CALIBRATION_BYTES, MAX_EDITORIAL_CORPUS_BYTES,
     MAX_EVALUATION_SUITE_BYTES, MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES,
-    MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES, MAX_WATERMARK_RESEARCH_BYTES,
-    MAX_WRITING_SAMPLE_LIBRARY_BYTES, parse_baseline_definition, parse_claim_shadow_calibration,
-    parse_editorial_corpus, parse_local_ollama_attested_preflight_plan,
+    MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES,
+    MAX_WATERMARK_RESEARCH_BYTES, MAX_WRITING_SAMPLE_LIBRARY_BYTES, parse_baseline_definition,
+    parse_claim_shadow_calibration, parse_editorial_corpus,
+    parse_local_ollama_attested_preflight_plan, parse_local_ollama_bound_preflight_plan,
     parse_local_ollama_preflight_plan, parse_suite, parse_watermark_research_corpus,
     parse_writing_sample_library, run_attached_baseline, run_claim_shadow_calibration,
-    run_local_ollama_attested_preflight, run_local_ollama_preflight, run_suite,
+    run_local_ollama_attested_preflight, run_local_ollama_bound_preflight,
+    run_local_ollama_preflight, run_suite,
 };
 use rewrite_model::ArtifactId;
 use rewrite_types::{CancellationToken, Digest};
@@ -38,7 +40,8 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "ollama_preflight",
-            "ollama_attested_preflight"
+            "ollama_attested_preflight",
+            "ollama_bound_preflight"
         ],
         conflicts_with_all = [
             "editorial_corpus",
@@ -46,7 +49,8 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "ollama_preflight",
-            "ollama_attested_preflight"
+            "ollama_attested_preflight",
+            "ollama_bound_preflight"
         ]
     )]
     suite: Option<PathBuf>,
@@ -59,7 +63,8 @@ struct Cli {
             "writing_samples",
             "watermark_research",
             "claim_shadow_calibration",
-            "ollama_attested_preflight"
+            "ollama_attested_preflight",
+            "ollama_bound_preflight"
         ]
     )]
     baseline: Option<PathBuf>,
@@ -73,7 +78,8 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "baseline",
-            "ollama_attested_preflight"
+            "ollama_attested_preflight",
+            "ollama_bound_preflight"
         ]
     )]
     editorial_corpus: Option<PathBuf>,
@@ -87,7 +93,8 @@ struct Cli {
             "watermark_research",
             "claim_shadow_calibration",
             "baseline",
-            "ollama_attested_preflight"
+            "ollama_attested_preflight",
+            "ollama_bound_preflight"
         ]
     )]
     writing_samples: Option<PathBuf>,
@@ -101,7 +108,8 @@ struct Cli {
             "writing_samples",
             "claim_shadow_calibration",
             "baseline",
-            "ollama_attested_preflight"
+            "ollama_attested_preflight",
+            "ollama_bound_preflight"
         ]
     )]
     watermark_research: Option<PathBuf>,
@@ -114,7 +122,8 @@ struct Cli {
             "editorial_corpus",
             "writing_samples",
             "baseline",
-            "ollama_attested_preflight"
+            "ollama_attested_preflight",
+            "ollama_bound_preflight"
         ]
     )]
     claim_shadow_calibration: Option<PathBuf>,
@@ -130,6 +139,7 @@ struct Cli {
             "claim_shadow_calibration",
             "baseline",
             "ollama_attested_preflight",
+            "ollama_bound_preflight",
             "data_dir",
             "artifact_id"
         ]
@@ -147,11 +157,30 @@ struct Cli {
             "claim_shadow_calibration",
             "baseline",
             "ollama_preflight",
+            "ollama_bound_preflight",
             "data_dir",
             "artifact_id"
         ]
     )]
     ollama_attested_preflight: Option<PathBuf>,
+    /// Run one retained-connection Ollama preflight with native attribution.
+    #[arg(
+        long,
+        value_name = "PLAN",
+        conflicts_with_all = [
+            "suite",
+            "editorial_corpus",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration",
+            "baseline",
+            "ollama_preflight",
+            "ollama_attested_preflight",
+            "data_dir",
+            "artifact_id"
+        ]
+    )]
+    ollama_bound_preflight: Option<PathBuf>,
     /// Explicit repository root used to attach recovered fake-backend conformance.
     #[arg(long, value_name = "DIRECTORY")]
     data_dir: Option<PathBuf>,
@@ -174,6 +203,9 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
+    if let Some(path) = cli.ollama_bound_preflight {
+        return run_ollama_bound_preflight_command(path);
+    }
     if let Some(path) = cli.ollama_attested_preflight {
         return run_ollama_attested_preflight_command(path);
     }
@@ -277,6 +309,22 @@ fn run_ollama_attested_preflight_command(path: PathBuf) -> Result<ExitCode, Box<
         .enable_all()
         .build()?;
     let report = runtime.block_on(run_local_ollama_attested_preflight(&plan, &cancellation))?;
+    let mut stdout = io::stdout().lock();
+    serde_json::to_writer_pretty(&mut stdout, &report)?;
+    writeln!(stdout)?;
+    Ok(ExitCode::SUCCESS)
+}
+
+fn run_ollama_bound_preflight_command(path: PathBuf) -> Result<ExitCode, Box<dyn Error>> {
+    let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES)?;
+    let plan = parse_local_ollama_bound_preflight_plan(&input)?;
+    let cancellation = CancellationToken::new();
+    let signal_cancellation = cancellation.clone();
+    ctrlc::try_set_handler(move || signal_cancellation.cancel())?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let report = runtime.block_on(run_local_ollama_bound_preflight(&plan, &cancellation))?;
     let mut stdout = io::stdout().lock();
     serde_json::to_writer_pretty(&mut stdout, &report)?;
     writeln!(stdout)?;

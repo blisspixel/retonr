@@ -2,10 +2,14 @@
 mod file;
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "linux")]
+mod linux_connection;
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(windows)]
 mod windows;
+#[cfg(windows)]
+mod windows_connection;
 
 #[cfg(target_os = "linux")]
 pub(crate) use linux::Lease;

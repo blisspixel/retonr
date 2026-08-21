@@ -9,7 +9,7 @@ $textExtensions = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::OrdinalIgnoreCase
 )
 @(
-    '.css', '.html', '.js', '.json', '.jsonc', '.md', '.ps1', '.rs', '.sh',
+    '.css', '.html', '.js', '.json', '.jsonc', '.md', '.mmd', '.ps1', '.rs', '.sh',
     '.toml', '.ts', '.tsx', '.txt', '.yaml', '.yml'
 ) | ForEach-Object { [void]$textExtensions.Add($_) }
 

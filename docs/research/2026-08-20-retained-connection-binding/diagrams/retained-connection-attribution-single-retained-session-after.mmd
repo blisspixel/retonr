@@ -1,0 +1,18 @@
+flowchart LR
+    Plan[Attested preflight plan] --> Eval[Bracketed eval orchestration]
+    Eval --> Witness[Listener, process, and executable witness]
+    Witness --> ListenerTable[Kernel listener view]
+    Eval --> Session[Single retained HTTP/1 session]
+    Session -->|One owned client socket| Endpoint[Loopback endpoint]
+    Endpoint --> Runtime[User-managed Ollama process]
+    Session -->|Reverse 4-tuple before traffic and after each response| ConnectionView[Kernel connection view]
+    ConnectionView -->|Windows context PID or Linux conditional visible holder| Witness
+    Session --> Preflight[Ordered read-only Ollama requests]
+    Eval --> Report[Inert point-in-time response evidence: qualified false]
+
+    classDef trust fill:#eef,stroke:#446;
+    classDef changed fill:#efe,stroke:#484,stroke-width:2px;
+    classDef boundary fill:#fee,stroke:#844;
+    class Witness,ListenerTable,ConnectionView trust;
+    class Session changed;
+    class Endpoint boundary;

@@ -1425,7 +1425,11 @@ dependencies = [
 name = "rewrite-ollama"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "futures-util",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
  "reqwest",
  "rewrite-inference",
  "rewrite-model",

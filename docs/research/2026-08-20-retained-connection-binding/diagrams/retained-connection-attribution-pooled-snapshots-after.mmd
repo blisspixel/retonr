@@ -1,0 +1,15 @@
+flowchart LR
+    Plan[Attested preflight plan] --> Eval[Bracketed eval orchestration]
+    Eval --> Witness[Repeated listener and process witness]
+    Witness --> ListenerTable[Kernel listener view]
+    Eval --> Preflight[Read-only Ollama preflight]
+    Preflight --> Pool[Reusable reqwest client pool]
+    Pool -->|Connection remains opaque| Endpoint[Loopback endpoint]
+    Endpoint --> Runtime[User-managed Ollama process]
+    Preflight -.->|Snapshot after response groups| Witness
+    Eval --> Report[Inert report: response_bound false, qualified false]
+
+    classDef trust fill:#eef,stroke:#446;
+    classDef boundary fill:#fee,stroke:#844;
+    class Witness,ListenerTable trust;
+    class Pool,Endpoint boundary;
