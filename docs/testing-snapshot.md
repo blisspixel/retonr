@@ -35,7 +35,11 @@ does not generate, acquire, activate, qualify, or authorize a model. macOS refus
 the command before HTTP. Successful Windows and Linux reports remain unqualified and
 explicitly do not prove exclusive socket ownership or application-handler execution.
 Linux selects socket rows through bounded `NETLINK_SOCK_DIAG` and still depends on a
-complete visible same-UID descriptor view.
+complete visible same-UID descriptor view. Within that view, the holder scanner
+retains the proc root, anchors each process with a pidfd, strictly parses the bounded
+effective-UID status records, and inspects descriptor links relative to the held
+process directory. A second anchored status read rejects effective-UID drift across
+descriptor inspection. Access denial or an incomplete view fails closed.
 
 Linux development libraries also implement managed user, network, and PID namespace
 isolation, retained-handle launch, loopback-only transport, namespace-local process
@@ -51,6 +55,13 @@ exact native-load binding are unsupported. macOS managed isolation, attached
 attribution, and native-load binding are unsupported. The provider cloud-disable
 contract has an empty production reviewed-runtime allowlist, so the managed report
 remains unreviewed.
+
+The repository's Linux CI does not treat an uncontrolled worker as proof of this
+native boundary. Ordinary tests may accept only a typed access-denied compatibility
+outcome when host proc policy blocks observation. A mandatory networkless container
+runs the managed attestor tests as the caller UID with all capabilities dropped and
+no-new-privileges set, requires native success, and contributes that execution to the
+workspace LLVM coverage profile before the 80 percent line floor is checked.
 
 An opt-in managed-preflight library call can return the unchanged report with a
 separate inert package-declared typed runtime-build binding. Only the exact entrypoint

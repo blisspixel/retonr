@@ -457,6 +457,16 @@ Controls:
   observations but remains inert, unreviewed, and outside the CLI. It does not prove
   model use, effective-runtime identity, or qualification. The production
   cloud-disable allowlist remains empty until one runtime package passes review.
+  Linux proc-holder observation must retain the proc root, anchor a process with a
+  pidfd before relative inspection, derive effective UID only from exactly one strict
+  four-field `Uid:` row in each bounded status record, and inspect descriptor links relative to the held
+  process directory. A second anchored status read must confirm the effective UID is
+  unchanged after descriptor inspection. After a pidfd is acquired, disappearance may be treated as exit
+  only when that pidfd confirms exit. Permission denial, resource exhaustion,
+  malformed records, and incomplete visibility fail closed.
+  Uncontrolled-host tests may accept only the typed access-denied compatibility
+  outcome; a mandatory networkless, dropped-capability, no-new-privileges native gate
+  must exercise success and contribute coverage before the line floor is enforced.
   Windows managed isolation and exact native-load binding are unsupported; macOS
   runtime trust observation is unsupported.
 - Treat the managed build binding as package-declared runtime-build evidence only. It

@@ -91,7 +91,14 @@ proceeds in this exact order:
    platforms. It remains unqualified and does not prove exclusive socket ownership
    or application-handler execution.
 8. Retain Linux bounded `NETLINK_SOCK_DIAG` row selection and exact retained-cookie
-   connection queries. Retain the complete runtime-package, model-package,
+   connection queries. Retain the proc-root-relative holder scanner: acquire a pidfd
+   before the process directory, parse exactly one four-field `Uid:` row from each bounded status record for
+   effective UID, inspect descriptors relative to the held process directory, confirm
+   the same effective UID through a second anchored status read, and
+   continue through the admitted view after a match. After pidfd acquisition, skip a
+   missing process only when the pidfd confirms exit. Fail closed on access denial,
+   resource exhaustion, malformed state, or incomplete visibility. Retain the
+   complete runtime-package, model-package,
    native-load, static package-lease, and schema-6 persistence contracts. The
    installed-Ollama import may reconstruct and persist only inert model-package
    evidence. Retain the v0.32.15 static import-to-inventory binding, neutral judge
@@ -110,6 +117,10 @@ proceeds in this exact order:
    seccomp mode 2 on target reobservation. Attached Windows and Linux evidence remains
    observation-only. Windows managed isolation and exact native-load binding are
    unsupported, and macOS is unsupported.
+   Keep uncontrolled-host compatibility limited to the exact typed access-denied
+   result. Require a separate networkless, dropped-capability, no-new-privileges
+   native attestor success gate and include that execution in the LLVM profile before
+   enforcing the workspace line-coverage floor.
 10. Retain the Linux-only managed preflight that joins runtime-package, isolation,
     process, connection, provider-declaration, read-only API, and native-load evidence
     without an attached-process fallback. Its report remains inert and unqualified.

@@ -15,6 +15,7 @@ use rustix::{
 
 use super::file::hash_opened_file;
 use super::linux_connection::RetainedConnectionIdentity;
+use super::linux_proc_holders::visible_same_uid_holders;
 use super::linux_sock_diag::{InetDiagRecord, SockDiagSession};
 use crate::{
     AttachedProcessEvidence, AttachedProcessEvidenceClass, AttachedProcessEvidenceInput,
@@ -295,13 +296,7 @@ fn owners_for_inode(
     cancellation: &CancellationToken,
     started: Instant,
 ) -> Result<u32, AttachedProcessWitnessError> {
-    let owners = super::linux_connection::visible_same_uid_holders(
-        inode,
-        expected_uid,
-        limits,
-        cancellation,
-        started,
-    )?;
+    let owners = visible_same_uid_holders(inode, expected_uid, limits, cancellation, started)?;
     match owners.as_slice() {
         [] => Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
         [owner] => Ok(*owner),
@@ -462,7 +457,7 @@ mod tests {
     use rewrite_types::CancellationToken;
 
     use super::{ListenerOwner, current_network_namespace, observe_process, open_entrypoint};
-    use crate::platform::linux_connection::process_has_inode;
+    use crate::platform::linux_proc_holders::process_has_inode;
     use crate::{AttachedProcessWitnessLimits, ListenerEndpoint};
 
     #[test]

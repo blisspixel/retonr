@@ -82,28 +82,22 @@ fn incomplete_managed_listener_snapshots_retry_selectively_within_the_bound() {
     assert_eq!(terminal_attempts.get(), 1);
 }
 
-use super::process_start_token;
+use super::{
+    process_start_token,
+    test_support::{expect_native, native_required, uncontrolled_access_denied},
+};
 use crate::{
     AttachedProcessEvidenceClass, AttachedProcessLaunchMode, AttachedProcessLease,
     AttachedProcessWitnessError, AttachedProcessWitnessLimits, ListenerEndpoint,
     ManagedLinuxProcessExpectation, NativeManagedLinuxProcessObserver, RetainedTcpConnection,
 };
 
-fn expect_native<T>(result: Result<T, AttachedProcessWitnessError>, context: &str) -> T {
-    result.unwrap_or_else(|error| {
-        panic!(
-            "{context}: {error}; snapshot reason: {:?}",
-            super::test_diagnostics::take_snapshot_test_reason()
-        )
-    })
-}
-
 #[test]
 fn managed_current_process_is_retained_and_reobserved() {
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("bind listener");
     let endpoint = ListenerEndpoint::new(listener.local_addr().expect("listener address"))
         .expect("valid endpoint");
-    let mut lease = expect_native(
+    let Some(mut lease) = expect_native(
         NativeManagedLinuxProcessObserver.attach(
             endpoint,
             socket_diagnostics(true, true, false),
@@ -112,7 +106,9 @@ fn managed_current_process_is_retained_and_reobserved() {
             &CancellationToken::new(),
         ),
         "attach managed process",
-    );
+    ) else {
+        return;
+    };
     assert_eq!(lease.initial_evidence().schema_version(), 2);
     assert_eq!(
         lease.initial_evidence().evidence_class(),
@@ -127,10 +123,13 @@ fn managed_current_process_is_retained_and_reobserved() {
     assert!(encoded.contains("managed_linux_isolation"));
     assert!(!encoded.contains("/proc/"));
     assert!(!encoded.contains("socket:["));
-    assert_eq!(
+    let Some(reobserved) = expect_native(
         lease.reobserve(&CancellationToken::new()),
-        Ok(lease.initial_evidence().clone())
-    );
+        "reobserve managed process",
+    ) else {
+        return;
+    };
+    assert_eq!(reobserved, lease.initial_evidence().clone());
     drop(listener);
     assert!(matches!(
         lease.reobserve(&CancellationToken::new()),
@@ -161,12 +160,13 @@ fn visible_holder_must_be_the_exact_expected_outer_pid() {
     );
     child.kill().expect("terminate child");
     child.wait().expect("reap child");
-    assert!(
-        matches!(result, Err(AttachedProcessWitnessError::ListenerRebound)),
-        "result: {:?}; snapshot reason: {:?}",
-        result.as_ref().err(),
-        super::test_diagnostics::take_snapshot_test_reason()
-    );
+    if uncontrolled_access_denied(&result) {
+        return;
+    }
+    assert!(matches!(
+        result,
+        Err(AttachedProcessWitnessError::ListenerRebound)
+    ));
 }
 
 #[test]
@@ -182,6 +182,10 @@ fn host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available() 
         .stderr(Stdio::null())
         .spawn()
     else {
+        assert!(
+            !native_required(),
+            "forced native attestor test requires unshare --user --map-root-user --net"
+        );
         return;
     };
     let deadline = Instant::now() + Duration::from_secs(2);
@@ -191,6 +195,10 @@ fn host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available() 
             .expect("read unshare child status")
             .is_some()
         {
+            assert!(
+                !native_required(),
+                "forced native attestor test requires a live unshare user+net child"
+            );
             return;
         }
         let metadata =
@@ -208,6 +216,10 @@ fn host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available() 
     if !isolated {
         let _ = child.kill();
         let _ = child.wait();
+        assert!(
+            !native_required(),
+            "forced native attestor test requires a distinct user+net namespace"
+        );
         return;
     }
 
@@ -224,6 +236,9 @@ fn host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available() 
     );
     child.kill().expect("terminate isolated child");
     child.wait().expect("reap isolated child");
+    if uncontrolled_access_denied(&result) {
+        return;
+    }
     assert!(matches!(
         result,
         Err(AttachedProcessWitnessError::ListenerRebound
@@ -243,7 +258,7 @@ fn managed_connection_uses_the_supplied_diagnostics_session() {
         server.local_addr().expect("server address"),
     )
     .expect("connection tuple");
-    let mut lease = expect_native(
+    let Some(mut lease) = expect_native(
         NativeManagedLinuxProcessObserver.attach(
             endpoint,
             socket_diagnostics(true, true, false),
@@ -252,14 +267,22 @@ fn managed_connection_uses_the_supplied_diagnostics_session() {
             &CancellationToken::new(),
         ),
         "attach managed process",
-    );
-    let initial = lease
-        .observe_connection(connection, &CancellationToken::new())
-        .expect("observe exact connection");
-    assert_eq!(
+    ) else {
+        return;
+    };
+    let Some(initial) = expect_native(
+        lease.observe_connection(connection, &CancellationToken::new()),
+        "observe exact connection",
+    ) else {
+        return;
+    };
+    let Some(reobserved) = expect_native(
         lease.reobserve_connection(connection, &initial, &CancellationToken::new()),
-        Ok(initial)
-    );
+        "reobserve exact connection",
+    ) else {
+        return;
+    };
+    assert_eq!(reobserved, initial);
     drop((client, server));
 }
 
@@ -394,7 +417,7 @@ fn closed_diagnostics_number_cannot_authorize_a_reused_file() {
         .expect("valid endpoint");
     let descriptor = socket_diagnostics(true, true, false);
     let diagnostics_number = descriptor.as_raw_fd();
-    let lease = expect_native(
+    let Some(lease) = expect_native(
         NativeManagedLinuxProcessObserver.attach(
             endpoint,
             descriptor,
@@ -403,7 +426,9 @@ fn closed_diagnostics_number_cannot_authorize_a_reused_file() {
             &CancellationToken::new(),
         ),
         "attach managed process",
-    );
+    ) else {
+        return;
+    };
     drop(lease);
 
     let mut retained = Vec::new();

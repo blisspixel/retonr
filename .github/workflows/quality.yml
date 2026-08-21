@@ -166,7 +166,7 @@ jobs:
           '
 
   runtime-isolation-native:
-    name: managed Linux isolation native gate
+    name: managed Linux native gates
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -177,7 +177,7 @@ jobs:
         with:
           toolchain: 1.97.1
 
-      - name: Compile the native isolation test
+      - name: Compile the native isolation and attestor tests
         shell: bash
         run: |
           set -euo pipefail
@@ -189,6 +189,22 @@ jobs:
           test "${#isolation_tests[@]}" -eq 1
           test -x "${isolation_tests[0]}"
           printf '%s\n' "${isolation_tests[0]}" > "$RUNNER_TEMP/retonr-isolation-test-binary"
+          mapfile -t attestor_tests < <(
+            cargo test --locked -p rewrite-runtime-attestor \
+              --lib --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "rewrite_runtime_attestor"
+                  and (.target.kind | index("lib"))
+                  and .profile.test
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#attestor_tests[@]}" -eq 1
+          test -x "${attestor_tests[0]}"
+          printf '%s\n' "${attestor_tests[0]}" > "$RUNNER_TEMP/retonr-attestor-test-binary"
 
       - name: Build the admitted native isolation test environment
         shell: bash
@@ -215,6 +231,42 @@ jobs:
             --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
             retonr-native-isolation \
             "$isolation_test" --test-threads=1
+
+      - name: Run the forced native attestor gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          attestor_test="$(cat "$RUNNER_TEMP/retonr-attestor-test-binary")"
+          expected_attestor_tests=(
+            'platform::linux_managed::tests::closed_diagnostics_number_cannot_authorize_a_reused_file'
+            'platform::linux_managed::tests::descriptor_substitution_flags_binding_peer_and_consumption_fail_closed'
+            'platform::linux_managed::tests::expected_start_executable_namespace_uid_and_listener_are_exact'
+            'platform::linux_managed::tests::fresh_diagnostics_descriptor_has_the_required_native_shape'
+            'platform::linux_managed::tests::host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available'
+            'platform::linux_managed::tests::incomplete_managed_listener_snapshots_retry_selectively_within_the_bound'
+            'platform::linux_managed::tests::managed_connection_uses_the_supplied_diagnostics_session'
+            'platform::linux_managed::tests::managed_current_process_is_retained_and_reobserved'
+            'platform::linux_managed::tests::visible_holder_must_be_the_exact_expected_outer_pid'
+          )
+          mapfile -t observed_attestor_tests < <(
+            "$attestor_test" 'platform::linux_managed::tests::' --list --format terse |
+              sed -n 's/: test$//p' |
+              LC_ALL=C sort
+          )
+          test "${#observed_attestor_tests[@]}" -eq "${#expected_attestor_tests[@]}"
+          for index in "${!expected_attestor_tests[@]}"; do
+            test "${observed_attestor_tests[$index]}" = "${expected_attestor_tests[$index]}"
+          done
+          docker run --rm \
+            --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env REWRITE_ATTESTOR_REQUIRE_NATIVE=1 \
+            retonr-native-isolation \
+            "$attestor_test" 'platform::linux_managed::tests::' --test-threads=1
 
   coverage:
     name: coverage
@@ -273,6 +325,53 @@ jobs:
           )
           test "${#isolation_tests[@]}" -eq 1
           test -x "${isolation_tests[0]}"
+          mapfile -t attestor_tests < <(
+            cargo test --locked -p rewrite-runtime-attestor \
+              --lib --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "rewrite_runtime_attestor"
+                  and (.target.kind | index("lib"))
+                  and .profile.test
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#attestor_tests[@]}" -eq 1
+          test -x "${attestor_tests[0]}"
+          expected_attestor_tests=(
+            'platform::linux_managed::tests::closed_diagnostics_number_cannot_authorize_a_reused_file'
+            'platform::linux_managed::tests::descriptor_substitution_flags_binding_peer_and_consumption_fail_closed'
+            'platform::linux_managed::tests::expected_start_executable_namespace_uid_and_listener_are_exact'
+            'platform::linux_managed::tests::fresh_diagnostics_descriptor_has_the_required_native_shape'
+            'platform::linux_managed::tests::host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available'
+            'platform::linux_managed::tests::incomplete_managed_listener_snapshots_retry_selectively_within_the_bound'
+            'platform::linux_managed::tests::managed_connection_uses_the_supplied_diagnostics_session'
+            'platform::linux_managed::tests::managed_current_process_is_retained_and_reobserved'
+            'platform::linux_managed::tests::visible_holder_must_be_the_exact_expected_outer_pid'
+          )
+          mapfile -t observed_attestor_tests < <(
+            "${attestor_tests[0]}" 'platform::linux_managed::tests::' --list --format terse |
+              sed -n 's/: test$//p' |
+              LC_ALL=C sort
+          )
+          test "${#observed_attestor_tests[@]}" -eq "${#expected_attestor_tests[@]}"
+          for index in "${!expected_attestor_tests[@]}"; do
+            test "${observed_attestor_tests[$index]}" = "${expected_attestor_tests[$index]}"
+          done
+          docker run --rm \
+            --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env CARGO_LLVM_COV=1 \
+            --env LLVM_PROFILE_FILE="$LLVM_PROFILE_FILE" \
+            --env REWRITE_ATTESTOR_REQUIRE_NATIVE=1 \
+            retonr-native-isolation \
+            "${attestor_tests[0]}" 'platform::linux_managed::tests::' --test-threads=1
           docker run --rm --privileged \
             --security-opt seccomp=unconfined \
             --security-opt apparmor=unconfined \

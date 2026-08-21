@@ -1,9 +1,4 @@
-use std::{
-    fs::{self, File},
-    net::SocketAddr,
-    os::unix::fs::MetadataExt,
-    time::Instant,
-};
+use std::{fs::File, net::SocketAddr, os::unix::fs::MetadataExt, time::Instant};
 
 use rewrite_types::{CancellationToken, Digest};
 use rustix::{
@@ -17,7 +12,8 @@ use super::{
         ListenerOwner, ListenerSocketIdentity, ensure_pidfd_alive, entrypoint_metadata,
         listener_identity, process_start_token,
     },
-    linux_connection::{RetainedConnectionIdentity, visible_same_uid_holders},
+    linux_connection::RetainedConnectionIdentity,
+    linux_proc_holders::{effective_uid_for_pid, visible_same_uid_holders},
     linux_sock_diag::SockDiagSession,
 };
 use crate::{
@@ -29,11 +25,9 @@ use crate::{
 
 mod retry;
 #[cfg(test)]
-mod test_diagnostics;
+mod test_support;
 
 use retry::retry_incomplete_snapshot;
-#[cfg(test)]
-pub(super) use test_diagnostics::{ManagedSnapshotTestReason, record_snapshot_test_reason};
 
 pub(crate) struct Lease {
     endpoint: ListenerEndpoint,
@@ -62,7 +56,16 @@ impl Lease {
         let pidfd = open_pidfd(expected.outer_pid())?;
         let mut entrypoint = open_process_file(expected.outer_pid(), "exe")?;
         let network_namespace = open_process_file(expected.outer_pid(), "ns/net")?;
-        validate_target(expected, outer_uid, &pidfd, &entrypoint, &network_namespace)?;
+        validate_target(
+            expected,
+            outer_uid,
+            &pidfd,
+            &entrypoint,
+            &network_namespace,
+            limits,
+            cancellation,
+            started,
+        )?;
         let mut sock_diag = SockDiagSession::from_file(diagnostics)?;
         let owner = managed_listener_owner(
             &mut sock_diag,
@@ -105,7 +108,16 @@ impl Lease {
             cancellation,
             started,
         )?;
-        validate_target(expected, outer_uid, &pidfd, &entrypoint, &network_namespace)?;
+        validate_target(
+            expected,
+            outer_uid,
+            &pidfd,
+            &entrypoint,
+            &network_namespace,
+            limits,
+            cancellation,
+            started,
+        )?;
         Ok(Self {
             endpoint,
             owner,
@@ -136,6 +148,9 @@ impl Lease {
             &self.pidfd,
             &self.entrypoint,
             &self.network_namespace,
+            limits,
+            cancellation,
+            started,
         )?;
         let owner = managed_listener_owner(
             &mut self.sock_diag,
@@ -258,23 +273,24 @@ fn open_process_file(pid: u32, member: &str) -> Result<File, AttachedProcessWitn
     })
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "target validation keeps the retained process and every observation bound explicit"
+)]
 fn validate_target(
     expected: ManagedLinuxProcessExpectation,
     outer_uid: u32,
     pidfd: &OwnedFd,
     entrypoint: &File,
     network_namespace: &File,
+    limits: AttachedProcessWitnessLimits,
+    cancellation: &CancellationToken,
+    started: Instant,
 ) -> Result<(), AttachedProcessWitnessError> {
     ensure_pidfd_alive(pidfd)?;
-    let process_metadata =
-        fs::metadata(format!("/proc/{}", expected.outer_pid())).map_err(|error| {
-            if error.kind() == std::io::ErrorKind::PermissionDenied {
-                AttachedProcessWitnessError::ProcessAccessDenied
-            } else {
-                AttachedProcessWitnessError::ProcessInstanceUnavailable
-            }
-        })?;
-    if process_metadata.uid() != outer_uid {
+    if effective_uid_for_pid(expected.outer_pid(), pidfd, limits, cancellation, started)?
+        != outer_uid
+    {
         return Err(AttachedProcessWitnessError::ProcessAccessDenied);
     }
     if process_start_token(expected.outer_pid())? != expected.process_start_token() {
@@ -376,11 +392,7 @@ fn managed_listener_owner_once(
         limits,
         cancellation,
         started,
-    )
-    .inspect_err(|_error| {
-        #[cfg(test)]
-        record_snapshot_test_reason(ManagedSnapshotTestReason::ListenerBefore);
-    })?;
+    )?;
     require_target_holder(
         before,
         expected.outer_pid(),
@@ -396,11 +408,7 @@ fn managed_listener_owner_once(
         limits,
         cancellation,
         started,
-    )
-    .inspect_err(|_error| {
-        #[cfg(test)]
-        record_snapshot_test_reason(ManagedSnapshotTestReason::ListenerAfter);
-    })?;
+    )?;
     if after != before {
         return Err(AttachedProcessWitnessError::ListenerRebound);
     }
@@ -428,21 +436,9 @@ fn require_target_holder(
     )?;
     match holders.as_slice() {
         [pid] if *pid == expected_pid => Ok(()),
-        [] => {
-            #[cfg(test)]
-            record_snapshot_test_reason(ManagedSnapshotTestReason::HolderEmpty);
-            Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete)
-        }
-        [_] => {
-            #[cfg(test)]
-            record_snapshot_test_reason(ManagedSnapshotTestReason::HolderWrong);
-            Err(AttachedProcessWitnessError::ListenerRebound)
-        }
-        _ => {
-            #[cfg(test)]
-            record_snapshot_test_reason(ManagedSnapshotTestReason::HolderAmbiguous);
-            Err(AttachedProcessWitnessError::ListenerOwnershipAmbiguous)
-        }
+        [] => Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
+        [_] => Err(AttachedProcessWitnessError::ListenerRebound),
+        _ => Err(AttachedProcessWitnessError::ListenerOwnershipAmbiguous),
     }
 }
 

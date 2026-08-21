@@ -272,6 +272,23 @@ retained pidfd and process start time, same-network-namespace evidence, and a
 retained `/proc/PID/exe` file. macOS returns a stable unsupported result rather than
 using private `libproc` interfaces.
 
+The Linux process-holder scanner opens and retains one `/proc` root directory for
+each bounded scan. For each numeric entry it opens a pidfd before opening the process
+directory relative to that root, then confirms liveness. It reads `status` relative
+to the held directory under a 64 KiB ceiling and admits exactly one `Uid:` row with
+four unsigned decimal fields; the second field is the effective UID. Descriptor
+enumeration and `readlink` stay relative to the held process directory and continue
+through the admitted view after a socket match. Once a pidfd exists, a missing entry
+is classified as process exit only when that pidfd proves the process is dead.
+Permission denial is `ProcessAccessDenied`, descriptor or memory exhaustion is
+`ResourceLimit`, and malformed or otherwise incomplete state is
+`ListenerSnapshotIncomplete`. None is converted into weaker evidence.
+
+For an admitted holder, descriptor traversal is bracketed by two bounded status
+reads through the retained process directory, each with exactly one strict four-field
+`Uid:` row. The effective UID must match exactly
+across both observations or the snapshot is incomplete.
+
 The observer attaches before the first HTTP request and rechecks after the existing
 preflight. It fails on process exit, ownership drift, process-incarnation drift,
 executable-object or byte drift, incomplete visibility, permission loss, cancellation,
@@ -336,6 +353,16 @@ These infrastructure records are stronger than attached observation because the
 launch and network namespace are retained, but they remain inert and Linux-only.
 Windows managed isolation and exact native-load binding are unsupported. macOS
 managed isolation, attached observation, and native-load binding are unsupported.
+
+The CI architecture distinguishes an uncontrolled host limitation from native proof.
+Ordinary hosted tests may treat only the exact `ProcessAccessDenied` result as an
+environment compatibility outcome when proc visibility is blocked. They cannot turn
+that outcome into evidence. A separate mandatory networkless container runs the
+managed attestor tests as the caller UID with all capabilities dropped and
+no-new-privileges set, and requires the native success path. The coverage job runs
+the same controlled gate with the workspace LLVM profile before applying the line
+floor, so the proof path is included in coverage rather than hidden behind a host
+skip.
 
 Ollama provider evidence is a separate trust boundary. It accepts only an exact
 stable version and runtime-package identity admitted by a source-controlled review

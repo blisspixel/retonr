@@ -9,6 +9,8 @@ mod linux_managed;
 #[cfg(target_os = "linux")]
 mod linux_native_load;
 #[cfg(target_os = "linux")]
+mod linux_proc_holders;
+#[cfg(target_os = "linux")]
 mod linux_sock_diag;
 #[cfg(target_os = "macos")]
 mod macos;

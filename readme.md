@@ -183,7 +183,14 @@ that neither exclusive socket ownership nor application-handler execution is pro
 Linux attached listener and connection row selection use bounded
 `NETLINK_SOCK_DIAG` with exact tuple, UID, inode, interface, and retained socket
 cookie checks; visible same-UID descriptor ownership is still subject to host
-visibility policy. A separate Linux managed-isolation library can launch an exact
+visibility policy. Each Linux holder scan starts from a retained `/proc` directory,
+anchors a numeric process with a pidfd before opening its directory, reads the
+effective UID from an exactly shaped row in each strictly bounded `status` record, and inspects descriptor
+links relative to that process directory. A second anchored status read must confirm
+the same effective UID after descriptor inspection. Once a pidfd exists, a missing process
+record is treated as exit only when the pidfd confirms exit. Access denial, resource
+exhaustion, malformed state, and incomplete visibility fail closed rather than
+weakening the evidence. A separate Linux managed-isolation library can launch an exact
 retained executable inside user, network, and PID namespaces, bring up loopback as
 the only interface, reduce privileges, retain the process tree, capture bounded
 startup output, and return one namespace-local loopback stream plus socket-diagnostics
@@ -202,6 +209,13 @@ load or use, or effective runtime identity. These Linux boundaries are supported
 host namespace and process-visibility policy permit them. Windows managed isolation
 and exact native-load binding are unsupported. macOS managed isolation, attached
 attribution, and native-load binding are unsupported.
+
+Linux CI keeps host compatibility separate from proof. Ordinary tests may accept only
+the exact typed access-denied outcome when an uncontrolled worker blocks required proc
+visibility. A mandatory networkless controlled gate requires the native managed
+attestor path to succeed under a dropped-capability, no-new-privileges process, and
+that same gate contributes its profile data to the workspace 80 percent line-coverage
+check.
 
 An opt-in managed-preflight API now returns that unchanged version 1 report with a
 separate redacted, inert build binding. It constructs a typed `RuntimeBuildIdentity`
