@@ -174,12 +174,22 @@ pub(super) fn visible_same_uid_holders(
 ) -> Result<Vec<u32>, AttachedProcessWitnessError> {
     let mut owners = BTreeSet::new();
     let mut process_count = 0_usize;
-    let entries = fs::read_dir("/proc")
-        .map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
+    let entries = fs::read_dir("/proc").map_err(|_error| {
+        #[cfg(test)]
+        super::linux_managed::record_snapshot_test_reason(
+            super::linux_managed::ManagedSnapshotTestReason::ProcRoot,
+        );
+        AttachedProcessWitnessError::ListenerSnapshotIncomplete
+    })?;
     for entry in entries {
         ensure_active(cancellation, started, limits)?;
-        let entry =
-            entry.map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
+        let entry = entry.map_err(|_error| {
+            #[cfg(test)]
+            super::linux_managed::record_snapshot_test_reason(
+                super::linux_managed::ManagedSnapshotTestReason::ProcEntry,
+            );
+            AttachedProcessWitnessError::ListenerSnapshotIncomplete
+        })?;
         let name = entry.file_name();
         let Some(name) = name.to_str() else {
             continue;
@@ -199,7 +209,13 @@ pub(super) fn visible_same_uid_holders(
             Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
                 return Err(AttachedProcessWitnessError::ProcessAccessDenied);
             }
-            Err(_) => return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
+            Err(_) => {
+                #[cfg(test)]
+                super::linux_managed::record_snapshot_test_reason(
+                    super::linux_managed::ManagedSnapshotTestReason::ProcessMetadata,
+                );
+                return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete);
+            }
         };
         if metadata.uid() != expected_uid {
             continue;
@@ -233,7 +249,13 @@ pub(super) fn process_has_inode(
         Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
             return Err(AttachedProcessWitnessError::ProcessAccessDenied);
         }
-        Err(_) => return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
+        Err(_) => {
+            #[cfg(test)]
+            super::linux_managed::record_snapshot_test_reason(
+                super::linux_managed::ManagedSnapshotTestReason::FdDirectory,
+            );
+            return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete);
+        }
     };
     let expected = format!("socket:[{inode}]");
     let mut descriptor_count = 0_usize;
@@ -245,13 +267,24 @@ pub(super) fn process_has_inode(
         if descriptor_count > maximum_descriptors {
             return Err(AttachedProcessWitnessError::ResourceLimit);
         }
-        let entry =
-            entry.map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
+        let entry = entry.map_err(|_error| {
+            #[cfg(test)]
+            super::linux_managed::record_snapshot_test_reason(
+                super::linux_managed::ManagedSnapshotTestReason::FdEntry,
+            );
+            AttachedProcessWitnessError::ListenerSnapshotIncomplete
+        })?;
         match fs::read_link(entry.path()) {
             Ok(target) if target.as_os_str() == expected.as_str() => return Ok(true),
             Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(_) => return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
+            Err(_) => {
+                #[cfg(test)]
+                super::linux_managed::record_snapshot_test_reason(
+                    super::linux_managed::ManagedSnapshotTestReason::FdLink,
+                );
+                return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete);
+            }
         }
     }
     Ok(false)

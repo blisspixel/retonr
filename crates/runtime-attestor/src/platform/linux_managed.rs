@@ -28,8 +28,12 @@ use crate::{
 };
 
 mod retry;
+#[cfg(test)]
+mod test_diagnostics;
 
 use retry::retry_incomplete_snapshot;
+#[cfg(test)]
+pub(super) use test_diagnostics::{ManagedSnapshotTestReason, record_snapshot_test_reason};
 
 pub(crate) struct Lease {
     endpoint: ListenerEndpoint,
@@ -372,7 +376,11 @@ fn managed_listener_owner_once(
         limits,
         cancellation,
         started,
-    )?;
+    )
+    .inspect_err(|_error| {
+        #[cfg(test)]
+        record_snapshot_test_reason(ManagedSnapshotTestReason::ListenerBefore);
+    })?;
     require_target_holder(
         before,
         expected.outer_pid(),
@@ -388,7 +396,11 @@ fn managed_listener_owner_once(
         limits,
         cancellation,
         started,
-    )?;
+    )
+    .inspect_err(|_error| {
+        #[cfg(test)]
+        record_snapshot_test_reason(ManagedSnapshotTestReason::ListenerAfter);
+    })?;
     if after != before {
         return Err(AttachedProcessWitnessError::ListenerRebound);
     }
@@ -416,9 +428,21 @@ fn require_target_holder(
     )?;
     match holders.as_slice() {
         [pid] if *pid == expected_pid => Ok(()),
-        [] => Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
-        [_] => Err(AttachedProcessWitnessError::ListenerRebound),
-        _ => Err(AttachedProcessWitnessError::ListenerOwnershipAmbiguous),
+        [] => {
+            #[cfg(test)]
+            record_snapshot_test_reason(ManagedSnapshotTestReason::HolderEmpty);
+            Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete)
+        }
+        [_] => {
+            #[cfg(test)]
+            record_snapshot_test_reason(ManagedSnapshotTestReason::HolderWrong);
+            Err(AttachedProcessWitnessError::ListenerRebound)
+        }
+        _ => {
+            #[cfg(test)]
+            record_snapshot_test_reason(ManagedSnapshotTestReason::HolderAmbiguous);
+            Err(AttachedProcessWitnessError::ListenerOwnershipAmbiguous)
+        }
     }
 }
 

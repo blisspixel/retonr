@@ -89,20 +89,30 @@ use crate::{
     ManagedLinuxProcessExpectation, NativeManagedLinuxProcessObserver, RetainedTcpConnection,
 };
 
+fn expect_native<T>(result: Result<T, AttachedProcessWitnessError>, context: &str) -> T {
+    result.unwrap_or_else(|error| {
+        panic!(
+            "{context}: {error}; snapshot reason: {:?}",
+            super::test_diagnostics::take_snapshot_test_reason()
+        )
+    })
+}
+
 #[test]
 fn managed_current_process_is_retained_and_reobserved() {
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("bind listener");
     let endpoint = ListenerEndpoint::new(listener.local_addr().expect("listener address"))
         .expect("valid endpoint");
-    let mut lease = NativeManagedLinuxProcessObserver
-        .attach(
+    let mut lease = expect_native(
+        NativeManagedLinuxProcessObserver.attach(
             endpoint,
             socket_diagnostics(true, true, false),
             current_expectation(0, 0, 0, 0),
             AttachedProcessWitnessLimits::default(),
             &CancellationToken::new(),
-        )
-        .expect("attach managed process");
+        ),
+        "attach managed process",
+    );
     assert_eq!(lease.initial_evidence().schema_version(), 2);
     assert_eq!(
         lease.initial_evidence().evidence_class(),
@@ -151,10 +161,12 @@ fn visible_holder_must_be_the_exact_expected_outer_pid() {
     );
     child.kill().expect("terminate child");
     child.wait().expect("reap child");
-    assert!(matches!(
-        result,
-        Err(AttachedProcessWitnessError::ListenerRebound)
-    ));
+    assert!(
+        matches!(result, Err(AttachedProcessWitnessError::ListenerRebound)),
+        "result: {:?}; snapshot reason: {:?}",
+        result.as_ref().err(),
+        super::test_diagnostics::take_snapshot_test_reason()
+    );
 }
 
 #[test]
@@ -231,15 +243,16 @@ fn managed_connection_uses_the_supplied_diagnostics_session() {
         server.local_addr().expect("server address"),
     )
     .expect("connection tuple");
-    let mut lease = NativeManagedLinuxProcessObserver
-        .attach(
+    let mut lease = expect_native(
+        NativeManagedLinuxProcessObserver.attach(
             endpoint,
             socket_diagnostics(true, true, false),
             current_expectation(0, 0, 0, 0),
             AttachedProcessWitnessLimits::default(),
             &CancellationToken::new(),
-        )
-        .expect("attach managed process");
+        ),
+        "attach managed process",
+    );
     let initial = lease
         .observe_connection(connection, &CancellationToken::new())
         .expect("observe exact connection");
@@ -381,15 +394,16 @@ fn closed_diagnostics_number_cannot_authorize_a_reused_file() {
         .expect("valid endpoint");
     let descriptor = socket_diagnostics(true, true, false);
     let diagnostics_number = descriptor.as_raw_fd();
-    let lease = NativeManagedLinuxProcessObserver
-        .attach(
+    let lease = expect_native(
+        NativeManagedLinuxProcessObserver.attach(
             endpoint,
             descriptor,
             current_expectation(0, 0, 0, 0),
             AttachedProcessWitnessLimits::default(),
             &CancellationToken::new(),
-        )
-        .expect("attach managed process");
+        ),
+        "attach managed process",
+    );
     drop(lease);
 
     let mut retained = Vec::new();
