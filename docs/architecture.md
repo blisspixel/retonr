@@ -315,8 +315,10 @@ generation.
 The separate managed Linux boundary owns process creation rather than attaching to
 an ambient service. A retained helper establishes user, network, and PID namespaces,
 maps the caller identity, enables loopback as the only network interface, sets
-no-new-privileges, removes capabilities, closes inherited descriptors, applies
-process and file-descriptor limits, and launches an already-open executable object.
+no-new-privileges, removes capabilities, seals every ambient descriptor as
+close-on-exec, verifies the descriptor postcondition, applies process and
+file-descriptor limits, and launches an already-open executable object. Stage two
+exec closes the sealed descriptors before target launch.
 Before launch, namespace init installs a target-inherited seccomp socket allowlist.
 The target's `socket()` calls admit only `AF_INET` and `AF_INET6`; every other socket
 family and `io_uring_setup` are denied. The retained lease captures bounded startup

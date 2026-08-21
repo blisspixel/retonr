@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     fs::File,
     net::{Ipv4Addr, TcpListener, TcpStream},
     num::NonZeroU32,
@@ -43,6 +44,42 @@ fn fresh_diagnostics_descriptor_has_the_required_native_shape() {
         SocketAddrNetlink::try_from(peer.expect("connected peer")).expect("netlink peer address");
     assert_eq!(peer.pid(), 0);
     assert_eq!(peer.groups(), 0);
+}
+
+#[test]
+fn incomplete_managed_listener_snapshots_retry_selectively_within_the_bound() {
+    let attempts = Cell::new(0_usize);
+    let observed = super::retry_incomplete_snapshot(
+        AttachedProcessWitnessLimits::default(),
+        &CancellationToken::new(),
+        Instant::now(),
+        || {
+            attempts.set(attempts.get() + 1);
+            if attempts.get() < 3 {
+                Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete)
+            } else {
+                Ok(91_u32)
+            }
+        },
+    );
+    assert_eq!(observed, Ok(91));
+    assert_eq!(attempts.get(), 3);
+
+    let terminal_attempts = Cell::new(0_usize);
+    let terminal = super::retry_incomplete_snapshot(
+        AttachedProcessWitnessLimits::default(),
+        &CancellationToken::new(),
+        Instant::now(),
+        || {
+            terminal_attempts.set(terminal_attempts.get() + 1);
+            Err::<(), _>(AttachedProcessWitnessError::ProcessAccessDenied)
+        },
+    );
+    assert_eq!(
+        terminal,
+        Err(AttachedProcessWitnessError::ProcessAccessDenied)
+    );
+    assert_eq!(terminal_attempts.get(), 1);
 }
 
 use super::process_start_token;

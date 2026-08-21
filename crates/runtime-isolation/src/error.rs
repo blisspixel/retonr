@@ -38,8 +38,8 @@ pub enum IsolationError {
     /// A local-allow or non-loopback-deny canary failed.
     #[error("the loopback-only network canaries did not pass")]
     NetworkCanary,
-    /// An unexpected inherited descriptor was visible before target launch.
-    #[error("the helper inherited an unexpected file descriptor")]
+    /// An ambient descriptor could not be sealed before the next helper exec.
+    #[error("the helper retained an inheritable file descriptor")]
     DescriptorLeak,
     /// Privileges could not be irreversibly reduced before target launch.
     #[error("the helper could not drop privileges completely")]

@@ -3,7 +3,6 @@ use std::{
     io,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream},
     os::unix::fs::MetadataExt as _,
-    path::Path,
     time::Duration,
 };
 
@@ -103,6 +102,8 @@ pub(super) fn establish_isolation(
 }
 
 pub(super) fn validate_descriptor_set() -> Result<(), HelperFailure> {
+    // Seal ambient caller descriptors before stage two exec, then verify the postcondition.
+    close_fds::set_fds_cloexec(3, &[]);
     let entries = fs::read_dir("/proc/self/fd").map_err(|_| HelperFailure::DescriptorLeak)?;
     let descriptors = entries
         .map(|entry| {
@@ -115,11 +116,26 @@ pub(super) fn validate_descriptor_set() -> Result<(), HelperFailure> {
         })
         .collect::<Result<Vec<_>, _>>()?;
     for descriptor in descriptors.into_iter().filter(|descriptor| *descriptor > 2) {
-        if Path::new(&format!("/proc/self/fd/{descriptor}")).exists() {
+        let path = format!("/proc/self/fdinfo/{descriptor}");
+        let info = match fs::read_to_string(path) {
+            Ok(info) => info,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+            Err(_) => return Err(HelperFailure::DescriptorLeak),
+        };
+        if !descriptor_has_close_on_exec(&info) {
             return Err(HelperFailure::DescriptorLeak);
         }
     }
     Ok(())
+}
+
+fn descriptor_has_close_on_exec(info: &str) -> bool {
+    info.lines()
+        .find_map(|line| line.strip_prefix("flags:\t"))
+        .is_some_and(|flags| {
+            u64::from_str_radix(flags, 8)
+                .is_ok_and(|flags| flags & u64::try_from(libc::O_CLOEXEC).unwrap_or(0) != 0)
+        })
 }
 
 fn visible_thread_count() -> Result<usize, HelperFailure> {
@@ -261,4 +277,17 @@ fn namespace_identity(path: &str) -> Result<RawNamespaceIdentity, HelperFailure>
         device: metadata.dev(),
         inode: metadata.ino(),
     })
+}
+
+#[cfg(test)]
+mod descriptor_tests {
+    use super::descriptor_has_close_on_exec;
+
+    #[test]
+    fn fdinfo_requires_a_valid_close_on_exec_flag() {
+        assert!(descriptor_has_close_on_exec("pos:\t0\nflags:\t02000000\n"));
+        assert!(!descriptor_has_close_on_exec("pos:\t0\nflags:\t00\n"));
+        assert!(!descriptor_has_close_on_exec("flags:\tnot-octal\n"));
+        assert!(!descriptor_has_close_on_exec("pos:\t0\n"));
+    }
 }

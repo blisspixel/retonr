@@ -38,7 +38,7 @@ The plan is anchored to Git revision `c3657edd126f164facc311719b831d6926e7c06d` 
 
 - `crates/ollama`: inert exact-version cloud-disable declaration and startup-marker evidence.
 - New `crates/runtime-isolation`: platform-neutral prepare, launch, lease, reobserve, and close contracts.
-- Linux adapter: namespace creation, loopback setup, descriptor closure, capability reduction, target-inherited seccomp socket policy, launch, and retained lifecycle.
+- Linux adapter: namespace creation, loopback setup, ambient descriptor close-on-exec sealing and stage-two closure, capability reduction, target-inherited seccomp socket policy, launch, and retained lifecycle.
 - Later Windows adapter: dynamic WFP policy plus no-breakaway kill-on-close Job.
 - `crates/app` and `crates/eval`: later composition with package, process, isolation, and evaluation evidence.
 
@@ -47,7 +47,7 @@ The plan is anchored to Git revision `c3657edd126f164facc311719b831d6926e7c06d` 
 1. Implement strict Ollama version parsing, reviewed-version policy injection, managed environment declaration, bounded startup-marker parsing, and redacted inert evidence. Keep the production allowlist empty.
 2. Define an isolation policy limited to loopback and a retained lease that owns both policy and process-tree lifecycle.
 3. Implement capability probing and deterministic unsupported results.
-4. Implement Linux namespace setup before runtime execution, bring up loopback only, close inherited descriptors, set no-new-privileges, reduce capabilities, install the target-inherited seccomp policy, and launch the verified package.
+4. Implement Linux namespace setup before runtime execution, bring up loopback only, seal ambient descriptors as close-on-exec and verify stage-two closure, set no-new-privileges, reduce capabilities, install the target-inherited seccomp policy, and launch the verified package.
 5. Run local allow, IPv4 deny, IPv6 deny, host pathname `AF_UNIX`, `AF_VSOCK`, and `io_uring_setup` canaries, then reobserve namespace, seccomp mode, process tree, provider evidence, and policy lifecycle.
 6. Bind the results into an inert managed-runtime report without changing attached preflight reports.
 7. Add Windows only after all possible runtime child executables are derived from a frozen package manifest.

@@ -11,6 +11,7 @@ use std::{
 
 use rewrite_runtime_isolation::{IsolationError, IsolationPolicy, LaunchSpec, PreparedIsolation};
 use rewrite_types::CancellationToken;
+use rustix::io::{FdFlags, fcntl_setfd};
 
 const SOCKET_POLICY_SCRIPT: &str = r#"
 import ctypes, errno, os, socket, time
@@ -91,6 +92,9 @@ fn retained_replaced_python(python: &Path) -> (std::path::PathBuf, File) {
 #[test]
 fn managed_launch_is_verified_or_host_policy_denies_it_exactly() {
     let helper = env!("CARGO_BIN_EXE_rewrite-runtime-isolation-helper");
+    let inherited = File::open("/dev/null").expect("open inherited descriptor fixture");
+    fcntl_setfd(&inherited, FdFlags::empty())
+        .expect("clear close-on-exec on inherited descriptor fixture");
     let cancellation = CancellationToken::new();
     let policy = IsolationPolicy::new(
         Duration::from_secs(10),

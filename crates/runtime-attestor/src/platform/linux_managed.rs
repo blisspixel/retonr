@@ -27,6 +27,10 @@ use crate::{
     NativeLoadObserverError, RetainedTcpConnection, RetainedTcpConnectionEvidence, ensure_active,
 };
 
+mod retry;
+
+use retry::retry_incomplete_snapshot;
+
 pub(crate) struct Lease {
     endpoint: ListenerEndpoint,
     owner: ListenerOwner,
@@ -331,6 +335,28 @@ fn validate_namespace(
 }
 
 fn managed_listener_owner(
+    sock_diag: &mut SockDiagSession,
+    endpoint: SocketAddr,
+    expected: ManagedLinuxProcessExpectation,
+    outer_uid: u32,
+    limits: AttachedProcessWitnessLimits,
+    cancellation: &CancellationToken,
+    started: Instant,
+) -> Result<ListenerOwner, AttachedProcessWitnessError> {
+    retry_incomplete_snapshot(limits, cancellation, started, || {
+        managed_listener_owner_once(
+            sock_diag,
+            endpoint,
+            expected,
+            outer_uid,
+            limits,
+            cancellation,
+            started,
+        )
+    })
+}
+
+fn managed_listener_owner_once(
     sock_diag: &mut SockDiagSession,
     endpoint: SocketAddr,
     expected: ManagedLinuxProcessExpectation,

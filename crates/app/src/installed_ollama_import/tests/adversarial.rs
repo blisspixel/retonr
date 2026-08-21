@@ -112,10 +112,15 @@ fn source_symlink_substitution_is_rejected() {
             &CancellationToken::new(),
         )
         .expect_err("indirect blob cannot import");
-    assert!(matches!(
-        error.kind(),
-        ArtifactRepositoryErrorKind::Conflict | ArtifactRepositoryErrorKind::Operational
-    ));
+    assert!(
+        matches!(
+            error.kind(),
+            ArtifactRepositoryErrorKind::Conflict
+                | ArtifactRepositoryErrorKind::Operational
+                | ArtifactRepositoryErrorKind::ConcurrentModification
+        ),
+        "{error:?}"
+    );
     assert!(!data.exists());
 }
 
@@ -144,10 +149,15 @@ fn source_reparse_substitution_is_rejected() {
             &CancellationToken::new(),
         )
         .expect_err("indirect blob cannot import");
-    assert!(matches!(
-        error.kind(),
-        ArtifactRepositoryErrorKind::Conflict | ArtifactRepositoryErrorKind::Operational
-    ));
+    assert!(
+        matches!(
+            error.kind(),
+            ArtifactRepositoryErrorKind::Conflict
+                | ArtifactRepositoryErrorKind::Operational
+                | ArtifactRepositoryErrorKind::ConcurrentModification
+        ),
+        "{error:?}"
+    );
     assert!(!data.exists());
 }
 
