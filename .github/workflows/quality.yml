@@ -383,8 +383,7 @@ jobs:
             --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
             retonr-native-isolation \
             "${isolation_tests[0]}" --test-threads=1
-          cargo llvm-cov report --locked --workspace --all-targets \
-            --all-features --fail-under-lines 80
+          cargo llvm-cov report --fail-under-lines 80
 
   fuzz-smoke:
     name: fuzz target smoke tests
