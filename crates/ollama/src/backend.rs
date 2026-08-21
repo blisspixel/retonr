@@ -215,6 +215,7 @@ impl OllamaBackend {
             format: schema,
             think: false,
             raw: false,
+            keep_alive: None,
             options: GenerateOptions {
                 temperature: request.sampling.temperature,
                 top_p: request.sampling.top_p,
@@ -313,6 +314,7 @@ impl OllamaBackend {
             format: schema,
             think: false,
             raw: false,
+            keep_alive: None,
             options: GenerateOptions {
                 temperature: request.sampling.temperature,
                 top_p: request.sampling.top_p,

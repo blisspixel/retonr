@@ -107,7 +107,9 @@ pub(crate) fn parse_running_models(
         .map(|model| {
             if !valid_text(&model.name, MAX_REFERENCE_BYTES)
                 || !valid_text(&model.model, MAX_REFERENCE_BYTES)
+                || model.name != model.model
                 || model.size == 0
+                || model.size_vram > model.size
                 || model.context_length == 0
                 || !model.remote_model.is_empty()
                 || !model.remote_host.is_empty()

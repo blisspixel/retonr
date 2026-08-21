@@ -1,5 +1,7 @@
 use std::{net::SocketAddr, time::Duration};
 
+#[cfg(target_os = "linux")]
+use std::net::Ipv6Addr;
 #[cfg(any(target_os = "linux", windows))]
 use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream};
 
@@ -7,14 +9,78 @@ use rewrite_types::{CancellationToken, Digest};
 
 use crate::{
     AttachedProcessEvidence, AttachedProcessEvidenceClass, AttachedProcessEvidenceInput,
-    AttachedProcessObserver, AttachedProcessWitnessError, AttachedProcessWitnessLimits,
-    ListenerEndpoint, NativeAttachedProcessObserver, RetainedTcpConnectionEvidence,
+    AttachedProcessLaunchMode, AttachedProcessObserver, AttachedProcessWitnessError,
+    AttachedProcessWitnessLimits, ListenerEndpoint, ManagedLinuxProcessExpectation,
+    NativeAttachedProcessObserver, RetainedTcpConnectionEvidence,
     RetainedTcpConnectionEvidenceInput, TcpConnectionAttributionKind,
     TcpConnectionSharingLimitation, compare_evidence, observe_initial_connection,
     observe_initial_connection_with_policy, reobserve_connection_once,
 };
+
+#[test]
+fn managed_expectation_requires_every_nonzero_object_identity() {
+    let valid = ManagedLinuxProcessExpectation::new(1, 2, 3, 4, 5, 6, 7, 0)
+        .expect("complete managed expectation");
+    assert_eq!(valid.outer_pid(), 1);
+    assert_eq!(valid.process_start_token(), 2);
+    assert_eq!(valid.executable_device(), 3);
+    assert_eq!(valid.executable_inode(), 4);
+    assert_eq!(valid.executable_bytes(), 5);
+    assert_eq!(valid.network_namespace_device(), 6);
+    assert_eq!(valid.network_namespace_inode(), 7);
+    assert_eq!(valid.diagnostics_uid(), 0);
+
+    for field in 0..7 {
+        let mut values = [1_u64, 2, 3, 4, 5, 6, 7];
+        values[field] = 0;
+        assert_eq!(
+            ManagedLinuxProcessExpectation::new(
+                u32::try_from(values[0]).expect("PID"),
+                values[1],
+                values[2],
+                values[3],
+                values[4],
+                values[5],
+                values[6],
+                0,
+            ),
+            Err(AttachedProcessWitnessError::InvalidEvidence)
+        );
+    }
+}
+
+#[test]
+fn attached_v1_identity_is_stable_and_rejects_managed_class_pairing() {
+    let stable = evidence("stable");
+    assert_eq!(stable.schema_version(), 1);
+    assert_eq!(
+        stable.launch_mode(),
+        AttachedProcessLaunchMode::AttachedUnknown
+    );
+    assert_eq!(
+        stable.evidence_digest().as_str(),
+        "ecf3cb29d0f1d4cf77e1e6a196e8fe69dbee0e51b00e62a0e4ceae9e4580c0ee"
+    );
+    assert_eq!(
+        AttachedProcessEvidence::new(AttachedProcessEvidenceInput {
+            evidence_class: AttachedProcessEvidenceClass::LinuxManagedNamespaceSockDiag,
+            owner_pid: 42,
+            process_instance_digest: digest("process"),
+            ownership_snapshot_digest: digest("listener"),
+            entrypoint_object_digest: digest("object"),
+            entrypoint_digest: digest("entrypoint"),
+            entrypoint_bytes: 128,
+            platform_evidence_digest: digest("platform"),
+        }),
+        Err(AttachedProcessWitnessError::InvalidEvidence)
+    );
+}
 #[cfg(any(target_os = "linux", windows))]
 use crate::{AttachedProcessLease, RetainedTcpConnection};
+
+#[cfg(windows)]
+#[path = "tests/windows_native_load_unsupported.rs"]
+mod windows_native_load_unsupported;
 
 fn digest(label: &str) -> Digest {
     Digest::sha256(label.as_bytes())
@@ -312,6 +378,53 @@ fn native_observer_attributes_one_retained_established_connection() {
     );
     drop(server);
     drop(client);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn linux_native_observer_attributes_ipv6_and_rejects_the_closed_cookie() {
+    let listener = match TcpListener::bind((Ipv6Addr::LOCALHOST, 0)) {
+        Ok(listener) => listener,
+        Err(error) if error.kind() == std::io::ErrorKind::AddrNotAvailable => return,
+        Err(error) => panic!("bind IPv6 listener: {error}"),
+    };
+    let address = listener.local_addr().expect("listener address");
+    let client = TcpStream::connect(address).expect("connect client");
+    let (server, _) = listener.accept().expect("accept connection");
+    let connection = RetainedTcpConnection::new(
+        client.local_addr().expect("client address"),
+        client.peer_addr().expect("server address"),
+    )
+    .expect("retained connection endpoints");
+    let cancellation = CancellationToken::new();
+    let attached = NativeAttachedProcessObserver.attach(
+        ListenerEndpoint::new(address).expect("loopback endpoint"),
+        AttachedProcessWitnessLimits::default(),
+        &cancellation,
+    );
+    let mut lease = match attached {
+        Ok(lease) => lease,
+        Err(
+            AttachedProcessWitnessError::ProcessAccessDenied
+            | AttachedProcessWitnessError::ListenerSnapshotIncomplete,
+        ) => return,
+        Err(error) => panic!("unexpected Linux witness result: {error}"),
+    };
+    let initial = lease
+        .observe_connection(connection, &cancellation)
+        .expect("observe exact IPv6 connection");
+    assert_eq!(
+        lease
+            .reobserve_connection(connection, &initial, &cancellation)
+            .expect("reobserve exact IPv6 connection"),
+        initial
+    );
+    drop(server);
+    drop(client);
+    assert_eq!(
+        lease.reobserve_connection(connection, &initial, &cancellation),
+        Err(AttachedProcessWitnessError::ConnectionClosed)
+    );
 }
 
 #[cfg(any(target_os = "linux", windows))]

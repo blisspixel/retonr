@@ -27,6 +27,7 @@ mod contract;
 mod guard;
 mod inspect;
 mod migration;
+mod ollama_import;
 mod selection;
 mod set_import;
 mod set_inventory;
@@ -40,7 +41,6 @@ pub(crate) use guard::{
 };
 
 pub use contract::ArtifactRepositorySetRemovalResult;
-pub(crate) use contract::store_error_kind;
 pub use contract::{
     ArtifactInstallationKey, ArtifactRepositoryBackupKey, ArtifactRepositoryError,
     ArtifactRepositoryErrorKind, ArtifactRepositoryImportDisposition,
@@ -49,6 +49,7 @@ pub use contract::{
     ArtifactRepositoryPendingOperations, ArtifactRepositoryReconciliationResult,
     ArtifactRepositoryRemovalResult, ArtifactRepositorySetImportResult, ArtifactSetInstallationKey,
 };
+pub(crate) use contract::{set_import_error_kind, store_error_kind};
 pub use inspect::{ArtifactRepositorySchemaInspection, ArtifactRepositorySchemaStatus};
 pub use set_reconciliation::ArtifactRepositorySetReconciliationResult;
 

@@ -11,8 +11,12 @@ use thiserror::Error;
 mod baseline;
 mod claim_shadow_calibration;
 mod editorial_corpus;
+mod hybrid_scorecard;
+mod local_judge_execution;
 mod local_ollama_attested_preflight;
 mod local_ollama_bound_preflight;
+mod local_ollama_managed_preflight;
+mod local_ollama_model_binding;
 mod local_ollama_preflight;
 mod watermark_research;
 mod writing_sample_library;
@@ -35,6 +39,22 @@ pub use editorial_corpus::{
     EditorialFindingExpectation, MAX_EDITORIAL_CASES, MAX_EDITORIAL_CORPUS_BYTES,
     parse_editorial_corpus,
 };
+pub use hybrid_scorecard::{
+    HYBRID_SCORECARD_SCHEMA_VERSION, HybridScorecardCasePlan, HybridScorecardError,
+    HybridScorecardPlan, HybridScorecardReport, JudgeAuthority, JudgeCaseOutcome, JudgeCaseResult,
+    JudgeChoice, JudgeExecution, JudgeObservation, JudgeObservationBatch, JudgeOrderPolicy,
+    JudgePresentation, JudgeTriageSummary, LocalJudgePolicy, MAX_HYBRID_SCORECARD_BYTES,
+    ReleaseReviewDisposition, hybrid_scorecard_deterministic_policy_digest,
+    hybrid_scorecard_plan_digest, hybrid_scorecard_suite_pair_digest, parse_hybrid_scorecard_plan,
+    parse_judge_observation_batch, run_hybrid_scorecard,
+};
+pub use local_judge_execution::{
+    LOCAL_JUDGE_RUBRIC_SCHEMA_VERSION, LocalJudgeExecution, LocalJudgeExecutionError,
+    LocalJudgeExecutionEvidenceClass, LocalJudgeExecutionOutcome, LocalJudgeExecutionReceipt,
+    LocalJudgeRubric, LocalJudgeRubricClause, LocalJudgeRubricError, MAX_LOCAL_JUDGE_RUBRIC_BYTES,
+    MAX_LOCAL_JUDGE_RUBRIC_CLAUSES, local_judge_prompt_contract_digest, local_judge_rubric_digest,
+    parse_local_judge_rubric, run_local_judge_execution,
+};
 pub use local_ollama_attested_preflight::{
     LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_SCHEMA_VERSION,
     LOCAL_OLLAMA_ATTESTED_PREFLIGHT_REPORT_SCHEMA_VERSION, LocalOllamaAttestedPreflightError,
@@ -49,12 +69,28 @@ pub use local_ollama_bound_preflight::{
     LocalOllamaBoundProcessEvidenceLevel, MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES,
     parse_local_ollama_bound_preflight_plan, run_local_ollama_bound_preflight,
 };
+pub use local_ollama_managed_preflight::{
+    LOCAL_OLLAMA_MANAGED_BUILD_BINDING_SCHEMA_VERSION,
+    LOCAL_OLLAMA_MANAGED_PREFLIGHT_REPORT_SCHEMA_VERSION,
+    LocalOllamaEffectiveStateMissingRelationship, LocalOllamaManagedBuildBinding,
+    LocalOllamaManagedBuildEvidenceClass, LocalOllamaManagedPreflightError,
+    LocalOllamaManagedPreflightLimits, LocalOllamaManagedPreflightOutcome,
+    LocalOllamaManagedPreflightReport, LocalOllamaManagedProcessEvidenceLevel,
+    run_local_ollama_managed_preflight, run_local_ollama_managed_preflight_with_build_binding,
+};
+pub use local_ollama_model_binding::{
+    LOCAL_OLLAMA_MODEL_BINDING_RUNTIME_VERSION, LOCAL_OLLAMA_MODEL_BINDING_SCHEMA_VERSION,
+    LocalOllamaArtifactSetDisposition, LocalOllamaModelBindingError,
+    LocalOllamaModelBindingEvidence, LocalOllamaObservedTemplateMatch,
+    LocalOllamaPackageManifestDisposition, bind_imported_ollama_model_to_preflight,
+};
 pub use local_ollama_preflight::{
     LOCAL_OLLAMA_PREFLIGHT_PLAN_SCHEMA_VERSION, LOCAL_OLLAMA_PREFLIGHT_REPORT_SCHEMA_VERSION,
-    LocalOllamaModelPlan, LocalOllamaPreflightError, LocalOllamaPreflightMode,
-    LocalOllamaPreflightPlan, LocalOllamaPreflightReport, MAX_LOCAL_OLLAMA_MODELS,
-    MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES, parse_local_ollama_preflight_plan,
-    run_local_ollama_preflight,
+    LocalOllamaModelPlan, LocalOllamaPreflightError, LocalOllamaPreflightExecutionOutcome,
+    LocalOllamaPreflightExecutionReceipt, LocalOllamaPreflightMode, LocalOllamaPreflightPlan,
+    LocalOllamaPreflightReport, MAX_LOCAL_OLLAMA_MODELS, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES,
+    parse_local_ollama_preflight_plan, run_local_ollama_preflight,
+    run_local_ollama_preflight_with_receipt,
 };
 pub use watermark_research::{
     MAX_WATERMARK_RESEARCH_BYTES, WATERMARK_RESEARCH_SCHEMA_VERSION, WatermarkResearchCorpus,

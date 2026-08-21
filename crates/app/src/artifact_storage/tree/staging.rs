@@ -60,6 +60,10 @@ pub(crate) struct SyncedStagingTree {
 }
 
 impl OwnedStagingTree {
+    pub(crate) const fn root(&self) -> &PinnedDirectory {
+        &self.root
+    }
+
     /// Creates and pins a fresh random staging root beneath the supplied parent.
     pub(crate) fn create(
         parent: &PinnedDirectory,

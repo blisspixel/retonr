@@ -1,0 +1,10 @@
+flowchart LR
+    Package[Verified runtime package] --> Prepare[Prepare platform isolation]
+    Policy[Loopback-only policy] --> Prepare
+    Prepare --> Launch[Launch suspended or inside boundary]
+    Launch --> Tree[Retained process tree]
+    Tree --> Ollama[Version-gated cloud-disabled Ollama]
+    Ollama --> Canaries[Local allow and non-loopback deny canaries]
+    Canaries --> Reobserve[Reobserve policy and process lifecycle]
+    Reobserve --> Evidence[Isolation plus provider evidence]
+    Evidence --> Qualify[Eligible for later qualification]

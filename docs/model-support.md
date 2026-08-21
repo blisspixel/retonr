@@ -41,15 +41,21 @@ stronger general benchmark score cannot compensate for a failed product gate.
 
 ## Runtime strategy
 
-The first two qualification targets are deliberately different:
+The first assurance paths are deliberately different:
 
-1. An existing user-managed Ollama service through its native API.
-2. A Retonr-managed, pinned `llama-server` sidecar using an exact local GGUF
-   artifact.
+1. An existing user-managed Ollama service through its native API remains an
+   attached, observation-only compatibility path.
+2. The first qualification experiment is one exact Retonr-managed Ollama runtime
+   package and model package on Linux when host namespace policy permits the complete
+   managed boundary.
+3. A later Retonr-managed, pinned `llama-server` sidecar uses an exact local GGUF
+   artifact and must earn equivalent retained evidence.
 
-Together they prove that the inference port supports both an attached runtime and a
-fully controlled process. Retonr does not install, start, stop, update, or reconfigure
-an external Ollama service implicitly.
+Together they test the inference port across attached and controlled processes
+without overstating the attached path. Retonr does not install, start, stop, update,
+or reconfigure an external Ollama service implicitly. Windows managed isolation and
+exact native-load binding are unsupported, and macOS runtime trust observation is
+unsupported.
 
 A pinned `llama-server` sidecar is the planned portable fallback. It provides a
 controlled CPU path and can graduate separately on Apple Metal, NVIDIA CUDA, AMD
@@ -65,10 +71,27 @@ checks health, effective properties, exact tokenization, context, template, and
 required schema capability before accepting work. A truncated response, unexpected
 effective setting, device fallback, or runtime drift discards the complete batch.
 
-Ollama receives the same effective-state treatment. Retonr selects an exact digest,
-sets context explicitly, and verifies the running model, quantization, context, and
-execution class before and after generation. CPU or hybrid fallback is accepted only
-when that exact class was selected and qualified.
+Ollama receives the same effective-state treatment. Retonr selects exact runtime and
+model packages, sets context explicitly, and verifies running model, quantization,
+context, execution class, package load, network isolation, and provider declaration
+before and after generation. The current Linux package, isolation, process,
+connection, cloud-disable, and native-load contracts and their read-only managed
+preflight join are inert infrastructure. The Linux target inherits a seccomp
+`socket()` allowlist for only `AF_INET` and `AF_INET6`; every other family and
+`io_uring_setup` are denied, and target reobservation requires seccomp mode 2. The
+production cloud-disable allowlist is empty, so no Ollama combination is qualified. A separate v0.32.15 development binding
+requires the production backend identity `ollama_native` and reviewed source revision
+`b7871fc0d1d82fe109536efa3e0e8e411c766c75`, then checks one exact idle
+import-to-inventory and model-details relationship. It does not prove the model was
+loaded or used, identify a handler, construct effective identity, or qualify the
+combination. The static binding consumes the opaque, nonserializable, single-use
+receipt issued by the exact preflight runner. An opt-in retained completion can additionally prove two
+equal runtime-reported post-generation residency observations for that version, but
+not model use or resident-page identity. Every retained-session completion rejects
+UTF-8 input above the absolute 4 MiB ceiling before wire serialization or completion
+traffic.
+CPU or hybrid fallback is accepted only when that exact class was selected and
+qualified.
 
 The portable path is not a bundle-everything strategy. Each release contains only
 the native runtime variants that passed its platform and accelerator matrix. Unsafe
@@ -256,21 +279,52 @@ compare critical accept, abstain, structured-output, and fidelity decisions. CPU
 Metal, CUDA, HIP, Vulkan, and hybrid execution classes are independent support
 claims, even when they load the same model bytes.
 
-Generation and claim-extraction roles are qualified independently. The same model
-may fill both only when correlated-error testing supports that decision. Any later
-learned semantic-evaluator role requires its own identity and qualification.
+Generation, claim-extraction, and learned-evaluator roles are qualified independently.
+The same model may fill more than one only when correlated-error testing supports that
+decision. The implemented local-judge output contract and retained-session executor
+have triage authority only. Their transport receipt does not supply the effective
+identity or qualification required for a learned evaluator role.
 
-Canonical artifact-set, runtime-build, and effective-state records are implemented as
-inert domain identities. Artifact-set paths use one portable logical namespace rather
-than host paths. Runtime builds require managed-process or reviewed attached-process
-or container attestation vocabulary; there is no observed-only build mode. Effective
-state separately binds the provider snapshot, loaded components, configuration,
-platform, execution class, isolation policy, and effective context. A structurally
-valid record is not qualification evidence by itself. Current attached Ollama remains
-observed-only. The application can attest a managed entrypoint into inert
-runtime-build and effective-state records, but that path is not connected to
-Ollama discovery and cannot upgrade observed-only metadata into a build
-identity.
+Canonical artifact-set, runtime-package, model-package, native-load, runtime-build,
+and effective-state records are implemented as inert domain identities. Artifact-set
+paths use one portable logical namespace rather than host paths. Runtime and model
+package manifests completely overlay the exact byte set with separate static roles.
+Native-load evidence remains distinct from static load policy. Runtime builds require
+managed-process or reviewed attached-process or container attestation vocabulary;
+there is no observed-only build mode. Effective state separately binds the provider
+snapshot, loaded components, configuration, platform, execution class, isolation
+policy, and effective context. A structurally valid record is not qualification
+evidence by itself. Current attached Ollama remains observed-only. Linux package,
+isolation, process, connection, provider, and native-load evidence can be joined only
+through the managed preflight; that report remains inert and unqualified.
+
+An opt-in managed outcome can now derive a package-declared typed
+`RuntimeBuildIdentity` from the exact package after that package, process, and
+native-load join. Only the exact package entrypoint is joined to live process and load
+evidence; target, revision, and other package semantics are not independently
+live-observed. This is not effective runtime state. Mandatory cleanup completes before
+the outcome returns. Generation-bound provider state, effective output configuration,
+platform and driver facts, compute placement, effective context, and a retained live
+runtime remain missing, while model use, handler execution, effective state, and
+qualification remain false.
+
+The version-gated v0.32.15 static model binding separately joins one canonical
+six-member installed-Ollama import to one exact verified idle inventory and details
+observation. It checks the raw manifest digest, exact config-plus-layers inventory
+size, GGUF identity, license, format, and a unique template relationship. The binding
+must consume the exact preflight runner's opaque, nonserializable, single-use receipt.
+This narrows the mutable inventory relationship but does not establish residency,
+load, use, handler execution, effective identity,
+or qualification. The next runtime operation must join that static evidence, an exact
+model-package lease, managed runtime build, and response receipts without drift.
+
+The v0.32.15 retained-session residency profile is a separate opt-in relationship. It
+requests a five-minute keep-alive and requires two exact equal singleton `/api/ps`
+reports around final version, inventory, and details checks after one completion. Its
+receipt proves stable runtime-reported residency only. The reported byte size is
+runtime memory rather than package inventory size, and the receipt does not identify
+the handler, prove weight use or resident-page identity, construct effective state, or
+qualify the model. It is not yet joined to the managed runtime-build binding.
 
 The inert effective-package evidence record joins the exact artifact set, runtime
 build, and effective state; requires canonical purpose coverage for every member; and
@@ -284,7 +338,7 @@ evidence, runtime build, and effective state for exactly the claim-extraction ro
 also binds the claim-output and operation contracts and the complete qualification
 policy and result identity. Its relationship-aware bounded decoder reloads every exact
 subject record. It has a distinct identifier, no authorization operation, and no route
-into qualification v1 activation. The SQLite schema-v4 tables persist and recursively
+into qualification v1 activation. The SQLite schema-6 tables persist and recursively
 revalidate the complete immutable subject without creating an active binding. A
 separate installed-set record binds a unique portable root key and generation to the
 exact artifact-set manifest, but does not verify member bytes or activate

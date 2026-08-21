@@ -165,6 +165,39 @@ jobs:
             done < "$RETONR_TEST_BINARIES"
           '
 
+  runtime-isolation-native:
+    name: managed Linux isolation native gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+
+      - name: Compile the native isolation test
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t isolation_tests < <(
+            cargo test --locked -p rewrite-runtime-isolation \
+              --test linux_managed --no-run --message-format=json |
+              jq -r 'select(.reason == "compiler-artifact" and .target.name == "linux_managed" and .executable != null) | .executable'
+          )
+          test "${#isolation_tests[@]}" -eq 1
+          test -x "${isolation_tests[0]}"
+          printf '%s\n' "${isolation_tests[0]}" > "$RUNNER_TEMP/retonr-isolation-test-binary"
+
+      - name: Run the forced native isolation gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          isolation_test="$(cat "$RUNNER_TEMP/retonr-isolation-test-binary")"
+          sudo env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            "$isolation_test" --test-threads=1
+
   coverage:
     name: coverage
     runs-on: ubuntu-latest
@@ -196,9 +229,25 @@ jobs:
 
       - name: Enforce coverage floor
         if: steps.rust_workspace.outputs.exists == 'true'
-        run: >-
-          cargo llvm-cov --locked --workspace --all-features
-          --fail-under-lines 80
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo llvm-cov clean --workspace
+          eval "$(cargo llvm-cov show-env --export-prefix)"
+          test "${LLVM_PROFILE_FILE#/}" != "$LLVM_PROFILE_FILE"
+          cargo test --locked --workspace --all-targets --all-features
+          mapfile -t isolation_tests < <(
+            cargo test --locked -p rewrite-runtime-isolation \
+              --test linux_managed --no-run --message-format=json |
+              jq -r 'select(.reason == "compiler-artifact" and .target.name == "linux_managed" and .executable != null) | .executable'
+          )
+          test "${#isolation_tests[@]}" -eq 1
+          test -x "${isolation_tests[0]}"
+          sudo env CARGO_LLVM_COV=1 LLVM_PROFILE_FILE="$LLVM_PROFILE_FILE" \
+            REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            "${isolation_tests[0]}" --test-threads=1
+          cargo llvm-cov report --locked --workspace --all-targets \
+            --all-features --fail-under-lines 80
 
   fuzz-smoke:
     name: fuzz target smoke tests
@@ -301,6 +350,7 @@ jobs:
       - markdown
       - rust
       - ollama-loopback-only
+      - runtime-isolation-native
       - coverage
       - fuzz-smoke
       - supply-chain

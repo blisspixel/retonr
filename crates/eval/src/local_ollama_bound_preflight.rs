@@ -240,7 +240,7 @@ async fn run_with_observer<O: AttachedProcessObserver>(
     })
 }
 
-fn validate_bound_plan(
+pub(crate) fn validate_bound_plan(
     plan: &LocalOllamaBoundPreflightPlan,
 ) -> Result<(), LocalOllamaBoundPreflightError> {
     if plan.schema_version != LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_SCHEMA_VERSION {
@@ -291,7 +291,7 @@ fn enforce_entrypoint_digest(
     Ok(())
 }
 
-struct ConnectionObservationSequence {
+pub(crate) struct ConnectionObservationSequence {
     expected_responses: usize,
     completed_responses: usize,
     connection: Option<RetainedTcpConnection>,
@@ -301,7 +301,7 @@ struct ConnectionObservationSequence {
 }
 
 impl ConnectionObservationSequence {
-    fn new(expected_responses: usize) -> Self {
+    pub(crate) fn new(expected_responses: usize) -> Self {
         Self {
             expected_responses,
             completed_responses: 0,
@@ -312,7 +312,7 @@ impl ConnectionObservationSequence {
         }
     }
 
-    fn observe<L: AttachedProcessLease>(
+    pub(crate) fn observe<L: AttachedProcessLease>(
         &mut self,
         lease: &mut L,
         cancellation: &CancellationToken,
@@ -377,7 +377,7 @@ impl ConnectionObservationSequence {
         Ok(())
     }
 
-    fn validate_complete(&self) -> Result<(), LocalOllamaBoundPreflightError> {
+    pub(crate) fn validate_complete(&self) -> Result<(), LocalOllamaBoundPreflightError> {
         if self.failed_attempt_observed
             || self.completed_responses != self.expected_responses
             || self.initial.is_none()
@@ -388,7 +388,7 @@ impl ConnectionObservationSequence {
         Ok(())
     }
 
-    fn into_evidence(self) -> Vec<RetainedTcpConnectionEvidence> {
+    pub(crate) fn into_evidence(self) -> Vec<RetainedTcpConnectionEvidence> {
         self.evidence
     }
 }

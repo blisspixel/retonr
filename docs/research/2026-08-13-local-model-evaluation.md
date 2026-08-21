@@ -6,6 +6,13 @@ Status: proposed development protocol. No model, runtime, quantization, hardware
 class, or operating system is qualified by this document. No model was downloaded
 or run for this review, and external API spend was zero.
 
+Post-plan status: the checked-in development foundation has grown to 49 deterministic
+fidelity and structure cases plus 120 synthetic editorial cases across five groups.
+The 25-case core and 39-case editorial references below describe the frozen initial
+projection at this document's evidence cutoff, not current repository totals. The
+recorded local artifact observations have expired and cannot support a new run without
+fresh approved identity and runtime evidence.
+
 ## Decision summary
 
 Retonr should evaluate the complete editorial transaction, not select a model from a
@@ -202,13 +209,12 @@ evidence bundle. Passing is installation evidence, not model qualification.
 
 ### Stage 2: bounded development bakeoff
 
-The first bakeoff uses all 39 checked-in synthetic editorial cases: 15 cases in
-`editorial_quality_v1.json` and 24 paired finding and clean-control cases in
-`editorial_slop_v1.json`. A future generation-suite projection must freeze the
-prompt, source, protected terms, reference revision, expected findings, and
-adjudication form. The existing 25-case `core.json` remains a deterministic
-validator regression suite; it must not be misrepresented as 25 independent model
-generations.
+The originally proposed first bakeoff projected 39 then-current synthetic editorial
+cases: 15 cases from `editorial_quality_v1.json` and 24 paired finding and clean-control
+cases from `editorial_slop_v1.json`. A future generation-suite projection must freeze
+the prompt, source, protected terms, reference revision, expected findings, and
+adjudication form. The then-25-case `core.json` was a deterministic validator
+regression suite; it was not 25 independent model generations.
 
 Run one generation per case for every candidate that passed smoke. Review all hard
 failures and a blinded, randomized comparison of the common accepted subset. Do not
@@ -518,8 +524,8 @@ the bounded evidence needed to diagnose it.
 
 1. Define versioned evaluation-plan, artifact-set, runtime-environment, per-case, and
    aggregate-report schemas in the Rust type boundary.
-2. Project the 39 editorial cases into a generation suite without changing their
-   existing corpus role.
+2. Project the frozen 39-case editorial subset into a generation suite without
+   changing its existing corpus role.
 3. Add a native Retonr local-eval command that runs the real Ollama adapter serially,
    enforces ceilings, and writes atomically.
 4. Add exact identity capture, offline preflight, resource sampling, cancellation,

@@ -9,7 +9,7 @@ use rewrite_model::{
 use super::{ArtifactStateStore, WriteDisposition, load_qualification};
 use crate::{StoreError, StoreResult, record::immutable_disposition};
 
-mod read;
+pub(super) mod read;
 
 use read::{
     load_artifact_set, load_package_evidence, load_qualification_dependencies,

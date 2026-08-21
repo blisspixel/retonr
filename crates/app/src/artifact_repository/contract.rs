@@ -2,6 +2,7 @@ use std::io;
 
 mod error_kind;
 
+pub(crate) use error_kind::set_import_error_kind;
 pub(crate) use error_kind::store_error_kind;
 pub(crate) use error_kind::{map_import_error, map_reconciliation_error};
 
@@ -18,7 +19,7 @@ use crate::{
     ArtifactRemovalResult, ArtifactSetImportDisposition, ArtifactSetImportError,
     ArtifactSetImportResult, ArtifactSetInventoryError, ArtifactSetLeaseError,
     ArtifactSetReconciliationError, ArtifactSetRemovalError, ArtifactSetRemovalResult,
-    runtime_artifact_set_lease::set_lease_error_kind,
+    OllamaModelImportError, runtime_artifact_set_lease::set_lease_error_kind,
 };
 
 /// Stable application-level classification for repository failures.
@@ -377,6 +378,9 @@ pub enum ArtifactRepositoryError {
     /// Offline artifact-set import failed.
     #[error(transparent)]
     SetImport(#[from] ArtifactSetImportError),
+    /// Installed Ollama model reconstruction and inert import failed.
+    #[error(transparent)]
+    OllamaModelImport(#[from] OllamaModelImportError),
     /// Shared managed artifact-set lease acquisition failed.
     #[error(transparent)]
     SetLease(#[from] ArtifactSetLeaseError),
@@ -466,6 +470,7 @@ impl ArtifactRepositoryError {
             Self::State(error) => error_kind::store_error_kind(error),
             Self::Import(error) => error_kind::import_error_kind(error),
             Self::SetImport(error) => error_kind::set_import_error_kind(error),
+            Self::OllamaModelImport(error) => error.kind(),
             Self::SetLease(error) => set_lease_error_kind(error),
             Self::Inventory(error) => error_kind::inventory_error_kind(error),
             Self::SetInventory(error) => super::set_inventory::set_inventory_error_kind(error),

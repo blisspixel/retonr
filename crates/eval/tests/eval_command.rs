@@ -2,11 +2,158 @@ use std::{fs, path::Path, path::PathBuf};
 
 use assert_cmd::Command;
 use predicates::prelude::*;
+use rewrite_eval::{
+    EVALUATION_SCHEMA_VERSION, EvaluationCase, EvaluationSuite, ExpectedOutput,
+    HYBRID_SCORECARD_SCHEMA_VERSION, HybridScorecardCasePlan, HybridScorecardPlan, JudgeAuthority,
+    JudgeChoice, JudgeExecution, JudgeObservation, JudgeObservationBatch, JudgeOrderPolicy,
+    JudgePresentation, LocalJudgePolicy, ReferenceJudgment,
+    hybrid_scorecard_deterministic_policy_digest, hybrid_scorecard_plan_digest,
+    hybrid_scorecard_suite_pair_digest,
+};
 use rewrite_inference::{ReasoningPolicy, SamplingParameters, candidate_output_contract};
 use rewrite_model::ArtifactId;
 use rewrite_types::Digest;
 use serde_json::json;
 use tempfile::tempdir;
+
+fn hybrid_suite(candidate: &str) -> EvaluationSuite {
+    EvaluationSuite {
+        schema_version: EVALUATION_SCHEMA_VERSION,
+        cases: vec![EvaluationCase {
+            id: "case-a".to_owned(),
+            category: "positive_literal".to_owned(),
+            source: "Hello world".to_owned(),
+            candidate: candidate.to_owned(),
+            protected_terms: Vec::new(),
+            reference_judgment: ReferenceJudgment::Acceptable,
+            expected_status: rewrite_types::RewriteStatus::Rewritten,
+            expected_reason: None,
+            expected_output: ExpectedOutput::Candidate,
+        }],
+    }
+}
+
+fn hybrid_plan(
+    candidate_a: &EvaluationSuite,
+    candidate_b: &EvaluationSuite,
+) -> HybridScorecardPlan {
+    HybridScorecardPlan {
+        schema_version: HYBRID_SCORECARD_SCHEMA_VERSION,
+        plan_id: "cli-scorecard-v1".to_owned(),
+        corpus_digest: hybrid_scorecard_suite_pair_digest(candidate_a, candidate_b)
+            .expect("valid scorecard suites"),
+        rubric_digest: Digest::sha256(b"rubric"),
+        deterministic_policy_digest: hybrid_scorecard_deterministic_policy_digest(),
+        judge: LocalJudgePolicy {
+            execution: JudgeExecution::LocalIsolated,
+            authority: JudgeAuthority::TriageOnly,
+            order_policy: JudgeOrderPolicy::BothOrders,
+            judge_system_digest: Digest::sha256(b"judge"),
+            judge_model_reference: "judge-fixture:latest".to_owned(),
+            judge_model_digest: Digest::sha256(b"judge-model"),
+            judge_prompt_contract_digest: rewrite_eval::local_judge_prompt_contract_digest(),
+            judge_output_schema_digest: rewrite_inference::local_judge_attempt_output_contract()
+                .schema_digest,
+            presentation_seed: 17,
+            temperature_milli: 0,
+            top_p_milli: 1_000,
+            attempts_per_order: 1,
+            max_judge_cases: 32,
+            max_source_bytes: 4_096,
+            max_candidate_bytes: 4_096,
+            max_input_bytes: 16_384,
+            context_token_limit: 8_192,
+            output_token_limit: 512,
+            max_response_bytes: 4096,
+            maximum_elapsed_millis: 30_000,
+        },
+        cases: vec![HybridScorecardCasePlan {
+            id: "case-a".to_owned(),
+            cluster_id: "cluster-a".to_owned(),
+            source_digest: Digest::sha256(candidate_a.cases[0].source.as_bytes()),
+            candidate_a_digest: Digest::sha256(candidate_a.cases[0].candidate.as_bytes()),
+            candidate_b_digest: Digest::sha256(candidate_b.cases[0].candidate.as_bytes()),
+            candidate_a_system_digest: Digest::sha256(b"generator-a"),
+            candidate_b_system_digest: Digest::sha256(b"generator-b"),
+            rubric_clauses: vec!["meaning".to_owned()],
+        }],
+    }
+}
+
+fn hybrid_observations(plan: &HybridScorecardPlan) -> JudgeObservationBatch {
+    JudgeObservationBatch {
+        schema_version: HYBRID_SCORECARD_SCHEMA_VERSION,
+        plan_id: plan.plan_id.clone(),
+        plan_digest: hybrid_scorecard_plan_digest(plan).expect("valid scorecard plan"),
+        observations: vec![
+            JudgeObservation {
+                case_id: "case-a".to_owned(),
+                presentation: JudgePresentation::CandidateAFirst,
+                choice: JudgeChoice::First,
+                rubric_clauses: vec!["meaning".to_owned()],
+            },
+            JudgeObservation {
+                case_id: "case-a".to_owned(),
+                presentation: JudgePresentation::CandidateBFirst,
+                choice: JudgeChoice::Second,
+                rubric_clauses: vec!["meaning".to_owned()],
+            },
+        ],
+    }
+}
+
+#[test]
+fn hybrid_scorecard_runs_as_a_redacted_process() {
+    let directory = tempdir().expect("temporary directory");
+    let candidate_a = hybrid_suite("Hello, world!");
+    let candidate_b = hybrid_suite("Hello world.");
+    let plan = hybrid_plan(&candidate_a, &candidate_b);
+    let observations = hybrid_observations(&plan);
+    let plan_path = directory.path().join("plan.json");
+    let candidate_a_path = directory.path().join("candidate-a.json");
+    let candidate_b_path = directory.path().join("candidate-b.json");
+    let observations_path = directory.path().join("observations.json");
+    fs::write(
+        &plan_path,
+        serde_json::to_vec(&plan).expect("serialize plan"),
+    )
+    .expect("write plan");
+    fs::write(
+        &candidate_a_path,
+        serde_json::to_vec(&candidate_a).expect("serialize candidate A"),
+    )
+    .expect("write candidate A");
+    fs::write(
+        &candidate_b_path,
+        serde_json::to_vec(&candidate_b).expect("serialize candidate B"),
+    )
+    .expect("write candidate B");
+    fs::write(
+        &observations_path,
+        serde_json::to_vec(&observations).expect("serialize observations"),
+    )
+    .expect("write observations");
+
+    Command::cargo_bin("rewrite-eval")
+        .expect("compiled evaluation runner")
+        .arg("--hybrid-scorecard")
+        .arg(plan_path)
+        .arg("--candidate-a-suite")
+        .arg(candidate_a_path)
+        .arg("--candidate-b-suite")
+        .arg(candidate_b_path)
+        .arg("--judge-observations")
+        .arg(observations_path)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"deterministic_total\": 2"))
+        .stdout(predicate::str::contains("\"deterministic_passed\": 2"))
+        .stdout(predicate::str::contains("\"stable_a\": 1"))
+        .stdout(predicate::str::contains(
+            "\"judge_observation_evidence_class\": \"caller_declared\"",
+        ))
+        .stdout(predicate::str::contains("Hello world").not());
+}
 
 #[test]
 fn checked_in_no_rewrite_baseline_runs_offline() {

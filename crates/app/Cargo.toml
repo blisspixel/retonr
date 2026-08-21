@@ -14,6 +14,8 @@ rewrite-grounded = { path = "../grounded", version = "0.1.0" }
 rewrite-inference = { path = "../inference", version = "0.1.0" }
 rewrite-model = { path = "../model", version = "0.1.0" }
 rewrite-model-store = { path = "../model-store", version = "0.1.0" }
+rewrite-ollama-package = { path = "../ollama-package", version = "0.1.0" }
+rewrite-runtime-attestor = { path = "../runtime-attestor", version = "0.1.0" }
 rewrite-text-adapter = { path = "../text-adapter", version = "0.1.0" }
 rewrite-types = { path = "../types", version = "0.1.0" }
 getrandom.workspace = true

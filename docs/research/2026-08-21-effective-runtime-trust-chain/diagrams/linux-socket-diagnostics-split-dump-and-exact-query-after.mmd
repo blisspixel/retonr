@@ -1,0 +1,11 @@
+flowchart LR
+    Session[Retained SOCK_DIAG session] --> Listener[Bounded LISTEN dump]
+    Session --> Exact[Exact established-socket query]
+    Listener --> Parser[Strict netlink parser]
+    Exact --> Parser
+    Parser --> Cookie[Retain kernel socket cookie]
+    Cookie --> ProcFd[Bracket visible same-UID holder scan]
+    ProcFd --> Recheck[Exact query with retained cookie]
+    Recheck --> Lease[Retained process lease]
+    Lease --> Evidence[Unqualified connection evidence]
+    Visibility[Proc and namespace visibility limits] -. constrain .-> Evidence

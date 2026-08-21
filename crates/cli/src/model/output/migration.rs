@@ -59,33 +59,29 @@ struct MigrationResult {
 
 #[cfg(test)]
 mod tests {
+    use rewrite_app::ArtifactRepository;
+
     use super::*;
 
     #[test]
     fn migrated_output_is_stable_and_contains_only_the_backup_key() {
-        let output = migration_output(
-            "migrated",
-            2,
-            5,
-            Some("migration-backup-v2-to-v5".to_owned()),
-        );
+        let current = ArtifactRepository::required_schema_version();
+        let backup_key = format!("migration-backup-v2-to-v{current}");
+        let output = migration_output("migrated", 2, current, Some(backup_key.clone()));
         assert_eq!(output.value["disposition"], "migrated");
         assert_eq!(output.value["from_schema"], 2);
-        assert_eq!(output.value["to_schema"], 5);
-        assert_eq!(output.value["backup_key"], "migration-backup-v2-to-v5");
-        assert!(
-            output
-                .text
-                .contains("backup_key: migration-backup-v2-to-v5")
-        );
+        assert_eq!(output.value["to_schema"], current);
+        assert_eq!(output.value["backup_key"], backup_key);
+        assert!(output.text.contains(&format!("backup_key: {backup_key}")));
         assert!(!output.has_findings());
     }
 
     #[test]
     fn current_output_omits_an_absent_backup_key() {
+        let current = ArtifactRepository::required_schema_version();
         let output = ModelOutput::migration(&ArtifactRepositoryMigrationResult {
-            from_schema: 5,
-            to_schema: 5,
+            from_schema: current,
+            to_schema: current,
             disposition: ArtifactRepositoryMigrationDisposition::AlreadyCurrent,
             backup_key: None,
         });

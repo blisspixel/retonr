@@ -417,17 +417,18 @@ Controls:
 - Require explicit installation or offline import.
 - Record source URL, upstream revision, artifact digest, size, quantization,
   tokenizer, prompt, output schema, license, runtime, and supported languages.
-- Treat artifact-set, runtime-build, effective-state, and effective-package records as
-  content-addressed evidence vocabulary, not authority. Effective-package decoding
+- Treat artifact-set, runtime-package, model-package, native-load, runtime-build,
+  effective-state, and effective-package records as content-addressed evidence
+  vocabulary, not authority. Effective-package decoding
   must reload and cross-check all three referenced records, exact member-purpose
   coverage, and managed or attached-attested mode. A digest does not prove a retained
   receipt is truthful or complete.
 - Treat qualification v2 as inert evidence. Its bounded decoder must reload and
   cross-check the artifact set, effective-package evidence, runtime build, and effective
   state. Its distinct identifier and lack of an authorization operation keep it outside
-  v1 activation. Schema-v4 persistence repeats those relationship checks on every
-  dependent write and read, preserves v1 and schema-v3 evidence records unchanged,
-  and grants no authority. Its separate installed-set record cross-checks the indexed
+  v1 activation. Schema-6 persistence repeats the applicable relationship checks on
+  every dependent write and read, preserves earlier evidence records unchanged, and
+  grants no authority. Its separate installed-set record cross-checks the indexed
   set identity, unique portable root key, positive generation, canonical record, and
   exact manifest join. That structural record does not prove that files exist or
   authorize their use.
@@ -445,6 +446,59 @@ Controls:
   discovery data rather than qualification evidence.
 - Accept loopback model endpoints only in the first adapter, disable system proxies
   and redirects, and recheck selected artifact identity before and after generation.
+- Keep attached listener and retained-connection evidence observation-only. Linux
+  managed qualification requires prelaunch user, network, and PID namespaces,
+  loopback as the only interface, retained process-tree lifecycle, namespace-local
+  SOCK_DIAG, retained package-object and native-load evidence, and an exact provider
+  declaration. Before target launch, require the inherited seccomp socket allowlist
+  that admits only `AF_INET` and `AF_INET6` through `socket()`, denies every other
+  socket family and `io_uring_setup`, and remains in mode 2 during target
+  reobservation. The current Linux-only read-only preflight composes those runtime-side
+  observations but remains inert, unreviewed, and outside the CLI. It does not prove
+  model use, effective-runtime identity, or qualification. The production
+  cloud-disable allowlist remains empty until one runtime package passes review.
+  Windows managed isolation and exact native-load binding are unsupported; macOS
+  runtime trust observation is unsupported.
+- Treat the managed build binding as package-declared runtime-build evidence only. It
+  may construct `RuntimeBuildIdentity` after exact managed package, process, and
+  native-load checks, but only the exact package entrypoint is joined to live process
+  and load evidence. Target, revision, and other package semantics are not
+  independently live-observed, and mandatory cleanup completes before return. Never
+  promote it to `EffectiveRuntimeState` without direct generation-bound provider,
+  effective output configuration, platform and driver, compute placement, effective
+  context, and retained-live-runtime evidence. Model use, handler execution,
+  effective state, and qualification remain false.
+- Treat the v0.32.15 installed-Ollama import-to-inventory binding as static,
+  version-scoped evidence only. It requires production backend identity
+  `ollama_native` and reviewed source revision
+  `b7871fc0d1d82fe109536efa3e0e8e411c766c75`, then checks the reviewed
+  manifest-size rule and exact inventory and model-details relationships while the
+  runtime is idle. Require the opaque, nonserializable, single-use receipt issued by
+  the exact preflight runner; the report alone is not execution provenance. Its model
+  loaded, model used, application handler, effective identity, and qualification
+  fields remain false. Revalidate the upstream rule before admitting another runtime
+  version.
+- Keep the v0.32.15 resident-completion profile opt-in and source-scoped. Require an
+  idle preflight, explicit five-minute keep-alive, the exact nine-response sequence,
+  the exact singleton reference and manifest digest, the requested context, and two
+  equal valid `/api/ps` memory reports. Treat size as runtime-reported memory, not
+  package inventory size. Its nonserializable receipt proves only stable
+  runtime-reported post-generation residency on one retained transport. It does not
+  prove handler execution, model use, resident-page identity, effective identity, or
+  qualification.
+- Treat local-judge responses as untrusted typed input. Run deterministic gates before
+  traffic, require both blinded orders, validate cited byte spans against exact UTF-8
+  inputs, and invalidate the retained stream on any response or relationship failure.
+  Reject retained-session UTF-8 input above the absolute 4 MiB ceiling before wire
+  serialization or completion traffic. The serializable scorecard remains
+  caller-declared and triage-only.
+- Keep the local-judge execution receipt nonserializable and separate from the
+  scorecard. Its digests are equality bindings, not anonymization, and predictable
+  inputs or outputs may be recoverable by dictionary attack. Its evidence class is
+  `RetainedTransportBindingOnly`. The receipt proves only that exact preflight,
+  request, and response evidence crossed one retained transport;
+  it does not prove managed isolation, handler execution, model load or use, candidate
+  generation, effective identity, semantic correctness, or qualification.
 - Invalidate qualification on artifact, runtime, template, tokenizer, parameter,
   evaluator, calibration, or locked-suite change.
 - Pin code dependencies and continuous-integration tools.

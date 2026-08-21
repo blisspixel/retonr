@@ -1,4 +1,4 @@
-use std::{future::Future, time::Duration};
+use std::{future::Future, net::TcpStream as StandardTcpStream, time::Duration};
 
 use bytes::Bytes;
 use http_body_util::{BodyExt as _, Full};
@@ -12,7 +12,7 @@ use hyper_util::rt::TokioIo;
 use rewrite_inference::{InferenceError, InferenceErrorKind, OperationContext};
 use rewrite_model::RuntimeIdentity;
 use serde::{Serialize, de::DeserializeOwned};
-use tokio::{net::TcpStream, task::JoinHandle};
+use tokio::{net::TcpStream as TokioTcpStream, task::JoinHandle};
 
 use super::{
     OllamaConnectionAddresses, OllamaObservedPreflightError, OllamaResponseObservation,
@@ -51,10 +51,35 @@ impl SingleConnectionTransport {
         let stream = await_timeout(
             context,
             limits.connect_timeout,
-            TcpStream::connect(endpoint.socket_addr()),
+            TokioTcpStream::connect(endpoint.socket_addr()),
         )
         .await?
         .map_err(|_error| retryable_error("connection_failed"))?;
+        Self::from_tokio_stream(endpoint, limits, session_body_bytes, context, stream).await
+    }
+
+    pub(super) async fn from_connected_stream(
+        endpoint: &OllamaEndpoint,
+        limits: OllamaLimits,
+        session_body_bytes: usize,
+        context: OperationContext<'_>,
+        stream: StandardTcpStream,
+    ) -> Result<Self, InferenceError> {
+        stream
+            .set_nonblocking(true)
+            .map_err(|_error| retryable_error("connection_configuration_failed"))?;
+        let stream = TokioTcpStream::from_std(stream)
+            .map_err(|_error| retryable_error("connection_configuration_failed"))?;
+        Self::from_tokio_stream(endpoint, limits, session_body_bytes, context, stream).await
+    }
+
+    async fn from_tokio_stream(
+        endpoint: &OllamaEndpoint,
+        limits: OllamaLimits,
+        session_body_bytes: usize,
+        context: OperationContext<'_>,
+        stream: TokioTcpStream,
+    ) -> Result<Self, InferenceError> {
         let client = stream
             .local_addr()
             .map_err(|_error| retryable_error("connection_address_failed"))?;
@@ -166,6 +191,27 @@ impl SingleConnectionTransport {
         parse_show_details(response).map_err(OllamaObservedPreflightError::Preflight)
     }
 
+    pub(super) async fn generate<B, T, F, E>(
+        &mut self,
+        body: &B,
+        context: OperationContext<'_>,
+        observer: &mut F,
+    ) -> Result<T, OllamaObservedPreflightError<E>>
+    where
+        B: Serialize + ?Sized,
+        T: DeserializeOwned,
+        F: FnMut(OllamaResponseObservation) -> Result<(), E>,
+    {
+        self.send_json_with_limit(
+            "api/generate",
+            body,
+            self.limits.generation_body_bytes,
+            context,
+            observer,
+        )
+        .await
+    }
+
     async fn get_json<T, F, E>(
         &mut self,
         path: &str,
@@ -176,8 +222,15 @@ impl SingleConnectionTransport {
         T: DeserializeOwned,
         F: FnMut(OllamaResponseObservation) -> Result<(), E>,
     {
-        self.request_json(Method::GET, path, Bytes::new(), context, observer)
-            .await
+        self.request_json(
+            Method::GET,
+            path,
+            Bytes::new(),
+            self.limits.discovery_body_bytes,
+            context,
+            observer,
+        )
+        .await
     }
 
     async fn send_json<B, T, F, E>(
@@ -192,13 +245,43 @@ impl SingleConnectionTransport {
         T: DeserializeOwned,
         F: FnMut(OllamaResponseObservation) -> Result<(), E>,
     {
+        self.send_json_with_limit(
+            path,
+            body,
+            self.limits.discovery_body_bytes,
+            context,
+            observer,
+        )
+        .await
+    }
+
+    async fn send_json_with_limit<B, T, F, E>(
+        &mut self,
+        path: &str,
+        body: &B,
+        response_body_limit: usize,
+        context: OperationContext<'_>,
+        observer: &mut F,
+    ) -> Result<T, OllamaObservedPreflightError<E>>
+    where
+        B: Serialize + ?Sized,
+        T: DeserializeOwned,
+        F: FnMut(OllamaResponseObservation) -> Result<(), E>,
+    {
         let body = serde_json::to_vec(body)
             .map(Bytes::from)
             .map_err(|_error| {
                 OllamaObservedPreflightError::Preflight(policy_error("invalid_json_request"))
             })?;
-        self.request_json(Method::POST, path, body, context, observer)
-            .await
+        self.request_json(
+            Method::POST,
+            path,
+            body,
+            response_body_limit,
+            context,
+            observer,
+        )
+        .await
     }
 
     async fn request_json<T, F, E>(
@@ -206,6 +289,7 @@ impl SingleConnectionTransport {
         method: Method,
         path: &str,
         body: Bytes,
+        response_body_limit: usize,
         context: OperationContext<'_>,
         observer: &mut F,
     ) -> Result<T, OllamaObservedPreflightError<E>>
@@ -248,7 +332,7 @@ impl SingleConnectionTransport {
                 OllamaObservedPreflightError::Preflight(retryable_error("transport_failed"))
             })?;
         let bytes = self
-            .read_response(response, request_deadline, context)
+            .read_response(response, response_body_limit, request_deadline, context)
             .await
             .map_err(OllamaObservedPreflightError::Preflight)?;
         self.response_attempt_in_progress = false;
@@ -271,10 +355,11 @@ impl SingleConnectionTransport {
     async fn read_response(
         &mut self,
         response: Response<Incoming>,
+        body_limit: usize,
         request_deadline: tokio::time::Instant,
         context: OperationContext<'_>,
     ) -> Result<Vec<u8>, InferenceError> {
-        validate_response_head(&response, self.limits.discovery_body_bytes)?;
+        validate_response_head(&response, body_limit)?;
         let mut body = response.into_body();
         let mut bytes = Vec::new();
         while let Some(frame) = self
@@ -284,7 +369,7 @@ impl SingleConnectionTransport {
             let data = frame
                 .into_data()
                 .map_err(|_frame| malformed_error("unexpected_response_trailers"))?;
-            self.consume_bytes(data.len(), bytes.len())?;
+            self.consume_bytes(data.len(), bytes.len(), body_limit)?;
             bytes.extend_from_slice(&data);
         }
         Ok(bytes)
@@ -304,11 +389,16 @@ impl SingleConnectionTransport {
             .map_err(|_error| retryable_error("transport_failed"))
     }
 
-    fn consume_bytes(&mut self, chunk: usize, response_bytes: usize) -> Result<(), InferenceError> {
+    fn consume_bytes(
+        &mut self,
+        chunk: usize,
+        response_bytes: usize,
+        body_limit: usize,
+    ) -> Result<(), InferenceError> {
         let response_total = response_bytes
             .checked_add(chunk)
             .ok_or_else(|| malformed_error("response_body_too_large"))?;
-        if response_total > self.limits.discovery_body_bytes {
+        if response_total > body_limit {
             return Err(malformed_error("response_body_too_large"));
         }
         self.remaining_session_bytes = self

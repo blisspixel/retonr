@@ -1,0 +1,351 @@
+{
+  "documentType": "retonr.security-hardening-analysis",
+  "schemaVersion": "1.0",
+  "analysisId": "hardening_20260821_effective_runtime_trust_chain",
+  "sourceEvidence": {
+    "kind": "source_collection",
+    "label": "Effective runtime trust-chain repository source review",
+    "collectionSha256": "6a9d8e2195834f5d123add1626048d468b1b8bfd68eedb8bfaae022efa59ec3c",
+    "artifactCount": 18,
+    "targetRevision": "c3657edd126f164facc311719b831d6926e7c06d",
+    "sourceDrift": "none"
+  },
+  "assessment": {
+    "outcome": "opportunities_identified",
+    "summary": "Three dependency-ordered controls are required before effective local runtime identity can authorize generation."
+  },
+  "constraints": {
+    "profile": "high_assurance_local_first",
+    "changeHorizons": [
+      "incremental",
+      "medium_term",
+      "foundational"
+    ],
+    "nonNegotiables": [
+      "Preserve local-first and offline-after-setup behavior.",
+      "Keep existing version 1 identities and preflight reports compatible and inert.",
+      "Fail closed when platform evidence, privileges, visibility, or lifecycle control is unavailable.",
+      "Keep implemented Rust line coverage at or above 80 percent.",
+      "Use no paid cloud inference or hosted test workload for this work."
+    ],
+    "assumptions": [
+      "No measured native-observation latency or memory budget was supplied.",
+      "Model artifact reacquisition and generation remain separately approval-gated.",
+      "A managed isolation mechanism may require explicit platform setup or elevated authority."
+    ]
+  },
+  "opportunities": [
+    {
+      "opportunityId": "linux-socket-diagnostics",
+      "title": "Replace deprecated Linux TCP row acquisition",
+      "summary": "Move listener and retained-connection row acquisition from proc text tables to bounded kernel socket diagnostics.",
+      "diagnosis": "The current Linux witness has strong process and descriptor checks, but its TCP row source is a deprecated text snapshot and cannot retain the kernel socket cookie.",
+      "evidence": [
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E01",
+          "path": "crates/runtime-attestor/src/platform/linux.rs",
+          "claim": "Linux listener discovery reads and parses /proc/net/tcp or tcp6 before mapping the selected inode to a visible same-UID holder."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E02",
+          "path": "crates/runtime-attestor/src/platform/linux_connection.rs",
+          "claim": "Retained-connection attribution selects one exact reverse tuple from a proc text table and retains only its inode and UID in private digest material."
+        },
+        {
+          "claimType": "inferred",
+          "sourceKind": "source",
+          "evidenceId": "E05",
+          "path": "crates/runtime-attestor/src/lib.rs",
+          "claim": "A retained socket-diagnostics session and cookie can strengthen object continuity without changing the existing visible-holder claim ceiling."
+        }
+      ],
+      "desiredInvariants": [
+        "Every accepted listener snapshot is a complete bounded multipart diagnostic exchange in the retained network namespace.",
+        "Every accepted retained connection matches one exact kernel point query, a usable socket cookie, and one visible same-UID retained-process holder.",
+        "A close plus tuple or inode reuse cannot satisfy a later connection reobservation.",
+        "No raw tuple, inode, UID, cookie, sequence, namespace identifier, or native error is serialized."
+      ],
+      "proposalPath": "proposals/linux-socket-diagnostics.md",
+      "options": [
+        {
+          "optionId": "retain-proc-tables",
+          "title": "Retain proc TCP tables",
+          "kind": "baseline",
+          "summary": "Keep current bounded proc text parsing and visible-holder checks.",
+          "diagramPaths": {
+            "before": "diagrams/linux-socket-diagnostics-before.mmd",
+            "after": "diagrams/linux-socket-diagnostics-retain-proc-tables-after.mmd"
+          },
+          "evidenceCoverage": [
+            {
+              "evidenceId": "E01",
+              "effect": "unaffected",
+              "tacticalFixRequired": false,
+              "rationale": "The current listener row source remains unchanged."
+            },
+            {
+              "evidenceId": "E02",
+              "effect": "unaffected",
+              "tacticalFixRequired": false,
+              "rationale": "The current connection row source and inode-only continuity remain unchanged."
+            }
+          ],
+          "tradeoffs": [
+            {"dimension":"security","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"Existing exact tuple, UID, inode, process, and visible-holder checks remain, but socket-cookie continuity is absent.","validationPlan":"Run the existing native and deterministic witness suites."},
+            {"dimension":"performance","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"The implementation keeps its current bounded text read and parse path.","validationPlan":"Retain current preflight latency as the comparison baseline."},
+            {"dimension":"memory","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"The existing bounded table buffer remains the dominant temporary allocation.","validationPlan":"Record peak allocation for the current maximum admitted table fixture."},
+            {"dimension":"reliability","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"Current proc visibility and text-format dependencies remain.","validationPlan":"Run supported Linux CI and proc-policy refusal fixtures."},
+            {"dimension":"operability","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"No new capability or dependency is introduced.","validationPlan":"Confirm unchanged platform diagnostics and failure categories."},
+            {"dimension":"migration","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"No code or evidence migration is required.","validationPlan":"Confirm byte-identical public evidence fixtures."}
+          ],
+          "residualRisks": [
+            "The deprecated text table remains a trusted parser input.",
+            "Tuple and inode reuse is not guarded by a retained kernel socket cookie."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["crates/runtime-attestor/src/platform/linux.rs", "crates/runtime-attestor/src/platform/linux_connection.rs"],
+            "workPackages": ["No change."],
+            "acceptanceCriteria": ["Existing tests remain green."],
+            "migrationNotes": [],
+            "rollback": "Not applicable."
+          }
+        },
+        {
+          "optionId": "bounded-dump-only",
+          "title": "Use bounded dumps for every lookup",
+          "kind": "incremental",
+          "summary": "Replace both proc readers with bounded multipart socket-diagnostic dumps and user-space filtering.",
+          "diagramPaths": {
+            "before": "diagrams/linux-socket-diagnostics-before.mmd",
+            "after": "diagrams/linux-socket-diagnostics-bounded-dump-only-after.mmd"
+          },
+          "evidenceCoverage": [
+            {"evidenceId":"E01","effect":"addresses","tacticalFixRequired":true,"rationale":"Listener acquisition moves to the supported kernel diagnostic interface."},
+            {"evidenceId":"E02","effect":"mitigates","tacticalFixRequired":true,"rationale":"Connection rows move off proc, but each checkpoint still scans a multipart snapshot."}
+          ],
+          "tradeoffs": [
+            {"dimension":"security","direction":"improves","confidence":"high","basis":"source-derived","assessment":"Strict Netlink framing and dump-completion validation replace ad hoc text parsing and expose socket cookies.","validationPlan":"Run malformed-frame, interrupted-dump, cookie-drift, and redaction fixtures."},
+            {"dimension":"performance","direction":"regresses","confidence":"medium","basis":"source-derived","assessment":"Every response checkpoint walks a multipart kernel dump even though the exact tuple is already known.","validationPlan":"Compare one-model and eight-model bound-preflight checkpoint latency with the proc baseline."},
+            {"dimension":"memory","direction":"neutral","confidence":"medium","basis":"source-derived","assessment":"Bounded datagram buffers replace a bounded table buffer; aggregate bytes remain capped.","validationPlan":"Measure peak allocation under maximum-row fixtures."},
+            {"dimension":"reliability","direction":"improves","confidence":"medium","basis":"source-derived","assessment":"The supported UAPI gives explicit completion and interruption signals, but larger dumps increase truncation and interruption exposure.","validationPlan":"Stress repeated dumps while sockets churn and require deterministic fail-closed behavior."},
+            {"dimension":"operability","direction":"neutral","confidence":"medium","basis":"source-derived","assessment":"No privilege is added, but failures move to a binary protocol boundary.","validationPlan":"Verify stable redacted error mapping on supported kernels."},
+            {"dimension":"migration","direction":"improves","confidence":"high","basis":"source-derived","assessment":"Public evidence can stay unchanged while private row acquisition changes.","validationPlan":"Freeze public JSON fixtures before and after the implementation."}
+          ],
+          "residualRisks": [
+            "Proc descriptor-holder visibility remains incomplete across hidden processes and namespaces.",
+            "Repeated full dumps create avoidable resource and availability exposure."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["crates/runtime-attestor/src/platform/linux.rs", "crates/runtime-attestor/src/platform/linux_connection.rs"],
+            "workPackages": ["Add a retained socket-diagnostic session and one strict multipart parser."],
+            "acceptanceCriteria": ["No proc TCP row reads remain and every dump completes without interruption."],
+            "migrationNotes": ["Preserve serialized evidence values."],
+            "rollback": "Restore the two bounded proc row readers while retaining new tests as disabled fixtures."
+          }
+        },
+        {
+          "optionId": "split-dump-and-exact-query",
+          "title": "Split listener dump and exact connection query",
+          "kind": "structural",
+          "summary": "Use one retained Netlink session, a filtered listener dump, and cookie-bound exact point queries for the retained connection.",
+          "diagramPaths": {
+            "before": "diagrams/linux-socket-diagnostics-before.mmd",
+            "after": "diagrams/linux-socket-diagnostics-split-dump-and-exact-query-after.mmd"
+          },
+          "evidenceCoverage": [
+            {"evidenceId":"E01","effect":"addresses","tacticalFixRequired":true,"rationale":"A complete filtered listener dump replaces proc row acquisition."},
+            {"evidenceId":"E02","effect":"addresses","tacticalFixRequired":true,"rationale":"Exact point queries and a retained cookie close tuple and inode reuse ambiguity."},
+            {"evidenceId":"E05","effect":"mitigates","tacticalFixRequired":false,"rationale":"The retained session and existing retry bracket share current cancellation and deadline controls."}
+          ],
+          "tradeoffs": [
+            {"dimension":"security","direction":"improves","confidence":"high","basis":"source-derived","assessment":"The design validates complete listener dumps, exact connection replies, success acknowledgements, and a stable kernel socket cookie.","validationPlan":"Exercise every malformed envelope, error, tuple, state, UID, inode, cookie, holder, and redaction case."},
+            {"dimension":"performance","direction":"unknown","confidence":"medium","basis":"source-derived","assessment":"Listener attachment gains a binary dump, while repeated connection checks become exact constant-result queries instead of table scans.","validationPlan":"Compare end-to-end bound-preflight latency and per-checkpoint latency against the current implementation."},
+            {"dimension":"memory","direction":"neutral","confidence":"medium","basis":"source-derived","assessment":"One retained descriptor and bounded datagram buffers replace full proc table strings.","validationPlan":"Measure peak allocation for maximum admitted listener dumps and exact queries."},
+            {"dimension":"reliability","direction":"improves","confidence":"medium","basis":"source-derived","assessment":"Explicit DONE, ACK, truncation, overrun, and interruption states support deterministic fail-closed handling.","validationPlan":"Run churn, interruption, stale-cookie, close, cancellation, and resource-exhaustion tests."},
+            {"dimension":"operability","direction":"neutral","confidence":"medium","basis":"source-derived","assessment":"The mechanism uses an existing Linux UAPI and existing rustix dependency without new privileges.","validationPlan":"Verify current hosted Linux runners and supported kernel baselines."},
+            {"dimension":"migration","direction":"improves","confidence":"high","basis":"source-derived","assessment":"The public evidence schema and visible-holder limitation remain stable while the private observation improves.","validationPlan":"Compare frozen serialized evidence shape and non-Linux behavior."}
+          ],
+          "residualRisks": [
+            "The visible descriptor-holder set remains bounded by proc and namespace visibility.",
+            "Kernel observation still does not prove exclusive ownership or handler execution."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["crates/runtime-attestor/src/platform/linux_sock_diag.rs", "crates/runtime-attestor/src/platform/linux.rs", "crates/runtime-attestor/src/platform/linux_connection.rs", "crates/runtime-attestor/Cargo.toml"],
+            "workPackages": ["Implement retained session and codec.", "Replace listener row lookup.", "Add cookie-bracketed exact connection lookup.", "Add deterministic and native tests."],
+            "acceptanceCriteria": ["No /proc/net/tcp row read remains.", "Exact queries require one data record and one success ACK.", "Stale cookies and incomplete dumps fail closed.", "Public evidence remains redacted and compatible."],
+            "migrationNotes": ["No persistence migration is required."],
+            "rollback": "Revert the Linux-private implementation before publication if supported-kernel CI cannot satisfy the strict exchange contract."
+          }
+        }
+      ],
+      "recommendedOptionId": "split-dump-and-exact-query",
+      "recommendation": "Select the split design because it uses the narrowest kernel operation available at each checkpoint and preserves the current claim ceiling."
+    },
+    {
+      "opportunityId": "package-and-load-closure",
+      "title": "Separate static package identity from observed runtime use",
+      "summary": "Add typed runtime and model package manifests, then bind loaded-component identity to a separate native observation.",
+      "diagnosis": "Generic artifact sets are canonical byte inventories, but production identity constructors accept opaque digests and no retained native load observer establishes which packaged code was actually mapped.",
+      "evidence": [
+        {"claimType":"observed","sourceKind":"source","evidenceId":"E06","path":"crates/model/src/artifact_set.rs","claim":"The generic artifact set deliberately does not prove semantic completeness."},
+        {"claimType":"observed","sourceKind":"source","evidenceId":"E07","path":"crates/model/src/effective_package.rs","claim":"Every version 1 effective-package member needs an output-affecting purpose, which excludes evidence-only package files."},
+        {"claimType":"observed","sourceKind":"source","evidenceId":"E13","path":"crates/app/src/runtime_attestation.rs","claim":"The managed service retains no process and accepts critical caller-supplied digests."},
+        {"claimType":"inferred","sourceKind":"source","evidenceId":"E14","path":"crates/app/src/runtime_artifact_set_lease.rs","claim":"Tree verification without retained code-member handles leaves a replacement window between verification and use."}
+      ],
+      "desiredInvariants": [
+        "Static manifests cover every base artifact-set path exactly once with a closed semantic role vocabulary.",
+        "Evidence-only license, provenance, and transformation members are represented without calling them output-affecting.",
+        "Existing runtime-build digest fields are derived by typed builders from reviewed manifests rather than arbitrary production inputs.",
+        "Loaded-components identity is derived only from a bounded native observation bound to one retained process incarnation.",
+        "Static identity, loaded-file evidence, and later model-use evidence remain separate claims."
+      ],
+      "proposalPath": "proposals/package-and-load-closure.md",
+      "options": [
+        {
+          "optionId": "retain-opaque-identity-inputs",
+          "title": "Retain opaque identity inputs",
+          "kind": "baseline",
+          "summary": "Continue relying on caller-provided digests and the generic artifact set.",
+          "diagramPaths": {"before":"diagrams/package-and-load-closure-before.mmd","after":"diagrams/package-and-load-closure-retain-opaque-identity-inputs-after.mmd"},
+          "evidenceCoverage": [
+            {"evidenceId":"E06","effect":"unaffected","tacticalFixRequired":false,"rationale":"The generic byte-set contract remains the only manifest."},
+            {"evidenceId":"E13","effect":"unaffected","tacticalFixRequired":false,"rationale":"Production callers still supply evidence digests without retained process proof."}
+          ],
+          "tradeoffs": [
+            {"dimension":"security","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"Structural validation remains, but production truth and completeness are still caller assertions.","validationPlan":"Retain current contract tests and confirm no stronger claim is made."},
+            {"dimension":"performance","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"No package semantic validation or native load enumeration is added.","validationPlan":"Use current attestation latency as baseline."},
+            {"dimension":"memory","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"No new retained handles or observations are introduced.","validationPlan":"Use current process memory as baseline."},
+            {"dimension":"reliability","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"Existing deterministic identity construction remains available but cannot fail on missing real evidence.","validationPlan":"Run existing model and app suites."},
+            {"dimension":"operability","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"No new manifests, migrations, or platform adapters are required.","validationPlan":"Confirm unchanged CLI and storage behavior."},
+            {"dimension":"migration","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"No schema work is required.","validationPlan":"Not applicable."}
+          ],
+          "residualRisks": ["A structurally valid caller digest can be mistaken for true package or load evidence.", "License and provenance-only files remain semantically awkward."],
+          "implementationReadiness": {"affectedComponents":["crates/model", "crates/app"],"workPackages":["No change."],"acceptanceCriteria":["Existing tests remain green and reports remain inert."],"migrationNotes":[],"rollback":"Not applicable."}
+        },
+        {
+          "optionId": "typed-package-and-load-contracts",
+          "title": "Add typed package and load contracts",
+          "kind": "foundational",
+          "summary": "Layer typed static manifests over the generic byte set and derive loaded state from a separate native observation.",
+          "diagramPaths": {"before":"diagrams/package-and-load-closure-before.mmd","after":"diagrams/package-and-load-closure-typed-package-and-load-contracts-after.mmd"},
+          "evidenceCoverage": [
+            {"evidenceId":"E06","effect":"addresses","tacticalFixRequired":false,"rationale":"Typed overlays preserve generic byte identity while adding complete semantic coverage."},
+            {"evidenceId":"E07","effect":"addresses","tacticalFixRequired":false,"rationale":"Evidence-only roles represent license, provenance, and transformation files honestly."},
+            {"evidenceId":"E13","effect":"addresses","tacticalFixRequired":true,"rationale":"A new typed service derives identity inputs and retains process evidence instead of promoting the old service."},
+            {"evidenceId":"E14","effect":"mitigates","tacticalFixRequired":true,"rationale":"A runtime package lease retains opened code-member objects through launch and observation."}
+          ],
+          "tradeoffs": [
+            {"dimension":"security","direction":"improves","confidence":"high","basis":"source-derived","assessment":"Closed roles, complete path coverage, typed derivation, retained code objects, and native load evidence narrow caller-controlled trust.","validationPlan":"Run golden IDs, every missing and duplicate case, replacement attacks, mapping drift, and redaction tests."},
+            {"dimension":"performance","direction":"regresses","confidence":"medium","basis":"source-derived","assessment":"Package verification and native mapping enumeration add bounded hashing and system calls before effective identity.","validationPlan":"Benchmark tiny, representative, and maximum admitted packages against current tree verification."},
+            {"dimension":"memory","direction":"regresses","confidence":"medium","basis":"source-derived","assessment":"The runtime lease retains code-member handles and bounded canonical member vectors for the process lifetime.","validationPlan":"Measure handle count and peak resident memory at 1, 128, and 4,096 members."},
+            {"dimension":"reliability","direction":"improves","confidence":"medium","basis":"source-derived","assessment":"Missing, extra, replaced, or drifted components fail before authority, but restrictive platform visibility can reduce availability.","validationPlan":"Exercise permission, deletion, load/unload drift, cancellation, and unsupported-platform paths."},
+            {"dimension":"operability","direction":"regresses","confidence":"medium","basis":"source-derived","assessment":"Reviewers must maintain package role manifests, load policies, and platform observation plans.","validationPlan":"Reconstruct two small fixtures and document every manual review input."},
+            {"dimension":"migration","direction":"regresses","confidence":"medium","basis":"source-derived","assessment":"New immutable records and a later explicit schema migration are required, while old records remain inert.","validationPlan":"Prove schema 5 data is byte-identical, new tables start empty, and no backfill grants authority."}
+          ],
+          "residualRisks": ["File-backed observation does not prove every resident executable page is unmodified.", "Current Ollama listener evidence does not identify the runner process that loaded model weights.", "macOS attached load observation remains unsupported."],
+          "implementationReadiness": {"affectedComponents":["crates/model", "crates/app", "crates/runtime-attestor", "crates/model-store", "crates/eval"],"workPackages":["Freeze pure package contracts and golden IDs.", "Add typed builders and runtime package lease.", "Add Windows and Linux native load observations.", "Persist only after contract review.", "Add model runner and load evidence before effective package authority."],"acceptanceCriteria":["Every base path has one honest static semantic entry.", "Production identity digests are derived from typed records.", "Loaded-component identity is bound to one retained process and complete admitted mapping view.", "Existing v1 canonical bytes remain unchanged."],"migrationNotes":["Add empty versioned tables without backfill in an explicit backup-backed migration."],"rollback":"Keep new records inert and remove their production consumers; existing v1 records and storage remain readable."}
+        }
+      ],
+      "recommendedOptionId": "typed-package-and-load-contracts",
+      "recommendation": "Select typed static overlays and separate native load evidence because static package completeness and runtime use are different security claims."
+    },
+    {
+      "opportunityId": "managed-local-only-isolation",
+      "title": "Make local-only qualification enforceable",
+      "summary": "Separate provider cloud-disable declaration from OS-enforced process-tree isolation and require managed prelaunch control for qualification.",
+      "diagnosis": "The attached preflight can bind one loopback transport to a process, but an already-running service cannot be retrofitted into a race-free portable outbound-denial boundary.",
+      "evidence": [
+        {"claimType":"observed","sourceKind":"source","evidenceId":"E12","path":"crates/eval/src/local_ollama_bound_preflight.rs","claim":"The bound preflight remains unqualified and does not claim provider cloud disablement or OS isolation."},
+        {"claimType":"observed","sourceKind":"document","evidenceId":"E17","path":"docs/roadmap.md","claim":"Milestone 0.2 requires OS-enforced non-loopback denial for participating processes."},
+        {"claimType":"inferred","sourceKind":"document","evidenceId":"E16","path":"docs/decisions/0009-retained-connection-attribution.md","claim":"Attached transport attribution is valuable observation evidence but cannot supply process-tree launch and isolation authority."}
+      ],
+      "desiredInvariants": [
+        "Provider cloud-disable evidence is exact-version, package, environment, process, and startup-marker bound, and never claims network enforcement.",
+        "Isolation policy is installed and read back before any participating runtime process resumes or connects.",
+        "The isolation lease owns the complete admitted descendant set and fails closed on unknown children, guardian loss, stale policy, or teardown drift.",
+        "Direct non-loopback IPv4 and IPv6 are denied while the exact required local transport remains available.",
+        "Attached runtimes never become eligible for local-only qualification."
+      ],
+      "proposalPath": "proposals/managed-local-only-isolation.md",
+      "options": [
+        {
+          "optionId": "provider-declaration-only",
+          "title": "Use provider declaration only",
+          "kind": "baseline",
+          "summary": "Require OLLAMA_NO_CLOUD and a status or startup marker without OS enforcement.",
+          "diagramPaths": {"before":"diagrams/managed-local-only-isolation-before.mmd","after":"diagrams/managed-local-only-isolation-provider-declaration-only-after.mmd"},
+          "evidenceCoverage": [
+            {"evidenceId":"E12","effect":"mitigates","tacticalFixRequired":false,"rationale":"The provider configuration adds useful declared state to the bound preflight."},
+            {"evidenceId":"E17","effect":"unaffected","tacticalFixRequired":true,"rationale":"A configuration declaration does not satisfy the roadmap's OS enforcement requirement."}
+          ],
+          "tradeoffs": [
+            {"dimension":"security","direction":"improves","confidence":"medium","basis":"source-derived","assessment":"Known provider cloud features are declared disabled, but direct or brokered egress remains possible.","validationPlan":"Verify exact supported versions and show that the record keeps network_isolation_enforced false."},
+            {"dimension":"performance","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"One bounded status or marker check adds negligible work relative to preflight.","validationPlan":"Measure the additional retained-session response latency."},
+            {"dimension":"memory","direction":"neutral","confidence":"high","basis":"source-derived","assessment":"Only a bounded redacted evidence record is added.","validationPlan":"Check encoded record ceilings."},
+            {"dimension":"reliability","direction":"improves","confidence":"medium","basis":"source-derived","assessment":"Version and marker drift fail closed, but the control cannot contain provider or process defects.","validationPlan":"Test missing, false, duplicate, oversized, and drifted markers."},
+            {"dimension":"operability","direction":"neutral","confidence":"medium","basis":"source-derived","assessment":"Managed environment configuration is simple but needs an exact reviewed-version allowlist.","validationPlan":"Review one frozen provider artifact without running generation."},
+            {"dimension":"migration","direction":"improves","confidence":"high","basis":"source-derived","assessment":"A separate inert evidence record can be added without changing existing reports.","validationPlan":"Keep the initial allowlist empty and confirm no old record gains authority."}
+          ],
+          "residualRisks": ["No network path is blocked by the operating system.", "Future provider behavior may exceed the documented disabled feature set."],
+          "implementationReadiness": {"affectedComponents":["crates/ollama", "crates/eval"],"workPackages":["Add exact version parsing and inert provider declaration evidence."],"acceptanceCriteria":["Unknown versions fail closed and the record never reports kernel enforcement."],"migrationNotes":["Start with an empty allowlist."],"rollback":"Remove the new inert evidence consumer without changing existing preflight reports."}
+        },
+        {
+          "optionId": "retrofit-attached-filtering",
+          "title": "Retrofit filtering onto attached runtimes",
+          "kind": "incremental",
+          "summary": "Install platform filtering around an already-running user-managed service.",
+          "diagramPaths": {"before":"diagrams/managed-local-only-isolation-before.mmd","after":"diagrams/managed-local-only-isolation-retrofit-attached-filtering-after.mmd"},
+          "evidenceCoverage": [
+            {"evidenceId":"E12","effect":"mitigates","tacticalFixRequired":true,"rationale":"The known listener process can inform a filter target on some platforms."},
+            {"evidenceId":"E17","effect":"unknown","tacticalFixRequired":true,"rationale":"Preexisting flows, children, broker paths, and platform privilege gaps prevent a portable complete claim."}
+          ],
+          "tradeoffs": [
+            {"dimension":"security","direction":"unknown","confidence":"high","basis":"source-derived","assessment":"Some future direct connects may be blocked, but preexisting sockets, unknown children, brokers, and lifecycle races remain.","validationPlan":"Attempt preexisting-flow, child, descriptor-transfer, DNS, and local-broker bypasses on every platform."},
+            {"dimension":"performance","direction":"regresses","confidence":"medium","basis":"analogous","assessment":"Per-flow platform filtering adds policy evaluation and setup work.","validationPlan":"Measure connect authorization latency and preflight startup overhead."},
+            {"dimension":"memory","direction":"regresses","confidence":"low","basis":"hypothetical","assessment":"Platform filter state and guardians retain additional kernel and user-space objects.","validationPlan":"Measure guardian and kernel policy footprint under maximum child closure."},
+            {"dimension":"reliability","direction":"regresses","confidence":"high","basis":"source-derived","assessment":"Partial installation and attachment races can leave an indeterminate boundary unless the existing process is killed.","validationPlan":"Inject policy transaction failure at every setup step."},
+            {"dimension":"operability","direction":"regresses","confidence":"high","basis":"source-derived","assessment":"Administrator rights or signed platform components are required, yet the process began outside their lifecycle.","validationPlan":"Test clean setup, refusal, guardian loss, and rollback on each platform."},
+            {"dimension":"migration","direction":"regresses","confidence":"high","basis":"source-derived","assessment":"Existing user-managed deployments need disruptive takeover with no portable safe handoff.","validationPlan":"Prototype handoff only if a platform can prove no preexisting flow or descendant remains."}
+          ],
+          "residualRisks": ["The process may already hold network or broker capabilities.", "macOS has no admitted CLI-only implementation.", "Windows application identity is not exact PID identity."],
+          "implementationReadiness": {"affectedComponents":["crates/runtime-attestor", "future platform guardians"],"workPackages":["No implementation recommended."],"acceptanceCriteria":["A platform must first prove race-free takeover of flows, children, and lifecycle."],"migrationNotes":["Attached reports remain observation-only."],"rollback":"Remove temporary policy and leave the attached runtime unqualified."}
+        },
+        {
+          "optionId": "managed-prelaunch-isolation",
+          "title": "Use managed prelaunch isolation",
+          "kind": "isolation",
+          "summary": "Prepare and read back native policy, then launch the complete reviewed process tree under a retained isolation lease.",
+          "diagramPaths": {"before":"diagrams/managed-local-only-isolation-before.mmd","after":"diagrams/managed-local-only-isolation-managed-prelaunch-isolation-after.mmd"},
+          "evidenceCoverage": [
+            {"evidenceId":"E12","effect":"mitigates","tacticalFixRequired":false,"rationale":"Attached evidence remains useful for observation but is excluded from qualification."},
+            {"evidenceId":"E16","effect":"addresses","tacticalFixRequired":true,"rationale":"Package, launch, process, connection, and isolation authority join under one managed lifecycle."},
+            {"evidenceId":"E17","effect":"addresses","tacticalFixRequired":true,"rationale":"Kernel non-loopback denial becomes an explicit retained qualification input."}
+          ],
+          "tradeoffs": [
+            {"dimension":"security","direction":"improves","confidence":"high","basis":"source-derived","assessment":"Policy installation precedes launch, descendants are bounded, and guardian loss terminates the tree before policy release.","validationPlan":"Run local IPv4, IPv6, TCP, UDP, DNS, inherited-descriptor, broker, child, capability, and guardian-failure canaries."},
+            {"dimension":"performance","direction":"regresses","confidence":"medium","basis":"source-derived","assessment":"Namespace, WFP, or extension setup and readback add startup latency; per-flow cost depends on platform.","validationPlan":"Measure setup, connect, generation, and teardown latency against an unqualified control with explicit thresholds."},
+            {"dimension":"memory","direction":"regresses","confidence":"medium","basis":"source-derived","assessment":"A guardian and retained native policy and process handles live for the complete operation.","validationPlan":"Measure guardian RSS, handles, and kernel policy objects for one runtime tree."},
+            {"dimension":"reliability","direction":"unknown","confidence":"medium","basis":"source-derived","assessment":"Fail-closed lifecycle improves containment but reduces availability where privileges, user namespaces, BFE, or an approved extension are unavailable.","validationPlan":"Exercise every unsupported prerequisite and require no unisolated fallback."},
+            {"dimension":"operability","direction":"regresses","confidence":"high","basis":"source-derived","assessment":"Windows needs an elevated guardian and macOS needs signed, entitled, user-approved system support.","validationPlan":"Document setup, readback, incident recovery, explicit removal, and rollback on dedicated native systems."},
+            {"dimension":"migration","direction":"regresses","confidence":"high","basis":"source-derived","assessment":"Qualification moves from user-managed attachment to a managed runtime package and launch path.","validationPlan":"Preserve attached preflight compatibility while proving that only the managed mode reaches the qualification join."}
+          ],
+          "residualRisks": ["Local IPC brokers can indirectly reach the network unless excluded from the launch boundary.", "Administrator or kernel compromise is outside the claim.", "macOS remains unsupported until a dedicated signed prototype passes."],
+          "implementationReadiness": {"affectedComponents":["crates/ollama", "new rewrite-runtime-isolation crate", "crates/app", "crates/eval"],"workPackages":["Add inert provider declaration evidence with an empty reviewed allowlist.", "Implement Linux loopback-only managed namespace isolation first.", "Freeze a canonical runtime and descendant set.", "Implement Windows WFP plus Job guardian.", "Prototype and validate the macOS Network Extension.", "Join exact evidence only after all required controls pass."],"acceptanceCriteria":["Policy is installed and read back before process resume.", "Direct non-loopback IPv4 and IPv6 canaries fail without Internet access.", "Required loopback IPC succeeds.", "Unknown descendants and guardian loss kill the tree.", "Unsupported prerequisites never fall back.", "Attached runtimes cannot enter the qualification join."],"migrationNotes":["Add new inert evidence contracts and preserve all existing preflight and identity bytes."],"rollback":"Terminate the managed tree, release only the operation-scoped policy, and leave the platform capability unsupported."
+          }
+        }
+      ],
+      "recommendedOptionId": "managed-prelaunch-isolation",
+      "recommendation": "Select managed prelaunch isolation because only lifecycle authority established before launch can support an honest local-only qualification claim."
+    }
+  ],
+  "openQuestions": [
+    "Which exact runtime artifact and child-executable closure will enter the reviewed provider allowlist?",
+    "Which Linux qualification hosts permit unprivileged user and network namespaces under their retained policy?",
+    "What administrator-controlled installation model is acceptable for the Windows WFP guardian?",
+    "Can a signed macOS system-extension prototype obtain the required entitlement and dedicated physical validation?"
+  ]
+}

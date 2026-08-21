@@ -17,6 +17,9 @@ pub(crate) fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKin
         | StoreError::InvalidInstallation(_)
         | StoreError::InvalidQualification(_)
         | StoreError::InvalidArtifactSet(_)
+        | StoreError::InvalidRuntimePackage(_)
+        | StoreError::InvalidModelPackage(_)
+        | StoreError::InvalidNativeLoad(_)
         | StoreError::InvalidArtifactSetInstallation(_)
         | StoreError::InvalidRuntimeBuild(_)
         | StoreError::InvalidRuntimeState(_)
@@ -47,7 +50,7 @@ pub(crate) fn store_error_kind(error: &StoreError) -> ArtifactRepositoryErrorKin
     }
 }
 
-pub(super) fn set_import_error_kind(error: &ArtifactSetImportError) -> ArtifactRepositoryErrorKind {
+pub(crate) fn set_import_error_kind(error: &ArtifactSetImportError) -> ArtifactRepositoryErrorKind {
     use ArtifactRepositoryErrorKind as Kind;
     use ArtifactSetImportError as Error;
     match error {

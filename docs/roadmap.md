@@ -70,10 +70,10 @@ proceeds in this exact order:
    artifact-set manifest, runtime-build and effective-state identities, and
    relationship-checked effective-package evidence. Preserve the separate inert
    qualification v2 that binds all four identities and exact qualification policy
-   without rewriting v1 evidence. Preserve current schema-v5 persistence, recursive
+   without rewriting v1 evidence. Preserve current schema-6 persistence, recursive
    relationship checks, distinct inert artifact-set installation generations,
-   bounded exact folder import, the offline `import-set` CLI, explicit v1/v2/v3/v4
-   repository migration, repository-owned artifact-set leases, and read-only set
+   bounded exact folder import, the offline `import-set` CLI, backup-backed explicit
+   migration from schemas 1 through 5, repository-owned artifact-set leases, and read-only set
    inventory without implying set authority. Preserve the completed managed-process
    attestor, extractor manifest, strict ephemeral wire contract, cancellable pair
    operation, two-phase informational engine evidence join, and independent shadow
@@ -90,28 +90,63 @@ proceeds in this exact order:
    reconnect, drift, ambiguity, incomplete required visibility, and unsupported
    platforms. It remains unqualified and does not prove exclusive socket ownership
    or application-handler execution.
-8. Replace Linux proc TCP row selection with bounded `NETLINK_SOCK_DIAG`, then
-   reconstruct the selected Ollama runtime and model as complete canonical runtime
-   and artifact-set manifests. Add version-gated provider cloud-disable evidence and
-   OS-enforced non-loopback denial before constructing effective runtime identity or
-   running generation. A mutable inventory tag or digest alone is not qualification.
-9. Project the eight-case smoke and 39-case editorial protocol into versioned local
-   generation plans. Run only exact stacks that passed identity and isolation
-   preflight. The old Gemma 4, Qwen3.6, and Ministral observations have expired; do
-   not reacquire a candidate without separate approval. Keep runtime strata separate
-   and publish no support claim from a development run.
-10. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
-   qualify one exact local runtime and artifact combination and retain complete
-   cross-platform release evidence before adding profiles or another format.
-11. Establish the versioned editorial-quality corpus and the bounded editorial
+8. Retain Linux bounded `NETLINK_SOCK_DIAG` row selection and exact retained-cookie
+   connection queries. Retain the complete runtime-package, model-package,
+   native-load, static package-lease, and schema-6 persistence contracts. The
+   installed-Ollama import may reconstruct and persist only inert model-package
+   evidence. Retain the v0.32.15 static import-to-inventory binding, neutral judge
+   output contract, retained-stream executor, separate limited transport receipt,
+   and opt-in runtime-reported residency profile. The static binding consumes the
+   opaque, nonserializable, single-use receipt from the exact preflight runner.
+   Retained-session completion input has an absolute 4 MiB UTF-8 ceiling enforced
+   before wire serialization or completion traffic. None grants execution or
+   qualification authority. The judge receipt alone proves no managed isolation,
+   handler execution, model load or use, candidate generation, effective identity,
+   semantics, or qualification.
+9. Retain Linux managed prelaunch namespace isolation and namespace-local process,
+   connection, and native-load attestation when host policy permits. Retain the
+   target-inherited seccomp policy that admits only `AF_INET` and `AF_INET6` through
+   `socket()`, denies every other socket family and `io_uring_setup`, and requires
+   seccomp mode 2 on target reobservation. Attached Windows and Linux evidence remains
+   observation-only. Windows managed isolation and exact native-load binding are
+   unsupported, and macOS is unsupported.
+10. Retain the Linux-only managed preflight that joins runtime-package, isolation,
+    process, connection, provider-declaration, read-only API, and native-load evidence
+    without an attached-process fallback. Its report remains inert and unqualified.
+    Retain the separate opt-in binding that constructs only a package-declared
+    `RuntimeBuildIdentity`; only its entrypoint is joined to live evidence, other
+    package semantics are not independently live-observed, cleanup completes before
+    return, and effective runtime state remains unproven.
+    Freeze and review one exact Ollama runtime package before adding it to the empty
+    production cloud-disable allowlist.
+11. Extend the managed operation so its process remains live through generation and
+    direct effective-state observation. Join its runtime build, exact model-package
+    lease, static v0.32.15 binding, runtime-reported residency, and local-judge receipt
+    while collecting generation-bound provider, effective configuration, platform and
+    driver, compute placement, effective context, and retained-live-runtime evidence.
+    Then add a separate candidate-generation receipt. The scorecard remains
+    caller-declared and triage-only; receipts do not prove handler execution, model
+    use, semantics, or qualification by themselves.
+12. Project the eight-case smoke and 39-case editorial protocol into versioned local
+    generation plans. Run only exact stacks that passed identity and isolation
+    preflight. The old Gemma 4, Qwen3.6, and Ministral observations have expired; do
+    not reacquire a candidate without separate approval. Keep runtime strata separate
+    and publish no support claim from a development run. The checked-in development
+    foundation is larger: 49 deterministic fidelity and structure cases plus 120
+    synthetic editorial cases, 169 total. Freeze the smaller qualification projection
+    before any candidate output is opened.
+13. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
+    qualify one exact local runtime and artifact combination on each claimed platform
+    before adding profiles or another format.
+14. Establish the versioned editorial-quality corpus and the bounded editorial
    pattern graph during evaluation work. Keep model-family and population
    source-signal relationships in a separate research graph with no live rewrite
    authority. Do not give lint findings product authority until the 0.3 rule and
    profile contracts pass qualification.
-12. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-13. Let editorial lint guide or rank generated candidates in 0.5 only after the
+15. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
+16. Let editorial lint guide or rank generated candidates in 0.5 only after the
    common fidelity cascade has accepted them.
-14. Add agent packaging, rich document formats, and native presentation layers only
+17. Add agent packaging, rich document formats, and native presentation layers only
    after the underlying CLI and application contracts are proven.
 
 This sequencing makes three independent outcomes visible in every release report:
@@ -124,6 +159,11 @@ This sequencing makes three independent outcomes visible in every release report
   preferences than the strongest simpler baseline.
 
 No blended score can trade fidelity for editorial quality or personal fit.
+Deterministic fidelity and structure gates run first. A version-locked local model
+judge may triage blind, randomized, order-swapped disagreements, but it cannot
+override a hard failure or replace human release adjudication.
+The [hybrid rewrite evaluation plan](research/2026-08-21-hybrid-rewrite-evaluation.md)
+defines the corpus partitions, score ordering, judge protocol, and report shape.
 
 ## Version policy
 
@@ -207,8 +247,9 @@ polished CLI.
   ports with conformance fakes
 - Exact runtime, artifact, tokenizer, prompt-template, parameter, and execution-class
   identity before and after generation
-- One qualified local adapter, selected from a user-managed Ollama service or pinned
-  llama.cpp sidecar based on retained bakeoff evidence
+- One qualified local adapter, starting with one exact Retonr-managed Ollama package
+  on Linux where host namespace policy permits, or a later pinned llama.cpp sidecar
+  with equivalent retained evidence
 - Existing offline import, inventory, pending-operations, reconcile, remove, and
   recover-removal commands, followed by explicit model list, inspect, recommend,
   download, verify, evaluate,

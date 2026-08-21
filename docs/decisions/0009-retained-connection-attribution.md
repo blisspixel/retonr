@@ -3,7 +3,7 @@
 - Status: proposed
 - Decision owners: project maintainers
 - Decision checkpoint: roadmap milestone 0.2 implementation
-- Last reviewed: 2026-08-20
+- Last reviewed: 2026-08-21
 
 ## Context
 
@@ -95,12 +95,13 @@ On Windows, the attestor uses `GetExtendedTcpTable` with
 retained process handle and creation time. The report does not call this PID an
 exclusive owner or application handler.
 
-On Linux, the first slice selects the exact reverse established row from the bounded
-same-network-namespace proc TCP view, retains its socket inode, and requires the
-visible same-user descriptor-holder set to contain exactly the retained process.
-The inode, visible holder, pidfd, process start token, listener, executable object,
-and executable bytes must remain stable. The kernel deprecates the proc TCP table, so
-a bounded `NETLINK_SOCK_DIAG` replacement remains the immediate Linux follow-up.
+On Linux, select the exact reverse established row through bounded
+`NETLINK_SOCK_DIAG`, retain its kernel socket cookie, inode, UID, interface, and
+tuple, and require the visible same-UID descriptor-holder set to contain exactly the
+retained process. Bracket the holder scan with exact cookie-bearing point queries.
+The cookie, inode, visible holder, pidfd, process start token, listener, executable
+object, and executable bytes must remain stable. Do not fall back to deprecated proc
+TCP row selection.
 
 On macOS, the bound preflight returns unsupported before making an HTTP request.
 Apple's public APIs do not provide an ordinary unprivileged point query that maps an
@@ -155,16 +156,27 @@ generation or evaluation-suite inputs.
 
 ## Follow-up
 
-- Replace Linux proc TCP row selection with bounded `NETLINK_SOCK_DIAG` evidence,
-  retaining the kernel socket cookie, inode, UID, tuple, and namespace scope.
-- Reconstruct one selected Ollama installation and model as complete canonical
-  runtime and artifact-set manifests, including native dependencies, source,
-  transformations, tokenizer, template, and license disposition.
-- Add version-gated provider cloud-disable evidence and OS-enforced non-loopback
-  denial for every participating process.
-- Only after transport, package, configuration, and isolation evidence are complete,
-  construct attached runtime-build and effective-state identity or admit local
-  generation to smoke evaluation.
+- Retain the completed bounded SOCK_DIAG dump and exact-query state machines without
+  a proc TCP fallback.
+- Keep this attached path observation-only. It cannot construct effective runtime
+  identity even when every retained connection checkpoint succeeds.
+- Retain the Linux-only managed preflight that now joins runtime-package, isolation,
+  process, connection, provider-declaration, read-only API, and native-load evidence.
+  Retain its target-inherited seccomp socket allowlist: `socket()` admits only
+  `AF_INET` and `AF_INET6`, all other socket families and `io_uring_setup` are denied,
+  and target reobservation requires seccomp mode 2. Its opt-in runtime-build binding
+  is package-declared evidence: only the exact entrypoint is joined to live process
+  and load evidence, other package semantics are not independently live-observed,
+  cleanup completes before return, and effective runtime state remains false.
+- Retain the separate v0.32.15 static model binding, runtime-reported residency
+  receipt, and local-judge receipt without treating them as effective or qualified
+  evidence. The static model binding consumes an opaque, nonserializable, single-use
+  receipt from the exact preflight runner. Retained-session completion input has an
+  absolute 4 MiB UTF-8 ceiling enforced before wire serialization or completion
+  traffic.
+- Review one runtime package, then retain the managed process through execution and
+  join exact model-package, residency, judge receipt, and direct effective-state
+  evidence. Add a separate candidate-generation receipt before smoke evaluation.
 
 ## Validation
 

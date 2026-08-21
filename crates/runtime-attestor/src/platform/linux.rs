@@ -1,9 +1,8 @@
 use std::{
-    collections::BTreeSet,
     fs::{self, File},
-    net::{IpAddr, SocketAddr},
+    net::SocketAddr,
     os::unix::fs::MetadataExt,
-    path::Path,
+    path::{Path, PathBuf},
     time::Instant,
 };
 
@@ -15,26 +14,36 @@ use rustix::{
 };
 
 use super::file::hash_opened_file;
+use super::linux_connection::RetainedConnectionIdentity;
+use super::linux_sock_diag::{InetDiagRecord, SockDiagSession};
 use crate::{
     AttachedProcessEvidence, AttachedProcessEvidenceClass, AttachedProcessEvidenceInput,
     AttachedProcessWitnessError, AttachedProcessWitnessLimits, ListenerEndpoint,
     RetainedTcpConnection, RetainedTcpConnectionEvidence, ensure_active,
 };
-
-const LISTEN_STATE: &str = "0A";
-
 pub(crate) struct Lease {
     endpoint: ListenerEndpoint,
-    owner: ListenerOwner,
-    pidfd: OwnedFd,
-    entrypoint: File,
+    pub(super) owner: ListenerOwner,
+    pub(super) pidfd: OwnedFd,
+    pub(super) entrypoint: File,
     initial: AttachedProcessEvidence,
+    sock_diag: SockDiagSession,
+    expected_uid: u32,
+    network_namespace: PathBuf,
+    connection_identity: Option<RetainedConnectionIdentity>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct ListenerOwner {
-    pid: u32,
-    socket_inode: u64,
+pub(super) struct ListenerOwner {
+    pub(super) pid: u32,
+    pub(super) socket_inode: u64,
+    pub(super) socket_cookie: [u32; 2],
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct ListenerSocketIdentity {
+    pub(super) inode: u32,
+    pub(super) cookie: [u32; 2],
 }
 
 impl Lease {
@@ -44,7 +53,20 @@ impl Lease {
         cancellation: &CancellationToken,
         started: Instant,
     ) -> Result<Self, AttachedProcessWitnessError> {
-        let owner = listener_owner(endpoint.socket(), limits, cancellation, started)?;
+        let expected_uid = geteuid().as_raw();
+        let network_namespace = current_network_namespace()?;
+        let mut sock_diag = SockDiagSession::new()?;
+        if current_network_namespace()? != network_namespace {
+            return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete);
+        }
+        let owner = listener_owner(
+            &mut sock_diag,
+            endpoint.socket(),
+            expected_uid,
+            limits,
+            cancellation,
+            started,
+        )?;
         let pid = owner.pid;
         let raw_pid = i32::try_from(pid)
             .ok()
@@ -66,8 +88,16 @@ impl Lease {
             limits,
             cancellation,
             started,
+            &network_namespace,
         )?;
-        let confirmed = listener_owner(endpoint.socket(), limits, cancellation, started)?;
+        let confirmed = listener_owner(
+            &mut sock_diag,
+            endpoint.socket(),
+            expected_uid,
+            limits,
+            cancellation,
+            started,
+        )?;
         if confirmed != owner {
             return Err(AttachedProcessWitnessError::ListenerRebound);
         }
@@ -78,6 +108,10 @@ impl Lease {
             pidfd,
             entrypoint,
             initial,
+            sock_diag,
+            expected_uid,
+            network_namespace,
+            connection_identity: None,
         })
     }
 
@@ -92,7 +126,15 @@ impl Lease {
         started: Instant,
     ) -> Result<AttachedProcessEvidence, AttachedProcessWitnessError> {
         ensure_pidfd_alive(&self.pidfd)?;
-        let owner = listener_owner(self.endpoint.socket(), limits, cancellation, started)?;
+        ensure_expected_uid(self.expected_uid)?;
+        let owner = listener_owner(
+            &mut self.sock_diag,
+            self.endpoint.socket(),
+            self.expected_uid,
+            limits,
+            cancellation,
+            started,
+        )?;
         if owner != self.owner {
             return Err(AttachedProcessWitnessError::ListenerRebound);
         }
@@ -115,6 +157,7 @@ impl Lease {
             limits,
             cancellation,
             started,
+            &self.network_namespace,
         )?;
         ensure_pidfd_alive(&self.pidfd)?;
         Ok(observed)
@@ -129,10 +172,14 @@ impl Lease {
     ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
         super::linux_connection::observe_connection(
             connection,
+            &mut self.sock_diag,
+            &mut self.connection_identity,
             limits,
             cancellation,
             started,
             self.owner.pid,
+            self.expected_uid,
+            self.expected_uid,
             &self.pidfd,
             self.initial.evidence_digest(),
         )
@@ -140,61 +187,105 @@ impl Lease {
 }
 
 fn listener_owner(
+    sock_diag: &mut SockDiagSession,
     endpoint: SocketAddr,
+    expected_uid: u32,
     limits: AttachedProcessWitnessLimits,
     cancellation: &CancellationToken,
     started: Instant,
 ) -> Result<ListenerOwner, AttachedProcessWitnessError> {
-    let path = match endpoint.ip() {
-        IpAddr::V4(_) => Path::new("/proc/net/tcp"),
-        IpAddr::V6(_) => Path::new("/proc/net/tcp6"),
-    };
-    let bytes = read_bounded(path, limits.maximum_socket_table_bytes)?;
-    let text = std::str::from_utf8(&bytes)
-        .map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
-    let expected_local = encoded_local_address(endpoint);
-    let expected_uid = geteuid().as_raw();
-    let mut inodes = BTreeSet::new();
-    let mut rows = 0_usize;
-    for line in text.lines().skip(1) {
-        ensure_active(cancellation, started, limits)?;
-        rows = rows
-            .checked_add(1)
-            .ok_or(AttachedProcessWitnessError::ResourceLimit)?;
-        if rows > limits.maximum_socket_table_entries {
-            return Err(AttachedProcessWitnessError::ResourceLimit);
-        }
-        let fields = line.split_ascii_whitespace().collect::<Vec<_>>();
-        if fields.len() < 10 || fields[1] != expected_local || fields[3] != LISTEN_STATE {
+    ensure_expected_uid(expected_uid)?;
+    let identity = listener_identity(
+        sock_diag,
+        endpoint,
+        expected_uid,
+        limits,
+        cancellation,
+        started,
+    )?;
+    let pid = owners_for_inode(
+        u64::from(identity.inode),
+        expected_uid,
+        limits,
+        cancellation,
+        started,
+    )?;
+    let confirmed = listener_identity(
+        sock_diag,
+        endpoint,
+        expected_uid,
+        limits,
+        cancellation,
+        started,
+    )?;
+    if confirmed != identity {
+        return Err(AttachedProcessWitnessError::ListenerRebound);
+    }
+    Ok(ListenerOwner {
+        pid,
+        socket_inode: u64::from(identity.inode),
+        socket_cookie: identity.cookie,
+    })
+}
+
+pub(super) fn listener_identity(
+    sock_diag: &mut SockDiagSession,
+    endpoint: SocketAddr,
+    expected_uid: u32,
+    limits: AttachedProcessWitnessLimits,
+    cancellation: &CancellationToken,
+    started: Instant,
+) -> Result<ListenerSocketIdentity, AttachedProcessWitnessError> {
+    let records = sock_diag.listener_dump(endpoint, limits, cancellation, started)?;
+    let mut candidates = Vec::new();
+    for record in records {
+        validate_listener_record(record, endpoint)?;
+        if record.local.ip() != endpoint.ip() {
             continue;
         }
-        let uid = fields[7]
-            .parse::<u32>()
-            .map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
-        if uid != expected_uid {
+        if record.uid != expected_uid {
             return Err(AttachedProcessWitnessError::ProcessAccessDenied);
         }
-        let inode = fields[9]
-            .parse::<u64>()
-            .map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
-        if inode == 0 {
+        if record.inode == 0 || !record.usable_cookie() {
             return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete);
         }
-        inodes.insert(inode);
+        candidates.push(ListenerSocketIdentity {
+            inode: record.inode,
+            cookie: record.cookie,
+        });
     }
-    if inodes.is_empty() {
-        return Err(AttachedProcessWitnessError::ListenerNotFound);
+    match candidates.as_slice() {
+        [identity] => Ok(*identity),
+        [] => Err(AttachedProcessWitnessError::ListenerNotFound),
+        _ => Err(AttachedProcessWitnessError::ListenerOwnershipAmbiguous),
     }
-    if inodes.len() != 1 {
-        return Err(AttachedProcessWitnessError::ListenerOwnershipAmbiguous);
+}
+
+pub(super) fn validate_listener_record(
+    record: InetDiagRecord,
+    endpoint: SocketAddr,
+) -> Result<(), AttachedProcessWitnessError> {
+    if !record.is_listening()
+        || record.local.is_ipv4() != endpoint.is_ipv4()
+        || record.local.port() != endpoint.port()
+        || !record.remote.ip().is_unspecified()
+        || record.remote.port() != 0
+    {
+        return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete);
     }
-    let inode = *inodes
-        .first()
-        .ok_or(AttachedProcessWitnessError::ListenerNotFound)?;
-    Ok(ListenerOwner {
-        pid: owners_for_inode(inode, expected_uid, limits, cancellation, started)?,
-        socket_inode: inode,
-    })
+    Ok(())
+}
+
+fn current_network_namespace() -> Result<PathBuf, AttachedProcessWitnessError> {
+    fs::read_link("/proc/thread-self/ns/net")
+        .map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)
+}
+
+fn ensure_expected_uid(expected_uid: u32) -> Result<(), AttachedProcessWitnessError> {
+    if geteuid().as_raw() != expected_uid {
+        return Err(AttachedProcessWitnessError::ProcessAccessDenied);
+    }
+    Ok(())
 }
 
 fn owners_for_inode(
@@ -225,12 +316,11 @@ fn observe_process(
     limits: AttachedProcessWitnessLimits,
     cancellation: &CancellationToken,
     started: Instant,
+    network_namespace: &Path,
 ) -> Result<AttachedProcessEvidence, AttachedProcessWitnessError> {
     ensure_active(cancellation, started, limits)?;
     let pid = owner.pid;
     let start_token = process_start_token(pid)?;
-    let self_namespace = fs::read_link("/proc/self/ns/net")
-        .map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
     let process_namespace = fs::read_link(format!("/proc/{pid}/ns/net")).map_err(|error| {
         if error.kind() == std::io::ErrorKind::PermissionDenied {
             AttachedProcessWitnessError::ProcessAccessDenied
@@ -238,7 +328,7 @@ fn observe_process(
             AttachedProcessWitnessError::ProcessInstanceUnavailable
         }
     })?;
-    if self_namespace != process_namespace {
+    if network_namespace != process_namespace {
         return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete);
     }
     let metadata = entrypoint_metadata(entrypoint)?;
@@ -253,13 +343,15 @@ fn observe_process(
         metadata.len()
     );
     let endpoint_material = format!(
-        "linux-listener-owner-v1\0{}\0{pid}\0{start_token}\0{}",
+        "linux-listener-owner-v2\0{}\0{pid}\0{start_token}\0{}\0{}\0{}",
         endpoint.socket(),
-        owner.socket_inode
+        owner.socket_inode,
+        owner.socket_cookie[0],
+        owner.socket_cookie[1]
     );
     let platform_material = format!(
         "linux-platform-evidence-v1\0{}",
-        self_namespace.to_string_lossy()
+        network_namespace.to_string_lossy()
     );
     AttachedProcessEvidence::new(AttachedProcessEvidenceInput {
         evidence_class: AttachedProcessEvidenceClass::LinuxProcPidfd,
@@ -283,7 +375,9 @@ fn open_entrypoint(pid: u32) -> Result<File, AttachedProcessWitnessError> {
     })
 }
 
-fn entrypoint_metadata(file: &File) -> Result<fs::Metadata, AttachedProcessWitnessError> {
+pub(super) fn entrypoint_metadata(
+    file: &File,
+) -> Result<fs::Metadata, AttachedProcessWitnessError> {
     let metadata = file
         .metadata()
         .map_err(|_error| AttachedProcessWitnessError::EntrypointUnavailable)?;
@@ -296,7 +390,7 @@ fn entrypoint_metadata(file: &File) -> Result<fs::Metadata, AttachedProcessWitne
     Ok(metadata)
 }
 
-fn process_start_token(pid: u32) -> Result<u64, AttachedProcessWitnessError> {
+pub(super) fn process_start_token(pid: u32) -> Result<u64, AttachedProcessWitnessError> {
     let bytes = read_bounded(Path::new(&format!("/proc/{pid}/stat")), 16 * 1024)?;
     let text = std::str::from_utf8(&bytes)
         .map_err(|_error| AttachedProcessWitnessError::ProcessInstanceUnavailable)?;
@@ -356,53 +450,20 @@ pub(super) fn read_bounded(
     Ok(bytes)
 }
 
-pub(super) fn encoded_local_address(endpoint: SocketAddr) -> String {
-    use std::fmt::Write as _;
-
-    let port = endpoint.port();
-    match endpoint.ip() {
-        IpAddr::V4(address) => {
-            let encoded = u32::from_ne_bytes(address.octets());
-            format!("{encoded:08X}:{port:04X}")
-        }
-        IpAddr::V6(address) => {
-            let octets = address.octets();
-            let mut encoded = String::with_capacity(32);
-            for chunk in octets.chunks_exact(4) {
-                let word = u32::from_ne_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-                let _ = write!(encoded, "{word:08X}");
-            }
-            format!("{encoded}:{port:04X}")
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::{
         fs,
-        net::{Ipv4Addr, Ipv6Addr, TcpListener},
+        net::{Ipv4Addr, TcpListener},
         os::fd::AsRawFd,
         time::Instant,
     };
 
     use rewrite_types::CancellationToken;
 
-    use super::{ListenerOwner, encoded_local_address, observe_process, open_entrypoint};
+    use super::{ListenerOwner, current_network_namespace, observe_process, open_entrypoint};
     use crate::platform::linux_connection::process_has_inode;
     use crate::{AttachedProcessWitnessLimits, ListenerEndpoint};
-
-    #[test]
-    fn proc_addresses_use_native_word_byte_order() {
-        assert_eq!(
-            encoded_local_address((Ipv4Addr::LOCALHOST, 11_434).into()),
-            "0100007F:2CAA"
-        );
-        assert_eq!(
-            encoded_local_address((Ipv6Addr::LOCALHOST, 11_434).into()),
-            "00000000000000000000000001000000:2CAA"
-        );
-    }
 
     #[test]
     fn current_process_descriptor_and_executable_produce_native_evidence() {
@@ -437,11 +498,13 @@ mod tests {
             ListenerOwner {
                 pid: std::process::id(),
                 socket_inode: inode,
+                socket_cookie: [1, 2],
             },
             &mut entrypoint,
             limits,
             &cancellation,
             Instant::now(),
+            &current_network_namespace().expect("current network namespace"),
         )
         .expect("observe current process");
         assert_eq!(evidence.owner_pid(), std::process::id());

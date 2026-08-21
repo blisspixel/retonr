@@ -7,16 +7,11 @@ use crate::{StoreError, StoreResult};
 mod shape;
 
 pub(super) use shape::{
-    validate_schema_four, validate_schema_one, validate_schema_shape, validate_schema_three,
-    validate_schema_two,
+    validate_schema_five, validate_schema_four, validate_schema_one, validate_schema_shape,
+    validate_schema_three, validate_schema_two,
 };
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 5;
-
-pub(super) fn initialize(connection: &mut Connection) -> StoreResult<()> {
-    configure(connection, true)?;
-    migrate_transaction(connection, true).map(|_| ())
-}
+pub(super) const STORE_SCHEMA_VERSION: i64 = 6;
 
 pub(super) fn migrate_existing_transaction(
     connection: &Connection,
@@ -27,31 +22,13 @@ pub(super) fn migrate_existing_transaction(
         return Err(StoreError::CorruptRecord);
     }
     crate::integrity::validate_database_integrity(connection)?;
-    migrate_supported_schema(connection, observed, false)?;
+    migrate_supported_schema(connection, observed)?;
     validate_schema_shape(connection)?;
     crate::integrity::validate_database_integrity(connection)
 }
 
-fn migrate_transaction(connection: &mut Connection, initialize_empty: bool) -> StoreResult<i64> {
-    let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let version: i64 = transaction.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    crate::integrity::validate_database_integrity(&transaction)?;
-    migrate_supported_schema(&transaction, version, initialize_empty)?;
-    validate_schema_shape(&transaction)?;
-    transaction.commit()?;
-    Ok(version)
-}
-
-fn migrate_supported_schema(
-    connection: &Connection,
-    version: i64,
-    initialize_empty: bool,
-) -> StoreResult<()> {
+fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResult<()> {
     match version {
-        0 if initialize_empty => {
-            require_empty_schema(connection)?;
-            create_current_schema(connection)?;
-        }
         0 => {
             return Err(StoreError::MigrationRequired {
                 found: version,
@@ -67,6 +44,8 @@ fn migrate_supported_schema(
             migrate_schema_three(connection)?;
             validate_schema_four(connection)?;
             migrate_schema_four(connection)?;
+            validate_schema_five(connection)?;
+            migrate_schema_five(connection)?;
         }
         2 => {
             validate_schema_two(connection)?;
@@ -75,16 +54,26 @@ fn migrate_supported_schema(
             migrate_schema_three(connection)?;
             validate_schema_four(connection)?;
             migrate_schema_four(connection)?;
+            validate_schema_five(connection)?;
+            migrate_schema_five(connection)?;
         }
         3 => {
             validate_schema_three(connection)?;
             migrate_schema_three(connection)?;
             validate_schema_four(connection)?;
             migrate_schema_four(connection)?;
+            validate_schema_five(connection)?;
+            migrate_schema_five(connection)?;
         }
         4 => {
             validate_schema_four(connection)?;
             migrate_schema_four(connection)?;
+            validate_schema_five(connection)?;
+            migrate_schema_five(connection)?;
+        }
+        5 => {
+            validate_schema_five(connection)?;
+            migrate_schema_five(connection)?;
         }
         STORE_SCHEMA_VERSION => validate_schema_shape(connection)?,
         value if !(0..=STORE_SCHEMA_VERSION).contains(&value) => {
@@ -104,7 +93,8 @@ fn create_current_schema(connection: &Connection) -> StoreResult<()> {
     create_schema_two(connection)?;
     migrate_schema_two(connection)?;
     migrate_schema_three(connection)?;
-    migrate_schema_four(connection)
+    migrate_schema_four(connection)?;
+    migrate_schema_five(connection)
 }
 
 fn create_schema_two(connection: &Connection) -> StoreResult<()> {
@@ -296,6 +286,72 @@ fn migrate_schema_four(connection: &Connection) -> StoreResult<()> {
          ) STRICT;
 
          PRAGMA user_version = 5;",
+    )?;
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_five_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_two(connection)?;
+    migrate_schema_two(connection)?;
+    migrate_schema_three(connection)?;
+    migrate_schema_four(connection)
+}
+
+fn migrate_schema_five(connection: &Connection) -> StoreResult<()> {
+    connection.execute_batch(
+        "CREATE TABLE runtime_package_manifests (
+             runtime_package_manifest_id TEXT PRIMARY KEY NOT NULL
+                 CHECK(length(runtime_package_manifest_id) = 64
+                     AND runtime_package_manifest_id NOT GLOB '*[^0-9a-f]*'),
+             artifact_set_id TEXT NOT NULL
+                 CHECK(length(artifact_set_id) = 64
+                     AND artifact_set_id NOT GLOB '*[^0-9a-f]*'),
+             source_artifact_set_id TEXT
+                 CHECK(source_artifact_set_id IS NULL
+                     OR (length(source_artifact_set_id) = 64
+                         AND source_artifact_set_id NOT GLOB '*[^0-9a-f]*')),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+             FOREIGN KEY(artifact_set_id)
+                 REFERENCES artifact_set_manifests(artifact_set_id),
+             FOREIGN KEY(source_artifact_set_id)
+                 REFERENCES artifact_set_manifests(artifact_set_id)
+         ) STRICT;
+
+         CREATE TABLE model_package_manifests (
+             model_package_manifest_id TEXT PRIMARY KEY NOT NULL
+                 CHECK(length(model_package_manifest_id) = 64
+                     AND model_package_manifest_id NOT GLOB '*[^0-9a-f]*'),
+             artifact_set_id TEXT NOT NULL
+                 CHECK(length(artifact_set_id) = 64
+                     AND artifact_set_id NOT GLOB '*[^0-9a-f]*'),
+             source_artifact_set_id TEXT
+                 CHECK(source_artifact_set_id IS NULL
+                     OR (length(source_artifact_set_id) = 64
+                         AND source_artifact_set_id NOT GLOB '*[^0-9a-f]*')),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+             FOREIGN KEY(artifact_set_id)
+                 REFERENCES artifact_set_manifests(artifact_set_id),
+             FOREIGN KEY(source_artifact_set_id)
+                 REFERENCES artifact_set_manifests(artifact_set_id)
+         ) STRICT;
+
+         CREATE TABLE native_load_observations (
+             native_load_observation_id TEXT PRIMARY KEY NOT NULL
+                 CHECK(length(native_load_observation_id) = 64
+                     AND native_load_observation_id NOT GLOB '*[^0-9a-f]*'),
+             runtime_package_manifest_id TEXT NOT NULL
+                 CHECK(length(runtime_package_manifest_id) = 64
+                     AND runtime_package_manifest_id NOT GLOB '*[^0-9a-f]*'),
+             record_json TEXT NOT NULL
+                 CHECK(length(CAST(record_json AS BLOB)) <= 1048576),
+             FOREIGN KEY(runtime_package_manifest_id)
+                 REFERENCES runtime_package_manifests(runtime_package_manifest_id)
+         ) STRICT;
+
+         PRAGMA user_version = 6;",
     )?;
     Ok(())
 }

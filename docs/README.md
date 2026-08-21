@@ -41,6 +41,8 @@ These documents define the product direction and constrain implementation.
 | [Current local runtime matrix](research/2026-08-13-local-runtime-matrix.md) | Dated cross-platform runtime status, exact identity requirements, and Agent Plugin and MCP boundary |
 | [Main readiness and next 0.2 slice](research/2026-08-20-main-readiness-and-next-slice.md) | Public-main evidence, live read-only Ollama preflight, documentation drift, and ordered trust work |
 | [Attached Ollama process witness](research/2026-08-20-attached-process-witness.md) | Platform ownership mechanisms, bounded witness design, limitations, and response-binding next step |
+| [Effective runtime trust chain](research/2026-08-21-effective-runtime-trust-chain/context.md) | Frozen baseline evidence, selected SOCK_DIAG, package, load, provider, and managed-isolation designs, and live implementation status |
+| [Hybrid rewrite evaluation](research/2026-08-21-hybrid-rewrite-evaluation.md) | 169-case development foundation, hard-gate score ordering, neutral local-judge execution, limited transport receipts, and locked-run plan |
 | [Local model tiers](research/2026-08-13-local-model-tiers.md) | Small, medium, and workstation candidates, exact revisions, local inventory, and qualification gates |
 | [Local model evaluation protocol](research/2026-08-13-local-model-evaluation.md) | Zero-download bakeoff, hardware strata, metrics, execution limits, and logical implementation order |
 | [Editorial pattern graph decision](research/2026-08-13-editorial-pattern-graph.md) | Separate product editorial relationships, personal profiles, and source-signal research |

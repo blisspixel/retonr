@@ -1,16 +1,12 @@
-use std::{
-    collections::BTreeSet,
-    fs,
-    net::IpAddr,
-    os::unix::fs::MetadataExt,
-    path::{Path, PathBuf},
-    time::Instant,
-};
+use std::{collections::BTreeSet, fs, os::unix::fs::MetadataExt, path::PathBuf, time::Instant};
 
 use rewrite_types::{CancellationToken, Digest};
-use rustix::{fd::OwnedFd, process::geteuid};
+use rustix::fd::OwnedFd;
 
-use super::linux::{encoded_local_address, ensure_pidfd_alive, read_bounded};
+use super::{
+    linux::ensure_pidfd_alive,
+    linux_sock_diag::{InetDiagRecord, NO_COOKIE, SockDiagSession},
+};
 use crate::{
     AttachedProcessWitnessError, AttachedProcessWitnessLimits, RetainedTcpConnection,
     RetainedTcpConnectionEvidence, RetainedTcpConnectionEvidenceInput,
@@ -18,50 +14,125 @@ use crate::{
     connection::connection_digest_material, ensure_active,
 };
 
-const ESTABLISHED_STATE: &str = "01";
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(super) struct RetainedConnectionIdentity {
+    connection: RetainedTcpConnection,
+    interface: u32,
+    cookie: [u32; 2],
+    uid: u32,
+    inode: u32,
+}
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the observation trust boundary is explicit"
+)]
 pub(super) fn observe_connection(
     connection: RetainedTcpConnection,
+    sock_diag: &mut SockDiagSession,
+    retained_identity: &mut Option<RetainedConnectionIdentity>,
     limits: AttachedProcessWitnessLimits,
     cancellation: &CancellationToken,
     started: Instant,
     retained_pid: u32,
+    diagnostics_uid: u32,
+    outer_uid: u32,
     pidfd: &OwnedFd,
     process_evidence_digest: &Digest,
 ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
     ensure_active(cancellation, started, limits)?;
     ensure_pidfd_alive(pidfd)?;
-    let expected_uid = geteuid().as_raw();
-    let inode = connection_inode(connection, expected_uid, limits, cancellation, started)?;
-    let holders = visible_same_uid_holders(inode, expected_uid, limits, cancellation, started)
-        .map_err(|error| {
-            map_connection_snapshot_error(
-                error,
-                AttachedProcessWitnessError::ConnectionSnapshotIncomplete,
-            )
-        })?;
-    require_retained_holder(&holders, retained_pid)?;
-    ensure_pidfd_alive(pidfd)?;
-    connection_evidence(
-        connection,
-        inode,
-        expected_uid,
-        retained_pid,
-        process_evidence_digest,
+    let expected = retained_identity.as_ref().copied();
+    if expected.is_some_and(|identity| identity.connection != connection) {
+        return Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete);
+    }
+    let (interface, cookie) = expected.map_or((0, NO_COOKIE), |identity| {
+        (identity.interface, identity.cookie)
+    });
+    let before_record =
+        sock_diag.exact_connection(connection, interface, cookie, limits, cancellation, started)?;
+    require_established(before_record)?;
+    let before = validate_identity(before_record, connection, diagnostics_uid)?;
+    if expected.is_some_and(|identity| identity != before) {
+        return Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete);
+    }
+    *retained_identity = Some(before);
+    let holders = visible_same_uid_holders(
+        u64::from(before.inode),
+        outer_uid,
+        limits,
+        cancellation,
+        started,
     )
+    .map_err(|error| {
+        map_connection_snapshot_error(
+            error,
+            AttachedProcessWitnessError::ConnectionSnapshotIncomplete,
+        )
+    })?;
+    require_retained_holder(&holders, retained_pid)?;
+    let after_record = sock_diag.exact_connection(
+        connection,
+        before.interface,
+        before.cookie,
+        limits,
+        cancellation,
+        started,
+    )?;
+    require_established(after_record)?;
+    let after = validate_identity(after_record, connection, diagnostics_uid)?;
+    if after != before {
+        return Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete);
+    }
+    ensure_pidfd_alive(pidfd)?;
+    connection_evidence(before, retained_pid, process_evidence_digest)
+}
+
+fn validate_identity(
+    record: InetDiagRecord,
+    connection: RetainedTcpConnection,
+    expected_uid: u32,
+) -> Result<RetainedConnectionIdentity, AttachedProcessWitnessError> {
+    if record.local != connection.server() || record.remote != connection.client() {
+        return Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete);
+    }
+    if record.uid != expected_uid {
+        return Err(AttachedProcessWitnessError::ConnectionProcessMismatch);
+    }
+    if record.inode == 0 || !record.usable_cookie() {
+        return Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete);
+    }
+    Ok(RetainedConnectionIdentity {
+        connection,
+        interface: record.interface,
+        cookie: record.cookie,
+        uid: record.uid,
+        inode: record.inode,
+    })
+}
+
+fn require_established(record: InetDiagRecord) -> Result<(), AttachedProcessWitnessError> {
+    if record.is_established() {
+        Ok(())
+    } else {
+        Err(AttachedProcessWitnessError::ConnectionNotEstablished)
+    }
 }
 
 fn connection_evidence(
-    connection: RetainedTcpConnection,
-    inode: u64,
-    expected_uid: u32,
+    identity: RetainedConnectionIdentity,
     retained_pid: u32,
     process_evidence_digest: &Digest,
 ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
-    let mut material =
-        connection_digest_material(b"retonr:linux-proc-connection-inode:v1\0", connection);
-    material.extend_from_slice(&inode.to_be_bytes());
-    material.extend_from_slice(&expected_uid.to_be_bytes());
+    let mut material = connection_digest_material(
+        b"retonr:linux-sock-diag-connection:v1\0",
+        identity.connection,
+    );
+    material.extend_from_slice(&identity.interface.to_be_bytes());
+    material.extend_from_slice(&identity.cookie[0].to_be_bytes());
+    material.extend_from_slice(&identity.cookie[1].to_be_bytes());
+    material.extend_from_slice(&identity.uid.to_be_bytes());
+    material.extend_from_slice(&identity.inode.to_be_bytes());
     material.extend_from_slice(&retained_pid.to_be_bytes());
     RetainedTcpConnectionEvidence::new(&RetainedTcpConnectionEvidenceInput {
         attribution_kind: TcpConnectionAttributionKind::LinuxSocketInodeVisibleSameUidHolder,
@@ -82,87 +153,6 @@ fn require_retained_holder(
         [_] => Err(AttachedProcessWitnessError::ConnectionProcessMismatch),
         _ => Err(AttachedProcessWitnessError::ConnectionAmbiguous),
     }
-}
-
-fn connection_inode(
-    connection: RetainedTcpConnection,
-    expected_uid: u32,
-    limits: AttachedProcessWitnessLimits,
-    cancellation: &CancellationToken,
-    started: Instant,
-) -> Result<u64, AttachedProcessWitnessError> {
-    let path = match connection.server().ip() {
-        IpAddr::V4(_) => Path::new("/proc/net/tcp"),
-        IpAddr::V6(_) => Path::new("/proc/net/tcp6"),
-    };
-    let bytes = read_bounded(path, limits.maximum_socket_table_bytes).map_err(|error| {
-        map_connection_snapshot_error(
-            error,
-            AttachedProcessWitnessError::ConnectionSnapshotIncomplete,
-        )
-    })?;
-    let text = std::str::from_utf8(&bytes)
-        .map_err(|_error| AttachedProcessWitnessError::ConnectionSnapshotIncomplete)?;
-    connection_inode_from_text(
-        text,
-        connection,
-        expected_uid,
-        limits,
-        cancellation,
-        started,
-    )
-}
-
-fn connection_inode_from_text(
-    text: &str,
-    connection: RetainedTcpConnection,
-    expected_uid: u32,
-    limits: AttachedProcessWitnessLimits,
-    cancellation: &CancellationToken,
-    started: Instant,
-) -> Result<u64, AttachedProcessWitnessError> {
-    let expected_local = encoded_local_address(connection.server());
-    let expected_remote = encoded_local_address(connection.client());
-    let mut matches = Vec::new();
-    let mut rows = 0_usize;
-    for line in text.lines().skip(1) {
-        ensure_active(cancellation, started, limits)?;
-        rows = rows
-            .checked_add(1)
-            .ok_or(AttachedProcessWitnessError::ResourceLimit)?;
-        if rows > limits.maximum_socket_table_entries {
-            return Err(AttachedProcessWitnessError::ResourceLimit);
-        }
-        let fields = line.split_ascii_whitespace().collect::<Vec<_>>();
-        if fields.len() < 10 {
-            return Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete);
-        }
-        if fields[1] != expected_local || fields[2] != expected_remote {
-            continue;
-        }
-        let uid = fields[7]
-            .parse::<u32>()
-            .map_err(|_error| AttachedProcessWitnessError::ConnectionSnapshotIncomplete)?;
-        let inode = fields[9]
-            .parse::<u64>()
-            .map_err(|_error| AttachedProcessWitnessError::ConnectionSnapshotIncomplete)?;
-        matches.push((fields[3], uid, inode));
-    }
-    let (state, uid, inode) = match matches.as_slice() {
-        [] => return Err(AttachedProcessWitnessError::ConnectionNotFound),
-        [row] => *row,
-        _ => return Err(AttachedProcessWitnessError::ConnectionAmbiguous),
-    };
-    if state != ESTABLISHED_STATE {
-        return Err(AttachedProcessWitnessError::ConnectionNotEstablished);
-    }
-    if uid != expected_uid {
-        return Err(AttachedProcessWitnessError::ConnectionProcessMismatch);
-    }
-    if inode == 0 {
-        return Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete);
-    }
-    Ok(inode)
 }
 
 fn map_connection_snapshot_error(
@@ -269,61 +259,58 @@ pub(super) fn process_has_inode(
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        net::{Ipv4Addr, Ipv6Addr, SocketAddr},
-        time::Instant,
+    use std::net::{Ipv4Addr, SocketAddr};
+
+    use rewrite_types::Digest;
+
+    use super::{
+        RetainedConnectionIdentity, connection_evidence, require_established,
+        require_retained_holder, validate_identity,
+    };
+    use crate::{
+        AttachedProcessWitnessError, RetainedTcpConnection,
+        platform::linux_sock_diag::InetDiagRecord,
     };
 
-    use rewrite_types::{CancellationToken, Digest};
-
-    use super::{connection_evidence, connection_inode_from_text, require_retained_holder};
-    use crate::{AttachedProcessWitnessError, AttachedProcessWitnessLimits, RetainedTcpConnection};
-
     const UID: u32 = 1000;
-    const INODE: u64 = 998_877;
+    const INODE: u32 = 998_877;
 
     #[test]
-    fn proc_table_requires_exact_reverse_tuple() {
-        assert_eq!(parse(&table(&[row("01", UID, INODE, true)])), Ok(INODE));
-        assert_eq!(
-            parse(&table(&[row("01", UID, INODE, false)])),
-            Err(AttachedProcessWitnessError::ConnectionNotFound)
-        );
-    }
+    fn record_requires_exact_established_tuple_uid_inode_and_cookie() {
+        let connection = connection();
+        assert!(validate_identity(record(connection), connection, UID).is_ok());
 
-    #[test]
-    fn proc_ipv6_table_requires_exact_reverse_tuple() {
-        let connection = RetainedTcpConnection::new(
-            SocketAddr::from((Ipv6Addr::LOCALHOST, 41_000)),
-            SocketAddr::from((Ipv6Addr::LOCALHOST, 11_434)),
-        )
-        .expect("valid IPv6 connection");
-        let exact = format!(
-            "0: {} {} 01 00000000:00000000 00:00000000 00000000 {UID} 0 {INODE}",
-            "00000000000000000000000001000000:2CAA", "00000000000000000000000001000000:A028"
-        );
-        assert_eq!(parse_connection(&table(&[exact]), connection), Ok(INODE));
-    }
-
-    #[test]
-    fn proc_table_rejects_state_uid_multiple_rows_and_zero_inode() {
-        assert_eq!(
-            parse(&table(&[row("08", UID, INODE, true)])),
+        let mut candidate = record(connection);
+        candidate.state = 8;
+        assert!(matches!(
+            require_established(candidate),
             Err(AttachedProcessWitnessError::ConnectionNotEstablished)
-        );
-        assert_eq!(
-            parse(&table(&[row("01", UID + 1, INODE, true)])),
-            Err(AttachedProcessWitnessError::ConnectionProcessMismatch)
-        );
-        let exact = row("01", UID, INODE, true);
-        assert_eq!(
-            parse(&table(&[exact.clone(), exact])),
-            Err(AttachedProcessWitnessError::ConnectionAmbiguous)
-        );
-        assert_eq!(
-            parse(&table(&[row("01", UID, 0, true)])),
+        ));
+        assert!(validate_identity(candidate, connection, UID).is_ok());
+        let mut candidate = record(connection);
+        candidate.remote.set_port(candidate.remote.port() + 1);
+        assert!(matches!(
+            validate_identity(candidate, connection, UID),
             Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete)
-        );
+        ));
+        let mut candidate = record(connection);
+        candidate.uid += 1;
+        assert!(matches!(
+            validate_identity(candidate, connection, UID),
+            Err(AttachedProcessWitnessError::ConnectionProcessMismatch)
+        ));
+        let mut candidate = record(connection);
+        candidate.inode = 0;
+        assert!(matches!(
+            validate_identity(candidate, connection, UID),
+            Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete)
+        ));
+        let mut candidate = record(connection);
+        candidate.cookie = [u32::MAX; 2];
+        assert!(matches!(
+            validate_identity(candidate, connection, UID),
+            Err(AttachedProcessWitnessError::ConnectionSnapshotIncomplete)
+        ));
     }
 
     #[test]
@@ -344,35 +331,38 @@ mod tests {
     }
 
     #[test]
-    fn inode_change_changes_redacted_evidence() {
+    fn socket_identity_changes_redacted_evidence() {
         let process = Digest::sha256(b"process evidence");
-        let first = connection_evidence(connection(), INODE, UID, 91, &process)
-            .expect("first connection evidence");
-        let second = connection_evidence(connection(), INODE + 1, UID, 91, &process)
-            .expect("second connection evidence");
+        let identity = validate_identity(record(connection()), connection(), UID)
+            .expect("valid connection identity");
+        let first = connection_evidence(identity, 91, &process).expect("first evidence");
+        let second = connection_evidence(
+            RetainedConnectionIdentity {
+                cookie: [identity.cookie[0] + 1, identity.cookie[1]],
+                ..identity
+            },
+            91,
+            &process,
+        )
+        .expect("second evidence");
         assert_ne!(first.evidence_digest(), second.evidence_digest());
         let encoded = serde_json::to_string(&first).expect("serialize evidence");
         assert!(!encoded.contains(&INODE.to_string()));
         assert!(!encoded.contains("41000"));
         assert!(!encoded.contains("11434"));
+        assert!(!encoded.contains("123456"));
     }
 
-    fn parse(text: &str) -> Result<u64, AttachedProcessWitnessError> {
-        parse_connection(text, connection())
-    }
-
-    fn parse_connection(
-        text: &str,
-        connection: RetainedTcpConnection,
-    ) -> Result<u64, AttachedProcessWitnessError> {
-        connection_inode_from_text(
-            text,
-            connection,
-            UID,
-            AttachedProcessWitnessLimits::default(),
-            &CancellationToken::new(),
-            Instant::now(),
-        )
+    fn record(connection: RetainedTcpConnection) -> InetDiagRecord {
+        InetDiagRecord {
+            state: 1,
+            local: connection.server(),
+            remote: connection.client(),
+            interface: 7,
+            cookie: [123_456, 654_321],
+            uid: UID,
+            inode: INODE,
+        }
     }
 
     fn connection() -> RetainedTcpConnection {
@@ -381,20 +371,5 @@ mod tests {
             SocketAddr::from((Ipv4Addr::LOCALHOST, 11_434)),
         )
         .expect("valid connection")
-    }
-
-    fn table(rows: &[String]) -> String {
-        format!("header\n{}\n", rows.join("\n"))
-    }
-
-    fn row(state: &str, uid: u32, inode: u64, reverse: bool) -> String {
-        let (local, remote) = if reverse {
-            ("0100007F:2CAA", "0100007F:A028")
-        } else {
-            ("0100007F:A028", "0100007F:2CAA")
-        };
-        format!(
-            "0: {local} {remote} {state} 00000000:00000000 00:00000000 00000000 {uid} 0 {inode}"
-        )
     }
 }

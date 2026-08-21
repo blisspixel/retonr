@@ -186,7 +186,7 @@ pub struct OllamaRunningModel {
     pub reference: String,
     /// Runtime-reported package digest.
     pub inventory_digest: Digest,
-    /// Runtime-reported complete model byte size.
+    /// Runtime-reported total loaded-model memory bytes.
     pub byte_size: u64,
     /// Runtime-reported bytes resident in accelerator memory.
     pub accelerator_bytes: u64,

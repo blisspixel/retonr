@@ -1324,6 +1324,8 @@ dependencies = [
  "rewrite-inference",
  "rewrite-model",
  "rewrite-model-store",
+ "rewrite-ollama-package",
+ "rewrite-runtime-attestor",
  "rewrite-text-adapter",
  "rewrite-types",
  "rusqlite",
@@ -1362,7 +1364,9 @@ dependencies = [
  "rewrite-model",
  "rewrite-model-store",
  "rewrite-ollama",
+ "rewrite-ollama-package",
  "rewrite-runtime-attestor",
+ "rewrite-runtime-isolation",
  "rewrite-types",
  "serde",
  "serde_json",
@@ -1442,17 +1446,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "rewrite-ollama-package"
+version = "0.1.0"
+dependencies = [
+ "rewrite-model",
+ "rewrite-types",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "rewrite-runtime-attestor"
 version = "0.1.0"
 dependencies = [
+ "rewrite-model",
  "rewrite-types",
  "rustix",
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
  "thiserror",
  "windows-sys 0.61.2",
  "winx",
+]
+
+[[package]]
+name = "rewrite-runtime-isolation"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "rewrite-types",
+ "rustix",
+ "seccompiler",
+ "sha2",
+ "thiserror",
 ]
 
 [[package]]
@@ -1570,6 +1600,15 @@ dependencies = [
  "quote",
  "serde_derive_internals",
  "syn 3.0.3",
+]
+
+[[package]]
+name = "seccompiler"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4ae55de56877481d112a559bbc12667635fdaf5e005712fd4e2b2fa50ffc884"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

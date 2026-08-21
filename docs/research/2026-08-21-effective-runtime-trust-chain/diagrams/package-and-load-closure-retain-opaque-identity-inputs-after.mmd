@@ -1,0 +1,7 @@
+flowchart LR
+    Caller[Caller declarations] --> Digests[Opaque package and state digests]
+    Lease[Existing artifact-set lease] --> Hash[Point-in-time entrypoint hash]
+    Digests --> Identity[Runtime identity records]
+    Hash --> Identity
+    Identity --> Store[Inert evidence store]
+    Gap[Static membership and runtime use remain conflated] -. limits .-> Identity

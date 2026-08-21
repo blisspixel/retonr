@@ -1,3 +1,5 @@
+use std::fs::OpenOptions;
+
 use rusqlite::Connection;
 use tempfile::tempdir;
 
@@ -86,8 +88,21 @@ fn migrates_schema_one_installations_to_first_epoch() {
         .expect("insert legacy installation");
     drop(connection);
 
-    let store =
-        ArtifactStateStore::open_existing_and_migrate(&path).expect("migrate existing schema");
+    let backup = directory.path().join("state-backup.db");
+    let mut backup_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(&backup)
+        .expect("reserve backup file");
+    let mut session =
+        ArtifactStateStore::begin_existing_migration(&path).expect("begin existing migration");
+    session
+        .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
+        .expect("write verified backup");
+    session.migrate().expect("migrate existing schema");
+    let store = ArtifactStateStore::open_existing_writable_exact(&path)
+        .expect("open migrated schema exactly");
     let selection = store
         .artifact_removal_state(&fixture.installed.artifact_id)
         .expect("load migrated state")

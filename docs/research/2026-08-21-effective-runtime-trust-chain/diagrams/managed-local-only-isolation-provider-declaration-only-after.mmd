@@ -1,0 +1,7 @@
+flowchart LR
+    Launch[Managed launch environment] --> Flag[OLLAMA_NO_CLOUD equals 1]
+    Marker[Version-gated startup marker] --> Evidence[Provider declaration evidence]
+    Flag --> Evidence
+    Evidence --> Report[Unqualified report]
+    Process[Runtime process tree] --> Network[Host outbound network]
+    Network -. still reachable .-> Report

@@ -84,6 +84,33 @@ pub struct EffectiveRuntimeStateInput {
     pub placement: ExecutionPlacement,
 }
 
+/// Caller-supplied effective-state facts with loaded components derived from an observation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EffectiveRuntimeStateFromLoadInput {
+    /// Stable adapter-owned provider snapshot contract identifier.
+    pub provider_snapshot_contract: String,
+    /// Provider snapshot contract version.
+    pub provider_snapshot_schema_version: u32,
+    /// Digest of the bounded canonical provider snapshot.
+    pub provider_snapshot_digest: Digest,
+    /// Digest of normalized launch arguments, environment, and lifecycle policy.
+    pub launch_policy_digest: Digest,
+    /// Digest of effective output-affecting runtime defaults and configuration.
+    pub effective_configuration_digest: Digest,
+    /// Digest of exact operating-system, framework, and driver evidence.
+    pub platform_digest: Digest,
+    /// Digest of device class, offload, cache, data type, and parallelism state.
+    pub execution_class_digest: Digest,
+    /// Digest of endpoint, offline, update, fallback, plugin, and telemetry policy.
+    pub isolation_policy_digest: Digest,
+    /// Effective runtime context capacity in tokens.
+    pub effective_context_tokens: u32,
+    /// Effective compute software backend.
+    pub compute_backend: ComputeBackend,
+    /// Effective CPU and accelerator placement class.
+    pub placement: ExecutionPlacement,
+}
+
 /// Validated content-addressed effective runtime state.
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -119,6 +146,39 @@ impl EffectiveRuntimeState {
             EFFECTIVE_RUNTIME_STATE_SCHEMA_VERSION,
             build.runtime_build_id(),
             input,
+        )
+    }
+
+    /// Creates a state with its loaded-component digest derived from an observation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EffectiveRuntimeStateError`] when the observation is bound to a
+    /// different package or the effective state is invalid.
+    pub fn new_from_load_observation(
+        build: &RuntimeBuildIdentity,
+        observation: &crate::NativeLoadObservation,
+        input: EffectiveRuntimeStateFromLoadInput,
+    ) -> Result<Self, EffectiveRuntimeStateError> {
+        if build.package_manifest_digest() != observation.runtime_package_manifest_id().digest() {
+            return Err(EffectiveRuntimeStateError::LoadObservationBuildMismatch);
+        }
+        Self::new(
+            build,
+            EffectiveRuntimeStateInput {
+                provider_snapshot_contract: input.provider_snapshot_contract,
+                provider_snapshot_schema_version: input.provider_snapshot_schema_version,
+                provider_snapshot_digest: input.provider_snapshot_digest,
+                launch_policy_digest: input.launch_policy_digest,
+                loaded_components_digest: observation.native_load_observation_id().digest().clone(),
+                effective_configuration_digest: input.effective_configuration_digest,
+                platform_digest: input.platform_digest,
+                execution_class_digest: input.execution_class_digest,
+                isolation_policy_digest: input.isolation_policy_digest,
+                effective_context_tokens: input.effective_context_tokens,
+                compute_backend: input.compute_backend,
+                placement: input.placement,
+            },
         )
     }
 
@@ -175,6 +235,12 @@ impl EffectiveRuntimeState {
     #[must_use]
     pub const fn runtime_build_id(&self) -> &RuntimeBuildId {
         &self.runtime_build_id
+    }
+
+    /// Returns the native-load observation digest bound into this state.
+    #[must_use]
+    pub const fn loaded_components_digest(&self) -> &Digest {
+        &self.loaded_components_digest
     }
 
     /// Returns the effective context capacity in tokens.
@@ -312,6 +378,9 @@ pub enum EffectiveRuntimeStateError {
     /// Compute backend and placement are inconsistent.
     #[error("effective runtime execution class is inconsistent")]
     InvalidExecutionClass,
+    /// The native-load observation belongs to a different runtime package.
+    #[error("native-load observation does not match the runtime build package")]
+    LoadObservationBuildMismatch,
     /// Canonical identity bytes exceed the fixed contract ceiling.
     #[error("effective runtime state canonical identity exceeds its limit")]
     CanonicalEncodingTooLarge,

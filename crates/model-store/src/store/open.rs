@@ -8,38 +8,48 @@ use crate::{StoreError, StoreResult, schema};
 impl ArtifactStateStore {
     /// Compatibility alias for [`Self::open_or_create_and_migrate`].
     ///
+    /// Despite the legacy target name, existing older schemas are never migrated.
+    /// They require the explicit verified-backup migration session.
+    ///
     /// # Errors
     ///
-    /// Returns [`StoreError`] when the database cannot be opened, configured, or
-    /// migrated without losing existing state.
+    /// Returns [`StoreError`] when the database cannot be opened, initialized, or
+    /// validated at the exact current schema.
     pub fn open(path: &Path) -> StoreResult<Self> {
         Self::open_or_create_and_migrate(path)
     }
 
-    /// Opens or creates an artifact state database and applies supported migrations.
+    /// Opens a current artifact state database or creates a new current database.
+    ///
+    /// The method name is retained for compatibility. Existing older schemas return
+    /// [`StoreError::MigrationRequired`] and require an explicit verified-backup
+    /// migration session.
     ///
     /// # Errors
     ///
-    /// Returns [`StoreError`] when the database cannot be opened, configured, or
-    /// migrated without losing existing state.
+    /// Returns [`StoreError`] when the database cannot be opened, initialized, or
+    /// validated at the exact current schema.
     pub fn open_or_create_and_migrate(path: &Path) -> StoreResult<Self> {
         let path = sqlite_path(path);
         let mut connection = Connection::open_with_flags(&path, create_flags())?;
-        schema::initialize(&mut connection)?;
+        schema::initialize_empty(&mut connection)?;
         Ok(Self { connection })
     }
 
-    /// Opens an existing writable artifact state database and applies migrations.
+    /// Opens an existing writable artifact state database at the current schema.
     ///
-    /// This method never creates a missing database.
+    /// This method never creates a missing database. The method name is retained for
+    /// compatibility, but older schemas require the explicit verified-backup migration
+    /// session.
     ///
     /// # Errors
     ///
-    /// Returns [`StoreError::NotInitialized`] when the path is absent, or another
-    /// [`StoreError`] when the database cannot be opened, configured, or migrated.
+    /// Returns [`StoreError::NotInitialized`] when the path is absent,
+    /// [`StoreError::MigrationRequired`] for an older schema, or another [`StoreError`]
+    /// when the database cannot be opened, configured, or validated.
     pub fn open_existing_and_migrate(path: &Path) -> StoreResult<Self> {
         let mut connection = open_existing(path, writable_flags())?;
-        schema::initialize(&mut connection)?;
+        schema::initialize_empty(&mut connection)?;
         Ok(Self { connection })
     }
 

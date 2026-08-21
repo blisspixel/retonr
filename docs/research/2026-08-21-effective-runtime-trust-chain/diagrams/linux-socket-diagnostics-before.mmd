@@ -1,0 +1,8 @@
+flowchart LR
+    Client[Retained client socket] --> Preflight[Bound preflight]
+    Preflight --> ProcNet[Read proc net tcp tables]
+    ProcNet --> Tuple[Match reverse tuple and inode]
+    Tuple --> ProcFd[Scan visible same-UID proc fd links]
+    ProcFd --> Lease[Retained process lease]
+    Lease --> Evidence[Unqualified connection evidence]
+    Limits[Visibility and reuse limits] -. constrain .-> Evidence

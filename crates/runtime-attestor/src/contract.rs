@@ -4,10 +4,14 @@ use rewrite_types::{CancellationToken, Digest};
 use serde::Serialize;
 use thiserror::Error;
 
+use crate::{NativeLoadObservationRequest, NativeLoadObserverError};
 use crate::{RetainedTcpConnection, RetainedTcpConnectionEvidence};
+use rewrite_model::NativeLoadObservation;
 
 /// Current attached-process witness contract version.
 pub const ATTACHED_PROCESS_WITNESS_SCHEMA_VERSION: u32 = 1;
+/// Managed Linux witness version. Version 1 attached records remain unchanged.
+pub const MANAGED_LINUX_PROCESS_WITNESS_SCHEMA_VERSION: u32 = 2;
 
 /// Hard maximum bytes admitted from one operating-system socket table.
 pub const MAXIMUM_SOCKET_TABLE_BYTES: usize = 16 * 1024 * 1024;
@@ -104,8 +108,11 @@ impl AttachedProcessWitnessLimits {
 pub enum AttachedProcessEvidenceClass {
     /// Windows owner-PID table plus a retained process handle.
     WindowsOwnerPidProcessHandle,
-    /// Linux proc socket ownership plus a retained pidfd.
+    /// Linux socket diagnostics, visible same-UID descriptor ownership, and a retained pidfd.
     LinuxProcPidfd,
+    /// Supplied namespace-local socket diagnostics, exact expected process facts,
+    /// visible same-host-UID holders, and a retained pidfd.
+    LinuxManagedNamespaceSockDiag,
 }
 
 /// Launch classification supported by the first witness contract.
@@ -114,6 +121,8 @@ pub enum AttachedProcessEvidenceClass {
 pub enum AttachedProcessLaunchMode {
     /// The observer did not claim a service-manager or desktop launch mode.
     AttachedUnknown,
+    /// The caller supplied exact facts for a process launched in managed Linux isolation.
+    ManagedLinuxIsolation,
 }
 
 /// Provider-neutral input produced only by a reviewed process observer.
@@ -164,7 +173,10 @@ impl AttachedProcessEvidence {
     /// Returns [`AttachedProcessWitnessError::InvalidEvidence`] when required
     /// numeric facts are empty.
     pub fn new(input: AttachedProcessEvidenceInput) -> Result<Self, AttachedProcessWitnessError> {
-        if input.owner_pid == 0 || input.entrypoint_bytes == 0 {
+        if input.owner_pid == 0
+            || input.entrypoint_bytes == 0
+            || input.evidence_class == AttachedProcessEvidenceClass::LinuxManagedNamespaceSockDiag
+        {
             return Err(AttachedProcessWitnessError::InvalidEvidence);
         }
         let evidence_digest = evidence_digest(&input);
@@ -172,6 +184,34 @@ impl AttachedProcessEvidence {
             schema_version: ATTACHED_PROCESS_WITNESS_SCHEMA_VERSION,
             evidence_class: input.evidence_class,
             launch_mode: AttachedProcessLaunchMode::AttachedUnknown,
+            owner_pid: input.owner_pid,
+            process_instance_digest: input.process_instance_digest,
+            ownership_snapshot_digest: input.ownership_snapshot_digest,
+            entrypoint_object_digest: input.entrypoint_object_digest,
+            entrypoint_digest: input.entrypoint_digest,
+            entrypoint_bytes: input.entrypoint_bytes,
+            platform_evidence_digest: input.platform_evidence_digest,
+            evidence_digest,
+        })
+    }
+
+    #[cfg(target_os = "linux")]
+    pub(crate) fn new_managed_linux(
+        input: AttachedProcessEvidenceInput,
+    ) -> Result<Self, AttachedProcessWitnessError> {
+        if input.owner_pid == 0
+            || input.entrypoint_bytes == 0
+            || input.evidence_class != AttachedProcessEvidenceClass::LinuxManagedNamespaceSockDiag
+        {
+            return Err(AttachedProcessWitnessError::InvalidEvidence);
+        }
+        let launch_mode = AttachedProcessLaunchMode::ManagedLinuxIsolation;
+        let evidence_digest =
+            crate::managed_contract::managed_linux_evidence_digest(&input, launch_mode);
+        Ok(Self {
+            schema_version: MANAGED_LINUX_PROCESS_WITNESS_SCHEMA_VERSION,
+            evidence_class: input.evidence_class,
+            launch_mode,
             owner_pid: input.owner_pid,
             process_instance_digest: input.process_instance_digest,
             ownership_snapshot_digest: input.ownership_snapshot_digest,
@@ -193,6 +233,12 @@ impl AttachedProcessEvidence {
     #[must_use]
     pub const fn evidence_class(&self) -> AttachedProcessEvidenceClass {
         self.evidence_class
+    }
+
+    /// Returns the launch classification claimed by this witness.
+    #[must_use]
+    pub const fn launch_mode(&self) -> AttachedProcessLaunchMode {
+        self.launch_mode
     }
 
     /// Returns the kernel-reported owner PID.
@@ -282,6 +328,27 @@ pub trait AttachedProcessLease {
         _cancellation: &CancellationToken,
     ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
         Err(AttachedProcessWitnessError::Unsupported)
+    }
+
+    /// Observes a bounded stable set of file-backed executable components.
+    ///
+    /// The result is inert relationship evidence. It does not prove resident-page
+    /// equality, absence of in-memory patches, model use, or handler execution.
+    /// Version 1 is implemented only on Linux. Windows and macOS return
+    /// [`NativeLoadObserverError::Unsupported`] because the reviewed public APIs do
+    /// not provide the required object-bound mapping evidence.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`NativeLoadObserverError`] unless the retained process, exact
+    /// package, complete admitted mapping view, and frozen external set remain
+    /// stable through the observation bracket.
+    fn observe_native_load(
+        &mut self,
+        _request: &NativeLoadObservationRequest<'_>,
+        _cancellation: &CancellationToken,
+    ) -> Result<NativeLoadObservation, NativeLoadObserverError> {
+        Err(NativeLoadObserverError::Unsupported)
     }
 }
 
@@ -405,6 +472,7 @@ fn evidence_digest(input: &AttachedProcessEvidenceInput) -> Digest {
     bytes.push(match input.evidence_class {
         AttachedProcessEvidenceClass::WindowsOwnerPidProcessHandle => 0,
         AttachedProcessEvidenceClass::LinuxProcPidfd => 1,
+        AttachedProcessEvidenceClass::LinuxManagedNamespaceSockDiag => 2,
     });
     bytes.extend_from_slice(&input.owner_pid.to_be_bytes());
     for digest in [
