@@ -56,7 +56,10 @@ fn parse_helper_error(fields: &[&str]) -> IsolationResult<ReadyMessage> {
         "network-canary" => IsolationError::NetworkCanary,
         "descriptor-leak" => IsolationError::DescriptorLeak,
         "privilege-drop" => IsolationError::PrivilegeDrop,
-        "socket-policy" => IsolationError::SocketPolicy,
+        "socket-policy-compile" => IsolationError::SocketPolicyCompile,
+        "socket-policy-install" => IsolationError::SocketPolicyInstall,
+        "socket-policy-inactive" => IsolationError::SocketPolicyInactive,
+        "socket-policy-behavior" => IsolationError::SocketPolicyBehavior,
         "invalid-launch" => IsolationError::InvalidLaunch("helper validation"),
         _ => IsolationError::HelperProtocol,
     };
@@ -83,8 +86,8 @@ mod tests {
             Err(IsolationError::HostPolicyDenied)
         );
         assert_eq!(
-            parse_ready(b"ERROR 1 socket-policy\n"),
-            Err(IsolationError::SocketPolicy)
+            parse_ready(b"ERROR 1 socket-policy-behavior\n"),
+            Err(IsolationError::SocketPolicyBehavior)
         );
     }
 }

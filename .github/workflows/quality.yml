@@ -206,7 +206,10 @@ jobs:
         run: |
           set -euo pipefail
           isolation_test="$(cat "$RUNNER_TEMP/retonr-isolation-test-binary")"
-          docker run --rm --privileged --network none \
+          docker run --rm --privileged \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            --network none \
             --mount "type=bind,source=$PWD,target=$PWD" \
             --workdir "$PWD" \
             --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
@@ -270,7 +273,10 @@ jobs:
           )
           test "${#isolation_tests[@]}" -eq 1
           test -x "${isolation_tests[0]}"
-          docker run --rm --privileged --network none \
+          docker run --rm --privileged \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            --network none \
             --mount "type=bind,source=$PWD,target=$PWD" \
             --workdir "$PWD" \
             --env CARGO_LLVM_COV=1 \

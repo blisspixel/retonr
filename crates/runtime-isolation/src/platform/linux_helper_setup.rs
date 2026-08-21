@@ -25,7 +25,10 @@ pub(super) enum HelperFailure {
     NetworkCanary,
     DescriptorLeak,
     PrivilegeDrop,
-    SocketPolicy,
+    SocketPolicyCompile,
+    SocketPolicyInstall,
+    SocketPolicyInactive,
+    SocketPolicyBehavior,
     InvalidLaunch,
 }
 
@@ -38,7 +41,10 @@ impl HelperFailure {
             Self::NetworkCanary => "network-canary",
             Self::DescriptorLeak => "descriptor-leak",
             Self::PrivilegeDrop => "privilege-drop",
-            Self::SocketPolicy => "socket-policy",
+            Self::SocketPolicyCompile => "socket-policy-compile",
+            Self::SocketPolicyInstall => "socket-policy-install",
+            Self::SocketPolicyInactive => "socket-policy-inactive",
+            Self::SocketPolicyBehavior => "socket-policy-behavior",
             Self::InvalidLaunch => "invalid-launch",
         }
     }

@@ -16,8 +16,11 @@ const SECCOMP_FILTER_MODE: &str = "2";
 pub(super) fn install_target_socket_policy() -> Result<(), HelperFailure> {
     let program = target_socket_filter()?;
     seccompiler::apply_filter(&program).map_err(classify_filter_error)?;
-    if !socket_policy_is_active(std::process::id())? || !socket_policy_behaves_as_required() {
-        return Err(HelperFailure::SocketPolicy);
+    if !socket_policy_is_active(std::process::id())? {
+        return Err(HelperFailure::SocketPolicyInactive);
+    }
+    if !socket_policy_behaves_as_required() {
+        return Err(HelperFailure::SocketPolicyBehavior);
     }
     Ok(())
 }
@@ -29,13 +32,13 @@ fn classify_filter_error(error: seccompiler::Error) -> HelperFailure {
         {
             HelperFailure::HostPolicyDenied
         }
-        _ => HelperFailure::SocketPolicy,
+        _ => HelperFailure::SocketPolicyInstall,
     }
 }
 
 pub(super) fn socket_policy_is_active(pid: u32) -> Result<bool, HelperFailure> {
     let status = fs::read_to_string(format!("/proc/{pid}/status"))
-        .map_err(|_error| HelperFailure::SocketPolicy)?;
+        .map_err(|_error| HelperFailure::SocketPolicyInactive)?;
     Ok(status
         .lines()
         .find_map(|line| line.strip_prefix("Seccomp:"))
@@ -50,16 +53,16 @@ fn target_socket_filter() -> Result<BpfProgram, HelperFailure> {
             SeccompCmpOp::Ne,
             libc::AF_INET as u64,
         )
-        .map_err(|_error| HelperFailure::SocketPolicy)?,
+        .map_err(|_error| HelperFailure::SocketPolicyCompile)?,
         SeccompCondition::new(
             0,
             SeccompCmpArgLen::Dword,
             SeccompCmpOp::Ne,
             libc::AF_INET6 as u64,
         )
-        .map_err(|_error| HelperFailure::SocketPolicy)?,
+        .map_err(|_error| HelperFailure::SocketPolicyCompile)?,
     ])
-    .map_err(|_error| HelperFailure::SocketPolicy)?;
+    .map_err(|_error| HelperFailure::SocketPolicyCompile)?;
     let rules = BTreeMap::from([
         (libc::SYS_io_uring_setup, Vec::new()),
         (libc::SYS_socket, vec![socket_rule]),
@@ -69,12 +72,12 @@ fn target_socket_filter() -> Result<BpfProgram, HelperFailure> {
         SeccompAction::Allow,
         SeccompAction::Errno(libc::EPERM as u32),
         ARCH.try_into()
-            .map_err(|_error| HelperFailure::SocketPolicy)?,
+            .map_err(|_error| HelperFailure::SocketPolicyCompile)?,
     )
-    .map_err(|_error| HelperFailure::SocketPolicy)?;
+    .map_err(|_error| HelperFailure::SocketPolicyCompile)?;
     filter
         .try_into()
-        .map_err(|_error| HelperFailure::SocketPolicy)
+        .map_err(|_error| HelperFailure::SocketPolicyCompile)
 }
 
 fn socket_policy_behaves_as_required() -> bool {
@@ -122,7 +125,7 @@ mod tests {
             classify_filter_error(seccompiler::Error::Seccomp(io::Error::from_raw_os_error(
                 libc::EINVAL
             ),)),
-            HelperFailure::SocketPolicy
+            HelperFailure::SocketPolicyInstall
         );
     }
 }

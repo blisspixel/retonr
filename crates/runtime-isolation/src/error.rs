@@ -44,9 +44,18 @@ pub enum IsolationError {
     /// Privileges could not be irreversibly reduced before target launch.
     #[error("the helper could not drop privileges completely")]
     PrivilegeDrop,
-    /// The target socket-family policy could not be installed and verified.
-    #[error("the target socket-family policy could not be established")]
-    SocketPolicy,
+    /// The target socket-family policy could not be compiled.
+    #[error("the target socket-family policy could not be compiled")]
+    SocketPolicyCompile,
+    /// The target socket-family policy could not be installed.
+    #[error("the target socket-family policy could not be installed")]
+    SocketPolicyInstall,
+    /// The installed target socket-family policy was not active.
+    #[error("the target socket-family policy was not active")]
+    SocketPolicyInactive,
+    /// The installed target socket-family policy failed its behavioral checks.
+    #[error("the target socket-family policy failed its behavioral checks")]
+    SocketPolicyBehavior,
     /// The helper sent malformed, inconsistent, or oversized evidence.
     #[error("the isolation helper protocol was invalid")]
     HelperProtocol,
@@ -121,7 +130,10 @@ mod display_tests {
             IsolationError::NetworkCanary,
             IsolationError::DescriptorLeak,
             IsolationError::PrivilegeDrop,
-            IsolationError::SocketPolicy,
+            IsolationError::SocketPolicyCompile,
+            IsolationError::SocketPolicyInstall,
+            IsolationError::SocketPolicyInactive,
+            IsolationError::SocketPolicyBehavior,
             IsolationError::HelperProtocol,
             IsolationError::InvalidChannelEndpoint,
             IsolationError::ChannelAlreadyRequested,
