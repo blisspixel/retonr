@@ -16,13 +16,17 @@ const SECCOMP_FILTER_MODE: &str = "2";
 pub(super) fn install_target_socket_policy() -> Result<(), HelperFailure> {
     let program = target_socket_filter()?;
     seccompiler::apply_filter(&program).map_err(classify_filter_error)?;
-    if !socket_policy_is_active(std::process::id())? {
+    if !current_socket_policy_is_active()? {
         return Err(HelperFailure::SocketPolicyInactive);
     }
     if !socket_policy_behaves_as_required() {
         return Err(HelperFailure::SocketPolicyBehavior);
     }
     Ok(())
+}
+
+fn current_socket_policy_is_active() -> Result<bool, HelperFailure> {
+    read_socket_policy_status("/proc/self/status")
 }
 
 fn classify_filter_error(error: seccompiler::Error) -> HelperFailure {
@@ -37,12 +41,19 @@ fn classify_filter_error(error: seccompiler::Error) -> HelperFailure {
 }
 
 pub(super) fn socket_policy_is_active(pid: u32) -> Result<bool, HelperFailure> {
-    let status = fs::read_to_string(format!("/proc/{pid}/status"))
-        .map_err(|_error| HelperFailure::SocketPolicyInactive)?;
-    Ok(status
+    read_socket_policy_status(&format!("/proc/{pid}/status"))
+}
+
+fn read_socket_policy_status(path: &str) -> Result<bool, HelperFailure> {
+    let status = fs::read_to_string(path).map_err(|_error| HelperFailure::SocketPolicyInactive)?;
+    Ok(status_reports_filter(&status))
+}
+
+fn status_reports_filter(status: &str) -> bool {
+    status
         .lines()
         .find_map(|line| line.strip_prefix("Seccomp:"))
-        .is_some_and(|value| value.trim() == SECCOMP_FILTER_MODE))
+        .is_some_and(|value| value.trim() == SECCOMP_FILTER_MODE)
 }
 
 fn target_socket_filter() -> Result<BpfProgram, HelperFailure> {
@@ -99,11 +110,20 @@ fn allowed_socket(family: AddressFamily) -> bool {
 mod tests {
     use std::io;
 
-    use super::{HelperFailure, classify_filter_error, target_socket_filter};
+    use super::{
+        HelperFailure, classify_filter_error, status_reports_filter, target_socket_filter,
+    };
 
     #[test]
     fn target_filter_compiles_for_the_current_architecture() {
         assert!(!target_socket_filter().expect("compile filter").is_empty());
+    }
+
+    #[test]
+    fn status_parser_requires_filter_mode_two() {
+        assert!(status_reports_filter("Name:\thelper\nSeccomp:\t2\n"));
+        assert!(!status_reports_filter("Name:\thelper\nSeccomp:\t0\n"));
+        assert!(!status_reports_filter("Name:\thelper\n"));
     }
 
     #[test]
