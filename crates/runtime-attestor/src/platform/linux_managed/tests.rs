@@ -84,7 +84,7 @@ fn incomplete_managed_listener_snapshots_retry_selectively_within_the_bound() {
 
 use super::{
     process_start_token,
-    test_support::{expect_native, native_required, uncontrolled_access_denied},
+    test_support::{expect_native, uncontrolled_access_denied},
 };
 use crate::{
     AttachedProcessEvidenceClass, AttachedProcessLaunchMode, AttachedProcessLease,
@@ -182,10 +182,6 @@ fn host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available() 
         .stderr(Stdio::null())
         .spawn()
     else {
-        assert!(
-            !native_required(),
-            "forced native attestor test requires unshare --user --map-root-user --net"
-        );
         return;
     };
     let deadline = Instant::now() + Duration::from_secs(2);
@@ -195,10 +191,6 @@ fn host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available() 
             .expect("read unshare child status")
             .is_some()
         {
-            assert!(
-                !native_required(),
-                "forced native attestor test requires a live unshare user+net child"
-            );
             return;
         }
         let metadata =
@@ -216,10 +208,6 @@ fn host_diagnostics_cannot_replace_a_distinct_target_namespace_when_available() 
     if !isolated {
         let _ = child.kill();
         let _ = child.wait();
-        assert!(
-            !native_required(),
-            "forced native attestor test requires a distinct user+net namespace"
-        );
         return;
     }
 

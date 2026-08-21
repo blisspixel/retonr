@@ -25,7 +25,7 @@ pub(super) fn expect_native<T>(
     }
 }
 
-pub(super) fn native_required() -> bool {
+fn native_required() -> bool {
     match env::var(REQUIRE_NATIVE_ENVIRONMENT) {
         Ok(value) if value == "1" => true,
         Ok(value) => panic!("{REQUIRE_NATIVE_ENVIRONMENT} must be 1 when set, got {value:?}"),
