@@ -4,7 +4,7 @@ use rewrite_types::CancellationToken;
 
 use crate::{
     AttachedProcessEvidence, AttachedProcessWitnessError, AttachedProcessWitnessLimits,
-    ListenerEndpoint,
+    ListenerEndpoint, RetainedTcpConnection, RetainedTcpConnectionEvidence,
 };
 
 pub(crate) struct Lease;
@@ -29,6 +29,20 @@ impl Lease {
         _cancellation: &CancellationToken,
         _started: Instant,
     ) -> Result<AttachedProcessEvidence, AttachedProcessWitnessError> {
+        Err(AttachedProcessWitnessError::Unsupported)
+    }
+
+    #[expect(
+        clippy::unused_self,
+        reason = "the platform lease facade has one method shape on every target"
+    )]
+    pub(crate) fn observe_connection(
+        &mut self,
+        _connection: RetainedTcpConnection,
+        _limits: AttachedProcessWitnessLimits,
+        _cancellation: &CancellationToken,
+        _started: Instant,
+    ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
         Err(AttachedProcessWitnessError::Unsupported)
     }
 }

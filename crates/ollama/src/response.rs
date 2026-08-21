@@ -11,8 +11,11 @@ use rewrite_types::Digest;
 use serde::de::DeserializeOwned;
 
 use crate::{
-    contract::{MAX_REFERENCE_BYTES, OllamaInventoryEntry, OllamaModelBinding, OllamaRunningModel},
-    wire::{CandidateEnvelope, GenerateResponse, PsResponse, TagModel, TagsResponse},
+    contract::{
+        MAX_METADATA_BYTES, MAX_REFERENCE_BYTES, OllamaInventoryEntry, OllamaModelBinding,
+        OllamaModelDetails, OllamaRunningModel,
+    },
+    wire::{CandidateEnvelope, GenerateResponse, PsResponse, ShowResponse, TagModel, TagsResponse},
 };
 
 const MAX_INVENTORY_ITEMS: usize = 512;
@@ -123,6 +126,44 @@ pub(crate) fn parse_running_models(
         .collect::<Result<Vec<_>, _>>()?;
     models.sort_unstable_by(|left, right| left.reference.cmp(&right.reference));
     Ok(models)
+}
+
+pub(crate) fn parse_show_details(
+    response: ShowResponse,
+) -> Result<OllamaModelDetails, InferenceError> {
+    let unique_capabilities = response.capabilities.iter().collect::<BTreeSet<_>>();
+    if !response.remote_model.is_empty()
+        || !response.remote_host.is_empty()
+        || !valid_text(&response.details.format, MAX_METADATA_BYTES)
+        || !valid_text(&response.details.family, MAX_METADATA_BYTES)
+        || response.details.quantization_level.len() > MAX_METADATA_BYTES
+        || response
+            .details
+            .quantization_level
+            .chars()
+            .any(char::is_control)
+        || response.capabilities.len() > 64
+        || unique_capabilities.len() != response.capabilities.len()
+        || response
+            .capabilities
+            .iter()
+            .any(|value| !valid_text(value, MAX_METADATA_BYTES))
+    {
+        return Err(malformed_error("invalid_model_metadata"));
+    }
+    let metadata = serde_json::to_vec(&response.model_info)
+        .map_err(|_error| malformed_error("invalid_model_info"))?;
+    let mut capabilities = response.capabilities;
+    capabilities.sort_unstable();
+    Ok(OllamaModelDetails {
+        format: response.details.format,
+        family: response.details.family,
+        quantization: response.details.quantization_level,
+        capabilities,
+        license_digest: Digest::sha256(response.license.as_bytes()),
+        template_digest: Digest::sha256(response.template.as_bytes()),
+        metadata_digest: Digest::sha256(&metadata),
+    })
 }
 
 pub(crate) fn validate_generate_response(
@@ -263,7 +304,7 @@ pub(crate) fn map_transport_error(error: &reqwest::Error) -> InferenceError {
     }
 }
 
-fn map_status(status: StatusCode) -> InferenceError {
+pub(crate) fn map_status(status: StatusCode) -> InferenceError {
     if status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
         retryable_error("http_transient")
     } else if status == StatusCode::NOT_FOUND {

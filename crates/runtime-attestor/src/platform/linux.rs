@@ -3,7 +3,7 @@ use std::{
     fs::{self, File},
     net::{IpAddr, SocketAddr},
     os::unix::fs::MetadataExt,
-    path::{Path, PathBuf},
+    path::Path,
     time::Instant,
 };
 
@@ -17,7 +17,8 @@ use rustix::{
 use super::file::hash_opened_file;
 use crate::{
     AttachedProcessEvidence, AttachedProcessEvidenceClass, AttachedProcessEvidenceInput,
-    AttachedProcessWitnessError, AttachedProcessWitnessLimits, ListenerEndpoint, ensure_active,
+    AttachedProcessWitnessError, AttachedProcessWitnessLimits, ListenerEndpoint,
+    RetainedTcpConnection, RetainedTcpConnectionEvidence, ensure_active,
 };
 
 const LISTEN_STATE: &str = "0A";
@@ -118,6 +119,24 @@ impl Lease {
         ensure_pidfd_alive(&self.pidfd)?;
         Ok(observed)
     }
+
+    pub(crate) fn observe_connection(
+        &mut self,
+        connection: RetainedTcpConnection,
+        limits: AttachedProcessWitnessLimits,
+        cancellation: &CancellationToken,
+        started: Instant,
+    ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
+        super::linux_connection::observe_connection(
+            connection,
+            limits,
+            cancellation,
+            started,
+            self.owner.pid,
+            &self.pidfd,
+            self.initial.evidence_digest(),
+        )
+    }
 }
 
 fn listener_owner(
@@ -185,96 +204,18 @@ fn owners_for_inode(
     cancellation: &CancellationToken,
     started: Instant,
 ) -> Result<u32, AttachedProcessWitnessError> {
-    let mut owners = BTreeSet::new();
-    let mut process_count = 0_usize;
-    let entries = fs::read_dir("/proc")
-        .map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
-    for entry in entries {
-        ensure_active(cancellation, started, limits)?;
-        let entry =
-            entry.map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
-        let name = entry.file_name();
-        let Some(name) = name.to_str() else {
-            continue;
-        };
-        let Ok(pid) = name.parse::<u32>() else {
-            continue;
-        };
-        process_count = process_count
-            .checked_add(1)
-            .ok_or(AttachedProcessWitnessError::ResourceLimit)?;
-        if process_count > limits.maximum_processes {
-            return Err(AttachedProcessWitnessError::ResourceLimit);
-        }
-        let metadata = match entry.metadata() {
-            Ok(metadata) => metadata,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-                return Err(AttachedProcessWitnessError::ProcessAccessDenied);
-            }
-            Err(_) => return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
-        };
-        if metadata.uid() != expected_uid {
-            continue;
-        }
-        if process_has_inode(
-            pid,
-            inode,
-            limits.maximum_descriptors_per_process,
-            cancellation,
-            started,
-            limits,
-        )? {
-            owners.insert(pid);
-        }
-    }
-    match owners.len() {
-        0 => Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
-        1 => owners
-            .first()
-            .copied()
-            .ok_or(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
+    let owners = super::linux_connection::visible_same_uid_holders(
+        inode,
+        expected_uid,
+        limits,
+        cancellation,
+        started,
+    )?;
+    match owners.as_slice() {
+        [] => Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
+        [owner] => Ok(*owner),
         _ => Err(AttachedProcessWitnessError::ListenerOwnershipAmbiguous),
     }
-}
-
-fn process_has_inode(
-    pid: u32,
-    inode: u64,
-    maximum_descriptors: usize,
-    cancellation: &CancellationToken,
-    started: Instant,
-    limits: AttachedProcessWitnessLimits,
-) -> Result<bool, AttachedProcessWitnessError> {
-    let directory = PathBuf::from(format!("/proc/{pid}/fd"));
-    let entries = match fs::read_dir(directory) {
-        Ok(entries) => entries,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-            return Err(AttachedProcessWitnessError::ProcessAccessDenied);
-        }
-        Err(_) => return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
-    };
-    let expected = format!("socket:[{inode}]");
-    let mut descriptor_count = 0_usize;
-    for entry in entries {
-        ensure_active(cancellation, started, limits)?;
-        descriptor_count = descriptor_count
-            .checked_add(1)
-            .ok_or(AttachedProcessWitnessError::ResourceLimit)?;
-        if descriptor_count > maximum_descriptors {
-            return Err(AttachedProcessWitnessError::ResourceLimit);
-        }
-        let entry =
-            entry.map_err(|_error| AttachedProcessWitnessError::ListenerSnapshotIncomplete)?;
-        match fs::read_link(entry.path()) {
-            Ok(target) if target.as_os_str() == expected.as_str() => return Ok(true),
-            Ok(_) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(_) => return Err(AttachedProcessWitnessError::ListenerSnapshotIncomplete),
-        }
-    }
-    Ok(false)
 }
 
 fn observe_process(
@@ -378,7 +319,7 @@ fn process_start_token(pid: u32) -> Result<u64, AttachedProcessWitnessError> {
     Ok(start)
 }
 
-fn ensure_pidfd_alive(pidfd: &OwnedFd) -> Result<(), AttachedProcessWitnessError> {
+pub(super) fn ensure_pidfd_alive(pidfd: &OwnedFd) -> Result<(), AttachedProcessWitnessError> {
     let mut descriptors = [PollFd::new(pidfd, PollFlags::IN)];
     let ready = poll(&mut descriptors, Some(&Timespec::default()))
         .map_err(|_error| AttachedProcessWitnessError::ProcessInstanceUnavailable)?;
@@ -389,7 +330,10 @@ fn ensure_pidfd_alive(pidfd: &OwnedFd) -> Result<(), AttachedProcessWitnessError
     }
 }
 
-fn read_bounded(path: &Path, maximum: usize) -> Result<Vec<u8>, AttachedProcessWitnessError> {
+pub(super) fn read_bounded(
+    path: &Path,
+    maximum: usize,
+) -> Result<Vec<u8>, AttachedProcessWitnessError> {
     use std::io::Read as _;
 
     let file = File::open(path).map_err(|error| {
@@ -412,7 +356,7 @@ fn read_bounded(path: &Path, maximum: usize) -> Result<Vec<u8>, AttachedProcessW
     Ok(bytes)
 }
 
-fn encoded_local_address(endpoint: SocketAddr) -> String {
+pub(super) fn encoded_local_address(endpoint: SocketAddr) -> String {
     use std::fmt::Write as _;
 
     let port = endpoint.port();
@@ -444,9 +388,8 @@ mod tests {
 
     use rewrite_types::CancellationToken;
 
-    use super::{
-        ListenerOwner, encoded_local_address, observe_process, open_entrypoint, process_has_inode,
-    };
+    use super::{ListenerOwner, encoded_local_address, observe_process, open_entrypoint};
+    use crate::platform::linux_connection::process_has_inode;
     use crate::{AttachedProcessWitnessLimits, ListenerEndpoint};
 
     #[test]

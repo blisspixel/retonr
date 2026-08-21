@@ -12,6 +12,7 @@ mod baseline;
 mod claim_shadow_calibration;
 mod editorial_corpus;
 mod local_ollama_attested_preflight;
+mod local_ollama_bound_preflight;
 mod local_ollama_preflight;
 mod watermark_research;
 mod writing_sample_library;
@@ -40,6 +41,13 @@ pub use local_ollama_attested_preflight::{
     LocalOllamaAttestedPreflightPlan, LocalOllamaAttestedPreflightReport,
     LocalOllamaProcessEvidenceLevel, MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES,
     parse_local_ollama_attested_preflight_plan, run_local_ollama_attested_preflight,
+};
+pub use local_ollama_bound_preflight::{
+    LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_SCHEMA_VERSION,
+    LOCAL_OLLAMA_BOUND_PREFLIGHT_REPORT_SCHEMA_VERSION, LocalOllamaBoundPreflightError,
+    LocalOllamaBoundPreflightPlan, LocalOllamaBoundPreflightReport,
+    LocalOllamaBoundProcessEvidenceLevel, MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES,
+    parse_local_ollama_bound_preflight_plan, run_local_ollama_bound_preflight,
 };
 pub use local_ollama_preflight::{
     LOCAL_OLLAMA_PREFLIGHT_PLAN_SCHEMA_VERSION, LOCAL_OLLAMA_PREFLIGHT_REPORT_SCHEMA_VERSION,

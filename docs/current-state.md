@@ -19,11 +19,11 @@ protocol, or stored-data contracts.
 | `rewrite-model-store` | Durable SQLite schema v5 for legacy artifact authority, inert artifact-set installation generations, crash-recoverable artifact-set removal journals, and artifact-set, runtime-build, effective-state, effective-package, and qualification-v2 evidence; exact supported-schema inspection; single-epoch exact-handle backup and atomic v1/v2/v3/v4 migration; transactional relationship checks; immediate v1 activation transactions; invalidation; active-removal protection; fail-closed recovery; and bounded coherent artifact-state inventory |
 | `rewrite-inference` | Backend-neutral bounded discovery, adapter-admitted output-contract digests, candidate generation, a distinct claim-output contract, and structured-completion contracts with content-redacted debug and error surfaces, cancellation, deadlines, and deterministic fakes |
 | `rewrite-grounded` | Structured masked prompt envelope, exact inference policy, proposal-only candidates, and redacted generation provenance |
-| `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, pre-call and post-call identity checks, and coherent read-only runtime, inventory, model-description, and residency preflight |
-| `rewrite-runtime-attestor` | Safe bounded facade over native attached-listener evidence: Windows owner-PID table plus retained process and executable handles; Linux proc socket inode plus unique same-user descriptor owner, pidfd, namespace, and retained executable object; deterministic unsupported result on macOS; redacted inert witness only |
+| `rewrite-ollama` | IP-literal loopback-only native API adapter with bounded bodies, explicit parameters, exact candidate-contract discovery, candidate and structured completion, terminal-stop enforcement, concurrency, cancellation, pre-call and post-call identity checks, coherent read-only runtime, inventory, model-description, and residency preflight, plus a separate directly connected retained HTTP/1 preflight with one handshake and no pool, retry, or reconnect path |
+| `rewrite-runtime-attestor` | Safe bounded facade over native attached-listener and exact established-connection evidence: Windows owner-PID tables plus retained process and executable handles; Linux proc socket inode plus exactly one visible same-user descriptor holder, pidfd, namespace, and retained executable object; deterministic unsupported result on macOS; redacted inert witnesses only |
 | `rewrite-app` | Model-free candidate check, provisional grounded path, pinned source-preserving regular-file offline import, exact manifest-driven artifact-set folder import with whole-tree publication and inert structural registration, read-only single-file managed inventory with application-owned result DTOs, read-only artifact-set inventory with application-owned result DTOs, pending-operation inspection, backup-backed explicit repository migration, selected orphan reconciliation, selected set-root reconciliation, crash-recoverable inactive single-file and artifact-set removal with exact pinned-lock capability binding, verified single-file runtime artifact lease groundwork, a repository-owned whole-tree artifact-set lease, an inert managed-process runtime attestor with caller-supplied loaded-component evidence, a cancellable pair-extraction service, and an informational shadow join of independently produced claim comparison with no eligibility authority |
 | `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, opt-in `--in-place` (`-i`) with an implied sibling backup for a regular file, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a pre-model `inspect` command that inventories one file or directory: encoding, BOM, newline kind, control-class counts, sibling sidecar presence, and skipped child reasons, without stripping bytes, following links, or validating a Content Credential; `--recursive` is a bounded walk that skips hidden names, `target`, and `node_modules`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then attaches in-process fake-backend conformance when that recovered qualification names the retained fake backend, or fails closed otherwise; dedicated `version` and read-only `doctor` recovery commands that name migrate or removal-recovery follow-up without mutation; generated `completions` scripts and a section-1 `man` page from the live CLI definition; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, read-only `list` of registered single-file installations, read-only `inspect` of one registered artifact's declared facts, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, exact set-removal recovery, and optional read-only `device-evidence` (`fitr`) of `fitr.retonr.evidence.v1` without qualification or a repository |
-| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, a versioned non-generative Ollama observe or verify preflight, a separate native attached-process preflight that remains response-unbound and unqualified, and redacted aggregate reporting |
+| `rewrite-eval` | Versioned positive and hard-negative suite, transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, a versioned non-generative Ollama observe or verify preflight, a separate native attached-process preflight that remains response-unbound, and a retained-connection preflight with repeated native attribution; every preflight remains unqualified |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
@@ -104,8 +104,8 @@ migrate implicitly.
 
 ## Verification
 
-The August 20, 2026 Windows development checkpoint for the attached-process witness
-passes:
+The August 20, 2026 Windows development checkpoint for the retained-connection
+witness passes:
 
 ```console
 cargo fmt --all -- --check
@@ -124,16 +124,16 @@ cargo +nightly check --locked --manifest-path fuzz/Cargo.toml --bins
 cargo build --locked --workspace --release
 ```
 
-The workspace exposes 742 Rust unit, integration, and process tests on Windows. The
-ordinary Cargo run passes 740 and retains two process helpers as intentional ignores
-exercised by isolated parent tests. The macOS attached-command refusal and two further
-artifact-set lease cases are target-specific and run in continuous integration.
-Documentation tests also pass. Measured Rust line coverage is 90.42 percent overall.
-The attached-preflight orchestration is 93.68 percent covered. The native witness
-contract is 93.27 percent, its safe facade is 97.01 percent, and the Windows observer
-is 80.29 percent. The extracted Ollama preflight operation remains 97.62 percent and
-the core Ollama adapter remains 90.95 percent. The repository's 80 percent line
-coverage floor passes with margin.
+The workspace exposes 771 Rust unit, integration, and process tests on Windows. The
+ordinary Cargo run passes 769 and retains two process helpers as intentional ignores
+exercised by isolated parent tests. Linux-native connection fixtures and macOS
+attached and bound command refusals are target-specific and run in continuous
+integration. Documentation tests also pass. Measured Rust line coverage is 90.53
+percent overall. The bound-preflight orchestration is 95.12 percent covered, the
+retained HTTP session is 87.34 percent, its transport is 90.18 percent, the portable
+connection-evidence contract is 93.66 percent, and the Windows established-row
+observer is 96.85 percent. The repository's 80 percent line coverage floor passes
+with margin.
 
 The local nightly toolchain type-checks both fuzz targets. The cargo-fuzz project
 supports its libFuzzer execution path on Unix-like targets, so Windows is not
@@ -142,13 +142,14 @@ targets under the Linux sanitizer-backed fuzz smoke job. `cargo-nextest` is not
 installed on this development host; the exact public-main workflow remains the
 nextest authority.
 
-The published implementation checkpoint is
-`5515e5cdfec9408b6662191ee927528aeff49843`. Its passing
-[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32420257385)
+The published attached-process checkpoint is
+`a58e07473eb558e3e38aa382de59af909f4a647b`. Its passing
+[quality workflow](https://github.com/blisspixel/retonr/actions/runs/32425854751)
 completed all 12 Windows, macOS, Linux, repository-policy, Markdown, coverage,
 dependency and supply-chain, fuzz-smoke, loopback-only Ollama, and stable aggregate
-`required` jobs. The Windows nextest job ran 729 tests and skipped the two
-intentional helpers. Checkpoint line coverage is 90.63 percent.
+`required` jobs. The retained-connection changes described in this document are the
+next development slice and are not included in that earlier published checkpoint's
+evidence.
 
 The custom audit database path bypasses a corrupt user-level RustSec cache containing
 a duplicate advisory ID. The clean database loaded 1,225 advisories and the current
@@ -284,12 +285,20 @@ database.
   unsupported because no admitted public unprivileged listener-owner API exists.
   Linux also fails closed when ptrace or proc policy prevents a complete same-user
   ownership view.
-  Independent HTTP requests are not bound to one accepted server socket, Windows
-  cannot identify same-process socket replacement through the owner-PID table, and
-  executable bytes are not loaded-component closure. The report therefore remains
-  `response_bound: false` and `qualified: false` and creates no runtime identity.
-  No current evidence establishes complete artifact-set or upstream identity, cloud
-  disablement, OS isolation, or a qualified runtime and model.
+  That attached report uses independent requests, remains `response_bound: false`
+  and `qualified: false`, and creates no runtime identity. The separate
+  `--ollama-bound-preflight` command uses one retained direct HTTP/1 connection and
+  checks exact reverse established-row attribution before traffic and after every
+  fully drained response. Windows evidence is a context-binding PID, not exclusive
+  socket ownership. Linux requires exactly one visible same-user descriptor holder,
+  but cannot exclude holders hidden by UID, ptrace, proc-mount, PID-namespace, or
+  security boundaries. macOS refuses before HTTP because no admitted public
+  unprivileged tuple-to-process API is available. The bound report therefore states
+  that exclusive socket ownership and application-handler execution are not proven.
+  It remains `qualified: false` and creates no runtime, package, qualification,
+  activation, or role identity. Executable bytes are not loaded-component closure.
+  No current evidence establishes complete artifact-set or upstream identity,
+  provider cloud disablement, OS isolation, or a qualified runtime and model.
 - The grounded path can safely accept only literal-mode token-preserving changes
   under the current evaluator. Open-domain paraphrases and broader modes abstain.
 - The typed claim contract and deterministic comparator are implemented. The engine
@@ -332,17 +341,27 @@ is:
    cancellation, claim-comparison, and informational shadow boundaries.
 2. Retain the versioned read-only Ollama preflight. It performs no generation and
    cannot qualify a runtime or package.
-3. Retain the native attached-process witness on Windows and Linux and deterministic
-   macOS refusal. It cannot claim response binding or runtime identity.
-4. Own one persistent HTTP connection and bind its exact client and server 4-tuple to
-   the accepted server socket held by the retained process. Reject reconnection,
-   migration, handoff, ambiguity, and incomplete visibility.
-5. Reconstruct the selected Ollama package as a complete canonical artifact set with
+3. Retain the native attached-process witness and the separate retained-connection
+   preflight on Windows and Linux, plus deterministic macOS refusal. Neither report
+   constructs runtime identity. Only the bound report claims one retained client
+   transport with repeated native attribution, and it explicitly disclaims exclusive
+   ownership and handler execution.
+4. Replace Linux proc TCP row selection with bounded `NETLINK_SOCK_DIAG`, retaining
+   the exact tuple, kernel socket cookie, inode, UID, and namespace scope. This is
+   first because the proc TCP table is deprecated and every stronger Linux claim
+   depends on reliable row selection.
+5. Reconstruct the selected Ollama runtime and model as complete canonical runtime
+   and artifact-set manifests with
    exact blob, tokenizer, template, license, upstream source, and transformation
-   evidence. Keep runtime identity separate from model-package identity.
-6. Prove explicit cloud disablement and OS-enforced denial of non-loopback outbound
-   traffic for every participating Retonr and runtime process.
-7. Project the existing eight-case smoke and 39-case editorial protocol into
+   evidence, including native dependencies and runtime load closure. This must precede
+   effective identity because a socket witness does not identify the complete code or
+   model package.
+6. Add version-gated provider cloud-disable evidence and OS-enforced denial of
+   non-loopback outbound traffic for every participating Retonr and runtime process.
+   Configuration claims alone cannot establish local-only execution.
+7. Construct effective runtime identity only after transport, package,
+   configuration, and isolation evidence join without drift. Then project the
+   existing eight-case smoke and 39-case editorial protocol into
    versioned local generation plans. The old Gemma 4, Qwen3.6, and Ministral local
    observations have expired. Do not reacquire a model without separate approval.
 8. Run smoke, locked evaluation, repeatability, and exact cross-platform

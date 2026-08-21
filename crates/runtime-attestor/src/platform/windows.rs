@@ -20,7 +20,7 @@ use windows_sys::Win32::{
         WAIT_TIMEOUT,
     },
     NetworkManagement::IpHelper::{
-        GetExtendedTcpTable, MIB_TCP6ROW_OWNER_PID, MIB_TCPROW_OWNER_PID,
+        GetExtendedTcpTable, MIB_TCP6ROW_OWNER_PID, MIB_TCPROW_OWNER_PID, TCP_TABLE_CLASS,
         TCP_TABLE_OWNER_PID_LISTENER,
     },
     Networking::WinSock::{AF_INET, AF_INET6},
@@ -33,7 +33,8 @@ use windows_sys::Win32::{
 use super::file::hash_opened_file;
 use crate::{
     AttachedProcessEvidence, AttachedProcessEvidenceClass, AttachedProcessEvidenceInput,
-    AttachedProcessWitnessError, AttachedProcessWitnessLimits, ListenerEndpoint, ensure_active,
+    AttachedProcessWitnessError, AttachedProcessWitnessLimits, ListenerEndpoint,
+    RetainedTcpConnection, RetainedTcpConnectionEvidence, ensure_active,
 };
 
 const MAXIMUM_IMAGE_PATH_UNITS: usize = 32_768;
@@ -133,6 +134,27 @@ impl Lease {
         ensure_process_alive(&self.process)?;
         Ok(observed)
     }
+
+    pub(crate) fn observe_connection(
+        &mut self,
+        connection: RetainedTcpConnection,
+        limits: AttachedProcessWitnessLimits,
+        cancellation: &CancellationToken,
+        started: Instant,
+    ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
+        super::windows_connection::observe_connection(
+            connection,
+            limits,
+            cancellation,
+            started,
+            super::windows_connection::RetainedProcess {
+                pid: self.pid,
+                handle: &self.process,
+                creation_time: self.creation_time,
+                evidence_digest: self.initial.evidence_digest(),
+            },
+        )
+    }
 }
 
 fn listener_owner(
@@ -142,7 +164,7 @@ fn listener_owner(
     started: Instant,
 ) -> Result<u32, AttachedProcessWitnessError> {
     ensure_active(cancellation, started, limits)?;
-    let table = tcp_table(endpoint.ip(), limits)?;
+    let table = tcp_table(endpoint.ip(), TCP_TABLE_OWNER_PID_LISTENER, limits)?;
     let owners = matching_owners(&table, endpoint, limits)?;
     match owners.as_slice() {
         [] => Err(AttachedProcessWitnessError::ListenerNotFound),
@@ -152,8 +174,9 @@ fn listener_owner(
     }
 }
 
-fn tcp_table(
+pub(super) fn tcp_table(
     ip: IpAddr,
+    table_class: TCP_TABLE_CLASS,
     limits: AttachedProcessWitnessLimits,
 ) -> Result<Vec<u32>, AttachedProcessWitnessError> {
     let family = match ip {
@@ -169,7 +192,7 @@ fn tcp_table(
             &raw mut required,
             0,
             family,
-            TCP_TABLE_OWNER_PID_LISTENER,
+            table_class,
             0,
         )
     };
@@ -197,7 +220,7 @@ fn tcp_table(
                 &raw mut available,
                 0,
                 family,
-                TCP_TABLE_OWNER_PID_LISTENER,
+                table_class,
                 0,
             )
         };
@@ -288,7 +311,7 @@ fn matching_ipv6_owners(
     Ok(owners)
 }
 
-fn validate_table_extent(
+pub(super) fn validate_table_extent(
     rows: usize,
     row_size: usize,
     bytes: usize,
@@ -325,7 +348,9 @@ fn open_process(pid: u32) -> Result<OwnedHandle, AttachedProcessWitnessError> {
     Ok(unsafe { OwnedHandle::from_raw_handle(handle) })
 }
 
-fn ensure_process_alive(process: &OwnedHandle) -> Result<(), AttachedProcessWitnessError> {
+pub(super) fn ensure_process_alive(
+    process: &OwnedHandle,
+) -> Result<(), AttachedProcessWitnessError> {
     // SAFETY: The handle remains owned and valid for this call; timeout zero is
     // nonblocking and does not mutate caller memory.
     match unsafe { WaitForSingleObject(process.as_raw_handle(), 0) } {
@@ -335,7 +360,9 @@ fn ensure_process_alive(process: &OwnedHandle) -> Result<(), AttachedProcessWitn
     }
 }
 
-fn process_creation_time(process: &OwnedHandle) -> Result<u64, AttachedProcessWitnessError> {
+pub(super) fn process_creation_time(
+    process: &OwnedHandle,
+) -> Result<u64, AttachedProcessWitnessError> {
     let mut creation = FILETIME::default();
     let mut exit = FILETIME::default();
     let mut kernel = FILETIME::default();

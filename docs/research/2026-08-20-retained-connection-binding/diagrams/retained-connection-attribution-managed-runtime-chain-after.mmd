@@ -1,0 +1,18 @@
+flowchart LR
+    Plan[Managed runtime plan] --> Eval[Application orchestration]
+    Eval --> Manager[Managed package and lifecycle authority]
+    Manager --> Package[Verified runtime package]
+    Manager -->|Launch and retain child capability| Runtime[Managed Ollama process]
+    Runtime --> Endpoint[Application-owned loopback listener]
+    Eval --> Session[Single retained HTTP/1 session]
+    Session -->|One owned client socket| Endpoint
+    Session -->|Connection and process checks| Manager
+    Session --> Preflight[Ordered read-only Ollama requests]
+    Eval --> Report[Managed evidence, still unqualified until full closure]
+
+    classDef trust fill:#eef,stroke:#446;
+    classDef changed fill:#efe,stroke:#484,stroke-width:2px;
+    classDef boundary fill:#fee,stroke:#844;
+    class Manager,Package trust;
+    class Session,Runtime changed;
+    class Endpoint boundary;

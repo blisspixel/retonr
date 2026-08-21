@@ -26,6 +26,7 @@ repository = "https://github.com/blisspixel/retonr"
 [workspace.dependencies]
 aho-corasick = "1.1.5"
 assert_cmd = "2.2.2"
+bytes = "1.12.1"
 cap-fs-ext = { version = "4.0.2", default-features = false }
 cap-primitives = "4.0.2"
 clap = { version = "4.6.0", features = ["derive", "env"] }
@@ -35,6 +36,9 @@ ctrlc = "3.5.2"
 futures-util = "0.3.34"
 fs_at = "0.2.1"
 getrandom = "0.4.3"
+http-body-util = "0.1.4"
+hyper = { version = "1.11.0", features = ["client", "http1"] }
+hyper-util = { version = "0.1.20", features = ["tokio"] }
 predicates = "3.1.4"
 proptest = "1.9.0"
 regex = "1.11.2"

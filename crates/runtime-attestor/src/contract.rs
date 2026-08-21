@@ -4,6 +4,8 @@ use rewrite_types::{CancellationToken, Digest};
 use serde::Serialize;
 use thiserror::Error;
 
+use crate::{RetainedTcpConnection, RetainedTcpConnectionEvidence};
+
 /// Current attached-process witness contract version.
 pub const ATTACHED_PROCESS_WITNESS_SCHEMA_VERSION: u32 = 1;
 
@@ -249,6 +251,38 @@ pub trait AttachedProcessLease {
         &mut self,
         cancellation: &CancellationToken,
     ) -> Result<AttachedProcessEvidence, AttachedProcessWitnessError>;
+
+    /// Attributes one exact caller-retained established TCP connection.
+    ///
+    /// The caller must keep the same connected stream open until
+    /// [`Self::reobserve_connection`] succeeds after application work.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AttachedProcessWitnessError`] unless one bounded exact native
+    /// connection observation matches this retained process lease.
+    fn observe_connection(
+        &mut self,
+        _connection: RetainedTcpConnection,
+        _cancellation: &CancellationToken,
+    ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
+        Err(AttachedProcessWitnessError::Unsupported)
+    }
+
+    /// Re-observes and compares the exact retained connection after application work.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AttachedProcessWitnessError`] for any closed, changed,
+    /// incomplete, mismatched, cancelled, expired, or resource-limited view.
+    fn reobserve_connection(
+        &mut self,
+        _connection: RetainedTcpConnection,
+        _initial: &RetainedTcpConnectionEvidence,
+        _cancellation: &CancellationToken,
+    ) -> Result<RetainedTcpConnectionEvidence, AttachedProcessWitnessError> {
+        Err(AttachedProcessWitnessError::Unsupported)
+    }
 }
 
 /// Safe observer port used by read-only preflight orchestration.
@@ -276,6 +310,9 @@ pub enum AttachedProcessWitnessError {
     /// Endpoint is not an exact nonzero loopback address.
     #[error("attached process witness endpoint is invalid")]
     InvalidEndpoint,
+    /// Connection endpoints are not one exact valid loopback TCP pair.
+    #[error("attached process witness connection endpoints are invalid")]
+    InvalidConnectionEndpoints,
     /// One or more observation ceilings are zero or exceed hard maxima.
     #[error("attached process witness limits are invalid")]
     InvalidLimits,
@@ -291,6 +328,27 @@ pub enum AttachedProcessWitnessError {
     /// The current operating system has no admitted observation mechanism.
     #[error("attached process witness is unsupported on this platform")]
     Unsupported,
+    /// No exact established connection row was found.
+    #[error("attached process witness connection was not found")]
+    ConnectionNotFound,
+    /// More than one exact connection row matched.
+    #[error("attached process witness connection attribution is ambiguous")]
+    ConnectionAmbiguous,
+    /// The observer could not establish the required bounded connection view.
+    #[error("attached process witness connection snapshot is incomplete")]
+    ConnectionSnapshotIncomplete,
+    /// The exact connection row was not established.
+    #[error("attached process witness connection is not established")]
+    ConnectionNotEstablished,
+    /// The exact connection was not attributed to the retained process.
+    #[error("attached process witness connection process does not match")]
+    ConnectionProcessMismatch,
+    /// The initially attributed connection is now closed or absent.
+    #[error("attached process witness connection closed")]
+    ConnectionClosed,
+    /// The connection object or attribution changed across observations.
+    #[error("attached process witness connection changed")]
+    ConnectionChanged,
     /// No exact listener was found.
     #[error("attached process witness listener was not found")]
     ListenerNotFound,

@@ -13,6 +13,7 @@ mod preflight_tests;
 #[cfg(test)]
 mod remote_tests;
 mod response;
+mod single_connection;
 #[cfg(test)]
 mod structured_tests;
 mod wire;
@@ -23,3 +24,7 @@ pub use contract::{
     OllamaPreflightBinding, OllamaPreflightTarget, OllamaRunningModel,
 };
 pub use endpoint::{OllamaEndpoint, OllamaEndpointError};
+pub use single_connection::{
+    OllamaConnectionAddresses, OllamaObservedPreflightError, OllamaResponseObservation,
+    OllamaResponseObservationPhase, OllamaSingleConnectionPreflight,
+};

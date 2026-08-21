@@ -134,9 +134,14 @@ can observe or verify bounded runtime, inventory, model-description, and residen
 evidence without generation. A separate attached preflight brackets that observation
 with point-in-time native listener-owner, process-incarnation, and executable evidence
 on Windows and Linux. macOS fails closed because the required public unprivileged
-listener-owner API is unavailable. Both reports always remain unqualified, and the
-attached report explicitly sets `response_bound: false`. No editorial-lint rule has
-product authority yet.
+listener-owner API is unavailable. A third, separate bound preflight sends the same
+ordered read-only observation over one directly connected and retained HTTP/1
+transport. Before traffic and after every fully drained response, it requires the
+platform observer to attribute the exact reverse established connection to the
+retained process evidence. The base, attached, and bound reports remain unqualified.
+The attached report remains explicitly response-unbound. The bound report states
+that neither exclusive socket ownership nor application-handler execution is proven.
+No editorial-lint rule has product authority yet.
 
 [![Retonr CLI help and a successful candidate check on Linux](docs/screenshots/cli-check-linux.png)](docs/screenshots/cli-check-linux.md)
 
@@ -165,8 +170,9 @@ cargo run --locked -p rewrite-eval -- --editorial-corpus crates/eval/fixtures/ed
 cargo run --locked -p rewrite-eval -- --writing-samples crates/eval/fixtures/writing_samples/licensed_pre_ai_human_v1.json
 cargo run --locked -p rewrite-eval -- --watermark-research crates/eval/fixtures/watermark_research/style_is_not_a_watermark_v1.json
 cargo run --locked -p rewrite-eval -- --claim-shadow-calibration crates/eval/fixtures/claim_shadow_calibration_v1.json
-cargo run --locked -p rewrite-eval -- --ollama-preflight <PLAN_JSON>
-cargo run --locked -p rewrite-eval -- --ollama-attested-preflight <PLAN_JSON>
+cargo run --locked -p rewrite-eval -- --ollama-preflight <PLAN_JSON_FILE>
+cargo run --locked -p rewrite-eval -- --ollama-attested-preflight <PLAN_JSON_FILE>
+cargo run --locked -p rewrite-eval -- --ollama-bound-preflight <PLAN_JSON_FILE>
 ```
 
 The first command validates a caller-supplied complete candidate without invoking a
@@ -202,12 +208,42 @@ IP-literal loopback endpoint and frozen model inventory digests. It reads runtim
 state without generation, acquisition, activation, or qualification. The attached
 preflight adds an exact expected executable digest in verify mode, but does not bind
 HTTP responses to the observed process or construct runtime-build identity. The
+bound preflight wraps the same plan with executable and aggregate session ceilings.
+It requires an expected executable digest in verify mode and forbids one in observe
+mode. It opens one direct TCP connection, performs one HTTP/1 handshake, and has no
+DNS, proxy, redirect, pool, retry, or reconnect path. Successful output contains a
+redacted process witness, a redacted connection-attribution sequence, and an opaque
+binding digest. Windows evidence uses the exact established row's context-binding
+PID. Linux evidence uses the exact socket inode and exactly one visible same-user
+descriptor holder. These APIs do not prove exclusive ownership, hidden holders, or
+which application handler produced a response. macOS refuses the bound command
+before HTTP because no admitted public unprivileged tuple-to-process API is
+available. The report remains inert and `qualified: false`; it creates no runtime,
+package, qualification, activation, or role identity. The
 [plan contract and observe-to-verify workflow](docs/research/2026-08-20-main-readiness-and-next-slice.md#plan-contract-and-workflow)
 documents the base plan. The
 [attached-process witness review](docs/research/2026-08-20-attached-process-witness.md)
-documents the native evidence, plan extension, limitations, and next trust-boundary
-work.
+documents the native evidence and attached-plan extension. The
+[retained connection decision](docs/decisions/0009-retained-connection-attribution.md)
+defines the bound contract, limitations, and next trust-boundary work.
 Profile, runtime management, agent, and desktop workflows are not yet implemented.
+
+The next trust-boundary sequence is dependency ordered:
+
+1. Replace Linux proc TCP row selection with bounded `NETLINK_SOCK_DIAG`. The proc
+   TCP table is deprecated, and every stronger Linux runtime claim depends on stable
+   exact-row evidence.
+2. Reconstruct one selected Ollama runtime and model as complete canonical runtime
+   and artifact-set manifests, including native dependencies, upstream source,
+   transformations, tokenizer, template, and license disposition. Connection
+   attribution does not identify the code or model package.
+3. Add version-gated provider cloud-disable evidence and OS-enforced non-loopback
+   outbound denial for every participating process. Configuration alone is not proof
+   of local-only execution.
+4. Join transport, package, configuration, and isolation evidence into effective
+   runtime identity, then run smoke evaluation, locked evaluation, repeatability,
+   and cross-platform qualification. Generation stays ineligible until the preceding
+   trust boundaries pass without drift.
 
 The implemented model commands are intentionally narrow:
 

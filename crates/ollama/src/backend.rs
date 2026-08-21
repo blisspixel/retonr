@@ -8,20 +8,19 @@ use rewrite_inference::{
     candidate_output_contract,
 };
 use rewrite_model::{ArtifactRole, RuntimeIdentity};
-use rewrite_types::Digest;
 use serde::de::DeserializeOwned;
 use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::{
     OllamaEndpoint,
     contract::{
-        BACKEND_ID, MAX_METADATA_BYTES, MAX_PREFLIGHT_TARGETS, MAX_VERSION_BYTES, OllamaLimits,
-        OllamaModelBinding, OllamaModelDetails, OllamaPreflightTarget, OllamaRunningModel,
+        BACKEND_ID, MAX_PREFLIGHT_TARGETS, MAX_VERSION_BYTES, OllamaLimits, OllamaModelBinding,
+        OllamaModelDetails, OllamaPreflightTarget, OllamaRunningModel,
     },
     response::{
         await_context, check_context, compatibility_error, confirm_binding_in_tags,
         decode_response, malformed_error, map_transport_error, parse_candidates, parse_inventory,
-        parse_running_models, permanent_error, policy_error, valid_text,
+        parse_running_models, parse_show_details, permanent_error, policy_error, valid_text,
         validate_generate_response,
     },
     wire::{
@@ -391,39 +390,7 @@ impl OllamaBackend {
                 context,
             )
             .await?;
-        let unique_capabilities = response.capabilities.iter().collect::<BTreeSet<_>>();
-        if !response.remote_model.is_empty()
-            || !response.remote_host.is_empty()
-            || !valid_text(&response.details.format, MAX_METADATA_BYTES)
-            || !valid_text(&response.details.family, MAX_METADATA_BYTES)
-            || response.details.quantization_level.len() > MAX_METADATA_BYTES
-            || response
-                .details
-                .quantization_level
-                .chars()
-                .any(char::is_control)
-            || response.capabilities.len() > 64
-            || unique_capabilities.len() != response.capabilities.len()
-            || response
-                .capabilities
-                .iter()
-                .any(|value| !valid_text(value, MAX_METADATA_BYTES))
-        {
-            return Err(malformed_error("invalid_model_metadata"));
-        }
-        let metadata = serde_json::to_vec(&response.model_info)
-            .map_err(|_error| malformed_error("invalid_model_info"))?;
-        let mut capabilities = response.capabilities;
-        capabilities.sort_unstable();
-        Ok(OllamaModelDetails {
-            format: response.details.format,
-            family: response.details.family,
-            quantization: response.details.quantization_level,
-            capabilities,
-            license_digest: Digest::sha256(response.license.as_bytes()),
-            template_digest: Digest::sha256(response.template.as_bytes()),
-            metadata_digest: Digest::sha256(&metadata),
-        })
+        parse_show_details(response)
     }
 
     async fn get_json<T: DeserializeOwned>(

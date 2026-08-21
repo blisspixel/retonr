@@ -139,7 +139,7 @@ pub fn parse_local_ollama_preflight_plan(
     }
     let plan: LocalOllamaPreflightPlan =
         serde_json::from_slice(bytes).map_err(|_error| LocalOllamaPreflightError::InvalidJson)?;
-    validate_plan(&plan)?;
+    validate_local_ollama_preflight_plan(&plan)?;
     Ok(plan)
 }
 
@@ -157,23 +157,35 @@ pub async fn run_local_ollama_preflight(
     plan: &LocalOllamaPreflightPlan,
     cancellation: &CancellationToken,
 ) -> Result<LocalOllamaPreflightReport, LocalOllamaPreflightError> {
-    validate_plan(plan)?;
+    validate_local_ollama_preflight_plan(plan)?;
     let endpoint = OllamaEndpoint::parse(&plan.endpoint)
         .map_err(|_error| LocalOllamaPreflightError::InvalidEndpoint)?;
-    let targets = plan
-        .models
-        .iter()
-        .map(|model| {
-            OllamaPreflightTarget::new(model.reference.clone(), model.inventory_digest.clone())
-                .map_err(|_error| LocalOllamaPreflightError::InvalidPlan)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let targets = local_ollama_preflight_targets(plan)?;
     let backend = OllamaBackend::new_preflight(endpoint, targets, OllamaLimits::default())
         .map_err(LocalOllamaPreflightError::Backend)?;
     let observed = backend
         .preflight(OperationContext::new(cancellation, None))
         .await
         .map_err(LocalOllamaPreflightError::Backend)?;
+    local_ollama_preflight_report(plan, observed)
+}
+
+pub(crate) fn local_ollama_preflight_targets(
+    plan: &LocalOllamaPreflightPlan,
+) -> Result<Vec<OllamaPreflightTarget>, LocalOllamaPreflightError> {
+    plan.models
+        .iter()
+        .map(|model| {
+            OllamaPreflightTarget::new(model.reference.clone(), model.inventory_digest.clone())
+                .map_err(|_error| LocalOllamaPreflightError::InvalidPlan)
+        })
+        .collect()
+}
+
+pub(crate) fn local_ollama_preflight_report(
+    plan: &LocalOllamaPreflightPlan,
+    observed: OllamaPreflight,
+) -> Result<LocalOllamaPreflightReport, LocalOllamaPreflightError> {
     if observed.runtime.version != plan.expected_runtime_version {
         return Err(LocalOllamaPreflightError::RuntimeVersionMismatch);
     }
@@ -207,7 +219,9 @@ pub async fn run_local_ollama_preflight(
     })
 }
 
-fn validate_plan(plan: &LocalOllamaPreflightPlan) -> Result<(), LocalOllamaPreflightError> {
+pub(crate) fn validate_local_ollama_preflight_plan(
+    plan: &LocalOllamaPreflightPlan,
+) -> Result<(), LocalOllamaPreflightError> {
     if plan.schema_version != LOCAL_OLLAMA_PREFLIGHT_PLAN_SCHEMA_VERSION {
         return Err(LocalOllamaPreflightError::UnsupportedSchema);
     }
