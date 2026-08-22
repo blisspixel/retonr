@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "managed_startup": {
+    "status": "not_run",
+    "required_evidence": [
+      "Exact candidate reconstruction succeeds from the retained source archive and helper.",
+      "The package starts through the retained Retonr isolation helper.",
+      "Only the selected CPU x64 backend and declared platform components are observed.",
+      "The process remains retained through a loopback request and clean teardown."
+    ]
+  },
+  "cloud_disable": {
+    "status": "not_run",
+    "required_environment": "OLLAMA_NO_CLOUD=1",
+    "required_marker": "Ollama cloud disabled: true",
+    "conflicting_marker": "Ollama cloud disabled: false"
+  },
+  "authority": {
+    "runtime_package_admitted": false,
+    "production_cloud_disable_allowlist_changed": false,
+    "qualified": false
+  }
+}

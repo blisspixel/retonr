@@ -12,6 +12,7 @@ mod gguf;
 mod json;
 mod manifest;
 mod reconstruct;
+mod review;
 mod runtime;
 
 pub use error::{BlobOpenError, ReconstructionError, ReconstructionResult};
@@ -24,6 +25,10 @@ pub use manifest::{
 pub use reconstruct::{
     ReconstructedModelPackage, RootfsDescriptorComparison, reconstruct_model_package,
     reconstruct_model_package_with_limits,
+};
+pub use review::{
+    RUNTIME_PACKAGE_REVIEW_SCHEMA_VERSION, RuntimePackageReview, RuntimePackageReviewCheck,
+    RuntimePackageReviewCheckStatus, RuntimePackageReviewDisposition, RuntimePackageReviewError,
 };
 pub use runtime::{
     ADMITTED_RUNTIME_FAMILY, MemberOpenError, RUNTIME_LAYOUT_SCHEMA_VERSION,

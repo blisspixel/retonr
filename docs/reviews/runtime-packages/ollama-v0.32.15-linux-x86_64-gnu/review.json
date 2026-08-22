@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "runtime_family": "ollama",
+  "reported_version": "0.32.15",
+  "build_revision": "b7871fc0d1d82fe109536efa3e0e8e411c766c75",
+  "target": {
+    "operating_system": "linux",
+    "architecture": "x86_64",
+    "abi": "linux_gnu_libc"
+  },
+  "source": {
+    "artifact_set_id": "f9a17fc58dc41f02f913358b5a9f7c5c65a5d6231bebf56cf1e9a71b78ed5482",
+    "locator": "https://github.com/ollama/ollama/releases/download/v0.32.15/ollama-linux-amd64.tar.zst",
+    "byte_size": 1422416084,
+    "digest": "50539c5fe9bf85887733355098dcdb266b433cb8c73fa180713417e9ed6e42bb"
+  },
+  "evidence": [
+    {
+      "relative_path": "execution.json",
+      "digest": "f490c2e353015b841fe510e55098c740061f828f6903b13f3ccf6cb0b3216d39"
+    },
+    {
+      "relative_path": "go-module-inventory.tsv",
+      "digest": "ca205c6f809ff85dfc0140dcc5e3ba0360e983bc8e4d72d7cf15a8f17be51367"
+    },
+    {
+      "relative_path": "license-disposition.json",
+      "digest": "35d0af4fdc75fe15e530cf0e21d3c75fac14f42abeb58ca73eee8e2b7d1811db"
+    },
+    {
+      "relative_path": "native-closure.json",
+      "digest": "6235a9015df8a825f7101836a710a478494fc2c58ba578f0d464af15f1a084e1"
+    },
+    {
+      "relative_path": "source-lineage.json",
+      "digest": "5520cdc5fd884620e4178eaa7dc8f12831161b36c48e281176a1b85f34add2ba"
+    },
+    {
+      "relative_path": "transformation.json",
+      "digest": "ab88643fd7a8c2353e8d78b6cc244873fb181e4ecbbd3e6e0f498ac8c4985a12"
+    }
+  ],
+  "checks": [
+    {
+      "check": "source_lineage",
+      "status": "blocked",
+      "evidence": [
+        "source-lineage.json"
+      ]
+    },
+    {
+      "check": "transformation",
+      "status": "passed",
+      "evidence": [
+        "transformation.json"
+      ]
+    },
+    {
+      "check": "license",
+      "status": "passed",
+      "evidence": [
+        "go-module-inventory.tsv",
+        "license-disposition.json"
+      ]
+    },
+    {
+      "check": "native_closure",
+      "status": "blocked",
+      "evidence": [
+        "native-closure.json"
+      ]
+    },
+    {
+      "check": "managed_startup",
+      "status": "not_run",
+      "evidence": [
+        "execution.json"
+      ]
+    },
+    {
+      "check": "cloud_disable",
+      "status": "not_run",
+      "evidence": [
+        "execution.json"
+      ]
+    }
+  ],
+  "disposition": {
+    "status": "not_admitted",
+    "blockers": [
+      "source_lineage",
+      "native_closure",
+      "managed_startup",
+      "cloud_disable"
+    ]
+  }
+}

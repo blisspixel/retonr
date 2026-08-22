@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "source_entry_count": 51,
+  "selected_source_entries": [
+    {
+      "source_path": "bin/ollama",
+      "output_path": "bin/ollama",
+      "byte_size": 39159472,
+      "sha256": "eb99a47aad366636488ebd9c163a9180254dffcfdfe359939f9aabc36e2399c8"
+    },
+    {
+      "source_path": "lib/ollama/libggml-base.so.0.20.2",
+      "output_path": "lib/ollama/libggml-base.so.0",
+      "byte_size": 809568,
+      "sha256": "9c129f45535d0f73a243a480184ed8b0e00ad99fcb37a5b639e9513c136cd03a"
+    },
+    {
+      "source_path": "lib/ollama/libggml-cpu-x64.so",
+      "output_path": "lib/ollama/libggml-cpu-x64.so",
+      "byte_size": 813352,
+      "sha256": "3b65153fa2adb8a5882abc5faad9d47e358c2e93f7b297a7592a5223d56ec415"
+    },
+    {
+      "source_path": "lib/ollama/libggml.so.0.20.2",
+      "output_path": "lib/ollama/libggml.so.0",
+      "byte_size": 220832,
+      "sha256": "959e2fe38c212fec3596c56947ce2ab09c9ed8ed14e9fa667f25b5a409b86804"
+    },
+    {
+      "source_path": "lib/ollama/libllama-common.so.0.1.2",
+      "output_path": "lib/ollama/libllama-common.so.0",
+      "byte_size": 4437392,
+      "sha256": "2d2dcc575f8abcc3182c23903c207236dd7e27efde411e8e7f8e39b71a4837d8"
+    },
+    {
+      "source_path": "lib/ollama/libllama-server-impl.so",
+      "output_path": "lib/ollama/libllama-server-impl.so",
+      "byte_size": 3319712,
+      "sha256": "7fbcc85d071f1b2b8fb555399ea5dbe0708fe8ca539aea806e8e4a5633a79e57"
+    },
+    {
+      "source_path": "lib/ollama/libllama.so.0.1.2",
+      "output_path": "lib/ollama/libllama.so.0",
+      "byte_size": 3819672,
+      "sha256": "5dc87400bfde6308684e94d351aa67aefdba85b1b01a6463963ed8716ef31b66"
+    },
+    {
+      "source_path": "lib/ollama/libmtmd.so.0.1.2",
+      "output_path": "lib/ollama/libmtmd.so.0",
+      "byte_size": 1819216,
+      "sha256": "4e6c4d72e05d66292b65df58f8db670187db69c0e976be10302d8b7e102ead95"
+    },
+    {
+      "source_path": "lib/ollama/llama-server",
+      "output_path": "lib/ollama/llama-server",
+      "byte_size": 15096,
+      "sha256": "234b05b2138264f8fb263c3205e85f4c290e8afe5067e280a4f6f90cdac5696b"
+    }
+  ],
+  "consumed_symlinks": [
+    "lib/ollama/libggml-base.so.0",
+    "lib/ollama/libggml.so.0",
+    "lib/ollama/libllama-common.so.0",
+    "lib/ollama/libllama.so.0",
+    "lib/ollama/libmtmd.so.0"
+  ],
+  "excluded_source_entries": [
+    "lib/ollama/cuda_v12/libcublas.so.12",
+    "lib/ollama/cuda_v12/libcublas.so.12.8.5.5",
+    "lib/ollama/cuda_v12/libcublasLt.so.12",
+    "lib/ollama/cuda_v12/libcublasLt.so.12.8.5.5",
+    "lib/ollama/cuda_v12/libcudart.so.12",
+    "lib/ollama/cuda_v12/libcudart.so.12.8.90",
+    "lib/ollama/cuda_v12/libggml-cuda.so",
+    "lib/ollama/cuda_v13/libcublas.so.13",
+    "lib/ollama/cuda_v13/libcublas.so.13.1.1.3",
+    "lib/ollama/cuda_v13/libcublasLt.so.13",
+    "lib/ollama/cuda_v13/libcublasLt.so.13.1.1.3",
+    "lib/ollama/cuda_v13/libcudart.so.13",
+    "lib/ollama/cuda_v13/libcudart.so.13.0.96",
+    "lib/ollama/cuda_v13/libggml-cuda.so",
+    "lib/ollama/libggml-base.so",
+    "lib/ollama/libggml-cpu-alderlake.so",
+    "lib/ollama/libggml-cpu-cannonlake.so",
+    "lib/ollama/libggml-cpu-cascadelake.so",
+    "lib/ollama/libggml-cpu-cooperlake.so",
+    "lib/ollama/libggml-cpu-haswell.so",
+    "lib/ollama/libggml-cpu-icelake.so",
+    "lib/ollama/libggml-cpu-ivybridge.so",
+    "lib/ollama/libggml-cpu-piledriver.so",
+    "lib/ollama/libggml-cpu-sandybridge.so",
+    "lib/ollama/libggml-cpu-sapphirerapids.so",
+    "lib/ollama/libggml-cpu-skylakex.so",
+    "lib/ollama/libggml-cpu-sse42.so",
+    "lib/ollama/libggml-cpu-zen4.so",
+    "lib/ollama/libggml.so",
+    "lib/ollama/libgomp.so.1",
+    "lib/ollama/libgomp.so.1.0.0",
+    "lib/ollama/libllama-common.so",
+    "lib/ollama/libllama-quantize-impl.so",
+    "lib/ollama/libllama.so",
+    "lib/ollama/libmtmd.so",
+    "lib/ollama/llama-quantize",
+    "lib/ollama/vulkan/libggml-vulkan.so"
+  ],
+  "added_member": {
+    "source": "Retonr snapshot run 32588606381 at commit 8c01e82f16643d6f54bcd030460e788771abaa65",
+    "output_path": "helper/retonr-isolation",
+    "byte_size": 491136,
+    "sha256": "1127d487cd6dbbf0a84540898a8c58e588e142330014bd6ceb8866f83bc65912"
+  },
+  "accounting": {
+    "selected_regular_entries": 9,
+    "consumed_symlinks": 5,
+    "excluded_entries": 37,
+    "complete": true
+  },
+  "disposition": {
+    "status": "passed",
+    "reason": "The CPU x64 candidate is a deterministic selection, five symlink aliases are materialized as exact regular-file copies, every other archive entry is explicitly excluded, and the exact Retonr helper is added."
+  }
+}

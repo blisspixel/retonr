@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-08-22",
+  "upstream_release": {
+    "tag": "v0.32.15",
+    "tag_commit": "b7871fc0d1d82fe109536efa3e0e8e411c766c75",
+    "published_at": "2026-08-19T17:25:16Z",
+    "release_url": "https://github.com/ollama/ollama/releases/tag/v0.32.15",
+    "asset_url": "https://github.com/ollama/ollama/releases/download/v0.32.15/ollama-linux-amd64.tar.zst",
+    "asset_byte_size": 1422416084,
+    "asset_sha256": "50539c5fe9bf85887733355098dcdb266b433cb8c73fa180713417e9ed6e42bb",
+    "checksum_asset_url": "https://github.com/ollama/ollama/releases/download/v0.32.15/sha256sum.txt",
+    "checksum_asset_byte_size": 1472,
+    "checksum_asset_sha256": "8969ee85ff08954bc98b4e658c2b0f906b307236180e0e3b1a33c8883c949ab7",
+    "source_artifact_set_id": "f9a17fc58dc41f02f913358b5a9f7c5c65a5d6231bebf56cf1e9a71b78ed5482"
+  },
+  "source": {
+    "ollama_commit": "b7871fc0d1d82fe109536efa3e0e8e411c766c75",
+    "llama_cpp_version_file": "b10488",
+    "llama_cpp_commit": "9d77fa17254e1dee4b9e92504c91611a60b1359f",
+    "go_version": "go1.26.0",
+    "go_build_mode": "pie",
+    "go_architecture": "amd64",
+    "go_amd64_level": "v1"
+  },
+  "build_evidence": {
+    "release_workflow_path": ".github/workflows/release.yaml",
+    "release_workflow_provenance_enabled": false,
+    "release_workflow_sbom_enabled": false,
+    "linux_builder_base": "rocm/dev-almalinux-8:7.2.1-complete",
+    "linux_builder_base_pinned_by_digest": false,
+    "compiler_package": "gcc-toolset-13-gcc-c++",
+    "compiler_package_version_frozen": false
+  },
+  "disposition": {
+    "status": "blocked",
+    "reason": "The published bytes and release checksum are exact, but the upstream release has no provenance or SBOM attestation and its mutable builder image and package inputs do not independently bind the archive to the tagged source."
+  }
+}

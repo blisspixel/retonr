@@ -59,6 +59,7 @@ These documents define the product direction and constrain implementation.
 | [Evaluation data policy](governance/data-policy.md) | Proposed authorization, retention, revocation, and deletion rules |
 | [User research protocol](governance/user-research.md) | Proposed research, consent, annotation, and adjudication workflow |
 | [0.1 refinement record](reviews/2026-08-12-0.1-refinement.md) | Evidence and open findings from the required refinement passes |
+| [Ollama v0.32.15 Linux runtime candidate review](reviews/runtime-packages/ollama-v0.32.15-linux-x86_64-gnu/README.md) | Exact source, transformation, license, native-closure, execution, and fail-closed admission disposition |
 
 ## Document status
 

@@ -1,0 +1,111 @@
+name: runtime package review
+
+# This manual workflow verifies one frozen review candidate. It does not admit,
+# qualify, publish, or add the candidate to a production policy.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-package-review-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ollama-v0-32-15-linux-x86-64:
+    name: Ollama v0.32.15 Linux CPU candidate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+
+      - name: Install archive tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends zstd
+          fi
+          command -v jq
+          command -v sha256sum
+          command -v tar
+          command -v zstd
+
+      - name: Build and verify the exact isolation helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --locked --release \
+            --package rewrite-runtime-isolation \
+            --bin rewrite-runtime-isolation-helper
+          helper=target/release/rewrite-runtime-isolation-helper
+          review=docs/reviews/runtime-packages/ollama-v0.32.15-linux-x86_64-gnu/transformation.json
+          test "$(stat -c '%s' "$helper")" = "$(jq -r '.added_member.byte_size' "$review")"
+          test "$(sha256sum "$helper" | cut -d' ' -f1)" = "$(jq -r '.added_member.sha256' "$review")"
+
+      - name: Download the frozen upstream source artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output "$RUNNER_TEMP/ollama-linux-amd64.tar.zst" \
+            https://github.com/ollama/ollama/releases/download/v0.32.15/ollama-linux-amd64.tar.zst
+
+      - name: Assemble and verify the non-admitted candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/assemble-ollama-runtime-candidate.sh \
+            "$RUNNER_TEMP/ollama-linux-amd64.tar.zst" \
+            target/release/rewrite-runtime-isolation-helper \
+            "$RUNNER_TEMP/ollama-runtime-candidate"
+          ! find "$RUNNER_TEMP/ollama-runtime-candidate" -type l | grep .
+          ! LD_LIBRARY_PATH="$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama" \
+            ldd "$RUNNER_TEMP/ollama-runtime-candidate/bin/ollama" | grep 'not found'
+          ! LD_LIBRARY_PATH="$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama" \
+            ldd "$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama/llama-server" | grep 'not found'
+          version="$({
+            LD_LIBRARY_PATH="$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama" \
+              "$RUNNER_TEMP/ollama-runtime-candidate/bin/ollama" --version
+          } 2>&1)"
+          grep -F '0.32.15' <<<"$version"
+
+      - name: Retain candidate verification evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/runtime-review-evidence"
+          mkdir -p "$evidence"
+          candidate="$RUNNER_TEMP/ollama-runtime-candidate"
+          (
+            cd "$candidate"
+            find . -type f -print0 |
+              LC_ALL=C sort -z |
+              xargs -0 sha256sum
+          ) >"$evidence/candidate-sha256.txt"
+          {
+            printf 'repository_commit=%s\n' "$GITHUB_SHA"
+            printf 'runner_image=%s\n' "${ImageOS:-unknown}"
+            printf 'runner_image_version=%s\n' "${ImageVersion:-unknown}"
+            rustc --version --verbose
+            tar --version | head -1
+            zstd --version
+          } >"$evidence/tool-versions.txt"
+          cp docs/reviews/runtime-packages/ollama-v0.32.15-linux-x86_64-gnu/*.json \
+            "$evidence/"
+
+      - name: Upload verification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ollama-v0.32.15-linux-x86-64-review-evidence
+          path: ${{ runner.temp }}/runtime-review-evidence
+          if-no-files-found: error
+          retention-days: 14

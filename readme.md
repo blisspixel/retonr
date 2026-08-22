@@ -37,7 +37,11 @@ the desktop application are not implemented.
 Offline libraries can reconstruct an admitted Ollama model package and a reviewed
 Linux Ollama runtime layout into inert schema-6 evidence. That evidence grants no
 execution or qualification authority. The production cloud-disable allowlist is
-empty.
+empty. An exact Ollama v0.32.15 Linux CPU package candidate now has a machine-checked
+[review disposition](docs/reviews/runtime-packages/ollama-v0.32.15-linux-x86_64-gnu/README.md).
+Its transformation and license controls pass, but source lineage, external native
+identity, managed startup, and cloud-disable observation remain blocked or unrun, so
+the candidate is not admitted.
 
 The authoritative crate inventory, CLI contract, evidence limits, and platform
 matrix are in [Current state](docs/current-state.md). Planned work is described in

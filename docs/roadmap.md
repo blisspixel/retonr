@@ -131,8 +131,11 @@ proceeds in this exact order:
     `RuntimeBuildIdentity`; only its entrypoint is joined to live evidence, other
     package semantics are not independently live-observed, cleanup completes before
     return, and effective runtime state remains unproven.
-    Freeze and review one exact Ollama runtime package before adding it to the empty
-    production cloud-disable allowlist.
+    The exact v0.32.15 Linux CPU x64 candidate has frozen archive, transformation,
+    helper, selected closure, and license evidence under a typed non-admitted review.
+    Resolve its source-lineage and external-component blockers, then run managed
+    startup and cloud-disable observation before adding any package identity to the
+    empty production cloud-disable allowlist.
 11. Extend the managed operation so its process remains live through generation and
     direct effective-state observation. Join its runtime build, exact model-package
     lease, static v0.32.15 binding, runtime-reported residency, and local-judge receipt

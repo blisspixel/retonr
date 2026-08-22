@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "packaged_code": [
+    {
+      "component": "Ollama",
+      "revision": "b7871fc0d1d82fe109536efa3e0e8e411c766c75",
+      "spdx": "MIT",
+      "license_sha256": "95fa997c6886685f7c1d54ccdfb906519a7e0b33be58d5c1958708688abaa1fd"
+    },
+    {
+      "component": "llama.cpp",
+      "revision": "9d77fa17254e1dee4b9e92504c91611a60b1359f",
+      "spdx": "MIT",
+      "license_sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+    },
+    {
+      "component": "Retonr isolation helper",
+      "revision": "8c01e82f16643d6f54bcd030460e788771abaa65",
+      "spdx": "Apache-2.0",
+      "license_sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+    }
+  ],
+  "ollama_binary_inventory": {
+    "source": "go version -m bin/ollama",
+    "embedded_module_count": 67,
+    "inventory_path": "go-module-inventory.tsv",
+    "license_tool": "github.com/google/go-licenses@v1.6.0",
+    "all_embedded_modules_have_a_reviewed_spdx_disposition": true,
+    "non_go_review": [
+      "Assembly files remain covered by their containing module licenses.",
+      "github.com/mattn/go-sqlite3 is MIT and embeds SQLite code dedicated to the public domain.",
+      "The package excludes libgomp and every CUDA and Vulkan library from the source archive."
+    ]
+  },
+  "distribution_requirement": "An admitted binary package must carry the applicable complete license texts and notices. This review record is evidence only and is not a distribution bundle.",
+  "disposition": {
+    "status": "passed",
+    "reason": "Every selected code component and all 67 modules embedded in the Ollama entrypoint have an exact reviewed license disposition."
+  }
+}

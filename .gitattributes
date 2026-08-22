@@ -5,6 +5,8 @@
 *.mmd text eol=lf
 *.ps1 text eol=lf
 *.rs text eol=lf
+*.sh text eol=lf
+*.tsv text eol=lf
 *.toml text eol=lf
 *.json text eol=lf
 *.jsonc text eol=lf

@@ -45,8 +45,11 @@ The current 0.2 build queue, in dependency order, is:
    Retain the opt-in managed binding that constructs only `RuntimeBuildIdentity` after
    those checks; cleanup completes before return and effective state remains false.
    Reconstruction of a reviewed layout is not a freeze of one exact upstream package.
-   Freeze and review one exact Ollama runtime package before changing the empty
-   production cloud-disable allowlist.
+   The v0.32.15 Linux CPU x64 review candidate now freezes exact source bytes,
+   complete archive selection, the helper, native closure, and license evidence, but
+   remains machine-marked not admitted. Resolve its two blocked controls and run its
+   two execution controls before changing the empty production cloud-disable
+   allowlist.
 6. Extend the managed operation to retain the process through generation. Join its
    runtime build, exact model-package lease, static binding, runtime-reported
    residency, and implemented local-judge transport receipt while directly observing

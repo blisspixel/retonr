@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "inspection_tool": "objdump -p",
+  "packaged_sonames": [
+    "libggml-base.so.0",
+    "libggml-cpu-x64.so",
+    "libggml.so.0",
+    "libllama-common.so.0",
+    "libllama-server-impl.so",
+    "libllama.so.0",
+    "libmtmd.so.0"
+  ],
+  "packaged_executables": [
+    "bin/ollama",
+    "helper/retonr-isolation",
+    "lib/ollama/llama-server"
+  ],
+  "external_sonames": [
+    "ld-linux-x86-64.so.2",
+    "libc.so.6",
+    "libdl.so.2",
+    "libgcc_s.so.1",
+    "libm.so.6",
+    "libpthread.so.0",
+    "libresolv.so.2",
+    "libstdc++.so.6"
+  ],
+  "unused_source_library": {
+    "path": "lib/ollama/libgomp.so.1.0.0",
+    "sha256": "e985bcbb6b444c2c472de70c331ab101e6de860affa3a20d1d1aecd06d9242e8",
+    "selected": false,
+    "reason": "No selected ELF object declares libgomp.so.1 as a required dependency."
+  },
+  "disposition": {
+    "status": "blocked",
+    "reason": "The packaged ELF closure is explicit, but exact retained identities for every external platform component have not been captured on an admitted qualification host."
+  }
+}
