@@ -113,7 +113,7 @@ pub(crate) fn commit(
     if staged != accepted {
         return Err(RunFailure::operational(command));
     }
-    install(source, &staging_path, accepted, command)?;
+    install(source, &staging_path, command)?;
     let replaced = crate::contract::read_input_bounded(source, accepted.len().saturating_add(1))
         .map_err(|_| RunFailure::operational(command))?;
     if replaced != accepted {
@@ -156,48 +156,16 @@ pub(crate) fn write_exclusive(
         .map_err(|_| RunFailure::operational(command))
 }
 
-fn install(
-    source: &Path,
-    staging: &Path,
-    accepted: &[u8],
-    command: CommandName,
-) -> Result<(), RunFailure> {
-    #[cfg(unix)]
+fn install(source: &Path, staging: &Path, command: CommandName) -> Result<(), RunFailure> {
+    #[cfg(any(unix, windows))]
     {
-        let _ = accepted;
         fs::rename(staging, source).map_err(|_| RunFailure::operational(command))
-    }
-    #[cfg(windows)]
-    {
-        overwrite_regular_file(source, accepted, command)?;
-        match fs::remove_file(staging) {
-            Ok(()) => Ok(()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(_) => Err(RunFailure::operational(command)),
-        }
     }
     #[cfg(not(any(unix, windows)))]
     {
-        let _ = (staging, accepted);
+        let _ = (source, staging);
         Err(RunFailure::operational(command))
     }
-}
-
-#[cfg(windows)]
-fn overwrite_regular_file(
-    path: &Path,
-    bytes: &[u8],
-    command: CommandName,
-) -> Result<(), RunFailure> {
-    require_regular_file(path, command)?;
-    let mut file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open(path)
-        .map_err(|_| RunFailure::operational(command))?;
-    file.write_all(bytes)
-        .and_then(|()| file.sync_all())
-        .map_err(|_| RunFailure::operational(command))
 }
 
 fn require_regular_file(path: &Path, command: CommandName) -> Result<(), RunFailure> {
@@ -421,6 +389,23 @@ mod tests {
         assert_eq!(fs::read(&alias).expect("read alias"), b"original\n");
         assert!(!directory.path().join("draft.txt.retonr-backup").exists());
         assert!(!directory.path().join("draft.txt.retonr-staging").exists());
+    }
+
+    #[test]
+    fn install_replaces_one_path_without_rewriting_a_late_hard_link_alias() {
+        let directory = tempdir().expect("temporary directory");
+        let source = directory.path().join("draft.txt");
+        let alias = directory.path().join("late-alias.txt");
+        let staging = directory.path().join("draft.txt.retonr-staging");
+        fs::write(&source, b"original\n").expect("write source");
+        fs::hard_link(&source, &alias).expect("create late hard-link alias");
+        fs::write(&staging, b"accepted\n").expect("write staging");
+
+        install(&source, &staging, CommandName::Check).expect("replace source path");
+
+        assert_eq!(fs::read(&source).expect("read source"), b"accepted\n");
+        assert_eq!(fs::read(&alias).expect("read alias"), b"original\n");
+        assert!(!staging.exists());
     }
 
     #[test]

@@ -11,8 +11,9 @@ Milestone 0.2 is still in progress, and no milestone has been released.
   managed artifact identity remains distinct from mutable runtime inventory identity.
 - Rejects ambiguous Ollama inventory aliases, duplicate runtime identities, and
   oversized configured binding sets at deterministic trust boundaries.
-- Refuses in-place writes to multiply-linked files so a hard-link alias cannot be
-  modified indirectly.
+- Refuses in-place writes to multiply-linked files and installs verified staging
+  bytes by path replacement on every supported platform, so a late hard-link alias
+  cannot be modified indirectly.
 - Updates the public documentation to match the implemented CLI and internal
   managed-runtime boundaries.
 

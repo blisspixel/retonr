@@ -181,6 +181,37 @@ if (Test-Path -LiteralPath $cargoManifest) {
     }
 }
 
+$workflowDirectory = Join-Path -Path $repositoryRoot -ChildPath '.github/workflows'
+if (Test-Path -LiteralPath $workflowDirectory) {
+    $workflowFiles = Get-ChildItem -LiteralPath $workflowDirectory -File | Where-Object {
+        $_.Extension -ieq '.yml' -or $_.Extension -ieq '.yaml'
+    }
+    foreach ($workflowFile in $workflowFiles) {
+        foreach ($line in [System.IO.File]::ReadAllLines($workflowFile.FullName)) {
+            $usesMatch = [regex]::Match($line, '^\s*uses:\s*(?<target>\S+)')
+            if (-not $usesMatch.Success) {
+                continue
+            }
+            $target = $usesMatch.Groups['target'].Value
+            if ($target.StartsWith('./') -or $target.StartsWith('docker://')) {
+                continue
+            }
+            $separator = $target.LastIndexOf('@')
+            $revision = if ($separator -ge 0) {
+                $target.Substring($separator + 1)
+            } else {
+                ''
+            }
+            if ($revision -notmatch '^[0-9a-fA-F]{40}$') {
+                $relativePath = Get-RelativeRepositoryPath -FullPath $workflowFile.FullName
+                $failures.Add(
+                    "$relativePath uses an action without a full commit pin: $target."
+                )
+            }
+        }
+    }
+}
+
 if ($failures.Count -gt 0) {
     $failures | Sort-Object -Unique | ForEach-Object {
         Write-Error $_ -ErrorAction Continue
