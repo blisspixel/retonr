@@ -13,8 +13,8 @@ release under the version policy in [the roadmap](../docs/roadmap.md). Milestone
   published, and nothing here should be treated as an installer.
 - Not a stable channel. No published pointer resolves to this tag.
 - Built and smoke-tested on the three targets listed below. **This is not a
-  support claim.** The other architecture rows in the release target matrix,
-  including both Arm64 rows and the macOS Intel slice, have no evidence here.
+  support claim.** The Windows and Linux Arm64 rows and the macOS Intel slice in
+  the release target matrix have no evidence here.
 
 Verify the SHA-256 digest of any asset you download against the list below
 before running it.
@@ -34,12 +34,14 @@ without using a model. It reports whether the candidate preserved protected
 values, structure, and literal token content, and it can write the accepted
 bytes, or the exact original after an abstention, to a new file.
 
-`retonr model` administers exact local model artifacts offline. It does not
-download, qualify, activate, or run a model.
+`retonr rewrite` runs the current model-free rewrite transaction. `retonr inspect`
+performs pre-model source inventory. `retonr model` administers exact local model
+artifacts offline. These commands do not download, qualify, activate, or run a
+model.
 
-The rewrite, profile, runtime management, agent, and desktop workflows are not
-implemented. See [Current state](../docs/current-state.md), which is the only
-authority for implemented behavior.
+Model-backed rewrite, profiles, runtime execution, agents, and the desktop
+application are not implemented. See [Current state](../docs/current-state.md),
+which is the only authority for implemented behavior.
 
 ## Known limits
 

@@ -186,6 +186,23 @@ fn cancellation_and_parser_limits_fail_before_repository_initialization() {
     );
     assert!(!data.exists());
 
+    let missing_source = InstalledOllamaModelSource::new(
+        fixture_root.path().join("missing-models"),
+        OllamaModelReference::new("registry.ollama.ai", "library", "qwen3", "latest")
+            .expect("valid missing-source reference"),
+    )
+    .expect("missing source selection");
+    let mut relaxed_limits = import_limits();
+    relaxed_limits.reconstruction.manifest_bytes = usize::MAX;
+    let relaxed = repository
+        .import_installed_ollama_model(&missing_source, relaxed_limits, &CancellationToken::new())
+        .expect_err("relaxed manifest ceiling must fail before source access");
+    assert_eq!(
+        relaxed.kind(),
+        crate::ArtifactRepositoryErrorKind::ResourceLimit
+    );
+    assert!(!data.exists());
+
     let invalid = OllamaModelImportLimits {
         artifact_set: crate::ArtifactSetImportLimits {
             maximum_members: 0,

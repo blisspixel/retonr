@@ -28,6 +28,7 @@ mod guard;
 mod inspect;
 mod migration;
 mod ollama_import;
+mod ollama_runtime_import;
 mod selection;
 mod set_import;
 mod set_inventory;

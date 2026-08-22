@@ -32,17 +32,19 @@ The current 0.2 build queue, in dependency order, is:
 3. Retain attached evidence as observation-only. Linux uses bounded SOCK_DIAG;
    Windows uses documented owner-PID tables; macOS is unsupported.
 4. Retain the completed package, retained-handle, offline Ollama model
-   reconstruction, Linux managed isolation and attestation, native-load, provider,
-   persistence, version-gated v0.32.15 static model binding, neutral judge output, and
-   retained-session judge-execution and runtime-reported residency contracts. The
-   static binding, transport receipt, and residency receipt remain inert. Windows
-   managed isolation and exact native-load binding are unsupported; macOS is
-   unsupported.
+   reconstruction, reviewed Linux Ollama runtime-package reconstruction, Linux managed
+   isolation and attestation, native-load, provider, persistence, version-gated
+   v0.32.15 static model binding, neutral judge output, and retained-session
+   judge-execution and runtime-reported residency contracts. The static binding,
+   transport receipt, residency receipt, and reconstructed runtime package remain
+   inert. Windows managed isolation and exact native-load binding are unsupported;
+   macOS is unsupported.
 5. Retain the Linux managed preflight that joins runtime-package, isolation, process,
    connection, provider-declaration, read-only API, and native-load evidence without
    an attached fallback. Its report is inert, unqualified, and outside the CLI.
    Retain the opt-in managed binding that constructs only `RuntimeBuildIdentity` after
    those checks; cleanup completes before return and effective state remains false.
+   Reconstruction of a reviewed layout is not a freeze of one exact upstream package.
    Freeze and review one exact Ollama runtime package before changing the empty
    production cloud-disable allowlist.
 6. Extend the managed operation to retain the process through generation. Join its

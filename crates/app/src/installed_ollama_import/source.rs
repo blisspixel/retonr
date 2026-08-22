@@ -64,6 +64,7 @@ impl PinnedInstalledOllamaModel {
         cancellation: &CancellationToken,
     ) -> Result<Self, OllamaModelImportError> {
         ensure_not_cancelled(cancellation)?;
+        limits.validate()?;
         let root = PinnedDirectory::open_existing(selection.models_root()).map_err(map_source)?;
         let root_baseline = root.fingerprint().map_err(map_source)?.stable();
         let manifests = open_bound_directory(&root, "manifests")?;

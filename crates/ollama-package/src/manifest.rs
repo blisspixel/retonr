@@ -54,6 +54,23 @@ impl Default for ReconstructionLimits {
     }
 }
 
+impl ReconstructionLimits {
+    /// Validates that every configured ceiling is nonzero and no greater than
+    /// the crate's fixed defaults.
+    ///
+    /// Call this before using a ceiling to allocate or read caller-controlled
+    /// input outside this crate.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ReconstructionError::LimitExceeded`] when any ceiling is zero,
+    /// exceeds its fixed default, or contains invalid GGUF limits.
+    pub fn validate(self) -> ReconstructionResult<Self> {
+        validate_limits(&self)?;
+        Ok(self)
+    }
+}
+
 /// One exact content-addressed Ollama blob descriptor.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BlobDescriptor {
@@ -181,7 +198,7 @@ pub fn parse_manifest_v2(
         layers: Vec<DescriptorWire>,
     }
 
-    validate_limits(limits)?;
+    limits.validate()?;
     if bytes.len() > limits.manifest_bytes {
         return Err(ReconstructionError::ManifestTooLarge);
     }

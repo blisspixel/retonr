@@ -19,7 +19,8 @@ use crate::{
     ArtifactRemovalResult, ArtifactSetImportDisposition, ArtifactSetImportError,
     ArtifactSetImportResult, ArtifactSetInventoryError, ArtifactSetLeaseError,
     ArtifactSetReconciliationError, ArtifactSetRemovalError, ArtifactSetRemovalResult,
-    OllamaModelImportError, runtime_artifact_set_lease::set_lease_error_kind,
+    OllamaModelImportError, OllamaRuntimeImportError,
+    runtime_artifact_set_lease::set_lease_error_kind,
 };
 
 /// Stable application-level classification for repository failures.
@@ -381,6 +382,9 @@ pub enum ArtifactRepositoryError {
     /// Installed Ollama model reconstruction and inert import failed.
     #[error(transparent)]
     OllamaModelImport(#[from] OllamaModelImportError),
+    /// Reviewed Ollama runtime reconstruction and inert import failed.
+    #[error(transparent)]
+    OllamaRuntimeImport(#[from] OllamaRuntimeImportError),
     /// Shared managed artifact-set lease acquisition failed.
     #[error(transparent)]
     SetLease(#[from] ArtifactSetLeaseError),
@@ -471,6 +475,7 @@ impl ArtifactRepositoryError {
             Self::Import(error) => error_kind::import_error_kind(error),
             Self::SetImport(error) => error_kind::set_import_error_kind(error),
             Self::OllamaModelImport(error) => error.kind(),
+            Self::OllamaRuntimeImport(error) => error.kind(),
             Self::SetLease(error) => set_lease_error_kind(error),
             Self::Inventory(error) => error_kind::inventory_error_kind(error),
             Self::SetInventory(error) => super::set_inventory::set_inventory_error_kind(error),

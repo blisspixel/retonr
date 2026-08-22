@@ -29,6 +29,7 @@ mod claim_extraction;
 mod grounded;
 mod installed_ollama_import;
 mod package_attestation;
+mod reviewed_ollama_runtime_import;
 mod runtime_artifact_lease;
 mod runtime_artifact_set_lease;
 mod runtime_attestation;
@@ -110,6 +111,10 @@ pub use package_attestation::{
     ModelPackageAttestationEvidence, ModelPackageLease, PACKAGE_ATTESTATION_SCHEMA_VERSION,
     PackageAttestationError, PackageAttestationScope, PackageAttestationService,
     RuntimePackageAttestationEvidence, RuntimePackageLease, RuntimePackageLeaseLimits,
+};
+pub use reviewed_ollama_runtime_import::{
+    OllamaRuntimeImportError, OllamaRuntimeImportEvidence, OllamaRuntimeImportLimits,
+    OllamaRuntimeImportResult, ReviewedOllamaRuntimeSource,
 };
 pub use rewrite_engine::{ClaimShadowObserver, EngineError, ProtectionError};
 pub use rewrite_text_adapter::{

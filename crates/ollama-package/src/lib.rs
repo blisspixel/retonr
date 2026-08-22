@@ -1,7 +1,8 @@
-//! Bounded offline reconstruction of one narrow Ollama model package shape.
+//! Bounded offline reconstruction of admitted Ollama model and runtime packages.
 //!
 //! This crate reads caller-supplied bytes only. It does not discover installed
-//! models, open paths, access a registry, or grant runtime authority.
+//! models or runtimes, open paths, access a registry, execute members, or grant
+//! runtime authority.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -11,6 +12,7 @@ mod gguf;
 mod json;
 mod manifest;
 mod reconstruct;
+mod runtime;
 
 pub use error::{BlobOpenError, ReconstructionError, ReconstructionResult};
 pub use gguf::{GgufComponentDigests, GgufLimits, GgufObservation, inspect_gguf_v3};
@@ -22,4 +24,10 @@ pub use manifest::{
 pub use reconstruct::{
     ReconstructedModelPackage, RootfsDescriptorComparison, reconstruct_model_package,
     reconstruct_model_package_with_limits,
+};
+pub use runtime::{
+    ADMITTED_RUNTIME_FAMILY, MemberOpenError, RUNTIME_LAYOUT_SCHEMA_VERSION,
+    ReconstructedRuntimePackage, RuntimeLayoutLimits, RuntimePackageLayout,
+    RuntimePackageLayoutMember, RuntimeReconstructionError, RuntimeReconstructionResult,
+    reconstruct_runtime_package, reconstruct_runtime_package_with_limits,
 };

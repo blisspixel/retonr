@@ -353,57 +353,62 @@ async fn callback_close_and_body_limit_poison_without_reconnect() {
 }
 
 #[tokio::test]
-async fn residency_wait_obeys_deadline_and_cancellation_without_reconnect() {
-    for cancelled in [false, true] {
-        let server = SessionServer::start(SessionMode::StallResidency).await;
-        let stream = server.supplied_stream().await;
-        let token = CancellationToken::new();
-        let limits = OllamaLimits {
-            connect_timeout: Duration::from_millis(100),
-            request_timeout: Duration::from_secs(1),
-            read_timeout: Duration::from_secs(1),
-            ..OllamaLimits::default()
-        };
-        let mut session = config(server.endpoint.clone(), limits)
-            .open(stream, context(&token), |_| Ok::<(), ()>(()))
-            .await
-            .expect("open timed resident session");
-        session
-            .preflight(context(&token))
-            .await
-            .expect("timed resident preflight");
-        let deadline = OperationContext::new(
-            &token,
-            Some(std::time::Instant::now() + Duration::from_millis(40)),
-        );
+async fn residency_wait_obeys_deadline_without_reconnect() {
+    let (error, result) = stalled_residency_error(Duration::from_millis(40), None).await;
+    assert_session_error(error, InferenceErrorKind::Deadline, "deadline");
+    assert_eq!(result.requests.len(), 12);
+    assert_eq!(result.accepts, 1);
+}
+
+#[tokio::test]
+async fn residency_wait_obeys_cancellation_without_reconnect() {
+    let (error, result) =
+        stalled_residency_error(Duration::from_secs(30), Some(Duration::from_millis(20))).await;
+    assert_session_error(error, InferenceErrorKind::Cancelled, "cancelled");
+    assert_eq!(result.requests.len(), 12);
+    assert_eq!(result.accepts, 1);
+}
+
+async fn stalled_residency_error(
+    deadline_from_now: Duration,
+    cancel_after: Option<Duration>,
+) -> (
+    OllamaObservedSessionError<()>,
+    super::fixture::SessionServerResult,
+) {
+    let server = SessionServer::start(SessionMode::StallResidency).await;
+    let stream = server.supplied_stream().await;
+    let token = CancellationToken::new();
+    let limits = OllamaLimits {
+        connect_timeout: Duration::from_millis(100),
+        request_timeout: Duration::from_secs(1),
+        read_timeout: Duration::from_secs(1),
+        ..OllamaLimits::default()
+    };
+    let mut session = config(server.endpoint.clone(), limits)
+        .open(stream, context(&token), |_| Ok::<(), ()>(()))
+        .await
+        .expect("open timed resident session");
+    session
+        .preflight(context(&token))
+        .await
+        .expect("timed resident preflight");
+    if let Some(delay) = cancel_after {
         let cancelling = token.clone();
-        let cancellation = cancelled.then(|| {
-            tokio::spawn(async move {
-                tokio::time::sleep(Duration::from_millis(20)).await;
-                cancelling.cancel();
-            })
+        tokio::spawn(async move {
+            tokio::time::sleep(delay).await;
+            cancelling.cancel();
         });
-        let error = session
-            .complete_structured_with_residency(request("timed"), deadline)
-            .await
-            .expect_err("timed residency fails");
-        assert_session_error(
-            error,
-            if cancelled {
-                InferenceErrorKind::Cancelled
-            } else {
-                InferenceErrorKind::Deadline
-            },
-            if cancelled { "cancelled" } else { "deadline" },
-        );
-        if let Some(task) = cancellation {
-            task.await.expect("cancellation task");
-        }
-        drop(session);
-        let result = server.finish().await;
-        assert_eq!(result.requests.len(), 12);
-        assert_eq!(result.accepts, 1);
     }
+    let error = session
+        .complete_structured_with_residency(
+            request("timed"),
+            OperationContext::new(&token, Some(std::time::Instant::now() + deadline_from_now)),
+        )
+        .await
+        .expect_err("timed residency fails");
+    drop(session);
+    (error, server.finish().await)
 }
 
 async fn resident_error(

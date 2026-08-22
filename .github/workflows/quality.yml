@@ -315,7 +315,7 @@ jobs:
         run: |
           set -euo pipefail
           cargo llvm-cov clean --workspace
-          eval "$(cargo llvm-cov show-env --export-prefix)"
+          eval "$(cargo llvm-cov show-env --sh)"
           test "${LLVM_PROFILE_FILE#/}" != "$LLVM_PROFILE_FILE"
           mkdir -p "$(dirname "$LLVM_PROFILE_FILE")"
           mapfile -t isolation_tests < <(
@@ -361,6 +361,10 @@ jobs:
             test "${observed_attestor_tests[$index]}" = "${expected_attestor_tests[$index]}"
           done
           cargo test --locked --workspace --all-targets --all-features
+          profile_dir="$(dirname "$LLVM_PROFILE_FILE")"
+          native_dir="$profile_dir/native"
+          mkdir -p "$native_dir"
+          native_profile="$native_dir/native-%p-%m.profraw"
           docker run --rm \
             --network none \
             --cap-drop ALL \
@@ -369,7 +373,7 @@ jobs:
             --mount "type=bind,source=$PWD,target=$PWD" \
             --workdir "$PWD" \
             --env CARGO_LLVM_COV=1 \
-            --env LLVM_PROFILE_FILE="$LLVM_PROFILE_FILE" \
+            --env LLVM_PROFILE_FILE="$native_profile" \
             --env REWRITE_ATTESTOR_REQUIRE_NATIVE=1 \
             retonr-native-isolation \
             "${attestor_tests[0]}" 'platform::linux_managed::tests::' --test-threads=1
@@ -380,10 +384,26 @@ jobs:
             --mount "type=bind,source=$PWD,target=$PWD" \
             --workdir "$PWD" \
             --env CARGO_LLVM_COV=1 \
-            --env LLVM_PROFILE_FILE="$LLVM_PROFILE_FILE" \
+            --env LLVM_PROFILE_FILE="$native_profile" \
             --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
             retonr-native-isolation \
             "${isolation_tests[0]}" --test-threads=1
+          profdata="$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | awk '/^host:/{print $2}')/bin/llvm-profdata"
+          valid_native_profiles=0
+          invalid_native_profiles=0
+          while IFS= read -r -d '' profile; do
+            if "$profdata" merge -sparse "$profile" -o "$native_dir/check.profdata"; then
+              cp "$profile" "$profile_dir/"
+              valid_native_profiles=$((valid_native_profiles + 1))
+            else
+              rm -f "$profile"
+              invalid_native_profiles=$((invalid_native_profiles + 1))
+            fi
+          done < <(find "$native_dir" -name '*.profraw' -print0)
+          rm -f "$native_dir/check.profdata"
+          test "$valid_native_profiles" -gt 0
+          printf 'native coverage profiles: %s valid, %s discarded\n' \
+            "$valid_native_profiles" "$invalid_native_profiles"
           cargo llvm-cov report --fail-under-lines 80
 
   fuzz-smoke:

@@ -1,6 +1,6 @@
 [package]
 name = "rewrite-ollama-package"
-description = "Bounded offline Ollama model package reconstruction"
+description = "Bounded offline Ollama model and runtime package reconstruction"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

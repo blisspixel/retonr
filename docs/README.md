@@ -32,6 +32,7 @@ These documents define the product direction and constrain implementation.
 | [Superseded next-phase research ledger](research/2026-08-11-next-phases.md) | Historical August 11 assumptions retained for decision provenance |
 | [Research integrity and synthesis contract](research/README.md) | Evidence labels, reproducibility rules, and paper-style publication threshold |
 | [External change watch](external-change-watch.md) | Recurring provider, research, standards, runtime, protocol, and toolchain revalidation |
+| [Anthropic Claude text watermark watch](research/2026-08-21-anthropic-text-watermark.md) | Dated provider and primary-source review of Claude text watermarking and Retonr's non-evasion boundary |
 | [Watermark and editorial re-expression report](research/2026-08-12-editorial-reexpression-report.md) | Paper-style synthesis of provenance, quality, assurance, evaluation, limitations, and research agenda |
 | [Text watermarking literature map](research/2026-08-12-watermark-literature-map.md) | Systematic primary-source map, evidence labels, benchmark incompatibilities, open gaps, and citation audit |
 | [Rust engineering research](research/2026-08-12-rust-engineering.md) | Current Rust, testing, unsafe, compatibility, and release evidence standards |

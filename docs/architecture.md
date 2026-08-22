@@ -852,9 +852,21 @@ manifest under schema 6. Config `rootfs.diff_ids` comparison is informational on
 The result is inert structural evidence and has no CLI exposure, network access,
 qualification, activation, lease, load, or execution authority.
 
-The evaluation-only v0.32.15 binding described above can compare this exact import
-with one verified idle Ollama inventory and model-details observation. It does not
-change the import's authority, activate the package, or prove residency or use.
+A separate reviewed-runtime import reconstructs one admitted Linux x86_64 GNU libc
+Ollama runtime package from a caller-supplied layout JSON file and a member tree.
+The layout is unique JSON, family `ollama` only, untransformed, and path-sorted. The
+observed regular-file set must equal the declared members; extra tree files fail
+closed. Reconstruction hashes each member once, builds the canonical artifact set and
+runtime-package manifest, publishes the set through the existing importer, and persists
+and reads back the semantic package under schema 6. The admitted layout requires
+exactly one isolation helper: a `HelperExecutable` member with `MustNotBeCodeLoaded`.
+The operation does not execute members, grant a lease, qualify a runtime, or add an
+identity to the empty production cloud-disable allowlist.
+
+The evaluation-only v0.32.15 binding described above can compare the installed-Ollama
+model import with one verified idle Ollama inventory and model-details observation.
+It does not change either import's authority, activate a package, or prove residency
+or use.
 
 A separate read-only artifact inventory uses the same pinned storage boundary,
 acquires the lifecycle lock in shared mode, and opens only existing storage. It

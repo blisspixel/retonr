@@ -101,10 +101,13 @@ proceeds in this exact order:
    complete runtime-package, model-package,
    native-load, static package-lease, and schema-6 persistence contracts. The
    installed-Ollama import may reconstruct and persist only inert model-package
-   evidence. Retain the v0.32.15 static import-to-inventory binding, neutral judge
-   output contract, retained-stream executor, separate limited transport receipt,
-   and opt-in runtime-reported residency profile. The static binding consumes the
-   opaque, nonserializable, single-use receipt from the exact preflight runner.
+   evidence. The reviewed Linux Ollama runtime import may reconstruct and persist
+   only inert runtime-package evidence from one caller-supplied exact tree and
+   layout; this is not a freeze or admission of an upstream package. Retain the
+   v0.32.15 static import-to-inventory binding, neutral judge output contract,
+   retained-stream executor, separate limited transport receipt, and opt-in
+   runtime-reported residency profile. The static binding consumes the opaque,
+   nonserializable, single-use receipt from the exact preflight runner.
    Retained-session completion input has an absolute 4 MiB UTF-8 ceiling enforced
    before wire serialization or completion traffic. None grants execution or
    qualification authority. The judge receipt alone proves no managed isolation,
