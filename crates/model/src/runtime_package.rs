@@ -56,6 +56,10 @@ pub enum RuntimePackageMemberRole {
     ProvenanceRecord,
     /// Exact transformation evidence.
     TransformationRecord,
+    /// A package-owned worker process selected during generation.
+    WorkerExecutable,
+    /// A package-owned executable that the admitted runtime path must not invoke.
+    UtilityExecutable,
 }
 
 /// Static load policy for one runtime-package member.
@@ -146,6 +150,12 @@ impl RuntimePackageMember {
         let dependency = self
             .roles
             .contains(&RuntimePackageMemberRole::NativeDependency);
+        let worker = self
+            .roles
+            .contains(&RuntimePackageMemberRole::WorkerExecutable);
+        let utility = self
+            .roles
+            .contains(&RuntimePackageMemberRole::UtilityExecutable);
         let has_other = self.roles.iter().any(|role| {
             !matches!(
                 role,
@@ -156,6 +166,12 @@ impl RuntimePackageMember {
             self.roles.len() == 1 && self.load_policy == RuntimePackageLoadPolicy::RequiredAtReady
         } else if dependency {
             !has_other && self.load_policy != RuntimePackageLoadPolicy::MustNotBeCodeLoaded
+        } else if worker {
+            self.roles.len() == 1
+                && self.load_policy == RuntimePackageLoadPolicy::BackendConditional
+        } else if utility {
+            self.roles.len() == 1
+                && self.load_policy == RuntimePackageLoadPolicy::MustNotBeCodeLoaded
         } else {
             self.load_policy == RuntimePackageLoadPolicy::MustNotBeCodeLoaded
         };
@@ -169,7 +185,10 @@ impl RuntimePackageMember {
         self.roles.iter().any(|role| {
             matches!(
                 role,
-                RuntimePackageMemberRole::Entrypoint | RuntimePackageMemberRole::NativeDependency
+                RuntimePackageMemberRole::Entrypoint
+                    | RuntimePackageMemberRole::NativeDependency
+                    | RuntimePackageMemberRole::WorkerExecutable
+                    | RuntimePackageMemberRole::UtilityExecutable
             )
         })
     }
@@ -413,6 +432,8 @@ impl RuntimePackageManifest {
                 role,
                 RuntimePackageMemberRole::NativeDependency
                     | RuntimePackageMemberRole::HelperExecutable
+                    | RuntimePackageMemberRole::WorkerExecutable
+                    | RuntimePackageMemberRole::UtilityExecutable
             )
         })
     }

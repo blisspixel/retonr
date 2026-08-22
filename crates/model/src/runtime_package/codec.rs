@@ -178,6 +178,9 @@ pub(super) const fn role_byte(value: RuntimePackageMemberRole) -> u8 {
         RuntimePackageMemberRole::LicenseText => 6,
         RuntimePackageMemberRole::ProvenanceRecord => 7,
         RuntimePackageMemberRole::TransformationRecord => 8,
+        // Appended to preserve every existing version 1 package identity.
+        RuntimePackageMemberRole::WorkerExecutable => 9,
+        RuntimePackageMemberRole::UtilityExecutable => 10,
     }
 }
 

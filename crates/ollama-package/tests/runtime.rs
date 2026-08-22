@@ -2,9 +2,9 @@ use std::collections::BTreeMap;
 use std::io::{self, Cursor, Read};
 
 use rewrite_model::{
-    ArtifactId, ArtifactSetManifest, ArtifactSetMember, ArtifactSetRelativePath, RuntimeAbi,
-    RuntimeArchitecture, RuntimeOperatingSystem, RuntimePackageLoadPolicy,
-    RuntimePackageMemberRole,
+    ArtifactId, ArtifactSetManifest, ArtifactSetMember, ArtifactSetRelativePath,
+    PackageTransformation, RuntimeAbi, RuntimeArchitecture, RuntimeOperatingSystem,
+    RuntimePackageLoadPolicy, RuntimePackageMemberRole,
 };
 use rewrite_ollama_package::{
     ADMITTED_RUNTIME_FAMILY, MemberOpenError, RUNTIME_LAYOUT_SCHEMA_VERSION, RuntimeLayoutLimits,
@@ -52,6 +52,12 @@ fn runtime_fixture() -> RuntimeFixture {
             json!(["native_dependency"]),
             "backend_conditional",
             b"ggml-cpu\n".as_slice(),
+        ),
+        (
+            "lib/ollama/llama-server",
+            json!(["worker_executable"]),
+            "backend_conditional",
+            b"llama-server\n".as_slice(),
         ),
         (
             "provenance/source.txt",
@@ -125,6 +131,77 @@ fn layout_value(fixture: &RuntimeFixture) -> Value {
 }
 
 #[test]
+fn transformed_layout_binds_source_set_and_exact_transformation_record() {
+    let mut fixture = runtime_fixture();
+    let source_member = ArtifactSetMember::new(
+        ArtifactId::from_digest(Digest::sha256(b"upstream archive")),
+        16,
+        ArtifactSetRelativePath::new("archive/ollama.tar.zst").expect("source path"),
+    );
+    let source_set = ArtifactSetManifest::new(vec![source_member]).expect("source set");
+    let transformation_record = b"exact transformation record\n".to_vec();
+    let record_path = "review/transformation.json";
+    fixture
+        .files
+        .insert(record_path.to_owned(), transformation_record.clone());
+
+    let mut layout = layout_value(&fixture);
+    layout["transformation"] = json!({
+        "kind": "transformed",
+        "source_artifact_set_id": source_set.artifact_set_id(),
+        "tool_evidence_digest": Digest::sha256(b"tool"),
+        "parameters_digest": Digest::sha256(b"parameters"),
+        "log_digest": Digest::sha256(b"log")
+    });
+    layout["members"]
+        .as_array_mut()
+        .expect("members")
+        .push(json!({
+            "relative_path": record_path,
+            "roles": ["transformation_record"],
+            "load_policy": "must_not_be_code_loaded",
+            "byte_size": transformation_record.len(),
+            "digest": Digest::sha256(&transformation_record)
+        }));
+    layout["observed_tree"]
+        .as_array_mut()
+        .expect("observed tree")
+        .push(json!(record_path));
+    fixture.layout = serde_json::to_vec(&layout).expect("transformed layout serializes");
+
+    let reconstructed = reconstruct(&fixture).expect("transformed package reconstructs");
+    assert!(matches!(
+        reconstructed.runtime_package().transformation(),
+        PackageTransformation::Transformed {
+            source_artifact_set_id,
+            tool_evidence_digest,
+            parameters_digest,
+            log_digest,
+        } if source_artifact_set_id == &source_set.artifact_set_id()
+            && tool_evidence_digest == &Digest::sha256(b"tool")
+            && parameters_digest == &Digest::sha256(b"parameters")
+            && log_digest == &Digest::sha256(b"log")
+    ));
+
+    let mut missing_record = layout;
+    missing_record["members"]
+        .as_array_mut()
+        .expect("members")
+        .pop();
+    missing_record["observed_tree"]
+        .as_array_mut()
+        .expect("observed tree")
+        .pop();
+    assert_eq!(
+        RuntimePackageLayout::parse(
+            &serde_json::to_vec(&missing_record).expect("missing-record layout serializes"),
+            RuntimeLayoutLimits::default(),
+        ),
+        Err(RuntimeReconstructionError::InvalidLayout)
+    );
+}
+
+#[test]
 fn exact_reviewed_linux_layout_reconstructs_inert_package() {
     let fixture = runtime_fixture();
     let result = reconstruct(&fixture).expect("fixture reconstructs");
@@ -146,8 +223,8 @@ fn exact_reviewed_linux_layout_reconstructs_inert_package() {
             RuntimeAbi::LinuxGnuLibc
         )
     );
-    assert_eq!(result.artifact_set().members().len(), 5);
-    assert_eq!(result.runtime_package().members().len(), 5);
+    assert_eq!(result.artifact_set().members().len(), 6);
+    assert_eq!(result.runtime_package().members().len(), 6);
     assert_eq!(
         result
             .runtime_package()
@@ -188,6 +265,20 @@ fn exact_reviewed_linux_layout_reconstructs_inert_package() {
         dependency.load_policy(),
         RuntimePackageLoadPolicy::BackendConditional
     );
+    let worker = result
+        .runtime_package()
+        .members()
+        .iter()
+        .find(|member| member.relative_path().as_str() == "lib/ollama/llama-server")
+        .expect("generation worker");
+    assert_eq!(
+        worker.roles(),
+        &[RuntimePackageMemberRole::WorkerExecutable]
+    );
+    assert_eq!(
+        worker.load_policy(),
+        RuntimePackageLoadPolicy::BackendConditional
+    );
     assert_eq!(
         result.artifact_set().artifact_set_id(),
         *result.runtime_package().artifact_set_id()
@@ -221,7 +312,7 @@ fn layout_parse_rejects_malformed_unsupported_and_noncanonical_input() {
             .expect("fixture layout parses")
             .members()
             .len(),
-        5
+        6
     );
     assert_eq!(
         RuntimePackageLayout::parse(&fixture.layout[..fixture.layout.len() - 1], limits),
@@ -246,7 +337,7 @@ fn layout_parse_rejects_malformed_unsupported_and_noncanonical_input() {
 }
 
 #[test]
-fn unsupported_family_target_schema_and_transformation_fail_closed() {
+fn unsupported_family_target_and_schema_fail_closed() {
     let fixture = runtime_fixture();
     for (patch, expected) in [
         (
@@ -282,16 +373,6 @@ fn unsupported_family_target_schema_and_transformation_fail_closed() {
                 "provenance_digest": Digest::sha256(b"runtime-source").as_str()
             }}),
             RuntimeReconstructionError::UnsupportedLayout,
-        ),
-        (
-            json!({"transformation": {
-                "kind": "transformed",
-                "source_artifact_set_id": Digest::sha256(b"set").as_str(),
-                "tool_evidence_digest": Digest::sha256(b"tool").as_str(),
-                "parameters_digest": Digest::sha256(b"params").as_str(),
-                "log_digest": Digest::sha256(b"log").as_str()
-            }}),
-            RuntimeReconstructionError::InvalidLayout,
         ),
         (
             json!({"extra": true}),

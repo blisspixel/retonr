@@ -61,7 +61,7 @@ fn assert_imported_runtime(data: &std::path::Path, result: &crate::OllamaRuntime
         result.runtime_package_disposition,
         PackageManifestWriteDisposition::Inserted
     );
-    assert_eq!(result.evidence.artifact_set().members().len(), 5);
+    assert_eq!(result.evidence.artifact_set().members().len(), 6);
     assert_eq!(
         result.artifact_set_key.artifact_set_id(),
         &result.evidence.artifact_set().artifact_set_id()
@@ -108,6 +108,7 @@ fn assert_imported_runtime(data: &std::path::Path, result: &crate::OllamaRuntime
             "helper/retonr-isolation",
             "legal/license.txt",
             "lib/ollama/libggml-cpu.so",
+            "lib/ollama/llama-server",
             "provenance/source.txt",
         ]
     );

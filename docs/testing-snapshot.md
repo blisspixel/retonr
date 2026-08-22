@@ -25,6 +25,10 @@ gives you back the exact original bytes instead.
 
 The snapshot does not generate text. It never contacts the network.
 
+The Linux archive also contains the internal `retonr-isolation` helper so its exact
+bytes can participate in runtime-package review. The snapshot CLI does not invoke
+that helper, and the helper is not a standalone user command.
+
 The source repository also contains a development-only
 `rewrite-eval --ollama-bound-preflight` command. It is not part of this snapshot CLI
 workflow. When a developer explicitly supplies a versioned plan, that command may

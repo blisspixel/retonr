@@ -17,6 +17,9 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 - Built and smoke-tested on the three targets listed below. **This is not a
   support claim.** The Windows and Linux Arm64 rows and the macOS Intel slice in
   the release target matrix have no evidence here.
+- The Linux archive also contains `retonr-isolation`, an internal
+  managed-runtime helper. It is packaged for exact-byte review and is not a
+  standalone user command or evidence that model-backed rewrite is available.
 
 Verify the SHA-256 digest of any asset you download against the list below
 before running it.

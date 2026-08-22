@@ -48,6 +48,14 @@ jobs:
           --package retonr-cli --bin retonr
           --target ${{ matrix.target }}
 
+      - name: Build the Linux managed-isolation helper
+        if: runner.os == 'Linux'
+        run: >-
+          cargo build --locked --release
+          --package rewrite-runtime-isolation
+          --bin rewrite-runtime-isolation-helper
+          --target ${{ matrix.target }}
+
       - name: Verify the binary runs and reports its own version
         shell: bash
         run: |
@@ -73,6 +81,10 @@ jobs:
             cp "target/${{ matrix.target }}/release/retonr.exe" "staging/${name}/"
           else
             cp "target/${{ matrix.target }}/release/retonr" "staging/${name}/"
+          fi
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            cp "target/${{ matrix.target }}/release/rewrite-runtime-isolation-helper" \
+              "staging/${name}/retonr-isolation"
           fi
           cp LICENSE SECURITY.md "staging/${name}/"
           cp docs/testing-snapshot.md "staging/${name}/TESTING.md"

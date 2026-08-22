@@ -56,6 +56,12 @@ pub(super) fn write_runtime_fixture(root: &Path) -> RuntimeFixture {
             b"ggml-cpu\n".as_slice(),
         ),
         (
+            "lib/ollama/llama-server",
+            json!(["worker_executable"]),
+            "backend_conditional",
+            b"llama-server\n".as_slice(),
+        ),
+        (
             "provenance/source.txt",
             json!(["provenance_record"]),
             "must_not_be_code_loaded",

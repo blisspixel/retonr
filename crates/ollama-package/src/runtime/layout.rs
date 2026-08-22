@@ -1,7 +1,7 @@
 use rewrite_model::{
-    ArtifactSetRelativePath, PackageSource, PackageSourceKind, PackageTransformation, RuntimeAbi,
-    RuntimeArchitecture, RuntimeOperatingSystem, RuntimePackageLoadPolicy,
-    RuntimePackageMemberRole, RuntimeTarget,
+    ArtifactSetId, ArtifactSetRelativePath, PackageSource, PackageSourceKind,
+    PackageTransformation, RuntimeAbi, RuntimeArchitecture, RuntimeOperatingSystem,
+    RuntimePackageLoadPolicy, RuntimePackageMemberRole, RuntimeTarget,
 };
 use rewrite_types::Digest;
 use serde::Deserialize;
@@ -222,7 +222,15 @@ struct SourceWire {
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum TransformationWire {
-    Untransformed { evidence_digest: Digest },
+    Untransformed {
+        evidence_digest: Digest,
+    },
+    Transformed {
+        source_artifact_set_id: ArtifactSetId,
+        tool_evidence_digest: Digest,
+        parameters_digest: Digest,
+        log_digest: Digest,
+    },
 }
 
 #[derive(Deserialize)]
@@ -278,7 +286,10 @@ fn from_wire(
         .collect::<RuntimeReconstructionResult<Vec<_>>>()?;
     require_canonical_member_order(&members)?;
     require_observed_tree(&members, &wire.observed_tree)?;
-    require_required_roles(&members)?;
+    require_required_roles(
+        &members,
+        matches!(&wire.transformation, TransformationWire::Transformed { .. }),
+    )?;
     if wire.source.schema_version != rewrite_model::PACKAGE_SOURCE_SCHEMA_VERSION {
         return Err(RuntimeReconstructionError::UnsupportedLayout);
     }
@@ -289,14 +300,29 @@ fn from_wire(
         wire.source.provenance_digest,
     )
     .map_err(|_| RuntimeReconstructionError::InvalidLayout)?;
-    let TransformationWire::Untransformed { evidence_digest } = wire.transformation;
+    let transformation = match wire.transformation {
+        TransformationWire::Untransformed { evidence_digest } => {
+            PackageTransformation::Untransformed { evidence_digest }
+        }
+        TransformationWire::Transformed {
+            source_artifact_set_id,
+            tool_evidence_digest,
+            parameters_digest,
+            log_digest,
+        } => PackageTransformation::Transformed {
+            source_artifact_set_id,
+            tool_evidence_digest,
+            parameters_digest,
+            log_digest,
+        },
+    };
     Ok(RuntimePackageLayout {
         runtime_family: wire.runtime_family,
         reported_version: wire.reported_version,
         build_revision: wire.build_revision,
         target,
         source,
-        transformation: PackageTransformation::Untransformed { evidence_digest },
+        transformation,
         members,
     })
 }
@@ -334,6 +360,8 @@ fn validate_declared_roles(
     }
     let entrypoint = roles.contains(&RuntimePackageMemberRole::Entrypoint);
     let dependency = roles.contains(&RuntimePackageMemberRole::NativeDependency);
+    let worker = roles.contains(&RuntimePackageMemberRole::WorkerExecutable);
+    let utility = roles.contains(&RuntimePackageMemberRole::UtilityExecutable);
     let has_other = roles.iter().any(|role| {
         !matches!(
             role,
@@ -344,6 +372,10 @@ fn validate_declared_roles(
         roles.len() == 1 && policy == RuntimePackageLoadPolicy::RequiredAtReady
     } else if dependency {
         !has_other && policy != RuntimePackageLoadPolicy::MustNotBeCodeLoaded
+    } else if worker {
+        roles.len() == 1 && policy == RuntimePackageLoadPolicy::BackendConditional
+    } else if utility {
+        roles.len() == 1 && policy == RuntimePackageLoadPolicy::MustNotBeCodeLoaded
     } else {
         policy == RuntimePackageLoadPolicy::MustNotBeCodeLoaded
     };
@@ -365,6 +397,8 @@ const fn role_rank(role: RuntimePackageMemberRole) -> u8 {
         RuntimePackageMemberRole::LicenseText => 6,
         RuntimePackageMemberRole::ProvenanceRecord => 7,
         RuntimePackageMemberRole::TransformationRecord => 8,
+        RuntimePackageMemberRole::WorkerExecutable => 9,
+        RuntimePackageMemberRole::UtilityExecutable => 10,
     }
 }
 
@@ -402,11 +436,14 @@ fn require_observed_tree(
 
 fn require_required_roles(
     members: &[RuntimePackageLayoutMember],
+    transformed: bool,
 ) -> RuntimeReconstructionResult<()> {
     let mut entrypoints = 0usize;
     let mut helpers = 0usize;
+    let mut workers = 0usize;
     let mut license = false;
     let mut provenance = false;
+    let mut transformation_records = 0usize;
     for member in members {
         entrypoints += usize::from(member.roles.contains(&RuntimePackageMemberRole::Entrypoint));
         helpers += usize::from(
@@ -414,14 +451,30 @@ fn require_required_roles(
                 .roles
                 .contains(&RuntimePackageMemberRole::HelperExecutable),
         );
+        workers += usize::from(
+            member
+                .roles
+                .contains(&RuntimePackageMemberRole::WorkerExecutable),
+        );
         license |= member
             .roles
             .contains(&RuntimePackageMemberRole::LicenseText);
         provenance |= member
             .roles
             .contains(&RuntimePackageMemberRole::ProvenanceRecord);
+        transformation_records += usize::from(
+            member
+                .roles
+                .contains(&RuntimePackageMemberRole::TransformationRecord),
+        );
     }
-    if entrypoints == 1 && helpers == 1 && license && provenance {
+    if entrypoints == 1
+        && helpers == 1
+        && workers == 1
+        && license
+        && provenance
+        && transformation_records == usize::from(transformed)
+    {
         Ok(())
     } else {
         Err(RuntimeReconstructionError::InvalidLayout)

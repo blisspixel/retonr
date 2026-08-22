@@ -11,6 +11,9 @@ use super::{
     RuntimePackageManifestError, RuntimePackageMember, RuntimePackageMemberRole,
 };
 
+#[path = "tests/secondary_executables.rs"]
+mod secondary_executables;
+
 const TRANSFORMED_RUNTIME_GOLDEN_ID: &str =
     "fb518ac939b1ca4c853376ccf2be586c9dadecfb17b19e835779450328b266f6";
 
