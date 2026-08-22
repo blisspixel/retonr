@@ -142,9 +142,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          notes="$(< .github/snapshot-release-notes.md)"
+          notes_base_url="https://github.com/blisspixel/retonr/blob/main/"
+          release_blob_url="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/"
           {
             printf 'Built from commit `%s`.\n\n' "$GITHUB_SHA"
-            cat .github/snapshot-release-notes.md
+            printf '%s\n' "${notes//$notes_base_url/$release_blob_url}"
             printf '\n## Asset digests\n\n```\n'
             cat assets/SHA256SUMS
             printf '```\n'

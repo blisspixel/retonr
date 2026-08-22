@@ -1,16 +1,18 @@
 # Development snapshot
 
 This is a development snapshot for hands-on testing. It is **not** a milestone
-release under the version policy in [the roadmap](../docs/roadmap.md). Milestone
-0.2 is still in progress, and no milestone has been released.
+release under the version policy in
+[the roadmap](https://github.com/blisspixel/retonr/blob/main/docs/roadmap.md).
+Milestone 0.2 is still in progress, and no milestone has been released.
 
 ## What these artifacts are
 
 - Unsigned and unnotarized. There is no code signature, no notarization, no
   build attestation, and no software bill of materials.
 - Not the documented distribution path. The planned bootstrap installers
-  described in [Installation and distribution](../docs/distribution.md) are not
-  published, and nothing here should be treated as an installer.
+  described in
+  [Installation and distribution](https://github.com/blisspixel/retonr/blob/main/docs/distribution.md)
+  are not published, and nothing here should be treated as an installer.
 - Not a stable channel. No published pointer resolves to this tag.
 - Built and smoke-tested on the three targets listed below. **This is not a
   support claim.** The Windows and Linux Arm64 rows and the macOS Intel slice in
@@ -40,7 +42,8 @@ artifacts offline. These commands do not download, qualify, activate, or run a
 model.
 
 Model-backed rewrite, profiles, runtime execution, agents, and the desktop
-application are not implemented. See [Current state](../docs/current-state.md),
+application are not implemented. See
+[Current state](https://github.com/blisspixel/retonr/blob/main/docs/current-state.md),
 which is the only authority for implemented behavior.
 
 ## Known limits
@@ -60,7 +63,9 @@ any classifier or detector, or satisfy an external disclosure obligation.
 
 ## Reporting
 
-Read [the snapshot testing guide](../docs/testing-snapshot.md) before filing
-anything. For a suspected security issue, follow [SECURITY.md](../SECURITY.md)
-and use private vulnerability reporting rather than a public issue. No tagged
-version is supported for production use.
+Read
+[the snapshot testing guide](https://github.com/blisspixel/retonr/blob/main/docs/testing-snapshot.md)
+before filing anything. For a suspected security issue, follow
+[SECURITY.md](https://github.com/blisspixel/retonr/blob/main/SECURITY.md) and use
+private vulnerability reporting rather than a public issue. No tagged version is
+supported for production use.
