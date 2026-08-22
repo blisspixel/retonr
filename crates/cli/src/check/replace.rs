@@ -211,32 +211,53 @@ fn require_regular_file(path: &Path, command: CommandName) -> Result<(), RunFail
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(usage(command, "in-place requires a regular file"));
     }
-    if !has_single_link(path, &metadata).map_err(|_| RunFailure::operational(command))? {
-        return Err(usage(
-            command,
-            "in-place requires a regular file without hard-link aliases",
-        ));
+    require_single_link(path, &metadata, command)?;
+    Ok(())
+}
+
+fn hard_link_usage(command: CommandName) -> RunFailure {
+    usage(
+        command,
+        "in-place requires a regular file without hard-link aliases",
+    )
+}
+
+#[cfg(unix)]
+fn require_single_link(
+    _path: &Path,
+    metadata: &fs::Metadata,
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    use std::os::unix::fs::MetadataExt as _;
+
+    if metadata.nlink() != 1 {
+        return Err(hard_link_usage(command));
     }
     Ok(())
 }
 
-#[cfg(unix)]
-fn has_single_link(_path: &Path, metadata: &fs::Metadata) -> std::io::Result<bool> {
-    use std::os::unix::fs::MetadataExt as _;
-
-    Ok(metadata.nlink() == 1)
-}
-
 #[cfg(windows)]
-fn has_single_link(path: &Path, _metadata: &fs::Metadata) -> std::io::Result<bool> {
-    let file = fs::File::open(path)?;
-    let information = winx::winapi_util::file::information(&file)?;
-    Ok(information.number_of_links() == 1)
+fn require_single_link(
+    path: &Path,
+    _metadata: &fs::Metadata,
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    let file = fs::File::open(path).map_err(|_| RunFailure::operational(command))?;
+    let information = winx::winapi_util::file::information(&file)
+        .map_err(|_| RunFailure::operational(command))?;
+    if information.number_of_links() != 1 {
+        return Err(hard_link_usage(command));
+    }
+    Ok(())
 }
 
 #[cfg(not(any(unix, windows)))]
-const fn has_single_link(_path: &Path, _metadata: &fs::Metadata) -> std::io::Result<bool> {
-    Ok(false)
+fn require_single_link(
+    _path: &Path,
+    _metadata: &fs::Metadata,
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    Err(hard_link_usage(command))
 }
 
 fn sibling(source: &Path, suffix: &str, command: CommandName) -> Result<PathBuf, RunFailure> {
