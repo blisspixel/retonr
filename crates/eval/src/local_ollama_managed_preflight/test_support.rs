@@ -31,6 +31,10 @@ fn path(value: &str) -> ArtifactSetRelativePath {
 }
 
 pub(super) fn package() -> RuntimePackageManifest {
+    package_for_version("0.16.2")
+}
+
+pub(super) fn package_for_version(version: &str) -> RuntimePackageManifest {
     let members = vec![
         RuntimePackageMember::new(
             artifact("entrypoint"),
@@ -77,7 +81,7 @@ pub(super) fn package() -> RuntimePackageManifest {
     RuntimePackageManifest::new(
         &set,
         "ollama",
-        "0.16.2",
+        version,
         None,
         RuntimeTarget::new(
             RuntimeOperatingSystem::Linux,
@@ -88,7 +92,7 @@ pub(super) fn package() -> RuntimePackageManifest {
         PackageSource::new(
             PackageSourceKind::UpstreamRelease,
             "https://example.invalid/ollama",
-            "v0.16.2",
+            format!("v{version}"),
             Digest::sha256(b"source"),
         )
         .expect("source"),

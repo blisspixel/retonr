@@ -50,12 +50,16 @@ The current 0.2 build queue, in dependency order, is:
    remains machine-marked not admitted. Resolve its two blocked controls and run its
    two execution controls before changing the empty production cloud-disable
    allowlist.
-6. Extend the managed operation to retain the process through generation. Join its
-   runtime build, exact model-package lease, static binding, runtime-reported
-   residency, and implemented local-judge transport receipt while directly observing
-   all missing effective-state relationships. Then add a distinct candidate-generation
-   receipt. The serializable scorecard remains caller-declared and triage-only, and no
-   receipt proves semantics or qualification by itself.
+6. Retain the completed admission-gated one-shot managed generation bracket. The
+   empty reviewed-runtime allowlist currently blocks it before launch. Once admitted,
+   it keeps the process, runtime package lease, native observer, and direct connection
+   through generation,
+   joins the static binding and runtime-reported residency, and records effective
+   context before cleanup. Add its four missing direct effective-state relationships,
+   then join the exact model-package lease and implemented local-judge transport
+   receipt. Add a distinct candidate-generation receipt afterward. The serializable
+   scorecard remains caller-declared and triage-only, and no receipt proves semantics
+   or qualification by itself.
 7. Project the existing eight-case smoke and 39-case editorial protocol into frozen
    local generation plans backed by the 49 deterministic and 120 synthetic editorial
    development cases, 169 total. Run smoke, locked evaluation, repeatability, and

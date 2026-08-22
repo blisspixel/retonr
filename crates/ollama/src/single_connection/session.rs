@@ -87,16 +87,18 @@ impl OllamaRetainedStreamSessionConfig {
         }
         let mut references = BTreeSet::new();
         let mut artifacts = BTreeSet::new();
+        let mut inventories = BTreeSet::new();
         let mut targets = Vec::with_capacity(bindings.len());
         for binding in &bindings {
             if !references.insert(binding.reference())
                 || !artifacts.insert(binding.artifact_digest().as_str())
+                || !inventories.insert(binding.inventory_digest().as_str())
             {
                 return Err(policy_error("duplicate_session_binding"));
             }
             targets.push(OllamaPreflightTarget::new(
                 binding.reference(),
-                binding.artifact_digest().clone(),
+                binding.inventory_digest().clone(),
             )?);
         }
         Ok(Self {
@@ -370,4 +372,53 @@ impl<F> OllamaRetainedStreamSession<F> {
 
 fn session_closed() -> InferenceError {
     policy_error("retained_session_closed")
+}
+
+#[cfg(test)]
+mod binding_tests {
+    use rewrite_model::ArtifactId;
+    use rewrite_types::Digest;
+
+    use super::OllamaRetainedStreamSessionConfig;
+    use crate::{OllamaEndpoint, OllamaLimits, OllamaModelBinding};
+
+    #[test]
+    fn preflight_uses_inventory_identity_not_model_artifact_identity() {
+        let artifact = Digest::sha256(b"immutable model bytes");
+        let inventory = Digest::sha256(b"mutable Ollama manifest");
+        let binding = OllamaModelBinding::new_with_inventory(
+            "model:exact",
+            ArtifactId::from_digest(artifact.clone()),
+            artifact.clone(),
+            inventory.clone(),
+        )
+        .expect("distinct identities");
+        let alias_artifact = Digest::sha256(b"different immutable model bytes");
+        let alias = OllamaModelBinding::new_with_inventory(
+            "model:alias",
+            ArtifactId::from_digest(alias_artifact.clone()),
+            alias_artifact,
+            inventory.clone(),
+        )
+        .expect("structurally valid duplicate inventory");
+        let duplicate_inventory = OllamaRetainedStreamSessionConfig::new(
+            OllamaEndpoint::parse("http://127.0.0.1:11434").expect("endpoint"),
+            vec![binding.clone(), alias],
+            OllamaLimits::default(),
+            1024,
+        )
+        .expect_err("one inventory cannot have two session identities");
+        assert_eq!(duplicate_inventory.code, "duplicate_session_binding");
+        let config = OllamaRetainedStreamSessionConfig::new(
+            OllamaEndpoint::parse("http://127.0.0.1:11434").expect("endpoint"),
+            vec![binding],
+            OllamaLimits::default(),
+            1024,
+        )
+        .expect("session config");
+
+        assert_eq!(config.bindings[0].artifact_digest(), &artifact);
+        assert_eq!(config.bindings[0].inventory_digest(), &inventory);
+        assert_eq!(config.targets[0].inventory_digest, inventory);
+    }
 }

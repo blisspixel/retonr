@@ -1,4 +1,4 @@
-mod support;
+pub(crate) mod support;
 
 use rewrite_app::{OllamaModelImportResult, OllamaModelReference};
 use rewrite_model::ModelPackageManifest;
@@ -14,6 +14,7 @@ use super::{
     LOCAL_OLLAMA_MODEL_BINDING_RUNTIME_VERSION, LocalOllamaModelBindingError,
     LocalOllamaModelBindingEvidence, LocalOllamaObservedTemplateMatch,
     bind_imported_ollama_model_to_preflight as bind_with_execution_receipt,
+    validate_local_ollama_model_binding_evidence,
 };
 use crate::{
     LocalOllamaPreflightMode, LocalOllamaPreflightPlan, LocalOllamaPreflightReport,
@@ -69,6 +70,40 @@ fn binds_exact_import_inventory_and_unique_template_without_execution_claims() {
     assert!(!evidence.effective_identity_proven);
     assert!(!evidence.complete_model_details_reconstructed_proven);
     assert!(!evidence.qualified);
+    assert!(validate_local_ollama_model_binding_evidence(&evidence));
+
+    let mut tampered = evidence.clone();
+    tampered.inventory_byte_size = tampered.inventory_byte_size.saturating_add(1);
+    assert!(!validate_local_ollama_model_binding_evidence(&tampered));
+}
+
+pub(crate) fn exact_binding_fixture() -> (
+    LocalOllamaPreflightPlan,
+    LocalOllamaModelBindingEvidence,
+    rewrite_ollama::OllamaModelBinding,
+) {
+    let fixture = import_fixture(0.2, EXPLICIT_TEMPLATE, EMBEDDED_TEMPLATE);
+    let (plan, report) = verified_preflight(
+        &fixture,
+        fixture.manifest_digest.clone(),
+        fixture.inventory_size,
+        fixture.explicit_template_digest.clone(),
+    );
+    let evidence = bind_imported_ollama_model_to_preflight(
+        &fixture.result,
+        &fixture.reference,
+        &plan,
+        &report,
+    )
+    .expect("exact model binding fixture");
+    let model = rewrite_ollama::OllamaModelBinding::new_with_inventory(
+        fixture.reference.runtime_reference(),
+        evidence.model_artifact_id.clone(),
+        evidence.model_artifact_id.digest().clone(),
+        evidence.inventory_digest.clone(),
+    )
+    .expect("distinct model and inventory identities");
+    (plan, evidence, model)
 }
 
 #[tokio::test]

@@ -76,7 +76,7 @@ pub struct LocalOllamaModelBindingEvidence {
     /// Evidence contract version.
     pub schema_version: u32,
     /// Domain-separated digest over every evidence field except this digest.
-    pub binding_digest: Digest,
+    binding_digest: Digest,
     /// Exact verified preflight plan identity.
     pub preflight_plan_digest: Digest,
     /// Digest of the complete stable API observation without retaining its strings.
@@ -134,6 +134,14 @@ pub struct LocalOllamaModelBindingEvidence {
     pub complete_model_details_reconstructed_proven: bool,
     /// Always false. This relationship cannot qualify a model or runtime.
     pub qualified: bool,
+}
+
+impl LocalOllamaModelBindingEvidence {
+    /// Returns the domain-separated digest binding every evidence field.
+    #[must_use]
+    pub const fn binding_digest(&self) -> &Digest {
+        &self.binding_digest
+    }
 }
 
 /// Failure to establish the exact static package-to-inventory relationship.
@@ -320,6 +328,56 @@ fn binding_digest(material: &BindingMaterial<'_>) -> Result<Digest, LocalOllamaM
     Ok(Digest::sha256(&bytes))
 }
 
+pub(crate) fn validate_local_ollama_model_binding_evidence(
+    evidence: &LocalOllamaModelBindingEvidence,
+) -> bool {
+    if evidence.schema_version != LOCAL_OLLAMA_MODEL_BINDING_SCHEMA_VERSION
+        || !evidence.static_package_inventory_relationship_verified
+        || evidence.model_loaded_proven
+        || evidence.model_used_proven
+        || evidence.application_handler_proven
+        || evidence.effective_identity_proven
+        || evidence.complete_model_details_reconstructed_proven
+        || evidence.qualified
+    {
+        return false;
+    }
+    let material = BindingMaterial {
+        schema_version: evidence.schema_version,
+        preflight_plan_digest: &evidence.preflight_plan_digest,
+        preflight_observation_digest: &evidence.preflight_observation_digest,
+        model_package_manifest_id: &evidence.model_package_manifest_id,
+        artifact_set_id: &evidence.artifact_set_id,
+        artifact_set_installation_generation: evidence.artifact_set_installation_generation,
+        package_source_id: &evidence.package_source_id,
+        runtime_reference_digest: evidence.runtime_reference_digest.clone(),
+        inventory_digest: &evidence.inventory_digest,
+        inventory_byte_size: evidence.inventory_byte_size,
+        inventory_size_contract_digest: &evidence.inventory_size_contract_digest,
+        model_artifact_id: &evidence.model_artifact_id,
+        model_byte_size: evidence.model_byte_size,
+        provenance_artifact_id: &evidence.provenance_artifact_id,
+        provenance_byte_size: evidence.provenance_byte_size,
+        observed_template_match: evidence.observed_template_match,
+        model_details_digest: &evidence.model_details_digest,
+        transformation_evidence_digest: &evidence.transformation_evidence_digest,
+        artifact_set_disposition: evidence.artifact_set_disposition,
+        model_package_disposition: evidence.model_package_disposition,
+        rootfs_same_cardinality: evidence.rootfs_same_cardinality,
+        rootfs_matches_by_position: &evidence.rootfs_matches_by_position,
+        static_package_inventory_relationship_verified: evidence
+            .static_package_inventory_relationship_verified,
+        model_loaded_proven: evidence.model_loaded_proven,
+        model_used_proven: evidence.model_used_proven,
+        application_handler_proven: evidence.application_handler_proven,
+        effective_identity_proven: evidence.effective_identity_proven,
+        complete_model_details_reconstructed_proven: evidence
+            .complete_model_details_reconstructed_proven,
+        qualified: evidence.qualified,
+    };
+    binding_digest(&material).is_ok_and(|digest| digest == evidence.binding_digest)
+}
+
 fn digest_json(value: &impl Serialize) -> Result<Digest, LocalOllamaModelBindingError> {
     serde_json::to_vec(value)
         .map(|bytes| Digest::sha256(&bytes))
@@ -357,4 +415,4 @@ impl From<PackageManifestWriteDisposition> for LocalOllamaPackageManifestDisposi
 
 #[cfg(test)]
 #[path = "local_ollama_model_binding/tests.rs"]
-mod tests;
+pub(crate) mod tests;

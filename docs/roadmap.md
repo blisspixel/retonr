@@ -136,12 +136,17 @@ proceeds in this exact order:
     Resolve its source-lineage and external-component blockers, then run managed
     startup and cloud-disable observation before adding any package identity to the
     empty production cloud-disable allowlist.
-11. Extend the managed operation so its process remains live through generation and
-    direct effective-state observation. Join its runtime build, exact model-package
-    lease, static v0.32.15 binding, runtime-reported residency, and local-judge receipt
-    while collecting generation-bound provider, effective configuration, platform and
-    driver, compute placement, effective context, and retained-live-runtime evidence.
-    Then add a separate candidate-generation receipt. The scorecard remains
+11. Retain the completed admission-gated one-shot managed generation bracket. The
+    current empty reviewed-runtime allowlist blocks it before launch. Once admitted,
+    it keeps the exact process, runtime package lease, native observer, and direct
+    HTTP/1 connection live
+    through one completion and two equal runtime-reported residency observations,
+    records the directly reported effective context, and closes before return. Its
+    model artifact and Ollama inventory digests are distinct. Complete the remaining
+    generation-bound provider, effective configuration, platform and driver, and
+    compute-placement relationships before constructing effective state. Then join
+    the exact model-package lease and local-judge receipt and add a separate
+    candidate-generation receipt. The scorecard remains
     caller-declared and triage-only; receipts do not prove handler execution, model
     use, semantics, or qualification by themselves.
     Independent CPU-bound work (frozen-file hashing, deterministic evaluation

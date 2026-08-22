@@ -378,14 +378,26 @@ impl ConnectionObservationSequence {
     }
 
     pub(crate) fn validate_complete(&self) -> Result<(), LocalOllamaBoundPreflightError> {
-        if self.failed_attempt_observed
-            || self.completed_responses != self.expected_responses
+        self.validate_progress(self.expected_responses)
+    }
+
+    pub(crate) fn validate_progress(
+        &self,
+        completed_responses: usize,
+    ) -> Result<(), LocalOllamaBoundPreflightError> {
+        if completed_responses > self.expected_responses
+            || self.failed_attempt_observed
+            || self.completed_responses != completed_responses
             || self.initial.is_none()
-            || self.evidence.len() != self.expected_responses.saturating_add(1)
+            || self.evidence.len() != completed_responses.saturating_add(1)
         {
             return Err(LocalOllamaBoundPreflightError::InvalidObservationSequence);
         }
         Ok(())
+    }
+
+    pub(crate) fn evidence(&self) -> &[RetainedTcpConnectionEvidence] {
+        &self.evidence
     }
 
     pub(crate) fn into_evidence(self) -> Vec<RetainedTcpConnectionEvidence> {

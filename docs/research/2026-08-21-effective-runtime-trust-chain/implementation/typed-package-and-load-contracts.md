@@ -13,12 +13,17 @@ and native-load evidence but remains inert. A separate v0.32.15-only static bind
 now relates the installed model package to one exact verified idle inventory and
 details observation while keeping model load, use, handler, effective identity, and
 qualification false. A retained-session judge receipt is also implemented separately.
-The managed preflight can now derive typed runtime-build identity from its exact
-package, process, and native-load join, but cleanup completes before return and no
-effective runtime state is constructed. A separate opt-in v0.32.15 receipt proves only
-stable runtime-reported post-generation residency. One reviewed runtime package, a
-retained managed effective-state join, and a distinct candidate-generation receipt
-remain downstream.
+The managed preflight can derive typed runtime-build identity from its exact package,
+process, and native-load join. An admission-gated one-shot managed operation is
+implemented, but the empty reviewed-runtime allowlist blocks it before launch. Once
+admitted, it retains that process, runtime package lease, native observer, and direct
+connection through one structured completion and two equal post-generation residency
+observations. It keeps the model artifact digest separate from the Ollama inventory
+digest and records effective context before cleanup. Generation-bound provider,
+effective configuration, platform and driver, and compute-placement relationships
+remain absent, so no effective runtime state is constructed. One admitted runtime
+package, the remaining direct effective-state evidence, exact model-package and judge
+joins, and a distinct candidate-generation receipt remain downstream.
 
 ## Selected Design And Constraints
 

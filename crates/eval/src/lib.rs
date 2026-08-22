@@ -71,11 +71,14 @@ pub use local_ollama_bound_preflight::{
 };
 pub use local_ollama_managed_preflight::{
     LOCAL_OLLAMA_MANAGED_BUILD_BINDING_SCHEMA_VERSION,
+    LOCAL_OLLAMA_MANAGED_GENERATION_EVIDENCE_SCHEMA_VERSION,
     LOCAL_OLLAMA_MANAGED_PREFLIGHT_REPORT_SCHEMA_VERSION,
     LocalOllamaEffectiveStateMissingRelationship, LocalOllamaManagedBuildBinding,
-    LocalOllamaManagedBuildEvidenceClass, LocalOllamaManagedPreflightError,
-    LocalOllamaManagedPreflightLimits, LocalOllamaManagedPreflightOutcome,
-    LocalOllamaManagedPreflightReport, LocalOllamaManagedProcessEvidenceLevel,
+    LocalOllamaManagedBuildEvidenceClass, LocalOllamaManagedGenerationError,
+    LocalOllamaManagedGenerationEvidence, LocalOllamaManagedGenerationOutcome,
+    LocalOllamaManagedPreflightError, LocalOllamaManagedPreflightLimits,
+    LocalOllamaManagedPreflightOutcome, LocalOllamaManagedPreflightReport,
+    LocalOllamaManagedProcessEvidenceLevel, run_local_ollama_managed_generation,
     run_local_ollama_managed_preflight, run_local_ollama_managed_preflight_with_build_binding,
 };
 pub use local_ollama_model_binding::{

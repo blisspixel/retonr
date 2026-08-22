@@ -25,7 +25,7 @@ protocol, or stored-data contracts.
 | `rewrite-runtime-attestor` | Safe bounded facade over native attached-listener and exact established-connection evidence: Windows owner-PID tables plus retained process and executable handles; Linux bounded `NETLINK_SOCK_DIAG` dump and exact retained-cookie queries plus a proc-root-relative holder scan anchored by pidfds, strict bounded effective-UID status parsing, relative descriptor inspection, namespace evidence, and a retained executable object; a Linux managed observer that consumes exact launch facts and a namespace-local diagnostics capability; Linux object-bound native-load observation; deterministic unsupported results for exact native-load binding on Windows and for attached, managed, and native-load observation on macOS; redacted inert evidence only |
 | `rewrite-app` | Model-free candidate check; provisional grounded path; exact offline single-file and artifact-set lifecycle; schema-6 migration; whole-tree runtime and model package leases; retained runtime code-member handles; static package attestation; inert installed-Ollama model reconstruction, managed import, package persistence, and readback; inert reviewed Linux Ollama runtime-package reconstruction, managed import, schema-6 persistence, and readback, with extra tree files failing closed and no cloud-disable allowlist change; an older inert managed-process attestor with caller-supplied loaded-component evidence; a cancellable pair-extraction service; and an informational shadow join with no eligibility authority. It does not compose the managed Linux trust chain into generation |
 | `retonr` | Provisional `check` command with file or multiline standard-input documents, an explicit non-replacing output policy, opt-in `--in-place` (`-i`) with an implied sibling backup for a regular file, escaped interactive terminal rendering, a terminal raw-output double opt-in, escaped `--diff`, `--dry-run`, and redacted `--trace`; a pre-model `inspect` command that inventories one file or directory: encoding, BOM, newline kind, control-class counts, sibling sidecar presence, and skipped child reasons, without stripping bytes, following links, or validating a Content Credential; `--recursive` is a bounded walk that skips hidden names, `target`, and `node_modules`; a `rewrite` command that validates one source, optionally inspects `--data-dir` for an active generation binding and an exact `--artifact-id`, then attaches in-process fake-backend conformance when that recovered qualification names the retained fake backend, or fails closed otherwise; dedicated `version` and read-only `doctor` recovery commands that name migrate or removal-recovery follow-up without mutation; generated `completions` scripts and a section-1 `man` page from the live CLI definition; plus an explicit-root offline model-artifact CLI for single-file import, exact artifact-set folder import, read-only `list` of registered single-file installations, read-only `inspect` of one registered artifact's declared facts, inventory, set inventory, pending-operation inspection, confirmed repository migration, selected reconciliation, selected set reconciliation, inactive removal, exact removal recovery, inactive set removal, exact set-removal recovery, and optional read-only `device-evidence` (`fitr`) of `fitr.retonr.evidence.v1` without qualification or a repository |
-| `rewrite-eval` | A 49-case versioned positive and hard-negative suite with exact expectation results and transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, 120 cases across five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, a versioned hybrid scorecard library and CLI that bind and execute exact deterministic suite pairs before normalizing blinded order-swapped triage observations, a typed retained-session local-judge executor that runs both orders after hard gates and returns a separate limited transport receipt, a version-gated v0.32.15 static installed-package-to-inventory binding that consumes an opaque nonserializable exact-runner receipt, a versioned non-generative Ollama observe or verify preflight, a separate native attached-process preflight that remains response-unbound, a retained-connection preflight with repeated native attribution, and a Linux-only managed preflight library that binds retained runtime-package, isolation, process, connection, provider-declaration, read-only API, and native-load evidence and can additionally return an inert package-declared typed `RuntimeBuildIdentity`; the scorecard remains caller-declared and triage-only, runtime target and revision semantics in that build identity are not independently live-observed, the managed process is closed before the build binding returns, no effective state is constructed, the new execution and binding surfaces have no CLI, and every preflight remains unqualified |
+| `rewrite-eval` | A 49-case versioned positive and hard-negative suite with exact expectation results and transformation coverage, four baseline contracts with an offline no-rewrite CLI and recovered fake-conformance attach for generative kinds, 120 cases across five balanced synthetic editorial groups, a writing-sample library, a research-only watermark-refusal corpus, an independent claim-shadow calibration runner, a versioned hybrid scorecard library and CLI that bind and execute exact deterministic suite pairs before normalizing blinded order-swapped triage observations, a typed retained-session local-judge executor that runs both orders after hard gates and returns a separate limited transport receipt, a version-gated v0.32.15 static installed-package-to-inventory binding that consumes an opaque nonserializable exact-runner receipt, a versioned non-generative Ollama observe or verify preflight, a separate native attached-process preflight that remains response-unbound, a retained-connection preflight with repeated native attribution, a Linux-only managed preflight library that binds retained runtime-package, isolation, process, connection, provider-declaration, read-only API, and native-load evidence and can additionally return an inert package-declared typed `RuntimeBuildIdentity`, and an admission-gated one-shot managed generation bracket; the empty reviewed-runtime allowlist blocks that bracket before launch, the scorecard remains caller-declared and triage-only, model artifact and inventory identities remain distinct, runtime target and revision semantics in the build identity are not independently live-observed, cleanup completes before results return, no effective state is constructed, the new execution and binding surfaces have no CLI, and every report remains unqualified |
 | Fuzz targets | Protection round trips and plain-text no-edit byte identity |
 
 The literal semantic evaluator accepts only an identical case-folded alphanumeric
@@ -371,6 +371,22 @@ runtime state or model-use proof exists.
   framework, and driver evidence, compute backend and device placement, effective
   context capacity, and a retained live runtime. Effective runtime state, model load
   or use, application-handler execution, and qualification remain false.
+  A separate admission-gated one-shot API consumes the static v0.32.15 model binding.
+  It requires an exact reviewed cloud-disable disposition before launch, so the empty
+  production allowlist currently prevents generation. Once admitted, it keeps the
+  same managed process, runtime package lease, native observer, and direct HTTP/1
+  connection through one structured completion and the nine-response residency
+  profile. The model's immutable artifact digest and mutable Ollama inventory digest
+  are validated as separate identities. Successful redacted evidence records direct
+  effective-context observation, equal runtime-reported residency, every connection
+  attribution checkpoint, post-generation native load, and final package and
+  isolation revalidation. Cleanup still completes before return. This removes
+  effective context and retained-live-runtime from that operation's missing list.
+  Generation-bound provider snapshot, effective output configuration, platform and
+  driver, and compute backend and placement remain absent, so effective runtime state
+  is not constructed. The API does not retain the model-package lease, join the judge
+  receipt, prove model weight use or handler execution, or qualify anything. It has no
+  CLI surface.
 - The grounded path can safely accept only literal-mode token-preserving changes
   under the current evaluator. Open-domain paraphrases and broader modes abstain.
 - The typed claim contract and deterministic comparator are implemented. The engine
@@ -432,7 +448,8 @@ runtime state or model-use proof exists.
   proves only stable runtime-reported post-generation residency on that transport.
   Runtime memory size is not package inventory size. Handler execution, model use,
   resident-page identity, effective identity, and qualification remain false. This
-  profile is not joined to the local-judge executor or managed preflight.
+  profile is joined only by the one-shot managed generation API. It is not joined to
+  the local-judge executor.
 
 ## Next logical operations
 
@@ -451,12 +468,15 @@ is:
    component identity remain blocked, while managed startup and cloud-disable marker
    observation remain unrun. Resolve those controls and reconstruct the final layout
    before adding any exact runtime to the production cloud-disable allowlist.
-3. Extend the managed operation so its process remains retained through execution and
-   direct effective-state observation. Join its proven runtime build, the v0.32.15
-   static model binding, exact model-package lease, runtime-reported residency, and
-   local-judge receipt while collecting all six missing effective-state relationships.
-   This is the next priority because the current managed outcome completes cleanup
-   before return and neither static inventory nor API residency proves model use.
+3. Retain the completed admission-gated one-shot managed generation bracket. Admit
+   an exact runtime, then add its four still missing effective-state relationships:
+   generation-bound provider snapshot,
+   effective output configuration, platform and driver evidence, and compute backend
+   and device placement. The bracket already retains the runtime through generation,
+   joins the static v0.32.15 model binding and runtime-reported residency, and records
+   effective context capacity before deterministic cleanup. Next join the exact
+   model-package lease and local-judge receipt. Neither static inventory nor API
+   residency proves model weight use.
 4. Keep attached Windows and Linux evidence as observation-only. Do not use it as a
    fallback for a failed managed launch. Windows exact native-load binding and
    managed isolation remain unsupported; macOS remains unsupported.

@@ -92,6 +92,16 @@ only. Runtime memory size is not package inventory size, and the receipt does no
 prove handler execution, model use, resident-page identity, effective identity, or
 qualification. The legacy completion path is unchanged.
 
+An admission-gated development library operation composes that profile with the
+managed Linux process, runtime package lease, native observer, direct connection,
+static model binding, and post-generation revalidation. It keeps the immutable model
+artifact digest distinct from the mutable Ollama inventory digest and records the
+runtime-reported effective context length. The exact runtime must have a reviewed
+production cloud-disable disposition before launch. Because the allowlist is empty,
+this snapshot blocks the operation before generation. It has no CLI surface and does
+not prove model weight use, handler execution, complete effective identity, semantic
+correctness, or qualification.
+
 The same snapshot also administers exact local model artifacts offline. These
 commands copy, inspect, migrate, or remove local files. They do not download,
 qualify, activate, or run a model:

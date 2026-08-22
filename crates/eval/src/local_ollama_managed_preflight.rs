@@ -32,6 +32,7 @@ use crate::{
 };
 
 mod build_binding;
+mod generation;
 mod report;
 #[cfg(test)]
 mod test_support;
@@ -42,6 +43,11 @@ pub use build_binding::{
     LOCAL_OLLAMA_MANAGED_BUILD_BINDING_SCHEMA_VERSION,
     LocalOllamaEffectiveStateMissingRelationship, LocalOllamaManagedBuildBinding,
     LocalOllamaManagedBuildEvidenceClass, LocalOllamaManagedPreflightOutcome,
+};
+pub use generation::{
+    LOCAL_OLLAMA_MANAGED_GENERATION_EVIDENCE_SCHEMA_VERSION, LocalOllamaManagedGenerationError,
+    LocalOllamaManagedGenerationEvidence, LocalOllamaManagedGenerationOutcome,
+    run_local_ollama_managed_generation,
 };
 use report::{build_report, report_evidence_digests};
 use validation::{

@@ -43,6 +43,18 @@ Its transformation and license controls pass, but source lineage, external nativ
 identity, managed startup, and cloud-disable observation remain blocked or unrun, so
 the candidate is not admitted.
 
+An admission-gated development library operation is implemented to keep one managed
+Linux process, runtime package lease, native observer, and direct HTTP/1 connection
+alive through one structured generation and two equal post-generation Ollama
+residency reports. Before launch it requires the exact runtime package to have a
+reviewed production cloud-disable disposition. The current empty allowlist therefore
+blocks this path before generation. The operation keeps immutable model artifact
+identity separate from mutable Ollama inventory identity, records the
+runtime-reported effective context length, then closes the complete process tree
+before returning. It has no CLI surface or activation or qualification authority,
+and does not prove model weight use, handler execution, complete effective runtime
+identity, or semantic correctness.
+
 The authoritative crate inventory, CLI contract, evidence limits, and platform
 matrix are in [Current state](docs/current-state.md). Planned work is described in
 the [Roadmap](docs/roadmap.md) and [phase plans](docs/planning/README.md).
@@ -101,12 +113,12 @@ hard gates.
 
 The immediate 0.2 dependency order is:
 
-1. Freeze and review one complete Ollama runtime package, including helpers, native
-   dependencies, source, transformations, and license disposition.
-2. Retain the managed process through generation and direct effective-state
-   observation.
-3. Join the exact runtime, model package, residency, and local-judge evidence, then
-   add a separate candidate-generation receipt.
+1. Resolve the frozen Ollama runtime candidate's lineage, external component,
+   managed startup, and cloud-disable review controls.
+2. Add direct generation-bound provider, output-configuration, platform, driver,
+   compute-backend, and device-placement evidence to the retained managed operation.
+3. Join the exact model-package lease and local-judge evidence, then add a separate
+   candidate-generation receipt.
 4. Run preregistered smoke, locked evaluation, repeatability, and supported-platform
    qualification.
 

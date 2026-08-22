@@ -72,6 +72,7 @@ pub struct OllamaModelBinding {
     pub(crate) reference: String,
     pub(crate) artifact_id: ArtifactId,
     pub(crate) artifact_digest: Digest,
+    pub(crate) inventory_digest: Digest,
 }
 
 impl OllamaModelBinding {
@@ -85,6 +86,29 @@ impl OllamaModelBinding {
         artifact_id: ArtifactId,
         artifact_digest: Digest,
     ) -> Result<Self, InferenceError> {
+        Self::new_with_inventory(
+            reference,
+            artifact_id,
+            artifact_digest.clone(),
+            artifact_digest,
+        )
+    }
+
+    /// Creates a binding with distinct immutable artifact and mutable inventory digests.
+    ///
+    /// The artifact digest binds completion requests to exact managed model bytes.
+    /// The inventory digest is used only to verify the runtime-local Ollama address
+    /// before and around execution.
+    ///
+    /// # Errors
+    ///
+    /// Returns a policy error when the reference or artifact identity is invalid.
+    pub fn new_with_inventory(
+        reference: impl Into<String>,
+        artifact_id: ArtifactId,
+        artifact_digest: Digest,
+        inventory_digest: Digest,
+    ) -> Result<Self, InferenceError> {
         let reference = reference.into();
         if !valid_text(&reference, MAX_REFERENCE_BYTES) || artifact_id.digest() != &artifact_digest
         {
@@ -94,6 +118,7 @@ impl OllamaModelBinding {
             reference,
             artifact_id,
             artifact_digest,
+            inventory_digest,
         })
     }
 
@@ -113,6 +138,12 @@ impl OllamaModelBinding {
     #[must_use]
     pub const fn artifact_digest(&self) -> &Digest {
         &self.artifact_digest
+    }
+
+    /// Returns the exact Ollama inventory digest expected at the mutable address.
+    #[must_use]
+    pub const fn inventory_digest(&self) -> &Digest {
+        &self.inventory_digest
     }
 }
 

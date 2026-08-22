@@ -128,12 +128,15 @@ also requires one exact executable digest.
 - Decide whether an entitled macOS helper is justified before claiming parity.
 - Keep this attached report observation-only. The separate Linux managed-isolation
   and managed-attestation path must not promote or silently replace attached evidence.
-- Extend the managed operation so the process remains live after its implemented
-  package-declared runtime-build binding. Only its exact entrypoint is joined to live
-  process and native-load evidence; other package semantics are not independently
-  live-observed. Join exact model-package, runtime-reported residency, local-judge
-  receipt, direct effective-state, and candidate-generation evidence before local
-  generation becomes eligible. The model-package binding consumes an opaque,
+- Retain the admission-gated one-shot managed operation. The empty reviewed-runtime
+  allowlist blocks it before launch. Once admitted, it keeps the process, runtime
+  package lease, native observer, and direct connection live through one structured
+  completion and runtime-reported residency sequence. Only its exact entrypoint is
+  joined to live runtime-build evidence; other package semantics are not
+  independently live-observed. Add the four missing direct effective-state
+  relationships, then join the exact model-package lease, local-judge receipt, and
+  candidate-generation evidence before local generation becomes eligible. The
+  model-package binding consumes an opaque,
   nonserializable receipt from the exact preflight runner. Retained-session input has
   an absolute 4 MiB UTF-8 ceiling before wire serialization or completion traffic.
   The separate receipts do not upgrade attached evidence or prove managed isolation
