@@ -215,7 +215,9 @@ runtime state or model-use proof exists.
   report to standard error. `--in-place` (`-i`) retains a sibling
   `<name>.retonr-backup` that must not already exist, then replaces a regular
   source file after same-directory staging. Standard input, `--output`, and
-  symlinks are refused. Unchanged accepted bytes leave the source untouched.
+  symlinks are refused. A source with hard-link aliases is also refused so another
+  path cannot be mutated indirectly. Unchanged accepted bytes leave the source
+  untouched.
   A terminal defaults to text; a pipe defaults to JSON. `-f` selects either.
   `--data-dir` is also `-D` or `RETONR_DATA_DIR`.
   Exact bytes reach a terminal only after the
@@ -232,7 +234,7 @@ runtime state or model-use proof exists.
   implemented yet. A separate writing-sample library holds licensed pre-2018
   human excerpts and synthetic model-style impressions. A research-only watermark file
   refuses style-as-mark folklore and does not contain generated marks.
-- Only UTF-8 plain text up to 16 MiB is accepted.
+- `check` and `rewrite` accept only UTF-8 plain-text documents up to 16 MiB.
 - Durable artifact lifecycle state, bounded single-file staging recovery, pinned single-file
   offline import, read-only managed-byte inventory, selected single-artifact orphan
   reconciliation, crash-recoverable inactive removal, and runtime artifact leases

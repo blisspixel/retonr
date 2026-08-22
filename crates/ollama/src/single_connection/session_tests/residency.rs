@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use rewrite_inference::{InferenceErrorKind, OperationContext};
+use rewrite_inference::{InferenceErrorKind, OperationContext, StructuredCompletionResponse};
 use rewrite_model::ArtifactId;
 use rewrite_types::{CancellationToken, Digest};
 
@@ -8,11 +8,11 @@ use super::{OllamaObservedSessionError, OllamaResponseObservationPhase, assert_s
 use crate::{
     OLLAMA_RESIDENT_COMPLETION_KEEP_ALIVE, OLLAMA_RESIDENT_COMPLETION_RUNTIME_VERSION,
     OLLAMA_RESIDENT_COMPLETION_SOURCE_REVISION, OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES,
-    OllamaLimits,
+    OllamaLimits, OllamaResidentSessionExecutionReceipt,
 };
 
 use super::fixture::{
-    DIGEST, MODEL, SessionMode, SessionServer, config, context,
+    ARTIFACT_DIGEST, INVENTORY_DIGEST, MODEL, SessionMode, SessionServer, config, context,
     judge_request_with_relaxed_self_limit, request,
 };
 
@@ -59,8 +59,7 @@ async fn resident_completions_bind_exact_sequence_residency_and_ordinals() {
     assert_eq!(second_receipt.execution().last_response_ordinal(), 25);
     assert_eq!(second_receipt.first_residency_ordinal(), 21);
     assert_eq!(second_receipt.last_residency_ordinal(), 25);
-    assert_eq!(first_receipt.inventory_digest(), first.artifact_digest());
-    assert_eq!(first_receipt.inventory_digest().as_str(), DIGEST);
+    assert_distinct_model_identities(&first, &first_receipt);
     assert_eq!(
         first_receipt.runtime_reference_digest(),
         &Digest::sha256(MODEL.as_bytes())
@@ -121,6 +120,15 @@ async fn resident_completions_bind_exact_sequence_residency_and_ordinals() {
         OLLAMA_RESIDENT_COMPLETION_SOURCE_REVISION,
         "b7871fc0d1d82fe109536efa3e0e8e411c766c75"
     );
+}
+
+fn assert_distinct_model_identities(
+    response: &StructuredCompletionResponse,
+    receipt: &OllamaResidentSessionExecutionReceipt,
+) {
+    assert_ne!(receipt.inventory_digest(), response.artifact_digest());
+    assert_eq!(receipt.inventory_digest().as_str(), INVENTORY_DIGEST);
+    assert_eq!(response.artifact_digest().as_str(), ARTIFACT_DIGEST);
 }
 
 #[tokio::test]

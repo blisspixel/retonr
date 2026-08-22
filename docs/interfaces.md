@@ -71,11 +71,12 @@ preserved, but clipboard content has no source-byte or rich-format claim.
 
 The default writes rewritten content to standard output or a new requested path. It
 does not overwrite an input file. `--in-place` (`-i`) requires a regular
-unambiguous file, retains a sibling `<name>.retonr-backup` that must not already
-exist, uses same-directory staging, flush, and verification, then replaces the
-source. Standard input, `--output`, and symlinks are refused. Unchanged accepted
-bytes leave the source untouched and create no backup. A terminal defaults to
-text reports; a pipe defaults to JSON. `--format` (`-f`) selects either.
+unambiguous file with no hard-link aliases, retains a sibling
+`<name>.retonr-backup` that must not already exist, uses same-directory staging,
+flush, and verification, then replaces the source. Standard input, `--output`,
+symlinks, and multiply-linked files are refused. Unchanged accepted bytes leave the
+source untouched and create no backup. A terminal defaults to text reports; a pipe
+defaults to JSON. `--format` (`-f`) selects either.
 `--data-dir` (`-D` or `RETONR_DATA_DIR`) is the explicit repository root.
 
 Text output and diagnostics remain separate. Structured JSON is versioned and stable

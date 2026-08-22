@@ -22,12 +22,19 @@ use wiremock::{
 use crate::{OllamaBackend, OllamaEndpoint, OllamaLimits, OllamaModelBinding};
 
 const MODEL: &str = "fixture:latest";
-const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const INVENTORY_DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const ARTIFACT_DIGEST: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 fn binding() -> OllamaModelBinding {
-    let digest = Digest::from_sha256_hex(DIGEST).expect("fixture digest");
-    OllamaModelBinding::new(MODEL, ArtifactId::from_digest(digest.clone()), digest)
-        .expect("fixture binding")
+    let artifact = Digest::from_sha256_hex(ARTIFACT_DIGEST).expect("fixture artifact digest");
+    let inventory = Digest::from_sha256_hex(INVENTORY_DIGEST).expect("fixture inventory digest");
+    OllamaModelBinding::new_with_inventory(
+        MODEL,
+        ArtifactId::from_digest(artifact.clone()),
+        artifact,
+        inventory,
+    )
+    .expect("fixture binding")
 }
 
 fn backend(server: &MockServer) -> OllamaBackend {
@@ -49,7 +56,7 @@ fn tag_body() -> serde_json::Value {
             "name": MODEL,
             "model": MODEL,
             "size": 1024,
-            "digest": format!("sha256:{DIGEST}")
+            "digest": format!("sha256:{INVENTORY_DIGEST}")
         }]
     })
 }
@@ -218,7 +225,7 @@ async fn discards_structured_output_when_artifact_identity_drifts() {
         .and(path("/api/tags"))
         .respond_with(move |_: &wiremock::Request| {
             let digest = if sequence.fetch_add(1, Ordering::SeqCst) == 0 {
-                DIGEST
+                INVENTORY_DIGEST
             } else {
                 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
             };

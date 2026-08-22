@@ -134,7 +134,7 @@ impl OllamaModelBinding {
         &self.artifact_id
     }
 
-    /// Returns the exact expected runtime digest.
+    /// Returns the immutable managed model artifact digest.
     #[must_use]
     pub const fn artifact_digest(&self) -> &Digest {
         &self.artifact_digest

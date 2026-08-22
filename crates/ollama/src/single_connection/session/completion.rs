@@ -237,7 +237,7 @@ fn require_exact_residency<E>(
         ));
     };
     if resident.reference != binding.reference()
-        || resident.inventory_digest != *binding.artifact_digest()
+        || resident.inventory_digest != *binding.inventory_digest()
         || resident.accelerator_bytes > resident.byte_size
         || resident.context_tokens != request.context_token_limit
     {

@@ -16,7 +16,10 @@ use tokio::{
 use crate::{OllamaEndpoint, OllamaLimits, OllamaModelBinding, OllamaRetainedStreamSessionConfig};
 
 pub(super) const MODEL: &str = "fixture:latest";
-pub(super) const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+pub(super) const INVENTORY_DIGEST: &str =
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+pub(super) const ARTIFACT_DIGEST: &str =
+    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 #[derive(Clone, Copy)]
 pub(super) enum SessionMode {
@@ -87,9 +90,15 @@ impl SessionServer {
 }
 
 pub(super) fn binding() -> OllamaModelBinding {
-    let digest = Digest::from_sha256_hex(DIGEST).expect("fixture digest");
-    OllamaModelBinding::new(MODEL, ArtifactId::from_digest(digest.clone()), digest)
-        .expect("fixture binding")
+    let artifact = Digest::from_sha256_hex(ARTIFACT_DIGEST).expect("fixture artifact digest");
+    let inventory = Digest::from_sha256_hex(INVENTORY_DIGEST).expect("fixture inventory digest");
+    OllamaModelBinding::new_with_inventory(
+        MODEL,
+        ArtifactId::from_digest(artifact.clone()),
+        artifact,
+        inventory,
+    )
+    .expect("fixture binding")
 }
 
 pub(super) fn config(
@@ -274,10 +283,10 @@ fn response_body(path: &str, mode: SessionMode, ordinal: usize) -> String {
         }
         "/api/version" => r#"{"version":"0.32.14"}"#.to_owned(),
         "/api/tags" if matches!(mode, SessionMode::InventoryDrift) && ordinal > 11 => format!(
-            r#"{{"models":[{{"name":"fixture:latest","model":"fixture:latest","size":2048,"digest":"{DIGEST}"}}]}}"#
+            r#"{{"models":[{{"name":"fixture:latest","model":"fixture:latest","size":2048,"digest":"{INVENTORY_DIGEST}"}}]}}"#
         ),
         "/api/tags" => format!(
-            r#"{{"models":[{{"name":"fixture:latest","model":"fixture:latest","size":1024,"digest":"{DIGEST}"}}]}}"#
+            r#"{{"models":[{{"name":"fixture:latest","model":"fixture:latest","size":1024,"digest":"{INVENTORY_DIGEST}"}}]}}"#
         ),
         "/api/ps" => residency_response(mode, ordinal),
         "/api/show" if matches!(mode, SessionMode::DetailsDrift) && ordinal > 13 => show("Q8_0"),
@@ -319,9 +328,9 @@ fn residency_response(mode: SessionMode, ordinal: usize) -> String {
         return format!(r#"{{"models":[],"padding":"{}"}}"#, "x".repeat(4096));
     }
     let digest = if matches!(mode, SessionMode::ResidentWrongDigest) {
-        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ARTIFACT_DIGEST
     } else {
-        DIGEST
+        INVENTORY_DIGEST
     };
     let size = if matches!(mode, SessionMode::ResidentWrongSize) && ordinal == 16 {
         2048

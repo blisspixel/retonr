@@ -5,6 +5,17 @@ release under the version policy in
 [the roadmap](https://github.com/blisspixel/retonr/blob/main/docs/roadmap.md).
 Milestone 0.2 is still in progress, and no milestone has been released.
 
+## Changes in this snapshot
+
+- Corrects Ollama model discovery, generation, and residency checks so immutable
+  managed artifact identity remains distinct from mutable runtime inventory identity.
+- Rejects ambiguous Ollama inventory aliases, duplicate runtime identities, and
+  oversized configured binding sets at deterministic trust boundaries.
+- Refuses in-place writes to multiply-linked files so a hard-link alias cannot be
+  modified indirectly.
+- Updates the public documentation to match the implemented CLI and internal
+  managed-runtime boundaries.
+
 ## What these artifacts are
 
 - Unsigned and unnotarized. There is no code signature, no notarization, no
@@ -44,14 +55,14 @@ performs pre-model source inventory. `retonr model` administers exact local mode
 artifacts offline. These commands do not download, qualify, activate, or run a
 model.
 
-Model-backed rewrite, profiles, runtime execution, agents, and the desktop
-application are not implemented. See
+Model-backed rewrite, managed runtime execution, profiles, agents, and the desktop
+application are not exposed by this binary. See
 [Current state](https://github.com/blisspixel/retonr/blob/main/docs/current-state.md),
 which is the only authority for implemented behavior.
 
 ## Known limits
 
-- Only UTF-8 plain text up to 16 MiB is accepted.
+- `check` and `rewrite` accept only UTF-8 plain-text documents up to 16 MiB.
 - The candidate must be a complete replacement document, not a patch.
 - The current evaluator accepts only literal, token-preserving changes.
   Open-domain paraphrases abstain by design.

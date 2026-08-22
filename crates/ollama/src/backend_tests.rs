@@ -22,13 +22,22 @@ use wiremock::{
 
 use crate::{OllamaBackend, OllamaEndpoint, OllamaLimits, OllamaModelBinding};
 
+mod binding_validation;
+
 const MODEL: &str = "fixture:latest";
-const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const INVENTORY_DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const ARTIFACT_DIGEST: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 fn binding() -> OllamaModelBinding {
-    let digest = Digest::from_sha256_hex(DIGEST).expect("fixture digest");
-    OllamaModelBinding::new(MODEL, ArtifactId::from_digest(digest.clone()), digest)
-        .expect("fixture binding")
+    let artifact = Digest::from_sha256_hex(ARTIFACT_DIGEST).expect("fixture artifact digest");
+    let inventory = Digest::from_sha256_hex(INVENTORY_DIGEST).expect("fixture inventory digest");
+    OllamaModelBinding::new_with_inventory(
+        MODEL,
+        ArtifactId::from_digest(artifact.clone()),
+        artifact,
+        inventory,
+    )
+    .expect("fixture binding")
 }
 
 fn context(token: &CancellationToken) -> OperationContext<'_> {
@@ -50,12 +59,20 @@ fn backend_with_limits(server: &MockServer, limits: OllamaLimits) -> OllamaBacke
 
 fn tag_body(digest: &str) -> serde_json::Value {
     json!({
-        "models": [{
-            "name": MODEL,
-            "model": MODEL,
-            "size": 1024,
-            "digest": format!("sha256:{digest}")
-        }]
+        "models": [
+            {
+                "name": MODEL,
+                "model": MODEL,
+                "size": 1024,
+                "digest": format!("sha256:{digest}")
+            },
+            {
+                "name": "unbound:latest",
+                "model": "unbound:latest",
+                "size": 4096,
+                "digest": format!("sha256:{}", "c".repeat(64))
+            }
+        ]
     })
 }
 
@@ -82,7 +99,7 @@ async fn mount_common(server: &MockServer, version_count: u64, tag_count: u64) {
         .await;
     Mock::given(method("GET"))
         .and(path("/api/tags"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(tag_body(DIGEST)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(tag_body(INVENTORY_DIGEST)))
         .expect(tag_count)
         .mount(server)
         .await;
@@ -130,7 +147,16 @@ async fn discovers_only_exact_bound_generation_models() {
     assert_eq!(discovery.backend_id.as_str(), "ollama_native");
     assert_eq!(discovery.runtime.version, "0.13.0");
     assert_eq!(discovery.inventory.len(), 1);
-    assert_eq!(discovery.inventory[0].artifact_digest.as_str(), DIGEST);
+    assert_eq!(
+        discovery.inventory[0].artifact_digest.as_str(),
+        ARTIFACT_DIGEST
+    );
+    assert_eq!(
+        discovery.inventory[0].artifact_id,
+        binding().artifact_id().clone()
+    );
+    assert_eq!(discovery.inventory[0].reference, MODEL);
+    assert_eq!(discovery.inventory[0].byte_size, Some(1024));
     assert_eq!(
         discovery.capabilities.roles,
         vec![rewrite_model::ArtifactRole::Generation]
@@ -372,7 +398,7 @@ async fn discards_generation_when_digest_changes_after_response() {
         .and(path("/api/tags"))
         .respond_with(move |_: &wiremock::Request| {
             let digest = if sequence.fetch_add(1, Ordering::SeqCst) == 0 {
-                DIGEST
+                INVENTORY_DIGEST
             } else {
                 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
             };

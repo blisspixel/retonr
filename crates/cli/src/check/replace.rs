@@ -211,7 +211,32 @@ fn require_regular_file(path: &Path, command: CommandName) -> Result<(), RunFail
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(usage(command, "in-place requires a regular file"));
     }
+    if !has_single_link(path, &metadata).map_err(|_| RunFailure::operational(command))? {
+        return Err(usage(
+            command,
+            "in-place requires a regular file without hard-link aliases",
+        ));
+    }
     Ok(())
+}
+
+#[cfg(unix)]
+fn has_single_link(_path: &Path, metadata: &fs::Metadata) -> std::io::Result<bool> {
+    use std::os::unix::fs::MetadataExt as _;
+
+    Ok(metadata.nlink() == 1)
+}
+
+#[cfg(windows)]
+fn has_single_link(path: &Path, _metadata: &fs::Metadata) -> std::io::Result<bool> {
+    let file = fs::File::open(path)?;
+    let information = winx::winapi_util::file::information(&file)?;
+    Ok(information.number_of_links() == 1)
+}
+
+#[cfg(not(any(unix, windows)))]
+const fn has_single_link(_path: &Path, _metadata: &fs::Metadata) -> std::io::Result<bool> {
+    Ok(false)
 }
 
 fn sibling(source: &Path, suffix: &str, command: CommandName) -> Result<PathBuf, RunFailure> {
@@ -356,6 +381,25 @@ mod tests {
         assert_eq!(fs::read(&source).expect("read source"), b"original\n");
         assert_eq!(fs::read(&staging).expect("read staging"), b"keep\n");
         assert!(!directory.path().join("draft.txt.retonr-backup").exists());
+    }
+
+    #[test]
+    fn hard_link_alias_is_refused_without_mutation() {
+        let directory = tempdir().expect("temporary directory");
+        let source = directory.path().join("draft.txt");
+        let alias = directory.path().join("alias.txt");
+        fs::write(&source, b"original\n").expect("write source");
+        fs::hard_link(&source, &alias).expect("create hard-link alias");
+
+        let failure = commit(&source, b"original\n", b"accepted\n", CommandName::Check)
+            .expect_err("hard-linked source is ambiguous");
+
+        assert_eq!(failure.exit_code, ExitCode::from(EXIT_USAGE));
+        assert!(failure.message.contains("hard-link aliases"));
+        assert_eq!(fs::read(&source).expect("read source"), b"original\n");
+        assert_eq!(fs::read(&alias).expect("read alias"), b"original\n");
+        assert!(!directory.path().join("draft.txt.retonr-backup").exists());
+        assert!(!directory.path().join("draft.txt.retonr-staging").exists());
     }
 
     #[test]

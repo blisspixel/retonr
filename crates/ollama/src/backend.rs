@@ -3,7 +3,7 @@ use std::{collections::BTreeSet, sync::Arc};
 use reqwest::Client;
 use rewrite_inference::{
     BackendDiscovery, BackendId, GenerationRequest, GenerationResponse, InferenceBackend,
-    InferenceCapabilities, InferenceError, OperationContext, PortFuture,
+    InferenceCapabilities, InferenceError, InventoryEntry, OperationContext, PortFuture,
     StructuredCompletionRequest, StructuredCompletionResponse, UsageObservation,
     candidate_output_contract,
 };
@@ -19,9 +19,9 @@ use crate::{
     },
     response::{
         await_context, check_context, compatibility_error, confirm_binding_in_tags,
-        decode_response, malformed_error, map_transport_error, parse_candidates, parse_inventory,
-        parse_running_models, parse_show_details, permanent_error, policy_error, valid_text,
-        validate_generate_response,
+        decode_response, malformed_error, map_transport_error, parse_candidates,
+        parse_ollama_inventory, parse_running_models, parse_show_details, permanent_error,
+        policy_error, valid_text, validate_generate_response,
     },
     wire::{
         CandidateEnvelope, GenerateOptions, GenerateRequest as WireGenerateRequest,
@@ -54,11 +54,16 @@ impl OllamaBackend {
         limits: OllamaLimits,
     ) -> Result<Self, InferenceError> {
         let limits = limits.validate()?;
+        if bindings.len() > MAX_PREFLIGHT_TARGETS {
+            return Err(policy_error("invalid_model_bindings"));
+        }
         let mut references = BTreeSet::new();
         let mut artifacts = BTreeSet::new();
+        let mut inventories = BTreeSet::new();
         for binding in &bindings {
             if !references.insert(binding.reference.as_str())
                 || !artifacts.insert(binding.artifact_digest.as_str())
+                || !inventories.insert(binding.inventory_digest.as_str())
             {
                 return Err(policy_error("duplicate_model_binding"));
             }
@@ -149,7 +154,7 @@ impl OllamaBackend {
         check_context(context)?;
         let runtime = self.runtime_identity(context).await?;
         let tags = self.tags(context).await?;
-        let inventory = parse_inventory(&tags)?;
+        let observed_inventory = parse_ollama_inventory(&tags)?;
         for binding in &self.bindings {
             confirm_binding_in_tags(binding, &tags)?;
             let details = self.show_details(binding.reference(), context).await?;
@@ -161,6 +166,23 @@ impl OllamaBackend {
                 return Err(compatibility_error("completion_not_supported"));
             }
         }
+        let mut inventory = self
+            .bindings
+            .iter()
+            .map(|binding| {
+                let observed = observed_inventory
+                    .iter()
+                    .find(|entry| entry.reference == binding.reference)
+                    .ok_or_else(|| compatibility_error("bound_model_missing"))?;
+                Ok(InventoryEntry {
+                    reference: binding.reference.clone(),
+                    artifact_id: binding.artifact_id.clone(),
+                    artifact_digest: binding.artifact_digest.clone(),
+                    byte_size: Some(observed.byte_size),
+                })
+            })
+            .collect::<Result<Vec<_>, InferenceError>>()?;
+        inventory.sort_unstable_by(|left, right| left.reference.cmp(&right.reference));
         Ok(BackendDiscovery {
             backend_id: BackendId::new(BACKEND_ID)
                 .map_err(|_error| permanent_error("invalid_backend_id"))?,
@@ -371,7 +393,7 @@ impl OllamaBackend {
         context: OperationContext<'_>,
     ) -> Result<(), InferenceError> {
         let tags = self.tags(context).await?;
-        parse_inventory(&tags)?;
+        parse_ollama_inventory(&tags)?;
         confirm_binding_in_tags(binding, &tags)
     }
 

@@ -212,6 +212,30 @@ fn check_in_place_refuses_an_existing_backup() {
 }
 
 #[test]
+fn check_in_place_refuses_a_hard_linked_source_without_mutation() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("draft.txt");
+    let alias = directory.path().join("alias.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, "Hello world\n").expect("write source");
+    fs::hard_link(&source, &alias).expect("create hard-link alias");
+    fs::write(&candidate, "Hello, world!\n").expect("write candidate");
+
+    binary()
+        .args(["check", "--in-place"])
+        .arg(&source)
+        .arg(&candidate)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
+
+    assert_eq!(fs::read(&source).expect("source remains"), b"Hello world\n");
+    assert_eq!(fs::read(&alias).expect("alias remains"), b"Hello world\n");
+    assert!(!directory.path().join("draft.txt.retonr-backup").exists());
+    assert!(!directory.path().join("draft.txt.retonr-staging").exists());
+}
+
+#[test]
 fn rewrite_in_place_fails_closed_without_mutation() {
     let directory = tempdir().expect("temporary directory");
     let source = directory.path().join("draft.txt");

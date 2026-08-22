@@ -139,8 +139,8 @@ proceeds in this exact order:
 11. Retain the completed admission-gated one-shot managed generation bracket. The
     current empty reviewed-runtime allowlist blocks it before launch. Once admitted,
     it keeps the exact process, runtime package lease, native observer, and direct
-    HTTP/1 connection live
-    through one completion and two equal runtime-reported residency observations,
+    HTTP/1 connection live through one completion and two equal runtime-reported
+    residency observations,
     records the directly reported effective context, and closes before return. Its
     model artifact and Ollama inventory digests are distinct. Complete the remaining
     generation-bound provider, effective configuration, platform and driver, and

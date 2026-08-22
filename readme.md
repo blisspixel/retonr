@@ -26,7 +26,8 @@ decide legal and disclosure obligations.
 ## Current status
 
 Retonr is an early implementation, not a finished writing application. Milestone
-0.1 technical evidence is complete and untagged. Milestone 0.2 is active.
+0.1 technical evidence is complete but has not been published as a milestone
+release. Milestone 0.2 is active.
 
 Today the CLI can validate a caller-supplied candidate, run a model-free rewrite
 transaction, inspect a plain-text source, administer exact local artifacts offline,
@@ -34,26 +35,13 @@ and run the checked-in evaluation suites. It does not download, qualify, activat
 or start a model. Qualified local generation, profiles, Markdown, DOCX, agents, and
 the desktop application are not implemented.
 
-Offline libraries can reconstruct an admitted Ollama model package and a reviewed
-Linux Ollama runtime layout into inert schema-6 evidence. That evidence grants no
-execution or qualification authority. The production cloud-disable allowlist is
-empty. An exact Ollama v0.32.15 Linux CPU package candidate now has a machine-checked
+Development libraries can reconstruct selected Ollama model and runtime layouts as
+inert evidence and contain an admission-gated managed generation operation. Neither
+capability is exposed by the CLI or grants model, runtime, execution, or qualification
+authority. The reviewed Ollama v0.32.15 Linux CPU candidate remains unadmitted. Its
+exact evidence, blockers, and operation limits are recorded in
+[Current state](docs/current-state.md) and the candidate's
 [review disposition](docs/reviews/runtime-packages/ollama-v0.32.15-linux-x86_64-gnu/README.md).
-Its transformation and license controls pass, but source lineage, external native
-identity, managed startup, and cloud-disable observation remain blocked or unrun, so
-the candidate is not admitted.
-
-An admission-gated development library operation is implemented to keep one managed
-Linux process, runtime package lease, native observer, and direct HTTP/1 connection
-alive through one structured generation and two equal post-generation Ollama
-residency reports. Before launch it requires the exact runtime package to have a
-reviewed production cloud-disable disposition. The current empty allowlist therefore
-blocks this path before generation. The operation keeps immutable model artifact
-identity separate from mutable Ollama inventory identity, records the
-runtime-reported effective context length, then closes the complete process tree
-before returning. It has no CLI surface or activation or qualification authority,
-and does not prove model weight use, handler execution, complete effective runtime
-identity, or semantic correctness.
 
 The authoritative crate inventory, CLI contract, evidence limits, and platform
 matrix are in [Current state](docs/current-state.md). Planned work is described in

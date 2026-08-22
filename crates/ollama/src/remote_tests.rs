@@ -15,12 +15,19 @@ use wiremock::{
 use crate::{OllamaBackend, OllamaEndpoint, OllamaLimits, OllamaModelBinding};
 
 const MODEL: &str = "fixture:latest";
-const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const INVENTORY_DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const ARTIFACT_DIGEST: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 fn binding() -> OllamaModelBinding {
-    let digest = Digest::from_sha256_hex(DIGEST).expect("fixture digest");
-    OllamaModelBinding::new(MODEL, ArtifactId::from_digest(digest.clone()), digest)
-        .expect("fixture binding")
+    let artifact = Digest::from_sha256_hex(ARTIFACT_DIGEST).expect("fixture artifact digest");
+    let inventory = Digest::from_sha256_hex(INVENTORY_DIGEST).expect("fixture inventory digest");
+    OllamaModelBinding::new_with_inventory(
+        MODEL,
+        ArtifactId::from_digest(artifact.clone()),
+        artifact,
+        inventory,
+    )
+    .expect("fixture binding")
 }
 
 fn backend(server: &MockServer) -> OllamaBackend {
@@ -41,7 +48,7 @@ fn local_tag() -> serde_json::Value {
         "name": MODEL,
         "model": MODEL,
         "size": 1024,
-        "digest": format!("sha256:{DIGEST}")
+        "digest": format!("sha256:{INVENTORY_DIGEST}")
     }]})
 }
 
@@ -108,6 +115,22 @@ async fn rejects_remote_inventory_and_model_metadata() {
         .await
         .expect_err("remote model metadata is rejected");
     assert_eq!(error.code, "invalid_model_metadata");
+}
+
+#[tokio::test]
+async fn rejects_mismatched_inventory_reference_fields() {
+    let server = MockServer::start().await;
+    mount_get(&server, "/api/version", json!({"version": "0.13.0"}), 1).await;
+    let mut mismatched = local_tag();
+    mismatched["models"][0]["model"] = json!("different:latest");
+    mount_get(&server, "/api/tags", mismatched, 1).await;
+
+    let error = backend(&server)
+        .discover(context(&CancellationToken::new()))
+        .await
+        .expect_err("inventory aliases cannot disagree");
+
+    assert_eq!(error.code, "invalid_inventory_entry");
 }
 
 #[tokio::test]

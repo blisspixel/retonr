@@ -3,10 +3,8 @@ use std::{collections::BTreeSet, future::Future};
 use futures_util::StreamExt as _;
 use reqwest::{Response, StatusCode, header};
 use rewrite_inference::{
-    GenerationCandidate, GenerationRequest, InferenceError, InferenceErrorKind, InventoryEntry,
-    OperationContext,
+    GenerationCandidate, GenerationRequest, InferenceError, InferenceErrorKind, OperationContext,
 };
-use rewrite_model::ArtifactId;
 use rewrite_types::Digest;
 use serde::de::DeserializeOwned;
 
@@ -19,20 +17,6 @@ use crate::{
 };
 
 const MAX_INVENTORY_ITEMS: usize = 512;
-
-pub(crate) fn parse_inventory(tags: &TagsResponse) -> Result<Vec<InventoryEntry>, InferenceError> {
-    parse_ollama_inventory(tags).map(|entries| {
-        entries
-            .into_iter()
-            .map(|entry| InventoryEntry {
-                reference: entry.reference,
-                artifact_id: ArtifactId::from_digest(entry.inventory_digest.clone()),
-                artifact_digest: entry.inventory_digest,
-                byte_size: Some(entry.byte_size),
-            })
-            .collect()
-    })
-}
 
 pub(crate) fn parse_ollama_inventory(
     tags: &TagsResponse,
@@ -60,6 +44,7 @@ fn validate_tag<'a>(
 ) -> Result<(), InferenceError> {
     if !valid_text(&model.name, MAX_REFERENCE_BYTES)
         || !valid_text(&model.model, MAX_REFERENCE_BYTES)
+        || model.name != model.model
         || model.size == 0
         || !model.remote_model.is_empty()
         || !model.remote_host.is_empty()
@@ -74,7 +59,7 @@ pub(crate) fn confirm_binding_in_tags(
     binding: &OllamaModelBinding,
     tags: &TagsResponse,
 ) -> Result<(), InferenceError> {
-    confirm_inventory_digest(&binding.reference, &binding.artifact_digest, tags)
+    confirm_inventory_digest(&binding.reference, &binding.inventory_digest, tags)
 }
 
 pub(crate) fn confirm_inventory_digest(

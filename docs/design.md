@@ -190,8 +190,9 @@ than the selected mode allows. Strong mode permits more surface change, not more
 semantic error.
 
 `--in-place` is incompatible with stdin. It never silently follows a symlink or
-overwrites an ambiguous target. The flag retains a sibling backup of the original
-before replacement.
+overwrites an ambiguous target. A source with hard-link aliases is refused because
+an in-place write could otherwise mutate another path. The flag retains a sibling
+backup of the original before replacement.
 
 ### Streams and interaction
 
