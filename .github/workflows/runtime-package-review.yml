@@ -67,11 +67,18 @@ jobs:
             "$RUNNER_TEMP/ollama-linux-amd64.tar.zst" \
             target/release/rewrite-runtime-isolation-helper \
             "$RUNNER_TEMP/ollama-runtime-candidate"
-          ! find "$RUNNER_TEMP/ollama-runtime-candidate" -type l | grep .
-          ! LD_LIBRARY_PATH="$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama" \
-            ldd "$RUNNER_TEMP/ollama-runtime-candidate/bin/ollama" | grep 'not found'
-          ! LD_LIBRARY_PATH="$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama" \
-            ldd "$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama/llama-server" | grep 'not found'
+          if find "$RUNNER_TEMP/ollama-runtime-candidate" -type l -print -quit | grep .; then
+            echo "candidate contains a symbolic link" >&2
+            exit 1
+          fi
+          if LD_LIBRARY_PATH="$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama" \
+            ldd "$RUNNER_TEMP/ollama-runtime-candidate/bin/ollama" | grep 'not found'; then
+            exit 1
+          fi
+          if LD_LIBRARY_PATH="$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama" \
+            ldd "$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama/llama-server" | grep 'not found'; then
+            exit 1
+          fi
           version="$({
             LD_LIBRARY_PATH="$RUNNER_TEMP/ollama-runtime-candidate/lib/ollama" \
               "$RUNNER_TEMP/ollama-runtime-candidate/bin/ollama" --version

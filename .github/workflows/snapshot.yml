@@ -158,11 +158,11 @@ jobs:
           notes_base_url="https://github.com/blisspixel/retonr/blob/main/"
           release_blob_url="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/"
           {
-            printf 'Built from commit `%s`.\n\n' "$GITHUB_SHA"
+            printf 'Built from commit %b%s%b.\n\n' '\x60' "$GITHUB_SHA" '\x60'
             printf '%s\n' "${notes//$notes_base_url/$release_blob_url}"
-            printf '\n## Asset digests\n\n```\n'
+            printf '\n## Asset digests\n\n%b\n' '\x60\x60\x60'
             cat assets/SHA256SUMS
-            printf '```\n'
+            printf '%b\n' '\x60\x60\x60'
           } > release-notes.md
 
       - name: Create the draft pre-release
