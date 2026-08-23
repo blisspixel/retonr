@@ -194,13 +194,18 @@ runtime state or model-use proof exists.
   `model device-evidence` (`fitr`) reads optional
   `fitr.retonr.evidence.v1` without a repository. It reports device
   measurement only. `qualified` stays false. Host names, config paths, and
-  result paths stay out of the report. Missing fitr is not an error.
+  result paths stay out of the report. The 64 KiB document boundary is joined
+  by per-field text and collection bounds, unique served capabilities, positive
+  memory measurements, and refusal of terminal-affecting forwarded text.
+  Missing fitr is not an error.
   `rewrite` accepts one source file or standard input under the same
   output and inspection policy as `check`, including `--diff`, `--dry-run`,
   and `--trace`. A directory source is a dry-run destination manifest:
   `--output-dir` is required, `--recursive` is bounded, collisions are
-  refused, and the output root cannot nest with the source. No files are
-  written. Optional `--data-dir` inspects an existing repository for an
+  refused, and the output root cannot nest with the source. Existing ancestors
+  are resolved before the root comparison, so a link or path-case alias cannot
+  hide nesting. A dangling destination link is a collision rather than a
+  planned output. No files are written. Optional `--data-dir` inspects an existing repository for an
   active generation binding. Optional `--artifact-id` must match that binding.
   When the recovered qualification names the retained fake backend, `rewrite`
   attaches in-process conformance, generates an identity candidate, and runs
@@ -221,6 +226,9 @@ runtime state or model-use proof exists.
   single-link, and byte identity again immediately before replacement. Detected
   drift returns retryable `concurrent_modification` instead of reporting an
   unchanged or completed write. Unchanged accepted bytes leave the source untouched.
+  A requested new output, backup, staging, or trace path treats every existing
+  filesystem entry, including a dangling link, as reserved. A missing output parent
+  is rejected before non-dry-run document work; dry-run output remains hypothetical.
   A terminal defaults to text; a pipe defaults to JSON. `-f` selects either.
   `--data-dir` is also `-D` or `RETONR_DATA_DIR`.
   Exact bytes reach a terminal only after the
@@ -230,6 +238,10 @@ runtime state or model-use proof exists.
   effects. Either flag alone stays escaped. `--diff` writes an escaped
   linear comparison of source and accepted output to standard error. `--dry-run`
   computes the report without creating `--output` or replacing the source.
+  Untrusted inline report fields, including paths, backup names, artifact metadata,
+  and optional device evidence, use single-line visible escapes. Structured JSON
+  encodes the same terminal-affecting Unicode as JSON escapes without changing its
+  decoded values.
   Cancellation is checked again at the final cooperative boundary before document
   output. `--trace` writes the redacted rewrite record to a new file. Before model or
   document work, a trace request rejects an existing path, a missing parent, and a

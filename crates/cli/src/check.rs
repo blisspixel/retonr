@@ -17,7 +17,6 @@ use crate::{
     failure::RunFailure,
 };
 
-mod escape;
 pub(crate) mod inspect;
 pub(crate) mod replace;
 pub(crate) mod report;
@@ -61,6 +60,11 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         &request.source,
         request.output.as_deref(),
         request.in_place,
+        CommandName::Check,
+    )?;
+    replace::validate_destination_preflight(
+        &destination,
+        request.inspection.dry_run,
         CommandName::Check,
     )?;
     ensure_distinct_inputs(&request.source, &request.candidate)?;
@@ -215,9 +219,7 @@ pub(crate) fn resolve_output_sink_for(
     if is_standard_stream(output) {
         return Ok(OutputSink::Standard);
     }
-    if output.exists() {
-        return Err(RunFailure::output_exists_for(command));
-    }
+    replace::require_unoccupied_path(output, command)?;
     Ok(OutputSink::File(output.to_path_buf()))
 }
 
@@ -290,7 +292,7 @@ pub(crate) fn emit_document(
             }
             let payload = match render {
                 DocumentRender::Exact => bytes.to_vec(),
-                DocumentRender::Escaped => escape::render_document_for_terminal(bytes)
+                DocumentRender::Escaped => crate::render::render_document_for_terminal(bytes)
                     .map_err(|_| RunFailure::operational(command))?,
             };
             let mut stdout = io::stdout().lock();

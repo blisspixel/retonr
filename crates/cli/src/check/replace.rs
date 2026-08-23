@@ -129,9 +129,8 @@ pub(crate) fn resolve_destination(
     require_regular_file(source, command)?;
     let backup_path = sibling(source, BACKUP_SUFFIX, command)?;
     let staging_path = sibling(source, STAGING_SUFFIX, command)?;
-    if backup_path.exists() || staging_path.exists() {
-        return Err(RunFailure::output_exists_for(command));
-    }
+    require_unoccupied_path(&backup_path, command)?;
+    require_unoccupied_path(&staging_path, command)?;
     Ok(Destination::InPlace {
         source: source.to_path_buf(),
     })
@@ -156,9 +155,8 @@ pub(crate) fn commit(
     }
     let backup_path = sibling(source, BACKUP_SUFFIX, command)?;
     let staging_path = sibling(source, STAGING_SUFFIX, command)?;
-    if backup_path.exists() || staging_path.exists() {
-        return Err(RunFailure::output_exists_for(command));
-    }
+    require_unoccupied_path(&backup_path, command)?;
+    require_unoccupied_path(&staging_path, command)?;
     write_exclusive(&backup_path, original, command)?;
     write_exclusive(&staging_path, accepted, command)?;
     let staged =
@@ -232,6 +230,47 @@ pub(crate) fn write_exclusive(
     file.write_all(bytes)
         .and_then(|()| file.sync_all())
         .map_err(|_| RunFailure::operational(command))
+}
+
+/// Rejects any filesystem entry, including a dangling link, at a planned new path.
+pub(crate) fn require_unoccupied_path(path: &Path, command: CommandName) -> Result<(), RunFailure> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Err(RunFailure::output_exists_for(command)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err(RunFailure::operational(command)),
+    }
+}
+
+/// Requires the parent of a planned new file to exist as a directory.
+pub(crate) fn require_existing_parent(path: &Path, command: CommandName) -> Result<(), RunFailure> {
+    let parent = nonempty_parent(path);
+    let metadata = fs::metadata(parent).map_err(|_| RunFailure::operational(command))?;
+    if metadata.is_dir() {
+        Ok(())
+    } else {
+        Err(RunFailure::operational(command))
+    }
+}
+
+/// Performs the complete preflight for one exclusively created output file.
+pub(crate) fn require_new_file_path(path: &Path, command: CommandName) -> Result<(), RunFailure> {
+    require_existing_parent(path, command)?;
+    require_unoccupied_path(path, command)
+}
+
+/// Validates work that a non-dry-run destination will require before document work.
+pub(crate) fn validate_destination_preflight(
+    destination: &Destination,
+    dry_run: bool,
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    if dry_run {
+        return Ok(());
+    }
+    if let Destination::Sink(OutputSink::File(path)) = destination {
+        require_existing_parent(path, command)?;
+    }
+    Ok(())
 }
 
 fn install(source: &Path, staging: &Path, command: CommandName) -> Result<(), RunFailure> {

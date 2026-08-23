@@ -17,6 +17,7 @@ use crate::contract::{
 };
 use crate::failure::RunFailure;
 use crate::inspect_source::directory::{self, Discovery};
+use crate::render::escape_inline_for_display;
 
 pub(super) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
     validate_directory_invocation(request)?;
@@ -31,7 +32,7 @@ pub(super) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
         request.directory.recursive,
         CommandName::Rewrite,
     )?;
-    let plan = plan_transaction(&discovery, output_dir, request.directory.recursive);
+    let plan = plan_transaction(&discovery, output_dir, request.directory.recursive)?;
     write_plan(&plan, request.format)?;
     Ok(ExitCode::SUCCESS)
 }
@@ -75,9 +76,9 @@ fn refuse_unsafe_output_root(source: &Path, output: &Path) -> Result<(), RunFail
     {
         return Err(usage("output-dir must be a real directory when it exists"));
     }
-    let source_key = normalized(source)?;
-    let output_key = normalized(output)?;
-    if source_key == output_key {
+    let source_key = resolved_planned_path(source)?;
+    let output_key = resolved_planned_path(output)?;
+    if same_path(&source_key, &output_key) {
         return Err(policy("output-dir cannot be the source directory"));
     }
     if is_nested(&source_key, &output_key) {
@@ -89,9 +90,29 @@ fn refuse_unsafe_output_root(source: &Path, output: &Path) -> Result<(), RunFail
     Ok(())
 }
 
-fn normalized(path: &Path) -> Result<PathBuf, RunFailure> {
+fn resolved_planned_path(path: &Path) -> Result<PathBuf, RunFailure> {
     let absolute = std::path::absolute(path).map_err(|_| operational())?;
-    Ok(lexically_normal(&absolute))
+    let mut existing = lexically_normal(&absolute);
+    let mut missing = Vec::new();
+    loop {
+        match fs::symlink_metadata(&existing) {
+            Ok(_) => {
+                let mut resolved = fs::canonicalize(&existing).map_err(|_| operational())?;
+                for component in missing.iter().rev() {
+                    resolved.push(component);
+                }
+                return Ok(lexically_normal(&resolved));
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                let component = existing.file_name().ok_or_else(operational)?.to_os_string();
+                missing.push(component);
+                if !existing.pop() {
+                    return Err(operational());
+                }
+            }
+            Err(_) => return Err(operational()),
+        }
+    }
 }
 
 fn lexically_normal(path: &Path) -> PathBuf {
@@ -99,7 +120,12 @@ fn lexically_normal(path: &Path) -> PathBuf {
     for component in path.components() {
         match component {
             std::path::Component::ParentDir => {
-                out.pop();
+                if matches!(
+                    out.components().next_back(),
+                    Some(std::path::Component::Normal(_))
+                ) {
+                    out.pop();
+                }
             }
             std::path::Component::CurDir => {}
             other => out.push(other.as_os_str()),
@@ -109,10 +135,42 @@ fn lexically_normal(path: &Path) -> PathBuf {
 }
 
 fn is_nested(parent: &Path, child: &Path) -> bool {
-    child.starts_with(parent) && child != parent
+    let parent_components: Vec<_> = parent.components().collect();
+    let child_components: Vec<_> = child.components().collect();
+    child_components.len() > parent_components.len()
+        && parent_components
+            .iter()
+            .zip(&child_components)
+            .all(|(left, right)| same_component(left, right))
 }
 
-fn plan_transaction(discovery: &Discovery, output_dir: &Path, recursive: bool) -> DirectoryPlan {
+fn same_path(left: &Path, right: &Path) -> bool {
+    let left_components: Vec<_> = left.components().collect();
+    let right_components: Vec<_> = right.components().collect();
+    left_components.len() == right_components.len()
+        && left_components
+            .iter()
+            .zip(&right_components)
+            .all(|(left, right)| same_component(left, right))
+}
+
+#[cfg(windows)]
+fn same_component(left: &std::path::Component<'_>, right: &std::path::Component<'_>) -> bool {
+    left.as_os_str()
+        .to_string_lossy()
+        .eq_ignore_ascii_case(&right.as_os_str().to_string_lossy())
+}
+
+#[cfg(not(windows))]
+fn same_component(left: &std::path::Component<'_>, right: &std::path::Component<'_>) -> bool {
+    left == right
+}
+
+fn plan_transaction(
+    discovery: &Discovery,
+    output_dir: &Path,
+    recursive: bool,
+) -> Result<DirectoryPlan, RunFailure> {
     let mut planned = Vec::new();
     let mut blocked = Vec::new();
     let mut skipped = discovery.skipped.clone();
@@ -134,14 +192,18 @@ fn plan_transaction(discovery: &Discovery, output_dir: &Path, recursive: bool) -
             continue;
         }
         let destination_path = output_dir.join(&document.relative_path);
-        if destination_path.exists() {
-            blocked.push(MappedPath {
-                source: document.relative_path.clone(),
-                destination: document.relative_path.clone(),
-                digest: document.digest.clone(),
-                reason: Some("collision"),
-            });
-            continue;
+        match fs::symlink_metadata(&destination_path) {
+            Ok(_) => {
+                blocked.push(MappedPath {
+                    source: document.relative_path.clone(),
+                    destination: document.relative_path.clone(),
+                    digest: document.digest.clone(),
+                    reason: Some("collision"),
+                });
+                continue;
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(_) => return Err(operational()),
         }
         planned.push(MappedPath {
             source: document.relative_path.clone(),
@@ -153,7 +215,7 @@ fn plan_transaction(discovery: &Discovery, output_dir: &Path, recursive: bool) -
     skipped.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     planned.sort_by(|left, right| left.source.cmp(&right.source));
     blocked.sort_by(|left, right| left.source.cmp(&right.source));
-    DirectoryPlan {
+    Ok(DirectoryPlan {
         scope: "directory",
         mode: "dry_run",
         recursion: if recursive { "bounded" } else { "none" },
@@ -165,15 +227,17 @@ fn plan_transaction(discovery: &Discovery, output_dir: &Path, recursive: bool) -
         planned,
         blocked,
         skipped,
-    }
+    })
 }
 
 fn write_plan(plan: &DirectoryPlan, format: ReportFormat) -> Result<(), RunFailure> {
     let bytes = match format {
         ReportFormat::Json => {
-            let mut bytes =
-                serde_json::to_vec_pretty(&SuccessEnvelope::new(CommandName::Rewrite, plan))
-                    .map_err(|_| operational())?;
+            let mut bytes = crate::render::to_safe_pretty_json(&SuccessEnvelope::new(
+                CommandName::Rewrite,
+                plan,
+            ))
+            .map_err(|_| operational())?;
             bytes.push(b'\n');
             bytes
         }
@@ -256,16 +320,24 @@ impl DirectoryPlan {
         for item in &self.planned {
             lines.push(format!(
                 "planned {} destination={}",
-                item.source, item.destination
+                escape_inline_for_display(&item.source),
+                escape_inline_for_display(&item.destination)
             ));
         }
         for item in &self.blocked {
             let reason = item.reason.unwrap_or("blocked");
-            lines.push(format!("blocked {} reason={reason}", item.source));
+            lines.push(format!(
+                "blocked {} reason={reason}",
+                escape_inline_for_display(&item.source)
+            ));
         }
         for skipped in &self.skipped {
             match &skipped.relative_path {
-                Some(name) => lines.push(format!("skipped {name} reason={}", skipped.reason)),
+                Some(name) => lines.push(format!(
+                    "skipped {} reason={}",
+                    escape_inline_for_display(name),
+                    skipped.reason
+                )),
                 None => lines.push(format!("skipped reason={}", skipped.reason)),
             }
         }
@@ -305,5 +377,25 @@ mod tests {
         fs::create_dir(&source).expect("create source");
         let output = root.path().join("rewritten");
         refuse_unsafe_output_root(&source, &output).expect("sibling");
+    }
+
+    #[test]
+    fn lexical_normalization_cannot_climb_above_a_root() {
+        let root = std::path::absolute(Path::new(".")).expect("absolute current directory");
+        let root = root.ancestors().last().expect("filesystem root");
+        assert_eq!(
+            lexically_normal(&root.join("..").join("output")),
+            root.join("output")
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_path_comparison_is_ascii_case_insensitive() {
+        assert!(same_path(Path::new(r"C:\Docs"), Path::new(r"c:\docs")));
+        assert!(is_nested(
+            Path::new(r"C:\Docs"),
+            Path::new(r"c:\docs\output")
+        ));
     }
 }

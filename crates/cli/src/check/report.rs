@@ -36,7 +36,7 @@ fn render(
 ) -> io::Result<Vec<u8>> {
     match format {
         ReportFormat::Json => {
-            let mut bytes = serde_json::to_vec_pretty(&SuccessEnvelope::new(
+            let mut bytes = crate::render::to_safe_pretty_json(&SuccessEnvelope::new(
                 command,
                 DocumentReport { record, backup },
             ))
@@ -74,7 +74,11 @@ fn render_text(record: &RewriteRecord, backup: Option<&str>) -> String {
     let _ = writeln!(text, "candidates: {}", record.assessments.len());
     let _ = writeln!(text, "eligible_candidates: {eligible}");
     if let Some(backup) = backup {
-        let _ = writeln!(text, "backup: {backup}");
+        let _ = writeln!(
+            text,
+            "backup: {}",
+            crate::render::escape_inline_for_display(backup)
+        );
     }
     text
 }

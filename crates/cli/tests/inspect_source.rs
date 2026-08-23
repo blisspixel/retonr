@@ -217,6 +217,36 @@ fn inspect_recursive_on_standard_input_is_usage() {
         ));
 }
 
+#[test]
+fn directory_reports_escape_directionality_in_text_and_json() {
+    let directory = tempdir().expect("temporary directory");
+    let name = "report\u{202e}.txt";
+    fs::write(directory.path().join(name), "safe\n").expect("write source");
+
+    let text_output = binary()
+        .args(["--format", "text", "inspect"])
+        .arg(directory.path())
+        .output()
+        .expect("run text inspect");
+    assert!(text_output.status.success());
+    let text = String::from_utf8(text_output.stdout).expect("UTF-8 text report");
+    assert!(text.contains("report\\u{202e}.txt"));
+    assert!(!text.contains('\u{202e}'));
+
+    let json_output = binary()
+        .args(["--format", "json", "inspect"])
+        .arg(directory.path())
+        .output()
+        .expect("run JSON inspect");
+    assert!(json_output.status.success());
+    let json_text = String::from_utf8(json_output.stdout.clone()).expect("UTF-8 JSON report");
+    assert!(json_text.contains("report\\u202e.txt"));
+    assert!(!json_text.contains('\u{202e}'));
+    let value: serde_json::Value =
+        serde_json::from_slice(&json_output.stdout).expect("valid JSON report");
+    assert_eq!(value["result"]["documents"][0]["relative_path"], name);
+}
+
 fn source_mutated(path: &std::path::Path, expected: &[u8]) -> bool {
     fs::read(path).expect("read source") != expected
 }

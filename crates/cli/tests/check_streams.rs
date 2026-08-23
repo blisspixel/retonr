@@ -201,3 +201,63 @@ fn standard_output_carries_document_bytes_and_moves_the_report_to_standard_error
         "report should move to standard error, got {report}"
     );
 }
+
+#[test]
+fn missing_output_parent_is_rejected_before_document_input() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let missing_source = directory.path().join("missing-source.txt");
+    let missing_candidate = directory.path().join("missing-candidate.txt");
+    let output = directory.path().join("missing-parent").join("accepted.txt");
+
+    binary()
+        .arg("check")
+        .arg(&missing_source)
+        .arg(&missing_candidate)
+        .arg("--output")
+        .arg(&output)
+        .assert()
+        .code(1)
+        .stderr(predicates::str::contains(
+            "\"code\": \"operational_failure\"",
+        ));
+    assert!(!output.exists());
+}
+
+#[test]
+fn dry_run_allows_a_hypothetical_output_with_a_missing_parent() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let source = write(&directory.path().join("source.txt"), b"Hello world\n");
+    let candidate = write(&directory.path().join("candidate.txt"), b"Hello, world!\n");
+    let output = directory.path().join("missing-parent").join("accepted.txt");
+
+    binary()
+        .arg("check")
+        .arg(&source)
+        .arg(&candidate)
+        .arg("--dry-run")
+        .arg("--output")
+        .arg(&output)
+        .assert()
+        .success();
+    assert!(!output.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn dangling_output_link_is_rejected_before_document_input() {
+    use std::os::unix::fs::symlink;
+
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let output = directory.path().join("accepted.txt");
+    symlink(directory.path().join("missing.txt"), &output).expect("create dangling link");
+
+    binary()
+        .arg("check")
+        .arg(directory.path().join("missing-source.txt"))
+        .arg(directory.path().join("missing-candidate.txt"))
+        .arg("--output")
+        .arg(&output)
+        .assert()
+        .code(3)
+        .stderr(predicates::str::contains("\"code\": \"output_exists\""));
+}

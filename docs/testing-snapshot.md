@@ -203,6 +203,11 @@ the scorecard and cannot override hard gates or human release adjudication.
 never modifies your source. `--output -` sends the document to standard output
 and moves the report to standard error so the two never mix.
 
+Existing entries include dangling links. A missing output parent fails before
+non-dry-run document input or generation work. `--dry-run` may still evaluate a
+hypothetical output whose parent does not exist because it performs no document
+write.
+
 `--in-place` is the explicit recoverable exception. It accepts only a regular file
 without symlink or hard-link ambiguity, retains `<name>.retonr-backup`, stages and
 verifies the accepted bytes in the same directory, rechecks that the source still
@@ -217,7 +222,13 @@ path.
 Writing exact unescaped document bytes to a terminal requires `--raw-terminal
 --yes` together. Either flag alone, or neither flag, writes escaped rendering
 that cannot drive the terminal. This exists because untrusted text can carry
-terminal control sequences.
+terminal control sequences. Inline path and metadata fields also use visible
+single-line escapes. JSON string values use equivalent JSON escapes for bidi,
+format, and invisible characters; parsing the JSON recovers the original value.
+
+Directory dry-run resolves existing output ancestors before comparing roots. A
+link alias cannot hide an output nested under the source, and a dangling link at a
+mapped destination is reported as a collision.
 
 ## What will frustrate you, and why
 

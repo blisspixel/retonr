@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use crate::contract::{CommandName, STANDARD_STREAM_PATH, read_input_bounded};
 use crate::failure::RunFailure;
+use crate::render::escape_inline_for_display;
 
 const SIDECAR_SUFFIXES: [&str; 2] = [".c2pa", ".xmp"];
 
@@ -167,7 +168,12 @@ impl InspectReport {
         let sidecars = if self.sidecars.present.is_empty() {
             self.sidecars.status.to_owned()
         } else {
-            self.sidecars.present.join(",")
+            self.sidecars
+                .present
+                .iter()
+                .map(|value| escape_inline_for_display(value))
+                .collect::<Vec<_>>()
+                .join(",")
         };
         lines.push(format!("sidecars: {sidecars}"));
         lines.push(format!("external_references: {}", self.external_references));

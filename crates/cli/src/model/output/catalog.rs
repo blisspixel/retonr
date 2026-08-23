@@ -6,6 +6,7 @@ use serde::Serialize;
 
 use super::{ModelOutput, RegisteredBytesSummary, role_name};
 use crate::contract::ArtifactSelectionDto;
+use crate::render::escape_inline_for_display;
 
 impl ModelOutput {
     pub(crate) fn list(report: ArtifactInventoryReport) -> Self {
@@ -47,22 +48,31 @@ impl ModelOutput {
             join_roles(&artifact.active_roles),
             artifact.qualified,
             artifact.qualification,
-            artifact.declared.format,
-            artifact.declared.family,
+            escape_inline_for_display(&artifact.declared.format),
+            escape_inline_for_display(&artifact.declared.family),
         );
         if let Some(architecture) = &artifact.declared.architecture {
-            writeln!(text, "architecture: {architecture}")
-                .expect("writing to a String cannot fail");
+            writeln!(
+                text,
+                "architecture: {}",
+                escape_inline_for_display(architecture)
+            )
+            .expect("writing to a String cannot fail");
         }
         if let Some(quantization) = &artifact.declared.quantization {
-            writeln!(text, "quantization: {quantization}")
-                .expect("writing to a String cannot fail");
+            writeln!(
+                text,
+                "quantization: {}",
+                escape_inline_for_display(quantization)
+            )
+            .expect("writing to a String cannot fail");
         }
         for license in &artifact.declared.licenses {
             writeln!(
                 text,
                 "license {} identifier={}",
-                license.component, license.identifier
+                escape_inline_for_display(&license.component),
+                escape_inline_for_display(&license.identifier)
             )
             .expect("writing to a String cannot fail");
         }
@@ -215,7 +225,11 @@ fn join_values(values: &[String]) -> String {
     if values.is_empty() {
         "none".to_owned()
     } else {
-        values.join(",")
+        values
+            .iter()
+            .map(|value| escape_inline_for_display(value))
+            .collect::<Vec<_>>()
+            .join(",")
     }
 }
 
@@ -231,7 +245,7 @@ mod tests {
     use rewrite_types::Digest;
     use serde_json::Value;
 
-    use super::InspectedArtifact;
+    use super::{InspectedArtifact, ModelOutput};
 
     fn fixture_entry() -> RegisteredArtifactInspection {
         let digest = Digest::sha256(b"private model bytes for catalog tests");
@@ -291,5 +305,18 @@ mod tests {
         assert!(
             matches!(encoded["declared"].get("licenses"), Some(Value::Array(items)) if !items.is_empty())
         );
+    }
+
+    #[test]
+    fn inspect_text_neutralizes_untrusted_manifest_metadata() {
+        let ordinary_line_count = ModelOutput::inspect(fixture_entry()).text.lines().count();
+        let mut entry = fixture_entry();
+        entry.manifest.family = "family\u{202e}".to_owned();
+        entry.manifest.licenses[0].component = "weights\nnext".to_owned();
+        let output = ModelOutput::inspect(entry);
+        assert!(output.text.contains("family\\u{202e}"));
+        assert!(output.text.contains("weights\\nnext"));
+        assert!(!output.text.contains('\u{202e}'));
+        assert_eq!(output.text.lines().count(), ordinary_line_count);
     }
 }

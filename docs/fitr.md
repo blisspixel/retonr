@@ -33,6 +33,12 @@ qualification state. `qualified` remains `false` and `qualification` remains
 Host names, driver strings, config paths, and result paths stay out of the
 report. Need states that fitr did not measure stay absent.
 
+The evidence document is limited to 64 KiB. Forwarded text fields and collections
+have smaller deterministic bounds, served capabilities must be unique, and reported
+RAM or VRAM must be positive when present. Empty optional text remains absent.
+Control, bidi, format, and invisible characters in forwarded text are refused so an
+informational evidence file cannot alter terminal presentation.
+
 ## What retonr will not do
 
 - Install, start, or configure fitr

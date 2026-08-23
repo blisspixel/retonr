@@ -314,7 +314,8 @@ Required test cases include:
 - Unicode prose and combining characters
 - Non-UTF-8 Unix paths
 - Windows reserved names, long paths, file locks, and case collisions
-- Symlinks and ambiguous overwrite targets
+- Symlinks, dangling links, aliased output roots, and ambiguous overwrite targets
+- Hostile path and metadata controls in text and JSON report modes
 - Read-only files and directories
 - Interrupted atomic replacement
 - Missing model runtime and unreachable local service

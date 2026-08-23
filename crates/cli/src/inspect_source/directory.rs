@@ -12,6 +12,7 @@ use super::report::{InspectReport, inspect_file};
 use crate::contract::{CommandName, EXIT_COMPATIBILITY, ErrorBody, ErrorCategory, ErrorCode};
 use crate::failure::RunFailure;
 use crate::model::ModelOutput;
+use crate::render::escape_inline_for_display;
 
 const MAXIMUM_DIRECTORY_ENTRIES: usize = 4_096;
 const MAXIMUM_DIRECTORY_DEPTH: usize = 8;
@@ -331,13 +332,17 @@ impl DirectoryReport {
         for document in &self.documents {
             lines.push(format!(
                 "document {} derivative={}",
-                document.relative_path,
+                escape_inline_for_display(&document.relative_path),
                 document.report.derivative()
             ));
         }
         for skipped in &self.skipped {
             match &skipped.relative_path {
-                Some(name) => lines.push(format!("skipped {name} reason={}", skipped.reason)),
+                Some(name) => lines.push(format!(
+                    "skipped {} reason={}",
+                    escape_inline_for_display(name),
+                    skipped.reason
+                )),
                 None => lines.push(format!("skipped reason={}", skipped.reason)),
             }
         }

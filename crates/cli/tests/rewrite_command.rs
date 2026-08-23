@@ -225,6 +225,86 @@ fn rewrite_directory_rejects_in_place_and_file_output_dir() {
 }
 
 #[test]
+fn rewrite_directory_reports_escape_directionality() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("docs");
+    let output = directory.path().join("rewritten");
+    let name = "report\u{202e}.txt";
+    fs::create_dir(&source).expect("create docs");
+    fs::write(source.join(name), "safe\n").expect("write source");
+
+    let text_output = binary()
+        .args(["--format", "text", "rewrite", "--dry-run", "--output-dir"])
+        .arg(&output)
+        .arg(&source)
+        .output()
+        .expect("run text plan");
+    assert!(text_output.status.success());
+    let text = String::from_utf8(text_output.stdout).expect("UTF-8 text plan");
+    assert!(text.contains("report\\u{202e}.txt"));
+    assert!(!text.contains('\u{202e}'));
+
+    let json_output = binary()
+        .args(["--format", "json", "rewrite", "--dry-run", "--output-dir"])
+        .arg(&output)
+        .arg(&source)
+        .output()
+        .expect("run JSON plan");
+    assert!(json_output.status.success());
+    let json_text = String::from_utf8(json_output.stdout.clone()).expect("UTF-8 JSON plan");
+    assert!(json_text.contains("report\\u202e.txt"));
+    assert!(!json_text.contains('\u{202e}'));
+    let value: serde_json::Value =
+        serde_json::from_slice(&json_output.stdout).expect("valid JSON plan");
+    assert_eq!(value["result"]["planned"][0]["source"], name);
+}
+
+#[cfg(unix)]
+#[test]
+fn rewrite_directory_blocks_dangling_destination_links() {
+    use std::os::unix::fs::symlink;
+
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("docs");
+    let output = directory.path().join("rewritten");
+    fs::create_dir(&source).expect("create docs");
+    fs::create_dir(&output).expect("create output");
+    fs::write(source.join("a.txt"), "safe\n").expect("write source");
+    symlink(output.join("missing.txt"), output.join("a.txt"))
+        .expect("create dangling destination link");
+
+    binary()
+        .args(["rewrite", "--dry-run", "--output-dir"])
+        .arg(&output)
+        .arg(&source)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"reason\": \"collision\""))
+        .stdout(predicate::str::contains("\"planned_count\": \"0\""));
+}
+
+#[cfg(unix)]
+#[test]
+fn rewrite_directory_refuses_an_output_root_aliased_inside_source() {
+    use std::os::unix::fs::symlink;
+
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("docs");
+    let alias = directory.path().join("alias");
+    fs::create_dir(&source).expect("create docs");
+    fs::write(source.join("a.txt"), "safe\n").expect("write source");
+    symlink(&source, &alias).expect("create source alias");
+
+    binary()
+        .args(["rewrite", "--dry-run", "--output-dir"])
+        .arg(alias.join("nested-output"))
+        .arg(&source)
+        .assert()
+        .code(3)
+        .stderr(predicate::str::contains("\"code\": \"policy_refusal\""));
+}
+
+#[test]
 fn rewrite_standard_input_is_accepted_then_refused() {
     binary()
         .args(["rewrite", "-"])

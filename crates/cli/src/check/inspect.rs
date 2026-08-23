@@ -10,10 +10,10 @@ use rewrite_types::RewriteRecord;
 use serde::Serialize;
 
 use super::ReportTarget;
-use super::escape::escape_for_display;
 use crate::{
     contract::{CommandName, SuccessEnvelope},
     failure::RunFailure,
+    render::escape_for_display,
 };
 
 const RESYNC_WINDOW: usize = 32;
@@ -74,7 +74,7 @@ pub(crate) fn write_trace(
     record: &RewriteRecord,
     command: CommandName,
 ) -> Result<(), RunFailure> {
-    let mut bytes = serde_json::to_vec_pretty(&SuccessEnvelope::new(command, record))
+    let mut bytes = crate::render::to_safe_pretty_json(&SuccessEnvelope::new(command, record))
         .map_err(|_| RunFailure::operational(command))?;
     bytes.push(b'\n');
     write_new_file(path, &bytes, command)
@@ -85,21 +85,7 @@ pub(crate) fn write_trace(
 /// `write_trace` still creates the file exclusively because another process
 /// can claim the path after this preflight check.
 pub(crate) fn require_new_trace_path(path: &Path, command: CommandName) -> Result<(), RunFailure> {
-    let parent = path
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
-    let parent_metadata = parent
-        .metadata()
-        .map_err(|_| RunFailure::operational(command))?;
-    if !parent_metadata.is_dir() {
-        return Err(RunFailure::operational(command));
-    }
-    match path.symlink_metadata() {
-        Ok(_) => Err(RunFailure::output_exists_for(command)),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(_) => Err(RunFailure::operational(command)),
-    }
+    super::replace::require_new_file_path(path, command)
 }
 
 pub(crate) fn write_diff(

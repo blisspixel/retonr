@@ -177,6 +177,18 @@ impl ArtifactManifest {
                 return Err(ManifestError::InvalidMetadata);
             }
         }
+        if self
+            .architecture
+            .iter()
+            .chain(self.quantization.iter())
+            .any(|value| !valid_bounded_text(value, 256))
+            || self
+                .tokenizer
+                .as_ref()
+                .is_some_and(|tokenizer| !valid_bounded_text(&tokenizer.family, 256))
+        {
+            return Err(ManifestError::InvalidMetadata);
+        }
         if self.licenses.is_empty() || self.licenses.len() > 32 {
             return Err(ManifestError::InvalidLicenses);
         }
@@ -198,7 +210,11 @@ fn validate_declared_capabilities(value: &DeclaredCapabilities) -> Result<(), Ma
         return Err(ManifestError::InvalidCapabilities);
     }
     let unique_roles: std::collections::BTreeSet<_> = value.roles.iter().copied().collect();
+    let unique_languages: std::collections::BTreeSet<_> =
+        value.languages.iter().map(String::as_str).collect();
     if unique_roles.len() != value.roles.len()
+        || unique_languages.len() != value.languages.len()
+        || value.context_tokens == Some(0)
         || value
             .languages
             .iter()
@@ -295,6 +311,32 @@ mod tests {
             .roles
             .push(ArtifactRole::Generation);
         assert_eq!(value.validate(), Err(ManifestError::InvalidCapabilities));
+
+        let mut value = manifest();
+        value.declared_capabilities.languages.push("en".to_owned());
+        assert_eq!(value.validate(), Err(ManifestError::InvalidCapabilities));
+
+        let mut value = manifest();
+        value.declared_capabilities.context_tokens = Some(0);
+        assert_eq!(value.validate(), Err(ManifestError::InvalidCapabilities));
+    }
+
+    #[test]
+    fn optional_metadata_is_validated_at_the_manifest_boundary() {
+        let mut value = manifest();
+        value.architecture = Some(String::new());
+        assert_eq!(value.validate(), Err(ManifestError::InvalidMetadata));
+
+        let mut value = manifest();
+        value.quantization = Some("q4\nforged".to_owned());
+        assert_eq!(value.validate(), Err(ManifestError::InvalidMetadata));
+
+        let mut value = manifest();
+        value.tokenizer = Some(super::TokenizerIdentity {
+            family: "x".repeat(257),
+            digest: Digest::sha256(b"tokenizer"),
+        });
+        assert_eq!(value.validate(), Err(ManifestError::InvalidMetadata));
     }
 
     #[test]

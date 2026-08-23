@@ -63,6 +63,11 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
         request.in_place,
         CommandName::Rewrite,
     )?;
+    replace::validate_destination_preflight(
+        &destination,
+        request.inspection.dry_run,
+        CommandName::Rewrite,
+    )?;
     validate_trace_destination(
         &destination,
         request.inspection.trace.as_deref(),

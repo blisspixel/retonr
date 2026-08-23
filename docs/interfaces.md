@@ -81,9 +81,16 @@ Unchanged accepted bytes leave the source untouched and create no backup. A term
 defaults to text reports; a pipe defaults to JSON. `--format` (`-f`) selects either.
 `--data-dir` (`-D` or `RETONR_DATA_DIR`) is the explicit repository root.
 
+Every planned new output, backup, staging, or trace path treats a dangling link as
+an existing entry. A missing output parent is rejected before non-dry-run document
+work, while `--dry-run` may name a hypothetical output beneath a missing parent.
+
 Text output and diagnostics remain separate. Structured JSON is versioned and stable
-for its declared range. Raw untrusted text is not rendered to a terminal unless the
-safe rendering policy or documented double opt-in applies.
+for its declared range. Terminal-affecting Unicode inside JSON strings is encoded
+with equivalent JSON escapes, so decoded values do not change. Inline text fields
+use visible single-line escapes and cannot inject another report line. Raw untrusted
+document text is not rendered to a terminal unless the safe rendering policy or
+documented double opt-in applies.
 
 `--trace` exclusively creates one redacted record file. A known existing trace path,
 missing parent directory, or collision with the primary output, in-place backup, or
@@ -95,6 +102,8 @@ Directory input is a manifest transaction, not an implicit recursive mutation. A
 dry run records canonical source identities, relative paths, formats, capabilities,
 bounds, links, ignores, destination mapping, collisions, and atomicity before model
 work. Output uses a separate root by default and cannot recursively include itself.
+Existing path ancestors are resolved before source and output roots are compared,
+and dangling destination links are reported as collisions.
 
 Long documents use source-linked high-level guidance and bounded unit requests.
 Generated summaries never replace original source as the fidelity reference.

@@ -21,6 +21,13 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 - Rejects known trace conflicts and invalid trace parents before non-dry-run document
   output, prevents trace paths from sharing transaction-owned files, and observes
   cancellation again at the final cooperative boundary before output.
+- Treats dangling output, backup, staging, trace, and mapped destination links as
+  reserved; rejects missing output parents before non-dry-run work; and resolves
+  existing directory aliases before source and output root comparison.
+- Neutralizes terminal-affecting path and metadata fields in text and JSON reports
+  without changing decoded JSON values, and bounds optional fitr evidence fields.
+- Validates optional artifact architecture, quantization, and tokenizer metadata,
+  rejects duplicate language declarations, and refuses zero declared context size.
 - Updates the public documentation to match the implemented CLI and internal
   managed-runtime boundaries.
 

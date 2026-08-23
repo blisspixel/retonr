@@ -187,6 +187,26 @@ fn existing_staging_is_refused_without_mutation() {
     assert!(!directory.path().join("draft.txt.retonr-backup").exists());
 }
 
+#[cfg(unix)]
+#[test]
+fn dangling_backup_link_is_reserved_before_document_work() {
+    use std::os::unix::fs::symlink;
+
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("draft.txt");
+    let backup = directory.path().join("draft.txt.retonr-backup");
+    fs::write(&source, b"original\n").expect("write source");
+    symlink(directory.path().join("missing.txt"), &backup).expect("create dangling backup link");
+
+    let failure = resolve_destination(&source, None, flags(true, false), CommandName::Check)
+        .expect_err("dangling backup link reserves the path");
+    assert_eq!(
+        failure.body,
+        ErrorBody::new(ErrorCategory::Policy, ErrorCode::OutputExists, false)
+    );
+    assert_eq!(fs::read(&source).expect("read source"), b"original\n");
+}
+
 #[test]
 fn hard_link_alias_is_refused_without_mutation() {
     let directory = tempdir().expect("temporary directory");

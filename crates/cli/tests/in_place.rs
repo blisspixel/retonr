@@ -128,6 +128,27 @@ fn check_in_place_replaces_the_source_and_retains_a_sibling_backup() {
 }
 
 #[test]
+fn in_place_report_escapes_directionality_in_the_backup_name() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("draft\u{202e}.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, b"Hello world\n").expect("write source");
+    fs::write(&candidate, b"Hello, world!\n").expect("write candidate");
+
+    let output = binary()
+        .args(["--format", "text", "check"])
+        .arg(&source)
+        .arg(&candidate)
+        .arg("--in-place")
+        .output()
+        .expect("run in-place check");
+    assert!(output.status.success());
+    let report = String::from_utf8(output.stdout).expect("UTF-8 report");
+    assert!(report.contains("backup: draft\\u{202e}.txt.retonr-backup"));
+    assert!(!report.contains('\u{202e}'));
+}
+
+#[test]
 fn check_in_place_skips_backup_when_accepted_bytes_match() {
     let directory = tempdir().expect("temporary directory");
     let source = directory.path().join("draft.txt");

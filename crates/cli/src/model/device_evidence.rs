@@ -10,10 +10,15 @@ use crate::contract::{
     STANDARD_STREAM_PATH, read_input_bounded,
 };
 use crate::failure::RunFailure;
+use crate::render::escape_inline_for_display;
 
 const SCHEMA: &str = "fitr.retonr.evidence.v1";
 const KIND: &str = "device_measurement";
 const MAXIMUM_EVIDENCE_BYTES: usize = 64 * 1024;
+const MAXIMUM_SHORT_TEXT_BYTES: usize = 256;
+const MAXIMUM_DETAIL_TEXT_BYTES: usize = 1_024;
+const MAXIMUM_NEEDS: usize = 128;
+const MAXIMUM_SERVES: usize = 128;
 const DISCLAIMER: &str = "This is a fitr measurement of one model on one device. It is not a retonr qualification, activation, or license decision.";
 const ALLOWED_NEED_STATES: [&str; 5] = ["PASS", "FAIL", "SKIP", "n/a", "BLKD"];
 
@@ -47,6 +52,27 @@ fn inspect(source: &Path) -> Result<DeviceEvidenceReport, RunFailure> {
     if !honest_disclaimer(&raw.disclaimer) {
         return Err(unsupported_evidence());
     }
+    if raw.needs.len() > MAXIMUM_NEEDS || raw.serves.len() > MAXIMUM_SERVES {
+        return Err(invalid_evidence());
+    }
+    let model = required_text(&raw.model, MAXIMUM_SHORT_TEXT_BYTES)?;
+    let quant = optional_text(raw.quant, MAXIMUM_SHORT_TEXT_BYTES)?;
+    let family = optional_text(raw.family, MAXIMUM_SHORT_TEXT_BYTES)?;
+    let param_size = optional_text(raw.param_size, MAXIMUM_SHORT_TEXT_BYTES)?;
+    let level = optional_text(raw.level, MAXIMUM_SHORT_TEXT_BYTES)?;
+    let device_key = optional_text(raw.device_key, MAXIMUM_SHORT_TEXT_BYTES)?;
+    let profile = optional_text(raw.profile, MAXIMUM_SHORT_TEXT_BYTES)?;
+    let use_for = optional_text(raw.use_for, MAXIMUM_DETAIL_TEXT_BYTES)?;
+    let plumbing = optional_text(raw.plumbing, MAXIMUM_DETAIL_TEXT_BYTES)?;
+    let device = DeviceSummary {
+        os: optional_text(raw.device.os, MAXIMUM_SHORT_TEXT_BYTES)?,
+        gpu: optional_text(raw.device.gpu, MAXIMUM_SHORT_TEXT_BYTES)?,
+        gpu_backend: optional_text(raw.device.gpu_backend, MAXIMUM_SHORT_TEXT_BYTES)?,
+        runtime: optional_text(raw.device.runtime, MAXIMUM_SHORT_TEXT_BYTES)?,
+        ram_gb: optional_positive_number(raw.device.ram_gb)?,
+        vram_gb: optional_positive_number(raw.device.vram_gb)?,
+        inference_device: optional_text(raw.device.inference_device, MAXIMUM_SHORT_TEXT_BYTES)?,
+    };
     let mut needs: Vec<NeedObservation> = raw
         .needs
         .into_iter()
@@ -55,40 +81,44 @@ fn inspect(source: &Path) -> Result<DeviceEvidenceReport, RunFailure> {
                 return Err(invalid_evidence());
             }
             Ok(NeedObservation {
-                name,
+                name: required_text(&name, MAXIMUM_SHORT_TEXT_BYTES)?,
                 state: observation.state,
-                why: empty_to_none(observation.why),
+                why: optional_text(observation.why, MAXIMUM_DETAIL_TEXT_BYTES)?,
             })
         })
         .collect::<Result<_, _>>()?;
     needs.sort_by(|left, right| left.name.cmp(&right.name));
+    let mut unique_serves = std::collections::BTreeSet::new();
+    let serves = raw
+        .serves
+        .into_iter()
+        .map(|value| required_text(&value, MAXIMUM_SHORT_TEXT_BYTES))
+        .collect::<Result<Vec<_>, _>>()?;
+    if serves
+        .iter()
+        .any(|value| !unique_serves.insert(value.as_str()))
+    {
+        return Err(invalid_evidence());
+    }
     Ok(DeviceEvidenceReport {
         schema: SCHEMA,
         kind: KIND,
         disclaimer: DISCLAIMER,
         qualified: false,
         qualification: "absent",
-        model: raw.model,
-        quant: empty_to_none(raw.quant),
-        family: empty_to_none(raw.family),
-        param_size: empty_to_none(raw.param_size),
-        level: empty_to_none(raw.level),
+        model,
+        quant,
+        family,
+        param_size,
+        level,
         repeats: raw.repeats.map(|value| value.to_string()),
-        device_key: empty_to_none(raw.device_key),
-        profile: empty_to_none(raw.profile),
-        device: DeviceSummary {
-            os: empty_to_none(raw.device.os),
-            gpu: empty_to_none(raw.device.gpu),
-            gpu_backend: empty_to_none(raw.device.gpu_backend),
-            runtime: empty_to_none(raw.device.runtime),
-            ram_gb: raw.device.ram_gb.map(number_string),
-            vram_gb: raw.device.vram_gb.map(number_string),
-            inference_device: empty_to_none(raw.device.inference_device),
-        },
+        device_key,
+        profile,
+        device,
         needs,
-        serves: raw.serves,
-        use_for: empty_to_none(raw.use_for),
-        plumbing: empty_to_none(raw.plumbing),
+        serves,
+        use_for,
+        plumbing,
     })
 }
 
@@ -114,11 +144,43 @@ fn honest_disclaimer(text: &str) -> bool {
     lower.contains("not") && lower.contains("qualification") && lower.contains("activation")
 }
 
-fn empty_to_none(value: Option<String>) -> Option<String> {
-    value.and_then(|text| {
-        let trimmed = text.trim();
-        (!trimmed.is_empty()).then(|| trimmed.to_owned())
-    })
+fn required_text(value: &str, maximum_bytes: usize) -> Result<String, RunFailure> {
+    let trimmed = value.trim();
+    if trimmed.is_empty()
+        || trimmed.len() > maximum_bytes
+        || crate::render::contains_terminal_effect(value)
+    {
+        return Err(invalid_evidence());
+    }
+    Ok(trimmed.to_owned())
+}
+
+fn optional_text(
+    value: Option<String>,
+    maximum_bytes: usize,
+) -> Result<Option<String>, RunFailure> {
+    let Some(text) = value else {
+        return Ok(None);
+    };
+    if crate::render::contains_terminal_effect(&text) {
+        return Err(invalid_evidence());
+    }
+    if text.trim().is_empty() {
+        return Ok(None);
+    }
+    required_text(&text, maximum_bytes).map(Some)
+}
+
+fn optional_positive_number(value: Option<f64>) -> Result<Option<String>, RunFailure> {
+    value
+        .map(|number| {
+            if number.is_finite() && number > 0.0 {
+                Ok(number_string(number))
+            } else {
+                Err(invalid_evidence())
+            }
+        })
+        .transpose()
 }
 
 fn number_string(value: f64) -> String {
@@ -270,30 +332,47 @@ impl super::ModelOutput {
         writeln!(text, "qualified: {}", report.qualified).expect("writing to a String cannot fail");
         writeln!(text, "qualification: {}", report.qualification)
             .expect("writing to a String cannot fail");
-        writeln!(text, "model: {}", report.model).expect("writing to a String cannot fail");
+        writeln!(text, "model: {}", escape_inline_for_display(&report.model))
+            .expect("writing to a String cannot fail");
         writeln!(text, "disclaimer: {}", report.disclaimer)
             .expect("writing to a String cannot fail");
         if let Some(quant) = &report.quant {
-            writeln!(text, "quant: {quant}").expect("writing to a String cannot fail");
+            writeln!(text, "quant: {}", escape_inline_for_display(quant))
+                .expect("writing to a String cannot fail");
         }
         if let Some(family) = &report.family {
-            writeln!(text, "family: {family}").expect("writing to a String cannot fail");
+            writeln!(text, "family: {}", escape_inline_for_display(family))
+                .expect("writing to a String cannot fail");
         }
         if let Some(os) = &report.device.os {
-            writeln!(text, "os: {os}").expect("writing to a String cannot fail");
+            writeln!(text, "os: {}", escape_inline_for_display(os))
+                .expect("writing to a String cannot fail");
         }
         if let Some(gpu) = &report.device.gpu {
-            writeln!(text, "gpu: {gpu}").expect("writing to a String cannot fail");
+            writeln!(text, "gpu: {}", escape_inline_for_display(gpu))
+                .expect("writing to a String cannot fail");
         }
         if let Some(runtime) = &report.device.runtime {
-            writeln!(text, "runtime: {runtime}").expect("writing to a String cannot fail");
+            writeln!(text, "runtime: {}", escape_inline_for_display(runtime))
+                .expect("writing to a String cannot fail");
         }
         for need in &report.needs {
             match &need.why {
-                Some(why) => writeln!(text, "need {} state={} why={why}", need.name, need.state)
-                    .expect("writing to a String cannot fail"),
-                None => writeln!(text, "need {} state={}", need.name, need.state)
-                    .expect("writing to a String cannot fail"),
+                Some(why) => writeln!(
+                    text,
+                    "need {} state={} why={}",
+                    escape_inline_for_display(&need.name),
+                    escape_inline_for_display(&need.state),
+                    escape_inline_for_display(why)
+                )
+                .expect("writing to a String cannot fail"),
+                None => writeln!(
+                    text,
+                    "need {} state={}",
+                    escape_inline_for_display(&need.name),
+                    escape_inline_for_display(&need.state)
+                )
+                .expect("writing to a String cannot fail"),
             }
         }
         Self {
@@ -395,6 +474,44 @@ mod tests {
         assert_eq!(
             failure.exit_code,
             std::process::ExitCode::from(EXIT_COMPATIBILITY)
+        );
+    }
+
+    #[test]
+    fn forwarded_fields_are_bounded_and_terminal_safe() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("unsafe.json");
+        let mut value = sample();
+        value["model"] = json!("demo\u{202e}:8b");
+        std::fs::write(&path, value.to_string()).expect("write unsafe evidence");
+        let Err(failure) = inspect(&path) else {
+            panic!("directionality must be refused");
+        };
+        assert_eq!(
+            failure.body,
+            ErrorBody::new(ErrorCategory::Usage, ErrorCode::InvalidManifest, false)
+        );
+
+        let mut value = sample();
+        value["model"] = json!("x".repeat(MAXIMUM_SHORT_TEXT_BYTES + 1));
+        std::fs::write(&path, value.to_string()).expect("write oversized evidence");
+        let Err(failure) = inspect(&path) else {
+            panic!("oversized model must be refused");
+        };
+        assert_eq!(
+            failure.body,
+            ErrorBody::new(ErrorCategory::Usage, ErrorCode::InvalidManifest, false)
+        );
+
+        let mut value = sample();
+        value["device"]["ram_gb"] = json!(-1.0);
+        std::fs::write(&path, value.to_string()).expect("write invalid measurement");
+        let Err(failure) = inspect(&path) else {
+            panic!("negative memory must be refused");
+        };
+        assert_eq!(
+            failure.body,
+            ErrorBody::new(ErrorCategory::Usage, ErrorCode::InvalidManifest, false)
         );
     }
 }

@@ -27,6 +27,7 @@ mod identity;
 mod inspect_source;
 mod man;
 mod model;
+mod render;
 mod rewrite;
 mod version;
 
@@ -395,7 +396,7 @@ fn write_model_report(
     let bytes = match format {
         ReportFormat::Json => {
             let mut bytes =
-                serde_json::to_vec_pretty(&SuccessEnvelope::new(command, &output.value))
+                render::to_safe_pretty_json(&SuccessEnvelope::new(command, &output.value))
                     .map_err(io::Error::other)?;
             bytes.push(b'\n');
             bytes
@@ -409,7 +410,7 @@ fn write_failure(error: &RunFailure, format: ReportFormat) -> io::Result<()> {
     let bytes = match format {
         ReportFormat::Json => {
             let mut bytes =
-                serde_json::to_vec_pretty(&ErrorEnvelope::new(error.command, error.body.clone()))
+                render::to_safe_pretty_json(&ErrorEnvelope::new(error.command, error.body.clone()))
                     .map_err(io::Error::other)?;
             bytes.push(b'\n');
             bytes
