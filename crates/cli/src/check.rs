@@ -64,6 +64,12 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         CommandName::Check,
     )?;
     ensure_distinct_inputs(&request.source, &request.candidate)?;
+    validate_trace_destination(
+        &destination,
+        request.inspection.trace.as_deref(),
+        request.inspection.dry_run,
+        CommandName::Check,
+    )?;
 
     let cancellation = CancellationToken::new();
     let signal_cancellation = cancellation.clone();
@@ -90,6 +96,7 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
     if result.record.reason == Some(ReasonCode::Cancelled) {
         return Err(RunFailure::cancelled(CommandName::Check));
     }
+    require_not_cancelled(&cancellation, CommandName::Check)?;
 
     let backup = if request.inspection.dry_run {
         None
@@ -127,6 +134,32 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         result.record.reason,
         request.fail_on_abstain,
     ))
+}
+
+pub(crate) fn validate_trace_destination(
+    destination: &replace::Destination,
+    trace: Option<&Path>,
+    dry_run: bool,
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    let Some(trace) = trace else {
+        return Ok(());
+    };
+    inspect::require_new_trace_path(trace, command)?;
+    if !dry_run && destination.reserves_path(trace, command)? {
+        return Err(RunFailure::usage_for(command));
+    }
+    Ok(())
+}
+
+pub(crate) fn require_not_cancelled(
+    cancellation: &CancellationToken,
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    if cancellation.is_cancelled() {
+        return Err(RunFailure::cancelled(command));
+    }
+    Ok(())
 }
 
 pub(crate) fn emit_destination(

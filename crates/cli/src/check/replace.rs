@@ -35,6 +35,64 @@ pub(crate) enum Destination {
     InPlace { source: PathBuf },
 }
 
+impl Destination {
+    /// Returns whether this invocation reserves `path` for document output.
+    pub(crate) fn reserves_path(
+        &self,
+        path: &Path,
+        command: CommandName,
+    ) -> Result<bool, RunFailure> {
+        match self {
+            Self::Sink(OutputSink::File(output)) => Ok(same_planned_path(output, path)),
+            Self::Sink(OutputSink::None | OutputSink::Standard) => Ok(false),
+            Self::InPlace { source } => Ok(same_planned_path(source, path)
+                || same_planned_path(&sibling(source, BACKUP_SUFFIX, command)?, path)
+                || same_planned_path(&sibling(source, STAGING_SUFFIX, command)?, path)),
+        }
+    }
+}
+
+fn same_planned_path(left: &Path, right: &Path) -> bool {
+    if left == right {
+        return true;
+    }
+    let Some(left_name) = left.file_name() else {
+        return false;
+    };
+    let Some(right_name) = right.file_name() else {
+        return false;
+    };
+    if !same_file_name(left_name, right_name) {
+        return false;
+    }
+    let left_parent = nonempty_parent(left);
+    let right_parent = nonempty_parent(right);
+    match (
+        fs::canonicalize(left_parent),
+        fs::canonicalize(right_parent),
+    ) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+    }
+}
+
+fn nonempty_parent(path: &Path) -> &Path {
+    path.parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+}
+
+#[cfg(windows)]
+fn same_file_name(left: &std::ffi::OsStr, right: &std::ffi::OsStr) -> bool {
+    left.to_string_lossy()
+        .eq_ignore_ascii_case(&right.to_string_lossy())
+}
+
+#[cfg(not(windows))]
+fn same_file_name(left: &std::ffi::OsStr, right: &std::ffi::OsStr) -> bool {
+    left == right
+}
+
 /// Result of a completed in-place commit.
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum InPlaceOutcome {
@@ -92,6 +150,7 @@ pub(crate) fn commit(
     command: CommandName,
 ) -> Result<InPlaceOutcome, RunFailure> {
     require_regular_file(source, command)?;
+    require_original_bytes(source, original, command)?;
     if original == accepted {
         return Ok(InPlaceOutcome::Unchanged);
     }
@@ -99,11 +158,6 @@ pub(crate) fn commit(
     let staging_path = sibling(source, STAGING_SUFFIX, command)?;
     if backup_path.exists() || staging_path.exists() {
         return Err(RunFailure::output_exists_for(command));
-    }
-    let current = crate::contract::read_input_bounded(source, original.len().saturating_add(1))
-        .map_err(|error| RunFailure::input_read(command, &error))?;
-    if current != original {
-        return Err(RunFailure::operational(command));
     }
     write_exclusive(&backup_path, original, command)?;
     write_exclusive(&staging_path, accepted, command)?;
@@ -113,7 +167,7 @@ pub(crate) fn commit(
     if staged != accepted {
         return Err(RunFailure::operational(command));
     }
-    install(source, &staging_path, command)?;
+    install_verified(source, &staging_path, original, command)?;
     let replaced = crate::contract::read_input_bounded(source, accepted.len().saturating_add(1))
         .map_err(|_| RunFailure::operational(command))?;
     if replaced != accepted {
@@ -125,6 +179,30 @@ pub(crate) fn commit(
         .ok_or_else(|| usage(command, "in-place requires a regular file"))?
         .to_owned();
     Ok(InPlaceOutcome::Replaced { backup_name })
+}
+
+fn require_original_bytes(
+    source: &Path,
+    original: &[u8],
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    let current = crate::contract::read_input_bounded(source, original.len().saturating_add(1))
+        .map_err(|_| RunFailure::concurrent_modification(command))?;
+    if current != original {
+        return Err(RunFailure::concurrent_modification(command));
+    }
+    Ok(())
+}
+
+fn install_verified(
+    source: &Path,
+    staging: &Path,
+    original: &[u8],
+    command: CommandName,
+) -> Result<(), RunFailure> {
+    require_regular_file(source, command)?;
+    require_original_bytes(source, original, command)?;
+    install(source, staging, command)
 }
 
 pub(crate) fn backup_name(outcome: &InPlaceOutcome) -> Option<&str> {
@@ -250,172 +328,4 @@ fn usage(command: CommandName, message: &'static str) -> RunFailure {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::tempdir;
-
-    const fn flags(requested: bool, backup: bool) -> InPlaceFlags {
-        InPlaceFlags { requested, backup }
-    }
-
-    #[test]
-    fn in_place_implies_backup() {
-        let directory = tempdir().expect("temporary directory");
-        let source = directory.path().join("draft.txt");
-        fs::write(&source, b"original\n").expect("write source");
-        let destination =
-            resolve_destination(&source, None, flags(true, false), CommandName::Check)
-                .expect("in-place implies backup");
-        assert!(matches!(destination, Destination::InPlace { .. }));
-        let with_flag = resolve_destination(&source, None, flags(true, true), CommandName::Check)
-            .expect("redundant --backup remains valid");
-        assert_eq!(destination, with_flag);
-    }
-
-    #[test]
-    fn backup_without_in_place_is_usage() {
-        let failure = resolve_destination(
-            Path::new("draft.txt"),
-            None,
-            flags(false, true),
-            CommandName::Rewrite,
-        )
-        .expect_err("backup requires in-place");
-        assert!(failure.message.contains("requires --in-place"));
-    }
-
-    #[test]
-    fn in_place_with_output_is_usage() {
-        let failure = resolve_destination(
-            Path::new("draft.txt"),
-            Some(Path::new("out.txt")),
-            flags(true, true),
-            CommandName::Check,
-        )
-        .expect_err("in-place rejects --output");
-        assert!(failure.message.contains("incompatible with --output"));
-    }
-
-    #[test]
-    fn in_place_on_standard_input_is_usage() {
-        let failure =
-            resolve_destination(Path::new("-"), None, flags(true, true), CommandName::Check)
-                .expect_err("stdin is refused");
-        assert!(failure.message.contains("standard input"));
-    }
-
-    #[test]
-    fn commit_leaves_identical_bytes_untouched() {
-        let directory = tempdir().expect("temporary directory");
-        let source = directory.path().join("draft.txt");
-        fs::write(&source, b"same\n").expect("write source");
-        let outcome = commit(&source, b"same\n", b"same\n", CommandName::Check).expect("commit");
-        assert!(matches!(outcome, InPlaceOutcome::Unchanged));
-        assert_eq!(fs::read(&source).expect("read source"), b"same\n");
-        assert!(!directory.path().join("draft.txt.retonr-backup").exists());
-        assert!(!directory.path().join("draft.txt.retonr-staging").exists());
-    }
-
-    #[test]
-    fn commit_retains_a_backup_and_replaces_the_source() {
-        let directory = tempdir().expect("temporary directory");
-        let source = directory.path().join("draft.txt");
-        fs::write(&source, b"original\n").expect("write source");
-        let outcome =
-            commit(&source, b"original\n", b"accepted\n", CommandName::Check).expect("commit");
-        match outcome {
-            InPlaceOutcome::Replaced { backup_name } => {
-                assert_eq!(backup_name, "draft.txt.retonr-backup");
-            }
-            InPlaceOutcome::Unchanged => panic!("changed bytes must replace"),
-        }
-        assert_eq!(fs::read(&source).expect("read source"), b"accepted\n");
-        assert_eq!(
-            fs::read(directory.path().join("draft.txt.retonr-backup")).expect("read backup"),
-            b"original\n"
-        );
-        assert!(!directory.path().join("draft.txt.retonr-staging").exists());
-    }
-
-    #[test]
-    fn existing_backup_is_refused_without_mutation() {
-        let directory = tempdir().expect("temporary directory");
-        let source = directory.path().join("draft.txt");
-        let backup = directory.path().join("draft.txt.retonr-backup");
-        fs::write(&source, b"original\n").expect("write source");
-        fs::write(&backup, b"keep\n").expect("write backup");
-        let failure = commit(&source, b"original\n", b"accepted\n", CommandName::Check)
-            .expect_err("existing backup");
-        assert_eq!(
-            failure.exit_code,
-            ExitCode::from(crate::contract::EXIT_POLICY)
-        );
-        assert_eq!(fs::read(&source).expect("read source"), b"original\n");
-        assert_eq!(fs::read(&backup).expect("read backup"), b"keep\n");
-    }
-
-    #[test]
-    fn existing_staging_is_refused_without_mutation() {
-        let directory = tempdir().expect("temporary directory");
-        let source = directory.path().join("draft.txt");
-        let staging = directory.path().join("draft.txt.retonr-staging");
-        fs::write(&source, b"original\n").expect("write source");
-        fs::write(&staging, b"keep\n").expect("write staging");
-        let failure = commit(&source, b"original\n", b"accepted\n", CommandName::Rewrite)
-            .expect_err("existing staging");
-        assert_eq!(
-            failure.exit_code,
-            ExitCode::from(crate::contract::EXIT_POLICY)
-        );
-        assert_eq!(fs::read(&source).expect("read source"), b"original\n");
-        assert_eq!(fs::read(&staging).expect("read staging"), b"keep\n");
-        assert!(!directory.path().join("draft.txt.retonr-backup").exists());
-    }
-
-    #[test]
-    fn hard_link_alias_is_refused_without_mutation() {
-        let directory = tempdir().expect("temporary directory");
-        let source = directory.path().join("draft.txt");
-        let alias = directory.path().join("alias.txt");
-        fs::write(&source, b"original\n").expect("write source");
-        fs::hard_link(&source, &alias).expect("create hard-link alias");
-
-        let failure = commit(&source, b"original\n", b"accepted\n", CommandName::Check)
-            .expect_err("hard-linked source is ambiguous");
-
-        assert_eq!(failure.exit_code, ExitCode::from(EXIT_USAGE));
-        assert!(failure.message.contains("hard-link aliases"));
-        assert_eq!(fs::read(&source).expect("read source"), b"original\n");
-        assert_eq!(fs::read(&alias).expect("read alias"), b"original\n");
-        assert!(!directory.path().join("draft.txt.retonr-backup").exists());
-        assert!(!directory.path().join("draft.txt.retonr-staging").exists());
-    }
-
-    #[test]
-    fn install_replaces_one_path_without_rewriting_a_late_hard_link_alias() {
-        let directory = tempdir().expect("temporary directory");
-        let source = directory.path().join("draft.txt");
-        let alias = directory.path().join("late-alias.txt");
-        let staging = directory.path().join("draft.txt.retonr-staging");
-        fs::write(&source, b"original\n").expect("write source");
-        fs::hard_link(&source, &alias).expect("create late hard-link alias");
-        fs::write(&staging, b"accepted\n").expect("write staging");
-
-        install(&source, &staging, CommandName::Check).expect("replace source path");
-
-        assert_eq!(fs::read(&source).expect("read source"), b"accepted\n");
-        assert_eq!(fs::read(&alias).expect("read alias"), b"original\n");
-        assert!(!staging.exists());
-    }
-
-    #[test]
-    fn sibling_names_stay_in_the_source_directory() {
-        let path = Path::new("nested").join("draft.txt");
-        let backup = sibling(&path, BACKUP_SUFFIX, CommandName::Check).expect("backup");
-        assert_eq!(backup, Path::new("nested").join("draft.txt.retonr-backup"));
-        assert_eq!(
-            backup.file_name().and_then(|name| name.to_str()),
-            Some("draft.txt.retonr-backup")
-        );
-    }
-}
+mod tests;

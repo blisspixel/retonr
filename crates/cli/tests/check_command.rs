@@ -316,3 +316,55 @@ fn diff_neutralizes_controls_and_trace_refuses_to_replace() {
         .stderr(predicate::str::contains("\"code\": \"output_exists\""));
     assert_eq!(fs::read(trace).expect("read existing trace"), b"existing");
 }
+
+#[test]
+fn existing_trace_is_refused_before_in_place_mutation() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    let trace = directory.path().join("trace.json");
+    fs::write(&source, "Hello world\n").expect("write source fixture");
+    fs::write(&candidate, "Hello, world!\n").expect("write candidate fixture");
+    fs::write(&trace, b"existing").expect("write existing trace");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(&source)
+        .arg(&candidate)
+        .args(["--in-place", "--trace"])
+        .arg(&trace)
+        .assert()
+        .code(3)
+        .stderr(predicate::str::contains("\"code\": \"output_exists\""));
+
+    assert_eq!(fs::read(&source).expect("read source"), b"Hello world\n");
+    assert_eq!(fs::read(&trace).expect("read trace"), b"existing");
+    assert!(!directory.path().join("source.txt.retonr-backup").exists());
+    assert!(!directory.path().join("source.txt.retonr-staging").exists());
+}
+
+#[test]
+fn trace_cannot_share_a_primary_output_path() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    let output = directory.path().join("accepted.txt");
+    fs::write(&source, "Hello world\n").expect("write source fixture");
+    fs::write(&candidate, "Hello, world!\n").expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(&source)
+        .arg(&candidate)
+        .arg("--output")
+        .arg(&output)
+        .arg("--trace")
+        .arg(&output)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
+
+    assert!(!output.exists(), "a conflicting path must not be created");
+}

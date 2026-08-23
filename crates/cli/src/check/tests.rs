@@ -5,9 +5,10 @@ use rewrite_types::{ReasonCode, RewriteStatus};
 use super::{
     DocumentRender, OutputSink, exit_status,
     report::{reason_name, status_name},
-    resolve_document_render, resolve_output_sink_for,
+    require_not_cancelled, resolve_document_render, resolve_output_sink_for,
 };
 use crate::contract::{CommandName, EXIT_CANCELLED, EXIT_POLICY, read_bounded};
+use rewrite_types::CancellationToken;
 
 #[test]
 fn stable_exit_code_policy() {
@@ -93,4 +94,14 @@ fn a_new_destination_is_accepted_and_an_existing_one_is_refused() {
     let refused = resolve_output_sink_for(Some(fresh.as_path()), CommandName::Check)
         .expect_err("an existing destination is never replaced");
     assert_eq!(refused.exit_code, ExitCode::from(EXIT_POLICY));
+}
+
+#[test]
+fn cancellation_is_observed_before_document_output() {
+    let cancellation = CancellationToken::new();
+    require_not_cancelled(&cancellation, CommandName::Check).expect("active operation");
+    cancellation.cancel();
+    let failure = require_not_cancelled(&cancellation, CommandName::Check)
+        .expect_err("cancelled operation must stop before output");
+    assert_eq!(failure.exit_code, ExitCode::from(EXIT_CANCELLED));
 }

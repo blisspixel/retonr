@@ -203,6 +203,17 @@ the scorecard and cannot override hard gates or human release adjudication.
 never modifies your source. `--output -` sends the document to standard output
 and moves the report to standard error so the two never mix.
 
+`--in-place` is the explicit recoverable exception. It accepts only a regular file
+without symlink or hard-link ambiguity, retains `<name>.retonr-backup`, stages and
+verifies the accepted bytes in the same directory, rechecks that the source still
+matches the validated bytes, and then replaces the source path. Source drift fails
+with `concurrent_modification`. Identical accepted bytes create no backup.
+
+`--trace <path>` creates a new redacted record and never replaces a path. Known trace
+collisions and missing parent directories are rejected before a non-dry-run document
+write. The trace cannot share the primary output or the in-place backup or staging
+path.
+
 Writing exact unescaped document bytes to a terminal requires `--raw-terminal
 --yes` together. Either flag alone, or neither flag, writes escaped rendering
 that cannot drive the terminal. This exists because untrusted text can carry

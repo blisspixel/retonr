@@ -216,8 +216,11 @@ runtime state or model-use proof exists.
   `<name>.retonr-backup` that must not already exist, then replaces a regular
   source file after same-directory staging. Standard input, `--output`, and
   symlinks are refused. A source with hard-link aliases is also refused so another
-  path cannot be mutated indirectly. Unchanged accepted bytes leave the source
-  untouched.
+  path cannot be mutated indirectly. The commit rechecks the exact source bytes
+  after validation, including the unchanged path, and checks the regular-file,
+  single-link, and byte identity again immediately before replacement. Detected
+  drift returns retryable `concurrent_modification` instead of reporting an
+  unchanged or completed write. Unchanged accepted bytes leave the source untouched.
   A terminal defaults to text; a pipe defaults to JSON. `-f` selects either.
   `--data-dir` is also `-D` or `RETONR_DATA_DIR`.
   Exact bytes reach a terminal only after the
@@ -227,8 +230,12 @@ runtime state or model-use proof exists.
   effects. Either flag alone stays escaped. `--diff` writes an escaped
   linear comparison of source and accepted output to standard error. `--dry-run`
   computes the report without creating `--output` or replacing the source.
-  `--trace` writes the redacted
-  rewrite record to a new file.
+  Cancellation is checked again at the final cooperative boundary before document
+  output. `--trace` writes the redacted rewrite record to a new file. Before model or
+  document work, a trace request rejects an existing path, a missing parent, and a
+  path reserved by the same non-dry-run document transaction. Exclusive creation is
+  still enforced when the trace is written because preflight does not eliminate a
+  later filesystem race.
 - The editorial corpus contract and 120 synthetic fixtures across five groups are
   implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
   implemented yet. A separate writing-sample library holds licensed pre-2018

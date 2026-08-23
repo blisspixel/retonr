@@ -14,6 +14,13 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 - Refuses in-place writes to multiply-linked files and installs verified staging
   bytes by path replacement on every supported platform, so a late hard-link alias
   cannot be modified indirectly.
+- Revalidates exact in-place source bytes after candidate validation and immediately
+  before replacement. Source drift now returns a typed, retryable
+  `concurrent_modification` failure, including when accepted bytes match the earlier
+  source snapshot.
+- Rejects known trace conflicts and invalid trace parents before non-dry-run document
+  output, prevents trace paths from sharing transaction-owned files, and observes
+  cancellation again at the final cooperative boundary before output.
 - Updates the public documentation to match the implemented CLI and internal
   managed-runtime boundaries.
 

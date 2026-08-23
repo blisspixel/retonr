@@ -55,6 +55,20 @@ impl RunFailure {
         }
     }
 
+    /// Reports that a source changed after it was read and validated.
+    pub fn concurrent_modification(command: CommandName) -> Self {
+        Self {
+            command,
+            body: ErrorBody::new(
+                ErrorCategory::Operational,
+                ErrorCode::ConcurrentModification,
+                true,
+            ),
+            exit_code: ExitCode::from(EXIT_OPERATIONAL),
+            message: "source changed during the operation",
+        }
+    }
+
     pub fn check_read(error: &io::Error) -> Self {
         Self::input_read(CommandName::Check, error)
     }
@@ -207,7 +221,8 @@ mod tests {
 
     use super::RunFailure;
     use crate::contract::{
-        CommandName, EXIT_CANCELLED, EXIT_COMPATIBILITY, ErrorBody, ErrorCategory, ErrorCode,
+        CommandName, EXIT_CANCELLED, EXIT_COMPATIBILITY, EXIT_OPERATIONAL, ErrorBody,
+        ErrorCategory, ErrorCode,
     };
 
     #[test]
@@ -265,6 +280,21 @@ mod tests {
             )
         );
         assert_eq!(cancelled.exit_code, ExitCode::from(EXIT_CANCELLED));
+    }
+
+    #[test]
+    fn concurrent_source_changes_are_retryable_operational_failures() {
+        let failure = RunFailure::concurrent_modification(CommandName::Rewrite);
+        assert_eq!(
+            failure.body,
+            ErrorBody::new(
+                ErrorCategory::Operational,
+                ErrorCode::ConcurrentModification,
+                true
+            )
+        );
+        assert_eq!(failure.exit_code, ExitCode::from(EXIT_OPERATIONAL));
+        assert!(failure.message.contains("source changed"));
     }
 
     #[test]

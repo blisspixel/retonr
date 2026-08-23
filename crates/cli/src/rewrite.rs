@@ -10,6 +10,7 @@ use rewrite_types::{CancellationToken, ReasonCode, RewriteMode};
 use crate::{
     check::{
         CheckInspection, destination_report_target, emit_destination, inspect, replace, report,
+        require_not_cancelled, validate_trace_destination,
     },
     contract::{ArtifactIdArgument, CommandName, ReportFormat, read_input_bounded},
     failure::RunFailure,
@@ -62,6 +63,12 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
         request.in_place,
         CommandName::Rewrite,
     )?;
+    validate_trace_destination(
+        &destination,
+        request.inspection.trace.as_deref(),
+        request.inspection.dry_run,
+        CommandName::Rewrite,
+    )?;
     let source = read_input_bounded(&request.source, MAX_CANDIDATE_CHECK_BYTES)
         .map_err(|error| RunFailure::input_read(CommandName::Rewrite, &error))?;
     GroundedRewriteSelection::validate_source(&source)
@@ -95,6 +102,7 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
     if result.record.reason == Some(ReasonCode::Cancelled) {
         return Err(RunFailure::cancelled(CommandName::Rewrite));
     }
+    require_not_cancelled(&cancellation, CommandName::Rewrite)?;
     let backup = if request.inspection.dry_run {
         None
     } else {

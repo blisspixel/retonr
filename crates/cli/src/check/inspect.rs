@@ -80,6 +80,28 @@ pub(crate) fn write_trace(
     write_new_file(path, &bytes, command)
 }
 
+/// Rejects a trace target that is already represented in the filesystem.
+///
+/// `write_trace` still creates the file exclusively because another process
+/// can claim the path after this preflight check.
+pub(crate) fn require_new_trace_path(path: &Path, command: CommandName) -> Result<(), RunFailure> {
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let parent_metadata = parent
+        .metadata()
+        .map_err(|_| RunFailure::operational(command))?;
+    if !parent_metadata.is_dir() {
+        return Err(RunFailure::operational(command));
+    }
+    match path.symlink_metadata() {
+        Ok(_) => Err(RunFailure::output_exists_for(command)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err(RunFailure::operational(command)),
+    }
+}
+
 pub(crate) fn write_diff(
     diff: &SafeDiff,
     target: ReportTarget,
@@ -233,6 +255,7 @@ fn split_display_lines(bytes: &[u8]) -> Vec<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     #[test]
     fn equal_documents_are_unchanged() {
@@ -258,5 +281,57 @@ mod tests {
         assert_eq!(diff.hunks[0].output, "\\e[31mdanger\\r");
         assert!(!diff.render_text().contains('\u{1b}'));
         assert!(!diff.render_text().contains('\r'));
+    }
+
+    #[test]
+    fn trace_preflight_rejects_existing_files_and_dangling_symlinks() {
+        let directory = tempdir().expect("temporary directory");
+        let existing = directory.path().join("trace.json");
+        std::fs::write(&existing, b"keep").expect("write trace");
+        let failure = require_new_trace_path(&existing, CommandName::Check)
+            .expect_err("existing trace must be refused");
+        assert_eq!(
+            failure.body,
+            crate::contract::ErrorBody::new(
+                crate::contract::ErrorCategory::Policy,
+                crate::contract::ErrorCode::OutputExists,
+                false,
+            )
+        );
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+
+            let dangling = directory.path().join("dangling.json");
+            symlink(directory.path().join("missing.json"), &dangling)
+                .expect("create dangling symlink");
+            let failure = require_new_trace_path(&dangling, CommandName::Check)
+                .expect_err("dangling symlink must reserve its path");
+            assert_eq!(
+                failure.body,
+                crate::contract::ErrorBody::new(
+                    crate::contract::ErrorCategory::Policy,
+                    crate::contract::ErrorCode::OutputExists,
+                    false,
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn trace_preflight_rejects_a_missing_parent() {
+        let directory = tempdir().expect("temporary directory");
+        let trace = directory.path().join("missing").join("trace.json");
+        let failure = require_new_trace_path(&trace, CommandName::Rewrite)
+            .expect_err("missing trace parent must fail during preflight");
+        assert_eq!(
+            failure.body,
+            crate::contract::ErrorBody::new(
+                crate::contract::ErrorCategory::Operational,
+                crate::contract::ErrorCode::OperationalFailure,
+                true,
+            )
+        );
     }
 }

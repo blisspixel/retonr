@@ -73,15 +73,23 @@ The default writes rewritten content to standard output or a new requested path.
 does not overwrite an input file. `--in-place` (`-i`) requires a regular
 unambiguous file with no hard-link aliases, retains a sibling
 `<name>.retonr-backup` that must not already exist, uses same-directory staging,
-flush, and verification, then replaces the source. Standard input, `--output`,
-symlinks, and multiply-linked files are refused. Unchanged accepted bytes leave the
-source untouched and create no backup. A terminal defaults to text reports; a pipe
-defaults to JSON. `--format` (`-f`) selects either.
+flush, and verification, then replaces the source. It revalidates the exact source
+bytes after candidate validation and checks the source identity again immediately
+before replacement. Source drift is a retryable `concurrent_modification` failure.
+Standard input, `--output`, symlinks, and multiply-linked files are refused.
+Unchanged accepted bytes leave the source untouched and create no backup. A terminal
+defaults to text reports; a pipe defaults to JSON. `--format` (`-f`) selects either.
 `--data-dir` (`-D` or `RETONR_DATA_DIR`) is the explicit repository root.
 
 Text output and diagnostics remain separate. Structured JSON is versioned and stable
 for its declared range. Raw untrusted text is not rendered to a terminal unless the
 safe rendering policy or documented double opt-in applies.
+
+`--trace` exclusively creates one redacted record file. A known existing trace path,
+missing parent directory, or collision with the primary output, in-place backup, or
+staging path is refused before a non-dry-run document write. The command checks
+cancellation again at the last cooperative boundary before document output. These
+checks do not claim atomicity across a later filesystem race or across report streams.
 
 Directory input is a manifest transaction, not an implicit recursive mutation. A
 dry run records canonical source identities, relative paths, formats, capabilities,
