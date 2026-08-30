@@ -199,10 +199,14 @@ settlement, binds downstream live authorities to one private subject, seals the
 target-only attempt ledger, and enforces candidate-before-judge ordering. The next
 internal seam is now closed: Active owns structured-response compilation,
 no-replace publication, fresh readback, receipt compilation, and exact settlement.
-A failure consumes the ordinal without retry, derives its attempt record from the
-observed typed boundary, and, when mandatory finalization remains trustworthy,
-retains a freshly revalidatable attempt-ledger interruption closure with skipped
-later manifests and a noncompleted operation receipt. Successful target settlement
+A failure at a trustworthy typed closeout boundary consumes the ordinal without
+retry, derives its attempt record from the observed typed boundary, and, when
+mandatory finalization remains trustworthy, retains a freshly revalidatable
+attempt-ledger interruption closure with skipped later manifests and a noncompleted
+operation receipt. A runner failure before typed closeout or an ambiguous terminal
+commit can terminalize the process-local owner without creating that durable closure;
+the next recovery seam must classify those states before any later activation.
+Successful target settlement
 also retains each exact completed receipt, and ledger sealing rejects any missing,
 extra, reordered, or scope-mismatched receipt-to-record closure. Schema 10 preserves
 the complete schema 9 inert portable plan and case foundation: clusters,

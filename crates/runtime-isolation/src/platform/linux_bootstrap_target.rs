@@ -12,9 +12,10 @@ use rustix::{
 
 use crate::{ControlledBuildOutput, ControlledBuildProcessStatus};
 
-use super::{linux_helper_setup::HelperFailure, linux_startup::StartupDrains};
-
-const SAFE_DESCRIPTOR_MINIMUM: i32 = 64;
+use super::{
+    linux_fd_exec::PRIVATE_DESCRIPTOR_MINIMUM, linux_helper_setup::HelperFailure,
+    linux_startup::StartupDrains,
+};
 
 pub(super) struct PreparedBootstrapTarget {
     program: OwnedFd,
@@ -29,7 +30,7 @@ impl PreparedBootstrapTarget {
         arguments: &[OsString],
         environment: &[(OsString, OsString)],
     ) -> Result<Self, HelperFailure> {
-        let program = fcntl_dupfd_cloexec(program, SAFE_DESCRIPTOR_MINIMUM)
+        let program = fcntl_dupfd_cloexec(program, PRIVATE_DESCRIPTOR_MINIMUM)
             .map_err(|_| HelperFailure::InvalidLaunch)?;
         let null = File::open("/dev/null").map_err(|_| HelperFailure::InvalidLaunch)?;
         Ok(Self {

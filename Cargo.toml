@@ -71,7 +71,7 @@ tokio = { version = "1.53.1", features = ["macros", "rt", "sync", "test-util", "
 wiremock = "0.6.5"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 [workspace.lints.clippy]
 all = { level = "deny", priority = -1 }

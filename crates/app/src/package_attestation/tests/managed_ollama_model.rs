@@ -19,6 +19,44 @@ mod managed_launch_live;
 #[path = "managed_ollama_model/support.rs"]
 mod support;
 
+#[cfg(all(target_os = "linux", feature = "managed-launch-live-fixture"))]
+fn artifact_limits(total_bytes: u64) -> crate::ArtifactSetImportLimits {
+    crate::ArtifactSetImportLimits {
+        maximum_members: 3,
+        maximum_member_bytes: total_bytes,
+        maximum_total_bytes: total_bytes,
+        maximum_tree_entries: 8,
+        maximum_storage_entries: 3,
+        maximum_staging_entries: 3,
+    }
+}
+
+#[cfg(all(target_os = "linux", feature = "managed-launch-live-fixture"))]
+fn lease_limits(total_bytes: u64) -> crate::RuntimeArtifactSetLeaseLimits {
+    crate::RuntimeArtifactSetLeaseLimits {
+        maximum_members: 3,
+        maximum_member_bytes: total_bytes,
+        maximum_total_bytes: total_bytes,
+        maximum_tree_entries: 8,
+        maximum_storage_entries: 3,
+    }
+}
+
+#[cfg(all(target_os = "linux", feature = "managed-launch-live-fixture"))]
+fn relative(path: &str) -> rewrite_model::ArtifactSetRelativePath {
+    rewrite_model::ArtifactSetRelativePath::new(path).expect("canonical runtime fixture path")
+}
+
+#[cfg(all(target_os = "linux", feature = "managed-launch-live-fixture"))]
+fn required_path(name: &str) -> std::path::PathBuf {
+    let path = std::env::var_os(name).map_or_else(
+        || panic!("{name} must name the retained live fixture executable"),
+        std::path::PathBuf::from,
+    );
+    assert!(path.is_file(), "{name} must name a file");
+    path
+}
+
 use support::{
     Fixture, MODEL_LIMITS, install_alternate_raw_manifest, rebuild_package, removal_limits,
     set_root, verify,
@@ -342,7 +380,7 @@ fn stale_tree_and_retained_bytes_are_rejected() {
     ));
 
     let bytes_fixture = Fixture::new(false);
-    let _bytes_lease = verify(&bytes_fixture);
+    let bytes_lease = verify(&bytes_fixture);
     let model_path = set_root(&bytes_fixture).join("model/model.gguf");
     let original = fs::read(&model_path).expect("read model bytes");
     let mut changed = original.clone();
@@ -350,17 +388,21 @@ fn stale_tree_and_retained_bytes_are_rejected() {
     changed[last] ^= 1;
     let write = fs::write(&model_path, changed);
     #[cfg(windows)]
-    assert!(
-        write.is_err(),
-        "retained Windows handle must deny byte drift"
-    );
+    {
+        assert!(
+            write.is_err(),
+            "retained Windows handle must deny byte drift"
+        );
+        drop(bytes_lease);
+    }
     #[cfg(unix)]
     {
         write.expect("drift retained model bytes");
         assert!(matches!(
-            _bytes_lease.revalidate(&CancellationToken::new()),
+            bytes_lease.revalidate(&CancellationToken::new()),
             Err(ManagedOllamaModelPackageError::Package(
                 PackageAttestationError::MemberBytesConflict
+                    | PackageAttestationError::MemberIdentityChanged
                     | PackageAttestationError::ArtifactSet(_)
             ))
         ));

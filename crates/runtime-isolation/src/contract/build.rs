@@ -15,6 +15,7 @@ use crate::{
 
 const MAXIMUM_EXECUTION_TIMEOUT: Duration = Duration::from_hours(4);
 const MAXIMUM_PORTABLE_PATH_BYTES: usize = 4_096;
+const CONTROLLED_BUILD_CAPABILITY_PREFIX: &[u8] = b"RETONR_CONTROLLED_BUILD_";
 
 pub(crate) const CONTROLLED_BUILD_INPUT_SNAPSHOT_TIMEOUT: Duration = Duration::from_mins(10);
 
@@ -224,6 +225,12 @@ impl ControlledBuildLaunchSpec {
         }
         for (key, value) in &self.environment {
             validate_environment_key(key, policy.maximum_value_bytes())?;
+            if key
+                .as_encoded_bytes()
+                .starts_with(CONTROLLED_BUILD_CAPABILITY_PREFIX)
+            {
+                return Err(IsolationError::InvalidLaunch("environment key"));
+            }
             validate_value(value, policy.maximum_value_bytes())?;
         }
         Ok(())
@@ -408,6 +415,12 @@ mod tests {
         valid
             .validate(IsolationPolicy::default())
             .expect("valid bounded build");
+        let mut reserved = valid.clone();
+        reserved.insert_environment("RETONR_CONTROLLED_BUILD_INPUT_ROOT", "replacement");
+        assert_eq!(
+            reserved.validate(IsolationPolicy::default()),
+            Err(IsolationError::InvalidLaunch("environment key"))
+        );
         let digest = valid.redacted_digest();
         valid.push_argument("changed");
         assert_ne!(valid.redacted_digest(), digest);

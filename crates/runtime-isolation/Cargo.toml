@@ -21,7 +21,7 @@ thiserror.workspace = true
 close_fds.workspace = true
 landlock.workspace = true
 libc.workspace = true
-rustix = { workspace = true, features = ["event", "fs", "mount", "net", "process", "thread"] }
+rustix = { workspace = true, features = ["event", "fs", "mount", "net", "process", "runtime", "thread"] }
 seccompiler.workspace = true
 tar.workspace = true
 

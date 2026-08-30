@@ -121,6 +121,10 @@ fn write_diagnostic_tail(
     Ok(())
 }
 
+pub(super) fn owned_values(values: impl IntoIterator<Item = String>) -> Vec<OsString> {
+    values.into_iter().map(OsString::from).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,8 +146,4 @@ mod tests {
         }
         assert_eq!(fragmented, vec![7; TOOL_DIAGNOSTIC_TAIL_BYTES]);
     }
-}
-
-pub(super) fn owned_values(values: impl IntoIterator<Item = String>) -> Vec<OsString> {
-    values.into_iter().map(OsString::from).collect()
 }

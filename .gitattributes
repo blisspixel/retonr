@@ -3,7 +3,6 @@
 
 *.md text eol=lf
 *.mmd text eol=lf
-*.patch text eol=lf whitespace=-blank-at-eol
 *.ps1 text eol=lf
 *.rs text eol=lf
 *.sh text eol=lf
@@ -24,3 +23,7 @@ Cargo.lock text eol=lf
 
 fixtures/** -text
 fuzz/corpus/** -text
+
+*.asc -text
+
+*.patch text eol=lf whitespace=-blank-at-eol

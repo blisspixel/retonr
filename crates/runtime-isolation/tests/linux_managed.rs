@@ -158,6 +158,10 @@ fn managed_boundary_fixture_entrypoint() {
         .expect("host marker")
         .parse::<u32>()
         .expect("numeric host marker");
+    let host_marker_start_token = std::env::var("RETONR_TEST_HOST_MARKER_START_TOKEN")
+        .expect("host marker start token")
+        .parse::<u64>()
+        .expect("numeric host marker start token");
     let mut numeric = fs::read_dir("/proc")
         .expect("read private procfs")
         .filter_map(Result::ok)
@@ -166,7 +170,11 @@ fn managed_boundary_fixture_entrypoint() {
     numeric.sort_unstable();
     assert!(numeric.contains(&1));
     assert!(numeric.contains(&std::process::id()));
-    assert!(!numeric.contains(&host_marker));
+    assert_ne!(
+        proc_start_token(host_marker),
+        Some(host_marker_start_token),
+        "host process incarnation must not be visible through private procfs"
+    );
     connection.write_all(b"P").expect("write proc result");
     let leaks = (3..256)
         .filter(|descriptor| {
@@ -438,7 +446,7 @@ fn controlled_build_is_filesystem_confined_or_host_policy_denies_it() {
         8,
         8,
         4_096,
-        256,
+        64,
         64,
     )
     .expect("valid build policy");
@@ -449,11 +457,7 @@ fn controlled_build_is_filesystem_confined_or_host_policy_denies_it() {
     let output = tempfile::tempdir_in("/tmp").expect("output root under host temporary root");
     fs::write(input.path().join("allowed.txt"), b"allowed").expect("write input fixture");
     let program_path = input.path().join("build-fixture");
-    fs::copy(
-        std::env::current_exe().expect("test executable"),
-        &program_path,
-    )
-    .expect("copy build fixture");
+    fs::copy(fixture_executable(), &program_path).expect("copy build fixture");
     fs::set_permissions(&program_path, fs::Permissions::from_mode(0o755))
         .expect("make build fixture executable");
     let program_bytes = fs::read(&program_path).expect("read build fixture");
@@ -947,6 +951,51 @@ fn helper_path() -> std::path::PathBuf {
     )
 }
 
+fn fixture_executable() -> std::path::PathBuf {
+    std::env::var_os("REWRITE_ISOLATION_TEST_TARGET").map_or_else(
+        || std::env::current_exe().expect("managed fixture executable"),
+        std::path::PathBuf::from,
+    )
+}
+
+fn proc_start_token(pid: u32) -> Option<u64> {
+    let path = format!("/proc/{pid}/stat");
+    let text = match fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return None,
+        Err(error) => panic!("read process start token: {error}"),
+    };
+    let close = text.rfind(')').expect("process stat command terminator");
+    Some(
+        text.get(close.saturating_add(1)..)
+            .expect("process stat suffix")
+            .split_ascii_whitespace()
+            .nth(19)
+            .expect("process stat start token")
+            .parse::<u64>()
+            .expect("numeric process start token"),
+    )
+}
+
+fn managed_boundary_launch_spec() -> LaunchSpec {
+    let mut launch = LaunchSpec::new(fixture_executable());
+    launch.push_argument("--exact");
+    launch.push_argument("managed_boundary_fixture_entrypoint");
+    launch.push_argument("--nocapture");
+    launch.insert_environment("RETONR_TEST_MANAGED_BOUNDARY_FIXTURE", "1");
+    launch.insert_environment(
+        "RETONR_TEST_HOST_MARKER_PID",
+        std::process::id().to_string(),
+    );
+    launch.insert_environment(
+        "RETONR_TEST_HOST_MARKER_START_TOKEN",
+        proc_start_token(std::process::id())
+            .expect("host marker process start token")
+            .to_string(),
+    );
+    launch
+}
+
 fn retained_replaced_python(python: &Path) -> (std::path::PathBuf, File) {
     let retained_path = std::env::temp_dir().join(format!(
         "rewrite-isolation-retained-target-{}",
@@ -977,7 +1026,7 @@ fn managed_launch_is_verified_or_host_policy_denies_it_exactly() {
         8,
         8,
         4_096,
-        256,
+        64,
         64,
     )
     .expect("valid test policy");
@@ -996,15 +1045,7 @@ fn managed_launch_is_verified_or_host_policy_denies_it_exactly() {
         64
     );
 
-    let mut launch = LaunchSpec::new(std::env::current_exe().expect("managed fixture executable"));
-    launch.push_argument("--exact");
-    launch.push_argument("managed_boundary_fixture_entrypoint");
-    launch.push_argument("--nocapture");
-    launch.insert_environment("RETONR_TEST_MANAGED_BOUNDARY_FIXTURE", "1");
-    launch.insert_environment(
-        "RETONR_TEST_HOST_MARKER_PID",
-        std::process::id().to_string(),
-    );
+    let launch = managed_boundary_launch_spec();
     let mut lease = prepared
         .launch(&launch, &cancellation)
         .expect("launch isolated process tree");
@@ -1096,7 +1137,8 @@ fn retained_runtime_inputs_are_private_exact_and_reobserved() {
             .map(|(_, bytes)| u64::try_from(bytes.len()).expect("fixture length"))
             .sum::<u64>()
     );
-    let mut launch = LaunchSpec::new(std::env::current_exe().expect("managed fixture executable"));
+    let fixture = fixture_executable();
+    let mut launch = LaunchSpec::new(&fixture);
     launch.push_argument("--exact");
     launch.push_argument("managed_runtime_input_fixture_entrypoint");
     launch.push_argument("--nocapture");
@@ -1109,8 +1151,7 @@ fn retained_runtime_inputs_are_private_exact_and_reobserved() {
         "RETONR_TEST_SOURCE_INODE",
         source_metadata.ino().to_string(),
     );
-    let executable = File::open(std::env::current_exe().expect("managed fixture path"))
-        .expect("open retained managed fixture");
+    let executable = File::open(fixture).expect("open retained managed fixture");
     let mut lease = prepared
         .launch_retained_with_inputs(&launch, executable, inputs, &cancellation)
         .expect("launch retained runtime input fixture");
@@ -1215,14 +1256,15 @@ fn cancelled_preparation_never_starts_the_helper() {
 
 #[test]
 fn retained_channel_transfers_exact_capabilities_and_bounded_capture() {
-    let python = Path::new("/usr/bin/python3");
-    if !python.is_file() {
+    let python_link = Path::new("/usr/bin/python3");
+    if !python_link.is_file() {
         assert!(
             std::env::var_os("REWRITE_ISOLATION_REQUIRE_NATIVE").is_none(),
             "forced native isolation test requires /usr/bin/python3"
         );
         return;
     }
+    let python = fs::canonicalize(python_link).expect("canonical Python executable");
     let helper = helper_path();
     let cancellation = CancellationToken::new();
     let policy = IsolationPolicy::new(
@@ -1265,7 +1307,7 @@ connection, _ = listener.accept()
 connection.recv(1)
 time.sleep(60)
 "#;
-    let (retained_path, retained) = retained_replaced_python(python);
+    let (retained_path, retained) = retained_replaced_python(&python);
     let mut launch = LaunchSpec::new(&retained_path);
     launch.push_argument("-c");
     launch.push_argument(script);
@@ -1314,14 +1356,15 @@ time.sleep(60)
 
 #[test]
 fn target_socket_policy_blocks_host_local_families_and_keeps_loopback() {
-    let python = Path::new("/usr/bin/python3");
-    if !python.is_file() {
+    let python_link = Path::new("/usr/bin/python3");
+    if !python_link.is_file() {
         assert!(
             std::env::var_os("REWRITE_ISOLATION_REQUIRE_NATIVE").is_none(),
             "forced native isolation test requires /usr/bin/python3"
         );
         return;
     }
+    let python = fs::canonicalize(python_link).expect("canonical Python executable");
     let socket_path = std::env::temp_dir().join(format!(
         "rewrite-isolation-host-socket-{}",
         std::process::id()
@@ -1399,7 +1442,7 @@ fn never_listening_target_fails_within_the_channel_deadline() {
     let Some(prepared) = prepare_or_skip(&helper, policy, &cancellation) else {
         return;
     };
-    let executable_path = std::env::current_exe().expect("non-listener fixture executable");
+    let executable_path = fixture_executable();
     let mut launch = LaunchSpec::new(&executable_path);
     launch.push_argument("--exact");
     launch.push_argument("never_listening_fixture_entrypoint");

@@ -54,6 +54,16 @@ release closeout is tagged and published. INV-Q04 applies from the first complet
 [product 1.0 capability table](product.md#10-product-boundary). Work
 proceeds in this exact order:
 
+Within the active generation-qualification work in item 11, the immediate
+implementation slice is a mandatory, bounded, read-only candidate-attempt
+reconciliation before `Prepared` can activate. It must classify every plan-order
+attempt as not started, checkpoint-only, terminal failed, or terminal completed;
+compare durable metadata with the canonical application evidence root; and refuse
+traffic for every state except an entirely pristine plan. It must not retry an
+attempt, fabricate terminal evidence, promote staging, delete an orphan, or grant
+live authority. This closes the restart gap before operation-level terminal evidence
+or any production Approved root can be added.
+
 1. With offline import, read-only inventory, selected reconciliation, inactive
    removal, exact removal recovery, non-mutating pending-operation inspection,
    backup-backed explicit repository migration, and cross-platform signal
@@ -284,9 +294,9 @@ proceeds in this exact order:
     interruption. Preserve foundation-gated preregistration with its retained cold
     readback, the newly inserted pretraffic checkpoint, Active-owned completion,
     app-root-bound publication and reacquisition, and atomic completed-or-failed
-    candidate closure. Add deterministic recovery and reconciliation for checkpoint-only
-    attempts, publication orphans, and ambiguous terminal commits before adding
-    operation-level terminal evidence. Complete that dependency chain
+    candidate closure. Add the bounded activation reconciliation defined above for
+    checkpoint-only attempts, publication orphans, and ambiguous terminal commits
+    before adding operation-level terminal evidence. Complete that dependency chain
     before populating a production Approved root. Positive
     human authority
     requires a reviewed V2 policy and explicit reviewer-governance and

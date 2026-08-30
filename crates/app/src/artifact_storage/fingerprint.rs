@@ -118,12 +118,12 @@ impl MetadataFingerprint {
         self.length
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub(crate) const fn unix_mode(&self) -> u32 {
         self.mode & 0o777
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub(crate) const fn has_special_unix_mode_bits(&self) -> bool {
         self.mode & 0o7_000 != 0
     }

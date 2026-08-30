@@ -22,7 +22,10 @@ use rewrite_types::Digest;
 #[cfg(target_os = "linux")]
 use super::linux::{compile_closure_id, expected_program_tree, validate_live_pair};
 #[cfg(target_os = "linux")]
-use super::{BootstrapAttemptLease, ExecutableClosureAuthority, PinnedRuntimeSourceBuildOutput};
+use super::{
+    BootstrapAttemptLease, ExecutableClosureAuthority, PinnedRuntimeSourceBuildOutput,
+    ProductionExecutableClosureAuthority,
+};
 use super::{
     ExecutableRuntimeSourceBuildBundleLease, RetainedProgramBootstrapOutputSources,
     RetainedProgramExecutableClosureError,
@@ -147,13 +150,15 @@ impl RetainedProgramExecutableClosureVerifier {
             bundle,
             plan,
             closure_id,
-            authority: ExecutableClosureAuthority::Production {
-                cargo,
-                license,
-                upstream,
-                primary,
-                rebuild,
-            },
+            authority: ExecutableClosureAuthority::Production(Box::new(
+                ProductionExecutableClosureAuthority {
+                    cargo,
+                    license,
+                    upstream,
+                    primary,
+                    rebuild,
+                },
+            )),
         };
         executable.revalidate(cancellation)?;
         Ok(executable)

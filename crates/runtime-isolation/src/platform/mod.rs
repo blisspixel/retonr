@@ -51,6 +51,10 @@ mod linux_command;
 #[cfg(target_os = "linux")]
 mod linux_control;
 #[cfg(target_os = "linux")]
+mod linux_executable;
+#[cfg(target_os = "linux")]
+mod linux_fd_exec;
+#[cfg(target_os = "linux")]
 mod linux_helper;
 #[cfg(target_os = "linux")]
 mod linux_helper_bootstrap;

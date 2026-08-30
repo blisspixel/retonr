@@ -283,7 +283,7 @@ impl<'lease> ManagedOllamaIsolationLease<'lease> {
         let final_cancellation = mandatory_final_cancellation(operation_cancellation);
         let isolation_result = match isolation {
             ManagedOllamaRetainedIsolation::Production(isolation) => {
-                isolation.into_inner().close(&final_cancellation)
+                (*isolation).into_inner().close(&final_cancellation)
             }
             #[cfg(test)]
             ManagedOllamaRetainedIsolation::SealedFixture => Ok(()),

@@ -105,7 +105,7 @@ pub struct ManagedOllamaIsolationLease<'lease> {
 }
 
 enum ManagedOllamaRetainedIsolation {
-    Production(RefCell<RetainedIsolationLease>),
+    Production(Box<RefCell<RetainedIsolationLease>>),
     #[cfg(test)]
     SealedFixture,
 }
@@ -332,7 +332,9 @@ fn finish_acquired_launch<'lease>(
     Ok(ManagedOllamaIsolationLease {
         input_bound_launch_spec_digest,
         isolation_policy_digest,
-        isolation: ManagedOllamaRetainedIsolation::Production(RefCell::new(isolation_lease)),
+        isolation: ManagedOllamaRetainedIsolation::Production(Box::new(RefCell::new(
+            isolation_lease,
+        ))),
         initial_isolation: Some(initial),
         plain_launch_spec_digest,
         input_evidence,

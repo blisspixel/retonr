@@ -107,15 +107,17 @@ enum ExecutableClosureAuthority {
             reason = "production construction is intentionally Linux-only"
         )
     )]
-    Production {
-        cargo: VerifiedCargoSourceClosure,
-        license: VerifiedRetainedProgramLicenseEvidenceClosure,
-        upstream: VerifiedRetainedProgramUpstreamClosure,
-        primary: BootstrapAttemptLease,
-        rebuild: BootstrapAttemptLease,
-    },
+    Production(Box<ProductionExecutableClosureAuthority>),
     #[cfg(all(test, target_os = "linux"))]
     InertFixture,
+}
+
+struct ProductionExecutableClosureAuthority {
+    cargo: VerifiedCargoSourceClosure,
+    license: VerifiedRetainedProgramLicenseEvidenceClosure,
+    upstream: VerifiedRetainedProgramUpstreamClosure,
+    primary: BootstrapAttemptLease,
+    rebuild: BootstrapAttemptLease,
 }
 
 struct BootstrapAttemptLease {
@@ -137,10 +139,15 @@ impl ExecutableRuntimeSourceBuildBundleLease {
     }
 
     /// Returns mechanical Cargo source-closure reviewer facts.
+    ///
+    /// # Panics
+    ///
+    /// Panics only for the Linux-only inert fixture used by internal execution
+    /// tests. Production verification never constructs that fixture.
     #[must_use]
     pub const fn cargo_closure(&self) -> &VerifiedCargoSourceClosure {
         match &self.authority {
-            ExecutableClosureAuthority::Production { cargo, .. } => cargo,
+            ExecutableClosureAuthority::Production(authority) => &authority.cargo,
             #[cfg(all(test, target_os = "linux"))]
             ExecutableClosureAuthority::InertFixture => {
                 panic!("an inert test fixture has no Cargo closure")
@@ -149,10 +156,15 @@ impl ExecutableRuntimeSourceBuildBundleLease {
     }
 
     /// Returns mechanical license-material closure reviewer facts.
+    ///
+    /// # Panics
+    ///
+    /// Panics only for the Linux-only inert fixture used by internal execution
+    /// tests. Production verification never constructs that fixture.
     #[must_use]
     pub const fn license_closure(&self) -> &VerifiedRetainedProgramLicenseEvidenceClosure {
         match &self.authority {
-            ExecutableClosureAuthority::Production { license, .. } => license,
+            ExecutableClosureAuthority::Production(authority) => &authority.license,
             #[cfg(all(test, target_os = "linux"))]
             ExecutableClosureAuthority::InertFixture => {
                 panic!("an inert test fixture has no license closure")
@@ -161,10 +173,15 @@ impl ExecutableRuntimeSourceBuildBundleLease {
     }
 
     /// Returns authenticated upstream reviewer facts.
+    ///
+    /// # Panics
+    ///
+    /// Panics only for the Linux-only inert fixture used by internal execution
+    /// tests. Production verification never constructs that fixture.
     #[must_use]
     pub const fn upstream_closure(&self) -> &VerifiedRetainedProgramUpstreamClosure {
         match &self.authority {
-            ExecutableClosureAuthority::Production { upstream, .. } => upstream,
+            ExecutableClosureAuthority::Production(authority) => &authority.upstream,
             #[cfg(all(test, target_os = "linux"))]
             ExecutableClosureAuthority::InertFixture => {
                 panic!("an inert test fixture has no upstream closure")
@@ -173,10 +190,15 @@ impl ExecutableRuntimeSourceBuildBundleLease {
     }
 
     /// Returns the primary live bootstrap result.
+    ///
+    /// # Panics
+    ///
+    /// Panics only for the Linux-only inert fixture used by internal execution
+    /// tests. Production verification never constructs that fixture.
     #[must_use]
     pub const fn primary_bootstrap(&self) -> &RetainedProgramBootstrapExecution {
         match &self.authority {
-            ExecutableClosureAuthority::Production { primary, .. } => &primary.execution,
+            ExecutableClosureAuthority::Production(authority) => &authority.primary.execution,
             #[cfg(all(test, target_os = "linux"))]
             ExecutableClosureAuthority::InertFixture => {
                 panic!("an inert test fixture has no bootstrap execution")
@@ -185,10 +207,15 @@ impl ExecutableRuntimeSourceBuildBundleLease {
     }
 
     /// Returns the independent rebuild live bootstrap result.
+    ///
+    /// # Panics
+    ///
+    /// Panics only for the Linux-only inert fixture used by internal execution
+    /// tests. Production verification never constructs that fixture.
     #[must_use]
     pub const fn rebuild_bootstrap(&self) -> &RetainedProgramBootstrapExecution {
         match &self.authority {
-            ExecutableClosureAuthority::Production { rebuild, .. } => &rebuild.execution,
+            ExecutableClosureAuthority::Production(authority) => &authority.rebuild.execution,
             #[cfg(all(test, target_os = "linux"))]
             ExecutableClosureAuthority::InertFixture => {
                 panic!("an inert test fixture has no bootstrap execution")
@@ -216,13 +243,17 @@ impl ExecutableRuntimeSourceBuildBundleLease {
     ) -> Result<(), RuntimeSourceBuildExecutionError> {
         self.bundle.revalidate(cancellation)?;
         match &self.authority {
-            ExecutableClosureAuthority::Production {
-                primary, rebuild, ..
-            } => {
+            ExecutableClosureAuthority::Production(authority) => {
                 let limits = ManagedTreeLimits::new(MAX_RUNTIME_SOURCE_BUILD_OUTPUT_TREE_ENTRIES)
                     .map_err(|_| RuntimeSourceBuildExecutionError::PlanMismatch)?;
-                primary.output.validate_sealed(limits, cancellation)?;
-                rebuild.output.validate_sealed(limits, cancellation)?;
+                authority
+                    .primary
+                    .output
+                    .validate_sealed(limits, cancellation)?;
+                authority
+                    .rebuild
+                    .output
+                    .validate_sealed(limits, cancellation)?;
             }
             #[cfg(all(test, target_os = "linux"))]
             ExecutableClosureAuthority::InertFixture => {}

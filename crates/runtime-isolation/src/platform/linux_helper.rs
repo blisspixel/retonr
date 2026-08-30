@@ -1,6 +1,6 @@
 use std::{
     env,
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     fs::File,
     io::Write as _,
     os::fd::{AsFd as _, AsRawFd as _, BorrowedFd},
@@ -13,15 +13,16 @@ use rustix::process::{Signal, getpid, set_parent_process_death_signal};
 
 use super::{
     linux_control::{MessageKind, pair, receive, send},
+    linux_fd_exec::retained_fd_command,
     linux_helper_channel::{serve_parent_control, serve_stage_control},
     linux_helper_setup::{
         HelperFailure, drop_managed_privileges, establish_isolation, privileges_are_fully_reduced,
         validate_descriptor_set,
     },
     linux_helper_support::{
-        apply_target_environment, arm_parent_death, control_failure, legacy_spawn_handshake,
-        open_executable, operation_timeout, read_go_message, read_internal_u32, read_limits,
-        validate_executable, write_protocol, write_ready,
+        arm_parent_death, control_failure, legacy_spawn_handshake, open_executable,
+        operation_timeout, read_go_message, read_internal_u32, read_limits,
+        read_target_environment, validate_executable, write_protocol, write_ready,
     },
     linux_managed_input_protocol::{
         MANAGED_INPUT_HEADER_BYTES, MANAGED_INPUT_VERIFICATION_TIMEOUT, decode_declaration,
@@ -417,14 +418,17 @@ fn launch_target(
     evidence: &ManagedReadyEvidence,
     timeout: Duration,
 ) -> Result<i32, HelperFailure> {
-    let mut command = Command::new(format!("/proc/self/fd/{}", target.as_raw_fd()));
+    let environment = read_target_environment()?;
+    let mut command = retained_fd_command(
+        &target,
+        OsStr::new("retonr-managed-target"),
+        arguments,
+        &environment,
+    )?;
     command
-        .args(arguments)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .env_clear();
-    apply_target_environment(&mut command)?;
+        .stderr(Stdio::piped());
     if let Some(directory) = env::var_os(format!("{INTERNAL_PREFIX}CURRENT_DIRECTORY")) {
         if !Path::new(&directory).is_absolute() {
             return Err(HelperFailure::InvalidLaunch);
@@ -433,6 +437,7 @@ fn launch_target(
     }
     let mut child = command.spawn().map_err(|_| HelperFailure::InvalidLaunch)?;
     drop(target);
+    drop(command);
     let output = child.stdout.take().ok_or(HelperFailure::InvalidLaunch)?;
     let error = child.stderr.take().ok_or(HelperFailure::InvalidLaunch)?;
     let drains = StartupDrains::start(output, error);

@@ -211,6 +211,16 @@ jobs:
           test "${#isolation_tests[@]}" -eq 1
           test -x "${isolation_tests[0]}"
           printf '%s\n' "${isolation_tests[0]}" > "$RUNNER_TEMP/retonr-isolation-test-binary"
+          mapfile -t isolation_target_tests < <(
+            cargo test --locked -p rewrite-runtime-isolation \
+              --test linux_managed \
+              --target x86_64-unknown-linux-musl \
+              --release --no-run --message-format=json |
+              jq -r 'select(.reason == "compiler-artifact" and .target.name == "linux_managed" and .executable != null) | .executable'
+          )
+          test "${#isolation_target_tests[@]}" -eq 1
+          test -x "${isolation_target_tests[0]}"
+          printf '%s\n' "${isolation_target_tests[0]}" > "$RUNNER_TEMP/retonr-isolation-target-binary"
           cargo build --locked -p rewrite-runtime-isolation \
             --bin rewrite-runtime-isolation-helper \
             --target x86_64-unknown-linux-musl \
@@ -306,6 +316,8 @@ jobs:
         run: |
           set -euo pipefail
           isolation_test="$(cat "$RUNNER_TEMP/retonr-isolation-test-binary")"
+          isolation_target="$(cat "$RUNNER_TEMP/retonr-isolation-target-binary")"
+          test -x "$isolation_target"
           docker run --rm --privileged \
             --security-opt seccomp=unconfined \
             --security-opt apparmor=unconfined \
@@ -313,6 +325,7 @@ jobs:
             --mount "type=bind,source=$PWD,target=$PWD" \
             --workdir "$PWD" \
             --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            --env REWRITE_ISOLATION_TEST_TARGET="$isolation_target" \
             retonr-native-isolation \
             "$isolation_test" --test-threads=1
 
@@ -444,6 +457,16 @@ jobs:
             --bin rewrite-runtime-isolation-helper \
             --target x86_64-unknown-linux-musl \
             --release
+          mapfile -t isolation_target_tests < <(
+            cargo test --locked -p rewrite-runtime-isolation \
+              --test linux_managed \
+              --target x86_64-unknown-linux-musl \
+              --release --no-run --message-format=json |
+              jq -r 'select(.reason == "compiler-artifact" and .target.name == "linux_managed" and .executable != null) | .executable'
+          )
+          test "${#isolation_target_tests[@]}" -eq 1
+          test -x "${isolation_target_tests[0]}"
+          printf '%s\n' "${isolation_target_tests[0]}" > "$RUNNER_TEMP/retonr-isolation-target-binary"
           mapfile -t source_build_fixtures < <(
             cargo test --locked -p rewrite-runtime-source-builder \
               --test runtime_source_build_fixture \
@@ -567,6 +590,8 @@ jobs:
           native_dir="$profile_dir/native"
           mkdir -p "$native_dir"
           native_profile="$native_dir/native-%p-%m.profraw"
+          isolation_target="$(cat "$RUNNER_TEMP/retonr-isolation-target-binary")"
+          test -x "$isolation_target"
           docker run --rm \
             --network none \
             --cap-drop ALL \
@@ -605,6 +630,7 @@ jobs:
             --env CARGO_LLVM_COV=1 \
             --env LLVM_PROFILE_FILE="$native_profile" \
             --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            --env REWRITE_ISOLATION_TEST_TARGET="$isolation_target" \
             retonr-native-isolation \
             "${isolation_tests[0]}" --test-threads=1
           source_build_fixture="$(cat "$RUNNER_TEMP/retonr-source-build-fixture-binary")"

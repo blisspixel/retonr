@@ -1,11 +1,12 @@
 use std::{
+    collections::BTreeSet,
     env,
     ffi::OsString,
     fs::File,
     io::{BufRead as _, BufReader, Read as _, Write as _},
     os::unix::fs::PermissionsExt as _,
     path::Path,
-    process::{Child, Command},
+    process::Child,
     time::Duration,
 };
 
@@ -13,6 +14,7 @@ use rustix::process::{Signal, getppid, set_parent_process_death_signal};
 
 use super::{
     linux_control::ControlError,
+    linux_executable::has_elf_magic,
     linux_helper::Mode,
     linux_helper_setup::{HelperFailure, NamespaceEvidence, RawNamespaceIdentity},
     linux_managed_protocol::ManagedReadyEvidence,
@@ -54,19 +56,13 @@ pub(super) fn validate_mode_arguments(
     }
 }
 
-pub(super) fn apply_target_environment(command: &mut Command) -> Result<(), HelperFailure> {
-    for (key, value) in read_target_environment()? {
-        command.env(key, value);
-    }
-    Ok(())
-}
-
 pub(super) fn read_target_environment() -> Result<Vec<(OsString, OsString)>, HelperFailure> {
     let count = read_internal_usize("ENV_COUNT")?;
     if count > 1_024 {
         return Err(HelperFailure::InvalidLaunch);
     }
     let mut environment = Vec::with_capacity(count);
+    let mut keys = BTreeSet::new();
     for index in 0..count {
         let key = env::var_os(format!("{INTERNAL_PREFIX}ENV_{index}_KEY"))
             .ok_or(HelperFailure::InvalidLaunch)?;
@@ -77,6 +73,7 @@ pub(super) fn read_target_environment() -> Result<Vec<(OsString, OsString)>, Hel
             || key.to_string_lossy().contains('=')
             || key.to_string_lossy().starts_with(INTERNAL_PREFIX)
             || value.as_encoded_bytes().contains(&0)
+            || !keys.insert(key.clone())
         {
             return Err(HelperFailure::InvalidLaunch);
         }
@@ -160,7 +157,10 @@ pub(super) fn open_executable(path: &Path) -> Result<File, HelperFailure> {
 
 pub(super) fn validate_executable(file: &File) -> Result<(), HelperFailure> {
     let metadata = file.metadata().map_err(|_| HelperFailure::InvalidLaunch)?;
-    if !metadata.is_file() || metadata.permissions().mode() & 0o111 == 0 {
+    if !metadata.is_file()
+        || metadata.permissions().mode() & 0o111 == 0
+        || !has_elf_magic(file).map_err(|_| HelperFailure::InvalidLaunch)?
+    {
         return Err(HelperFailure::InvalidLaunch);
     }
     Ok(())

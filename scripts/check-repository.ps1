@@ -143,6 +143,49 @@ foreach ($file in $files) {
     }
 }
 
+$runtimeIsolationSource = Join-Path -Path $repositoryRoot -ChildPath 'crates/runtime-isolation/src'
+$retainedExecSource = Join-Path -Path $runtimeIsolationSource -ChildPath 'platform/linux_fd_exec.rs'
+$runtimeIsolationRustFiles = $files | Where-Object {
+    $_.Extension -ieq '.rs' -and
+        $_.FullName.StartsWith(
+            $runtimeIsolationSource + [System.IO.Path]::DirectorySeparatorChar,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )
+}
+foreach ($file in $runtimeIsolationRustFiles) {
+    $content = [System.IO.File]::ReadAllText($file.FullName)
+    $unsafeConstructs = [regex]::Matches(
+        $content,
+        '\bunsafe\s*(?:\{|fn\b|extern\b|impl\b|trait\b)'
+    )
+    $unsafeExpectations = [regex]::Matches(
+        $content,
+        '#\s*\[\s*expect\s*\(\s*unsafe_code\b'
+    )
+    $isRetainedExecSource = $file.FullName.Equals(
+        $retainedExecSource,
+        [System.StringComparison]::OrdinalIgnoreCase
+    )
+    $relativePath = Get-RelativeRepositoryPath -FullPath $file.FullName
+
+    if ($isRetainedExecSource) {
+        if ($unsafeConstructs.Count -ne 1 -or $unsafeConstructs[0].Value -notmatch 'unsafe\s*\{') {
+            $failures.Add(
+                "$relativePath must contain exactly one unsafe block and no other unsafe construct."
+            )
+        }
+        if ($unsafeExpectations.Count -ne 1) {
+            $failures.Add(
+                "$relativePath must contain exactly one unsafe_code expectation."
+            )
+        }
+    } elseif ($unsafeConstructs.Count -gt 0 -or $unsafeExpectations.Count -gt 0) {
+        $failures.Add(
+            "$relativePath contains unsafe code outside the retained exec boundary."
+        )
+    }
+}
+
 $markdownFiles = $files | Where-Object { $_.Extension -ieq '.md' }
 foreach ($file in $markdownFiles) {
     $content = [System.IO.File]::ReadAllText($file.FullName)

@@ -4,6 +4,8 @@
 //! lease for the complete managed process tree. Unsupported platforms return a
 //! deterministic error and never launch the requested runtime.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 mod contract;
 #[cfg(any(target_os = "linux", test))]
 mod deadline;

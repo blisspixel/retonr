@@ -7,29 +7,27 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 
 ## Changes in this snapshot
 
-- Corrects Ollama model discovery, generation, and residency checks so immutable
-  managed artifact identity remains distinct from mutable runtime inventory identity.
-- Rejects ambiguous Ollama inventory aliases, duplicate runtime identities, and
-  oversized configured binding sets at deterministic trust boundaries.
-- Refuses in-place writes to multiply-linked files and installs verified staging
-  bytes by path replacement on every supported platform, so a late hard-link alias
-  cannot be modified indirectly.
-- Revalidates exact in-place source bytes after candidate validation and immediately
-  before replacement. Source drift now returns a typed, retryable
-  `concurrent_modification` failure, including when accepted bytes match the earlier
-  source snapshot.
-- Rejects known trace conflicts and invalid trace parents before non-dry-run document
-  output, prevents trace paths from sharing transaction-owned files, and observes
-  cancellation again at the final cooperative boundary before output.
-- Treats dangling output, backup, staging, trace, and mapped destination links as
-  reserved; rejects missing output parents before non-dry-run work; and resolves
-  existing directory aliases before source and output root comparison.
-- Neutralizes terminal-affecting path and metadata fields in text and JSON reports
-  without changing decoded JSON values, and bounds optional fitr evidence fields.
-- Validates optional artifact architecture, quantization, and tokenizer metadata,
-  rejects duplicate language declarations, and refuses zero declared context size.
-- Updates the public documentation to match the implemented CLI and internal
-  managed-runtime boundaries.
+- Adds the schema-10 durable candidate-execution foundation: pretraffic checkpoints,
+  atomic completed-or-failed persistence at trustworthy closeout boundaries,
+  application-root evidence publication, bounded cold readback, and in-transaction
+  reacquisition.
+- Makes the Active generation-qualification operation own candidate publication,
+  readback, receipt closeout, failed-attempt derivation, exact attempt-ledger closure,
+  and the candidate-before-judge gate. These remain internal development boundaries
+  and grant no qualification or model-use authority.
+- Runs retained Linux executables by descriptor, including when `/proc` is private or
+  mounted `noexec`, while preserving logical argument identity and deterministic
+  environment validation.
+- Tightens Linux managed and controlled-build isolation with inherited seccomp policy,
+  namespace-bearing clone denial, bounded file-descriptor behavior, and an active
+  canary around the one anonymous process-launch socket pair required by the pinned
+  Rust launcher.
+- Adds forced native Linux CI coverage for managed launch and controlled build,
+  including the exact 64-descriptor boundary, and corrects cross-platform lint and
+  fixture line-ending failures.
+- Updates current-state, planning, and roadmap documentation. The next implementation
+  slice is bounded read-only reconciliation of durable candidate-attempt state before
+  activation.
 
 ## What these artifacts are
 

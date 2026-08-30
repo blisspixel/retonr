@@ -14,6 +14,7 @@ use sha2::{Digest as _, Sha256};
 
 use crate::{IsolationError, IsolationResult, error::native};
 
+use super::linux_executable::has_elf_magic;
 use super::linux_validation::native_errno;
 
 const MAXIMUM_HELPER_BYTES: u64 = 128 * 1024 * 1024;
@@ -34,7 +35,10 @@ pub(super) fn validate_executable(file: &File, helper: bool) -> IsolationResult<
     let metadata = file
         .metadata()
         .map_err(|_error| invalid_executable(helper, "metadata"))?;
-    if !metadata.is_file() || metadata.permissions().mode() & 0o111 == 0 {
+    if !metadata.is_file()
+        || metadata.permissions().mode() & 0o111 == 0
+        || !has_elf_magic(file).map_err(|_error| invalid_executable(helper, "format"))?
+    {
         return Err(invalid_executable(helper, "object"));
     }
     Ok(())
@@ -183,9 +187,11 @@ mod tests {
     use super::{create_executable_memfd, open_executable, snapshot_helper};
     use crate::IsolationError;
 
+    const ELF_FIXTURE_BYTES: &[u8] = b"\x7fELF exact helper bytes";
+
     #[test]
     fn helper_snapshot_is_expected_sealed_and_independent_of_source_mutation() {
-        let bytes = b"exact helper bytes";
+        let bytes = ELF_FIXTURE_BYTES;
         let mut temporary = NamedTempFile::new().expect("temporary helper");
         temporary.write_all(bytes).expect("write helper");
         temporary
@@ -237,10 +243,19 @@ mod tests {
     fn helper_path_open_is_nonblocking_and_rejects_indirection() {
         let temporary = tempdir().expect("temporary root");
         let direct = temporary.path().join("direct-helper");
-        fs::write(&direct, b"helper").expect("write direct helper");
+        fs::write(&direct, ELF_FIXTURE_BYTES).expect("write direct helper");
         fs::set_permissions(&direct, fs::Permissions::from_mode(0o755))
             .expect("make direct helper executable");
         assert!(open_executable(&direct, true).is_ok());
+
+        let script = temporary.path().join("script-helper");
+        fs::write(&script, b"#!/bin/sh\nexit 0\n").expect("write script helper");
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755))
+            .expect("make script executable");
+        assert_eq!(
+            open_executable(&script, true).expect_err("script helper must fail"),
+            IsolationError::InvalidHelper
+        );
 
         let indirect = temporary.path().join("indirect-helper");
         symlink(&direct, &indirect).expect("create helper symlink");
@@ -261,7 +276,7 @@ mod tests {
 
     #[test]
     fn helper_snapshot_rejects_an_unexpected_identity() {
-        let bytes = b"exact helper bytes";
+        let bytes = ELF_FIXTURE_BYTES;
         let mut temporary = NamedTempFile::new().expect("temporary helper");
         temporary.write_all(bytes).expect("write helper");
         temporary
@@ -284,7 +299,7 @@ mod tests {
 
     #[test]
     fn helper_snapshot_rejects_an_expired_deadline_before_reading() {
-        let bytes = b"exact helper bytes";
+        let bytes = ELF_FIXTURE_BYTES;
         let mut temporary = NamedTempFile::new().expect("temporary helper");
         temporary.write_all(bytes).expect("write helper");
         temporary

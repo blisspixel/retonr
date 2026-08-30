@@ -4,7 +4,7 @@ use rustix::{
     fs::{CWD, FileType, Mode, mknodat},
     io::Errno,
     mount::{MountFlags, mount},
-    net::{AddressFamily, SocketType, socket},
+    net::{AddressFamily, Protocol, SocketFlags, SocketType, ipproto, socket, socketpair},
     thread::UnshareFlags,
 };
 use seccompiler::{
@@ -17,6 +17,9 @@ use super::linux_helper_setup::HelperFailure;
 const SECCOMP_FILTER_MODE: &str = "2";
 
 pub(super) fn install_managed_target_policy() -> Result<(), HelperFailure> {
+    let clone3_program =
+        clone3_compatibility_filter(HelperFailure::ManagedContainmentPolicyCompile)?;
+    seccompiler::apply_filter(&clone3_program).map_err(classify_managed_filter_error)?;
     let program = managed_target_filter()?;
     seccompiler::apply_filter(&program).map_err(classify_managed_filter_error)?;
     if !current_socket_policy_is_active()? {
@@ -29,6 +32,8 @@ pub(super) fn install_managed_target_policy() -> Result<(), HelperFailure> {
 }
 
 pub(super) fn install_build_network_policy() -> Result<(), HelperFailure> {
+    let clone3_program = clone3_compatibility_filter(HelperFailure::SocketPolicyCompile)?;
+    seccompiler::apply_filter(&clone3_program).map_err(classify_filter_error)?;
     let program = build_network_filter()?;
     seccompiler::apply_filter(&program).map_err(classify_filter_error)?;
     if !current_socket_policy_is_active()? {
@@ -102,7 +107,6 @@ fn managed_target_filter() -> Result<BpfProgram, HelperFailure> {
     .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)?;
     let mut rules = BTreeMap::from([
         (libc::SYS_bpf, Vec::new()),
-        (libc::SYS_clone3, Vec::new()),
         (libc::SYS_fsconfig, Vec::new()),
         (libc::SYS_fsmount, Vec::new()),
         (libc::SYS_fsopen, Vec::new()),
@@ -132,6 +136,20 @@ fn managed_target_filter() -> Result<BpfProgram, HelperFailure> {
     filter
         .try_into()
         .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)
+}
+
+fn clone3_compatibility_filter(
+    compile_failure: HelperFailure,
+) -> Result<BpfProgram, HelperFailure> {
+    let rules = BTreeMap::from([(libc::SYS_clone3, Vec::new())]);
+    let filter = SeccompFilter::new(
+        rules,
+        SeccompAction::Allow,
+        SeccompAction::Errno(libc::ENOSYS as u32),
+        ARCH.try_into().map_err(|_error| compile_failure)?,
+    )
+    .map_err(|_error| compile_failure)?;
+    filter.try_into().map_err(|_error| compile_failure)
 }
 
 fn namespace_clone_rules() -> Result<Vec<SeccompRule>, HelperFailure> {
@@ -164,11 +182,11 @@ fn namespace_clone_rules() -> Result<Vec<SeccompRule>, HelperFailure> {
 }
 
 fn build_network_filter() -> Result<BpfProgram, HelperFailure> {
-    let rules = BTreeMap::from([
+    let mut rules = BTreeMap::from([
         (libc::SYS_io_uring_setup, Vec::new()),
         (libc::SYS_socket, Vec::new()),
-        (libc::SYS_socketpair, Vec::new()),
     ]);
+    rules.insert(libc::SYS_socketpair, build_socketpair_rules()?);
     let filter = SeccompFilter::new(
         rules,
         SeccompAction::Allow,
@@ -180,6 +198,26 @@ fn build_network_filter() -> Result<BpfProgram, HelperFailure> {
     filter
         .try_into()
         .map_err(|_error| HelperFailure::SocketPolicyCompile)
+}
+
+fn build_socketpair_rules() -> Result<Vec<SeccompRule>, HelperFailure> {
+    let spawn_channel_type = u64::try_from(libc::SOCK_SEQPACKET | libc::SOCK_CLOEXEC)
+        .map_err(|_error| HelperFailure::SocketPolicyCompile)?;
+    [(0, libc::AF_UNIX as u64), (1, spawn_channel_type), (2, 0)]
+        .into_iter()
+        .map(|(argument, expected)| {
+            SeccompRule::new(vec![
+                SeccompCondition::new(
+                    argument,
+                    SeccompCmpArgLen::Dword,
+                    SeccompCmpOp::Ne,
+                    expected,
+                )
+                .map_err(|_error| HelperFailure::SocketPolicyCompile)?,
+            ])
+            .map_err(|_error| HelperFailure::SocketPolicyCompile)
+        })
+        .collect()
 }
 
 fn managed_policy_behaves_as_required() -> bool {
@@ -220,6 +258,50 @@ fn build_network_policy_behaves_as_required() -> bool {
     .into_iter()
     .all(denied_socket)
         && UnixStream::pair().is_err_and(|error| error.raw_os_error() == Some(libc::EPERM))
+        && build_spawn_channel_policy_behaves_as_required()
+}
+
+fn build_spawn_channel_policy_behaves_as_required() -> bool {
+    socketpair(
+        AddressFamily::UNIX,
+        SocketType::SEQPACKET,
+        SocketFlags::CLOEXEC,
+        None,
+    )
+    .is_ok()
+        && denied_socketpair(
+            AddressFamily::UNIX,
+            SocketType::SEQPACKET,
+            SocketFlags::empty(),
+            None,
+        )
+        && denied_socketpair(
+            AddressFamily::UNIX,
+            SocketType::SEQPACKET,
+            SocketFlags::CLOEXEC | SocketFlags::NONBLOCK,
+            None,
+        )
+        && denied_socketpair(
+            AddressFamily::INET,
+            SocketType::SEQPACKET,
+            SocketFlags::CLOEXEC,
+            None,
+        )
+        && denied_socketpair(
+            AddressFamily::UNIX,
+            SocketType::SEQPACKET,
+            SocketFlags::CLOEXEC,
+            Some(ipproto::TCP),
+        )
+}
+
+fn denied_socketpair(
+    family: AddressFamily,
+    socket_type: SocketType,
+    flags: SocketFlags,
+    protocol: Option<Protocol>,
+) -> bool {
+    socketpair(family, socket_type, flags, protocol).is_err_and(|error| error == Errno::PERM)
 }
 
 fn denied_socket(family: AddressFamily) -> bool {
@@ -235,14 +317,26 @@ mod tests {
     use std::io;
 
     use super::{
-        HelperFailure, build_network_filter, classify_filter_error, classify_managed_filter_error,
-        managed_target_filter, namespace_clone_rules, status_reports_filter,
+        HelperFailure, build_network_filter, build_socketpair_rules, classify_filter_error,
+        classify_managed_filter_error, clone3_compatibility_filter, managed_target_filter,
+        namespace_clone_rules, status_reports_filter,
     };
 
     #[test]
     fn target_filter_compiles_for_the_current_architecture() {
         assert!(!managed_target_filter().expect("compile filter").is_empty());
+        assert!(
+            !clone3_compatibility_filter(HelperFailure::ManagedContainmentPolicyCompile)
+                .expect("compile clone3 compatibility filter")
+                .is_empty()
+        );
         assert_eq!(namespace_clone_rules().expect("clone rules").len(), 8);
+        assert_eq!(
+            build_socketpair_rules()
+                .expect("compile build socketpair rules")
+                .len(),
+            3
+        );
         assert!(!build_network_filter().expect("compile filter").is_empty());
     }
 
