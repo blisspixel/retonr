@@ -11,6 +11,16 @@ use crate::{
 };
 
 mod codec;
+mod v2;
+
+pub use v2::{
+    EFFECTIVE_PACKAGE_EVIDENCE_V2_SCHEMA_VERSION, EffectivePackageEvidenceRoleV2,
+    EffectivePackageEvidenceV2, EffectivePackageEvidenceV2Error, EffectivePackageEvidenceV2Id,
+    EffectivePackageEvidenceV2Input, EffectivePackageMemberEvidenceV2, EffectivePackageMemberUseV2,
+    MAX_EFFECTIVE_PACKAGE_EVIDENCE_V2_CANONICAL_BYTES,
+    MAX_EFFECTIVE_PACKAGE_EVIDENCE_V2_JSON_BYTES, MAX_EFFECTIVE_PACKAGE_MEMBER_V2_ASSIGNMENTS,
+    MAX_EFFECTIVE_PACKAGE_MEMBER_V2_PURPOSES, MAX_EFFECTIVE_PACKAGE_MEMBER_V2_ROLES,
+};
 
 /// Current effective-package evidence contract version.
 pub const EFFECTIVE_PACKAGE_EVIDENCE_SCHEMA_VERSION: u32 = 1;

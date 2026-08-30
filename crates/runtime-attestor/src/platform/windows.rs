@@ -167,6 +167,18 @@ impl Lease {
         ensure_process_alive(&self.process).map_err(crate::map_native_process_error)?;
         Err(crate::NativeLoadObserverError::Unsupported)
     }
+
+    pub(crate) fn discover_external_native_components(
+        &mut self,
+        _request: &crate::NativeLoadDiscoveryRequest<'_>,
+        _limits: crate::NativeLoadObservationLimits,
+        _cancellation: &CancellationToken,
+        _started: Instant,
+        _process_evidence_digest: &Digest,
+    ) -> Result<crate::NativeLoadDiscovery, crate::NativeLoadObserverError> {
+        ensure_process_alive(&self.process).map_err(crate::map_native_process_error)?;
+        Err(crate::NativeLoadObserverError::Unsupported)
+    }
 }
 
 fn listener_owner(

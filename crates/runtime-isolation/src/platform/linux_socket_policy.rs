@@ -1,8 +1,11 @@
-use std::{collections::BTreeMap, env::consts::ARCH, fs};
+use std::{collections::BTreeMap, env::consts::ARCH, fs, os::unix::net::UnixStream};
 
 use rustix::{
+    fs::{CWD, FileType, Mode, mknodat},
     io::Errno,
+    mount::{MountFlags, mount},
     net::{AddressFamily, SocketType, socket},
+    thread::UnshareFlags,
 };
 use seccompiler::{
     BpfProgram, SeccompAction, SeccompCmpArgLen, SeccompCmpOp, SeccompCondition, SeccompFilter,
@@ -13,13 +16,25 @@ use super::linux_helper_setup::HelperFailure;
 
 const SECCOMP_FILTER_MODE: &str = "2";
 
-pub(super) fn install_target_socket_policy() -> Result<(), HelperFailure> {
-    let program = target_socket_filter()?;
+pub(super) fn install_managed_target_policy() -> Result<(), HelperFailure> {
+    let program = managed_target_filter()?;
+    seccompiler::apply_filter(&program).map_err(classify_managed_filter_error)?;
+    if !current_socket_policy_is_active()? {
+        return Err(HelperFailure::ManagedContainmentPolicyInactive);
+    }
+    if !managed_policy_behaves_as_required() {
+        return Err(HelperFailure::ManagedContainmentPolicyBehavior);
+    }
+    Ok(())
+}
+
+pub(super) fn install_build_network_policy() -> Result<(), HelperFailure> {
+    let program = build_network_filter()?;
     seccompiler::apply_filter(&program).map_err(classify_filter_error)?;
     if !current_socket_policy_is_active()? {
         return Err(HelperFailure::SocketPolicyInactive);
     }
-    if !socket_policy_behaves_as_required() {
+    if !build_network_policy_behaves_as_required() {
         return Err(HelperFailure::SocketPolicyBehavior);
     }
     Ok(())
@@ -40,6 +55,17 @@ fn classify_filter_error(error: seccompiler::Error) -> HelperFailure {
     }
 }
 
+fn classify_managed_filter_error(error: seccompiler::Error) -> HelperFailure {
+    match error {
+        seccompiler::Error::Prctl(error) | seccompiler::Error::Seccomp(error)
+            if matches!(error.raw_os_error(), Some(libc::EPERM | libc::EACCES)) =>
+        {
+            HelperFailure::HostPolicyDenied
+        }
+        _ => HelperFailure::ManagedContainmentPolicyInstall,
+    }
+}
+
 pub(super) fn socket_policy_is_active(pid: u32) -> Result<bool, HelperFailure> {
     read_socket_policy_status(&format!("/proc/{pid}/status"))
 }
@@ -56,7 +82,7 @@ fn status_reports_filter(status: &str) -> bool {
         .is_some_and(|value| value.trim() == SECCOMP_FILTER_MODE)
 }
 
-fn target_socket_filter() -> Result<BpfProgram, HelperFailure> {
+fn managed_target_filter() -> Result<BpfProgram, HelperFailure> {
     let socket_rule = SeccompRule::new(vec![
         SeccompCondition::new(
             0,
@@ -64,19 +90,84 @@ fn target_socket_filter() -> Result<BpfProgram, HelperFailure> {
             SeccompCmpOp::Ne,
             libc::AF_INET as u64,
         )
-        .map_err(|_error| HelperFailure::SocketPolicyCompile)?,
+        .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)?,
         SeccompCondition::new(
             0,
             SeccompCmpArgLen::Dword,
             SeccompCmpOp::Ne,
             libc::AF_INET6 as u64,
         )
-        .map_err(|_error| HelperFailure::SocketPolicyCompile)?,
+        .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)?,
     ])
-    .map_err(|_error| HelperFailure::SocketPolicyCompile)?;
+    .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)?;
+    let mut rules = BTreeMap::from([
+        (libc::SYS_bpf, Vec::new()),
+        (libc::SYS_clone3, Vec::new()),
+        (libc::SYS_fsconfig, Vec::new()),
+        (libc::SYS_fsmount, Vec::new()),
+        (libc::SYS_fsopen, Vec::new()),
+        (libc::SYS_fspick, Vec::new()),
+        (libc::SYS_io_uring_setup, Vec::new()),
+        (libc::SYS_mknod, Vec::new()),
+        (libc::SYS_mknodat, Vec::new()),
+        (libc::SYS_mount, Vec::new()),
+        (libc::SYS_mount_setattr, Vec::new()),
+        (libc::SYS_move_mount, Vec::new()),
+        (libc::SYS_open_tree, Vec::new()),
+        (libc::SYS_pivot_root, Vec::new()),
+        (libc::SYS_setns, Vec::new()),
+        (libc::SYS_socket, vec![socket_rule]),
+        (libc::SYS_umount2, Vec::new()),
+        (libc::SYS_unshare, Vec::new()),
+    ]);
+    rules.insert(libc::SYS_clone, namespace_clone_rules()?);
+    let filter = SeccompFilter::new(
+        rules,
+        SeccompAction::Allow,
+        SeccompAction::Errno(libc::EPERM as u32),
+        ARCH.try_into()
+            .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)?,
+    )
+    .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)?;
+    filter
+        .try_into()
+        .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)
+}
+
+fn namespace_clone_rules() -> Result<Vec<SeccompRule>, HelperFailure> {
+    [
+        libc::CLONE_NEWCGROUP,
+        libc::CLONE_NEWIPC,
+        libc::CLONE_NEWNET,
+        libc::CLONE_NEWNS,
+        libc::CLONE_NEWPID,
+        libc::CLONE_NEWTIME,
+        libc::CLONE_NEWUSER,
+        libc::CLONE_NEWUTS,
+    ]
+    .into_iter()
+    .map(|flag| {
+        let flag =
+            u64::try_from(flag).map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)?;
+        SeccompRule::new(vec![
+            SeccompCondition::new(
+                0,
+                SeccompCmpArgLen::Qword,
+                SeccompCmpOp::MaskedEq(flag),
+                flag,
+            )
+            .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)?,
+        ])
+        .map_err(|_error| HelperFailure::ManagedContainmentPolicyCompile)
+    })
+    .collect()
+}
+
+fn build_network_filter() -> Result<BpfProgram, HelperFailure> {
     let rules = BTreeMap::from([
         (libc::SYS_io_uring_setup, Vec::new()),
-        (libc::SYS_socket, vec![socket_rule]),
+        (libc::SYS_socket, Vec::new()),
+        (libc::SYS_socketpair, Vec::new()),
     ]);
     let filter = SeccompFilter::new(
         rules,
@@ -91,11 +182,44 @@ fn target_socket_filter() -> Result<BpfProgram, HelperFailure> {
         .map_err(|_error| HelperFailure::SocketPolicyCompile)
 }
 
-fn socket_policy_behaves_as_required() -> bool {
+fn managed_policy_behaves_as_required() -> bool {
     denied_socket(AddressFamily::UNIX)
         && denied_socket(AddressFamily::VSOCK)
         && allowed_socket(AddressFamily::INET)
         && allowed_socket(AddressFamily::INET6)
+        && denied_namespace_and_mount_operations()
+}
+
+fn denied_namespace_and_mount_operations() -> bool {
+    #[expect(
+        deprecated,
+        reason = "the containment canary invokes the exact denied syscall"
+    )]
+    let unshare_denied =
+        rustix::thread::unshare(UnshareFlags::empty()).is_err_and(|error| error == Errno::PERM);
+    let mount_denied = mount("none", "/", "none", MountFlags::empty(), None)
+        .is_err_and(|error| error == Errno::PERM);
+    let mknod_denied = mknodat(
+        CWD,
+        "/dev/retonr-containment-canary",
+        FileType::CharacterDevice,
+        Mode::RUSR | Mode::WUSR,
+        libc::makedev(1, 3),
+    )
+    .is_err_and(|error| error == Errno::PERM);
+    unshare_denied && mount_denied && mknod_denied
+}
+
+fn build_network_policy_behaves_as_required() -> bool {
+    [
+        AddressFamily::UNIX,
+        AddressFamily::VSOCK,
+        AddressFamily::INET,
+        AddressFamily::INET6,
+    ]
+    .into_iter()
+    .all(denied_socket)
+        && UnixStream::pair().is_err_and(|error| error.raw_os_error() == Some(libc::EPERM))
 }
 
 fn denied_socket(family: AddressFamily) -> bool {
@@ -111,12 +235,15 @@ mod tests {
     use std::io;
 
     use super::{
-        HelperFailure, classify_filter_error, status_reports_filter, target_socket_filter,
+        HelperFailure, build_network_filter, classify_filter_error, classify_managed_filter_error,
+        managed_target_filter, namespace_clone_rules, status_reports_filter,
     };
 
     #[test]
     fn target_filter_compiles_for_the_current_architecture() {
-        assert!(!target_socket_filter().expect("compile filter").is_empty());
+        assert!(!managed_target_filter().expect("compile filter").is_empty());
+        assert_eq!(namespace_clone_rules().expect("clone rules").len(), 8);
+        assert!(!build_network_filter().expect("compile filter").is_empty());
     }
 
     #[test]
@@ -146,6 +273,12 @@ mod tests {
                 libc::EINVAL
             ),)),
             HelperFailure::SocketPolicyInstall
+        );
+        assert_eq!(
+            classify_managed_filter_error(seccompiler::Error::Seccomp(
+                io::Error::from_raw_os_error(libc::EINVAL)
+            )),
+            HelperFailure::ManagedContainmentPolicyInstall
         );
     }
 }

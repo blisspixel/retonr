@@ -23,6 +23,9 @@ use crate::{
     ensure_native_active, native_load::is_retained_package_member,
 };
 
+mod discovery;
+pub(super) use discovery::discover;
+
 const CONTRACT_ID: &str = "linux-proc-map-files";
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -77,12 +80,46 @@ pub(super) fn observe(
     if request.package.target().operating_system() != RuntimeOperatingSystem::Linux {
         return Err(NativeLoadObserverError::InvalidRequest);
     }
+    let components = stable_components(
+        pid,
+        pidfd,
+        entrypoint,
+        request.package,
+        request.retained_package_members,
+        limits,
+        cancellation,
+        started,
+    )?;
+    finish_observation(
+        request.package,
+        request.expected_external_components,
+        NativeLoadEvidenceClass::LinuxProcMapFiles,
+        CONTRACT_ID,
+        process_evidence_digest,
+        components,
+    )
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the observer makes every retained capability and resource boundary explicit"
+)]
+pub(super) fn stable_components(
+    pid: u32,
+    pidfd: &OwnedFd,
+    entrypoint: &File,
+    package_manifest: &RuntimePackageManifest,
+    retained_package_members: &[crate::RetainedNativePackageMember],
+    limits: NativeLoadObservationLimits,
+    cancellation: &CancellationToken,
+    started: Instant,
+) -> Result<Vec<NativeLoadedComponent>, NativeLoadObserverError> {
     ensure_native_active(cancellation, started, limits)?;
     ensure_pidfd_alive(pidfd).map_err(|_error| NativeLoadObserverError::ProcessChanged)?;
     let mut budget = HashBudget::new(limits.maximum_aggregate_hash_bytes);
     let package = package_index(
-        request.retained_package_members,
-        request.package,
+        retained_package_members,
+        package_manifest,
         limits,
         cancellation,
         started,
@@ -95,11 +132,9 @@ pub(super) fn observe(
     )?;
     let first = snapshot(
         pid,
-        request,
         limits,
         cancellation,
         started,
-        process_evidence_digest,
         &package,
         entrypoint_key,
         &mut budget,
@@ -107,11 +142,9 @@ pub(super) fn observe(
     ensure_pidfd_alive(pidfd).map_err(|_error| NativeLoadObserverError::ProcessChanged)?;
     let second = snapshot(
         pid,
-        request,
         limits,
         cancellation,
         started,
-        process_evidence_digest,
         &package,
         entrypoint_key,
         &mut budget,
@@ -123,21 +156,15 @@ pub(super) fn observe(
     Ok(first)
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the snapshot makes every retained capability and resource boundary explicit"
-)]
 fn snapshot(
     pid: u32,
-    request: &NativeLoadObservationRequest<'_>,
     limits: NativeLoadObservationLimits,
     cancellation: &CancellationToken,
     started: Instant,
-    process_evidence_digest: &Digest,
     package: &BTreeMap<ObjectKey, &RuntimePackageMember>,
     entrypoint_key: ObjectKey,
     budget: &mut HashBudget,
-) -> Result<NativeLoadObservation, NativeLoadObserverError> {
+) -> Result<Vec<NativeLoadedComponent>, NativeLoadObserverError> {
     let mappings = read_executable_mappings(pid, limits, cancellation, started)?;
     let mut components = Vec::new();
     let mut prior = None;
@@ -161,14 +188,7 @@ fn snapshot(
             budget,
         )?);
     }
-    finish_observation(
-        request.package,
-        request.expected_external_components,
-        NativeLoadEvidenceClass::LinuxProcMapFiles,
-        CONTRACT_ID,
-        process_evidence_digest,
-        components,
-    )
+    Ok(components)
 }
 
 fn package_index<'a>(

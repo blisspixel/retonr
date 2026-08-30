@@ -63,9 +63,15 @@ fn initialize_repository(root: &Path, data: &Path, fixture_name: &str) {
 fn downgrade_to_schema_two(data: &Path) {
     let connection =
         Connection::open(data.join("artifact-state.sqlite3")).expect("open current state fixture");
+    drop_schema_ten(&connection);
+    drop_schema_nine(&connection);
     connection
         .execute_batch(
-            "DROP TABLE native_load_observations;
+            "DROP TABLE generation_system_records;
+             DROP TABLE effective_package_evidence_v2;
+             DROP TABLE generation_qualification_request_projections;
+             DROP TABLE generation_qualification_operation_policies;
+             DROP TABLE native_load_observations;
              DROP TABLE model_package_manifests;
              DROP TABLE runtime_package_manifests;
              DROP TABLE artifact_set_removals;
@@ -83,9 +89,15 @@ fn downgrade_to_schema_two(data: &Path) {
 fn downgrade_to_schema_three(data: &Path) {
     let connection =
         Connection::open(data.join("artifact-state.sqlite3")).expect("open current state fixture");
+    drop_schema_ten(&connection);
+    drop_schema_nine(&connection);
     connection
         .execute_batch(
-            "DROP TABLE native_load_observations;
+            "DROP TABLE generation_system_records;
+             DROP TABLE effective_package_evidence_v2;
+             DROP TABLE generation_qualification_request_projections;
+             DROP TABLE generation_qualification_operation_policies;
+             DROP TABLE native_load_observations;
              DROP TABLE model_package_manifests;
              DROP TABLE runtime_package_manifests;
              DROP TABLE artifact_set_removals;
@@ -93,6 +105,40 @@ fn downgrade_to_schema_three(data: &Path) {
              PRAGMA user_version = 3;",
         )
         .expect("restore canonical schema three shape");
+}
+
+fn drop_schema_ten(connection: &Connection) {
+    connection
+        .execute_batch(
+            "DROP TABLE candidate_generation_attempt_records;
+             DROP TABLE candidate_generation_receipts;
+             DROP TABLE generation_evidence_bundle_readbacks;
+             DROP TABLE generation_evidence_bundle_storage;
+             DROP TABLE generation_evidence_bundles;
+             DROP TABLE candidate_generation_cleanup_records;
+             DROP TABLE managed_candidate_generation_evidence;
+             DROP TABLE candidate_generation_attempt_precursors;",
+        )
+        .expect("drop schema-ten tables");
+}
+
+fn drop_schema_nine(connection: &Connection) {
+    connection
+        .execute_batch(
+            "DROP TABLE generation_qualification_plan_attempts;
+             DROP TABLE generation_qualification_plan_systems;
+             DROP TABLE generation_qualification_plan_repetitions;
+             DROP TABLE generation_qualification_plans;
+             DROP TABLE candidate_selection_policies;
+             DROP TABLE planned_candidate_attempts;
+             DROP TABLE generation_repetition_records;
+             DROP TABLE generation_suite_cases;
+             DROP TABLE generation_suite_manifests;
+             DROP TABLE generation_case_manifests;
+             DROP TABLE generation_deterministic_case_contracts;
+             DROP TABLE generation_cluster_records;",
+        )
+        .expect("drop schema-nine tables");
 }
 
 fn assert_backup(data: &Path, backup_key: &str) {
@@ -138,7 +184,7 @@ fn migration_requires_confirmation_and_reports_current_state() {
         .success()
         .stderr(predicate::str::is_empty())
         .stdout(predicate::eq(
-            "disposition: already_current\nfrom_schema: 6\nto_schema: 6\n",
+            "disposition: already_current\nfrom_schema: 10\nto_schema: 10\n",
         ));
 }
 
@@ -180,7 +226,7 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
     assert_eq!(output["command"], "model.migrate");
     assert_eq!(output["result"]["disposition"], "migrated");
     assert_eq!(output["result"]["from_schema"], 2);
-    assert_eq!(output["result"]["to_schema"], 6);
+    assert_eq!(output["result"]["to_schema"], 10);
     let backup_key = output["result"]["backup_key"]
         .as_str()
         .expect("opaque backup key");
@@ -215,7 +261,7 @@ fn migrates_schema_three_with_a_schema_three_backup() {
     assert!(output.stderr.is_empty());
     let output: Value = serde_json::from_slice(&output.stdout).expect("parse migration JSON");
     assert_eq!(output["result"]["from_schema"], 3);
-    assert_eq!(output["result"]["to_schema"], 6);
+    assert_eq!(output["result"]["to_schema"], 10);
     let backup_key = output["result"]["backup_key"]
         .as_str()
         .expect("opaque backup key");

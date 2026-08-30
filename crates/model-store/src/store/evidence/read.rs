@@ -1,11 +1,14 @@
 use rusqlite::{Connection, OptionalExtension as _};
 
 use rewrite_model::{
-    ArtifactSetManifest, EffectivePackageEvidence, EffectiveRuntimeState, QualificationRecordV2,
+    ArtifactSetManifest, EffectivePackageEvidence, EffectiveRuntimeState,
+    MAX_ARTIFACT_SET_MANIFEST_JSON_BYTES, MAX_RUNTIME_IDENTITY_JSON_BYTES, QualificationRecordV2,
     RuntimeBuildIdentity,
 };
 
 use crate::{StoreError, StoreResult};
+
+use super::super::bounded_text::{read_required_bounded_text, read_required_digest_text};
 
 pub(super) struct QualificationDependencies {
     pub(super) artifact_set: ArtifactSetManifest,
@@ -18,7 +21,13 @@ pub(in crate::store) fn load_artifact_set(
     connection: &Connection,
     key: &str,
 ) -> StoreResult<Option<ArtifactSetManifest>> {
-    let Some(encoded) = load_json(connection, "artifact_set_manifests", "artifact_set_id", key)?
+    let Some(encoded) = load_json(
+        connection,
+        "artifact_set_manifests",
+        "artifact_set_id",
+        key,
+        MAX_ARTIFACT_SET_MANIFEST_JSON_BYTES,
+    )?
     else {
         return Ok(None);
     };
@@ -33,7 +42,7 @@ pub(in crate::store) fn load_artifact_set(
     Ok(Some(record))
 }
 
-pub(super) fn load_runtime_build(
+pub(in crate::store) fn load_runtime_build(
     connection: &Connection,
     key: &str,
 ) -> StoreResult<Option<RuntimeBuildIdentity>> {
@@ -42,6 +51,7 @@ pub(super) fn load_runtime_build(
         "runtime_build_identities",
         "runtime_build_id",
         key,
+        MAX_RUNTIME_IDENTITY_JSON_BYTES,
     )?
     else {
         return Ok(None);
@@ -58,21 +68,29 @@ pub(super) fn load_runtime_build(
     Ok(Some(record))
 }
 
-pub(super) fn load_runtime_state(
+pub(in crate::store) fn load_runtime_state(
     connection: &Connection,
     key: &str,
 ) -> StoreResult<Option<EffectiveRuntimeState>> {
-    let row = connection
-        .query_row(
-            "SELECT runtime_build_id, record_json FROM effective_runtime_states
-             WHERE effective_runtime_state_id = ?1",
-            [key],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-        )
-        .optional()?;
-    let Some((stored_build_id, encoded)) = row else {
+    let Some(stored_build_id) = read_required_digest_text(
+        connection,
+        "effective_runtime_states",
+        "effective_runtime_state_id",
+        key,
+        "runtime_build_id",
+    )?
+    else {
         return Ok(None);
     };
+    let encoded = read_required_bounded_text(
+        connection,
+        "effective_runtime_states",
+        "effective_runtime_state_id",
+        key,
+        "record_json",
+        MAX_RUNTIME_IDENTITY_JSON_BYTES,
+    )?
+    .ok_or(StoreError::CorruptRecord)?;
     let record = EffectiveRuntimeState::from_json_bytes(encoded.as_bytes())
         .map_err(|_| StoreError::CorruptRecord)?;
     let canonical = serde_json::to_string(&record)?;
@@ -223,12 +241,16 @@ fn load_json(
     table: &str,
     key_column: &str,
     key: &str,
+    maximum_bytes: usize,
 ) -> StoreResult<Option<String>> {
-    let sql = format!("SELECT record_json FROM {table} WHERE {key_column} = ?1");
-    connection
-        .query_row(&sql, [key], |row| row.get(0))
-        .optional()
-        .map_err(StoreError::Database)
+    read_required_bounded_text(
+        connection,
+        table,
+        key_column,
+        key,
+        "record_json",
+        maximum_bytes,
+    )
 }
 
 fn require_canonical_and_key(

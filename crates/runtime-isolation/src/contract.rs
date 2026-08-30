@@ -4,27 +4,73 @@ use std::{
     fs::File,
     net::SocketAddr,
     path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
 };
 
-use rewrite_types::CancellationToken;
+use rewrite_types::{CancellationToken, Digest};
 
 use crate::{IsolationError, IsolationResult, platform};
 
+mod bootstrap;
+mod build;
+mod build_evidence;
+mod build_output;
 mod channel;
 mod digest;
 mod evidence;
 mod policy;
+mod runtime_input;
 mod validation;
 
+pub use bootstrap::{
+    AuthenticatedBusyboxExecutable, RetainedProgramBootstrapAttempt,
+    RetainedProgramBootstrapCapabilities, RetainedProgramBootstrapExecution,
+    RetainedProgramBootstrapInputKind, RetainedProgramBootstrapInputMeasurement,
+    RetainedProgramBootstrapLaunchSpec, RetainedProgramBootstrapRootEvidence,
+    RetainedProgramBootstrapSignedInputs,
+};
+#[cfg(target_os = "linux")]
+pub(crate) use bootstrap::{
+    RetainedProgramBootstrapRootObservation, RetainedProgramBootstrapRootPostconditions,
+};
+#[cfg(target_os = "linux")]
+pub(crate) use build::CONTROLLED_BUILD_INPUT_SNAPSHOT_TIMEOUT;
+pub use build::{
+    ControlledBuildExecution, ControlledBuildInputFile, ControlledBuildLaunchSpec,
+    ControlledBuildOutput, ControlledBuildProcessStatus, MAXIMUM_CONTROLLED_BUILD_INPUT_BYTES,
+    MAXIMUM_CONTROLLED_BUILD_INPUT_FILES,
+};
+pub use build_evidence::ControlledBuildIsolationEvidence;
+#[cfg(target_os = "linux")]
+pub(crate) use build_evidence::ControlledBuildIsolationObservation;
+pub use build_output::{
+    ControlledBuildOutputTree, ControlledBuildOutputTreeEntry,
+    MAXIMUM_CONTROLLED_BUILD_OUTPUT_BYTES, MAXIMUM_CONTROLLED_BUILD_OUTPUT_TREE_ENTRIES,
+    MAXIMUM_CONTROLLED_BUILD_WORKSPACE_BYTES, MAXIMUM_CONTROLLED_BUILD_WORKSPACE_INODES,
+};
 pub use channel::{
     LinuxSocketDiagnosticsCapability, MAXIMUM_STARTUP_STREAM_BYTES, ManagedLoopbackChannel,
     ManagedStartupOutput,
 };
 use digest::RedactedDigestBuilder;
+#[cfg(target_os = "linux")]
+pub(crate) use evidence::ManagedNamespaceEvidence;
 pub use evidence::{
-    IsolationEvidence, IsolationPreparationEvidence, NamespaceIdentity, TargetProcessEvidence,
+    IsolationEvidence, IsolationPreparationEvidence, ManagedDeviceBoundaryEvidence,
+    NamespaceIdentity, TargetProcessEvidence,
 };
-pub use policy::IsolationPolicy;
+pub use policy::{IsolationPolicy, ManagedDeviceVisibilityPolicy};
+pub use runtime_input::{
+    MANAGED_RUNTIME_INPUT_ROOT_V1, MAXIMUM_MANAGED_RUNTIME_INPUT_BYTES,
+    MAXIMUM_MANAGED_RUNTIME_INPUT_FILES, ManagedRuntimeInputEvidence, RetainedRuntimeInputSink,
+    RetainedRuntimeInputSource, RetainedRuntimeInputTree,
+};
+#[cfg(target_os = "linux")]
+pub(crate) use runtime_input::{
+    RetainedRuntimeInputDeclaration, RetainedRuntimeInputMember, RuntimeInputObjectIdentity,
+    runtime_input_file_digest, runtime_input_layout_digest,
+};
 use validation::{validate_absolute_path, validate_environment_key, validate_value};
 
 /// A bounded, explicit target process description.
@@ -67,6 +113,30 @@ impl LaunchSpec {
     #[must_use]
     pub fn environment_value(&self, key: &OsStr) -> Option<&OsStr> {
         self.environment.get(key).map(OsString::as_os_str)
+    }
+
+    /// Returns the exact diagnostic executable path committed by this specification.
+    #[must_use]
+    pub fn executable(&self) -> &Path {
+        &self.executable
+    }
+
+    /// Returns the exact ordered target arguments.
+    #[must_use]
+    pub fn arguments(&self) -> &[OsString] {
+        &self.arguments
+    }
+
+    /// Returns the number of entries in the otherwise cleared environment.
+    #[must_use]
+    pub fn environment_count(&self) -> usize {
+        self.environment.len()
+    }
+
+    /// Returns the exact target working directory when one was explicitly set.
+    #[must_use]
+    pub fn current_directory(&self) -> Option<&Path> {
+        self.current_directory.as_deref()
     }
 
     /// Returns a domain-separated digest of the exact launch description.
@@ -115,23 +185,8 @@ impl LaunchSpec {
     }
 
     #[cfg(target_os = "linux")]
-    pub(crate) fn executable(&self) -> &Path {
-        &self.executable
-    }
-
-    #[cfg(target_os = "linux")]
-    pub(crate) fn arguments(&self) -> &[OsString] {
-        &self.arguments
-    }
-
-    #[cfg(target_os = "linux")]
     pub(crate) fn environment(&self) -> &BTreeMap<OsString, OsString> {
         &self.environment
-    }
-
-    #[cfg(target_os = "linux")]
-    pub(crate) fn current_directory(&self) -> Option<&Path> {
-        self.current_directory.as_deref()
     }
 }
 
@@ -141,10 +196,50 @@ pub struct PreparedIsolation {
     policy: IsolationPolicy,
     preparation: IsolationPreparationEvidence,
     platform: platform::Prepared,
+    subject: PreparedIsolationSubjectToken,
+}
+
+/// Opaque identity for one exact prepared isolation authority.
+#[derive(Clone, Debug)]
+#[doc(hidden)]
+pub struct PreparedIsolationSubjectToken(Arc<()>);
+
+impl PreparedIsolationSubjectToken {
+    /// Tests exact in-process authority identity without exposing identity material.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn binds_exact(&self, prepared: &PreparedIsolation) -> bool {
+        Arc::ptr_eq(&self.0, &prepared.subject.0)
+    }
 }
 
 impl PreparedIsolation {
-    /// Validates a retained helper and actively probes the complete isolation path.
+    /// Constructs an inert prepared-isolation fixture with one exact policy.
+    ///
+    /// This helper is absent unless the `test-support` feature is enabled. The
+    /// returned value exposes policy evidence but rejects every launch operation.
+    #[cfg(feature = "test-support")]
+    #[doc(hidden)]
+    #[must_use]
+    pub fn test_support_from_policy(policy: IsolationPolicy) -> Self {
+        let preparation = IsolationPreparationEvidence {
+            loopback_interface_index: 1,
+            canary_protocol_version: 1,
+            device_canary_protocol_version: 1,
+            runtime_input_canary_protocol_version: 1,
+            managed_device_visibility: policy.managed_device_visibility(),
+            helper_digest: rewrite_types::Digest::sha256(b"test-support-isolation-helper"),
+            helper_bytes: 1,
+        };
+        Self {
+            policy,
+            platform: platform::test_support_prepared(preparation.clone()),
+            preparation,
+            subject: PreparedIsolationSubjectToken(Arc::new(())),
+        }
+    }
+
+    /// Snapshots an expected helper and actively probes the complete isolation path.
     ///
     /// # Errors
     ///
@@ -153,16 +248,54 @@ impl PreparedIsolation {
     /// preparation invariant cannot be verified.
     pub fn prepare(
         helper_executable: impl AsRef<Path>,
+        expected_digest: &Digest,
+        expected_bytes: u64,
         policy: IsolationPolicy,
         cancellation: &CancellationToken,
     ) -> IsolationResult<Self> {
         policy.validate()?;
-        let (platform, preparation) =
-            platform::prepare(helper_executable.as_ref(), policy, cancellation)?;
+        let (platform, preparation) = platform::prepare(
+            helper_executable.as_ref(),
+            expected_digest,
+            expected_bytes,
+            policy,
+            cancellation,
+        )?;
         Ok(Self {
             policy,
             preparation,
             platform,
+            subject: PreparedIsolationSubjectToken(Arc::new(())),
+        })
+    }
+
+    /// Snapshots and probes an already-open helper without reopening its path.
+    ///
+    /// # Errors
+    ///
+    /// Returns a bounded isolation error when cancellation is active, the retained
+    /// object is not a regular executable, host policy denies isolation, or the
+    /// complete preparation probe cannot be verified.
+    pub fn prepare_retained(
+        helper_executable: File,
+        expected_digest: &Digest,
+        expected_bytes: u64,
+        policy: IsolationPolicy,
+        cancellation: &CancellationToken,
+    ) -> IsolationResult<Self> {
+        policy.validate()?;
+        let (platform, preparation) = platform::prepare_retained(
+            helper_executable,
+            expected_digest,
+            expected_bytes,
+            policy,
+            cancellation,
+        )?;
+        Ok(Self {
+            policy,
+            preparation,
+            platform,
+            subject: PreparedIsolationSubjectToken(Arc::new(())),
         })
     }
 
@@ -178,6 +311,13 @@ impl PreparedIsolation {
         self.policy.redacted_digest()
     }
 
+    /// Returns an opaque identity token for cross-crate owning joins.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn subject_token(&self) -> PreparedIsolationSubjectToken {
+        self.subject.clone()
+    }
+
     /// Launches a target only after isolation is established and verified.
     ///
     /// # Errors
@@ -191,10 +331,16 @@ impl PreparedIsolation {
         cancellation: &CancellationToken,
     ) -> IsolationResult<RetainedIsolationLease> {
         specification.validate(self.policy)?;
+        let launch_spec_digest = specification.redacted_digest();
+        let isolation_policy_digest = self.policy.redacted_digest();
         let platform = self
             .platform
-            .launch(specification, self.policy, cancellation)?;
-        Ok(RetainedIsolationLease { platform })
+            .launch(specification, self.policy, cancellation, None)?;
+        Ok(RetainedIsolationLease {
+            platform,
+            launch_spec_digest,
+            isolation_policy_digest,
+        })
     }
 
     /// Launches an already-open executable object without reopening its pathname.
@@ -216,10 +362,165 @@ impl PreparedIsolation {
         cancellation: &CancellationToken,
     ) -> IsolationResult<RetainedIsolationLease> {
         specification.validate(self.policy)?;
-        let platform =
-            self.platform
-                .launch_retained(specification, executable, self.policy, cancellation)?;
-        Ok(RetainedIsolationLease { platform })
+        let launch_spec_digest = specification.redacted_digest();
+        let isolation_policy_digest = self.policy.redacted_digest();
+        let platform = self.platform.launch_retained(
+            specification,
+            executable,
+            self.policy,
+            cancellation,
+            None,
+        )?;
+        Ok(RetainedIsolationLease {
+            platform,
+            launch_spec_digest,
+            isolation_policy_digest,
+        })
+    }
+
+    /// Launches an already-open executable with a nonempty retained runtime input
+    /// tree while preserving an already-captured absolute operation deadline.
+    ///
+    /// The platform uses the earlier of `operation_deadline` and its fixed local
+    /// startup ceiling. The supplied deadline is never extended or recaptured.
+    /// Cleanup after a failed launch retains its independent shutdown bound.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IsolationError::OperationDeadlineExceeded`] at or after the
+    /// supplied deadline, or the same validation and launch errors as
+    /// [`Self::launch_retained_with_inputs`].
+    pub fn launch_retained_with_inputs_until(
+        &self,
+        specification: &LaunchSpec,
+        executable: File,
+        inputs: RetainedRuntimeInputTree,
+        cancellation: &CancellationToken,
+        operation_deadline: Instant,
+    ) -> IsolationResult<RetainedIsolationLease> {
+        specification.validate(self.policy)?;
+        inputs.require_nonempty()?;
+        let launch_spec_digest = inputs.launch_digest(&specification.redacted_digest());
+        let isolation_policy_digest = self.policy.redacted_digest();
+        let platform = self.platform.launch_retained_with_inputs(
+            specification,
+            executable,
+            inputs,
+            self.policy,
+            cancellation,
+            Some(operation_deadline),
+        )?;
+        Ok(RetainedIsolationLease {
+            platform,
+            launch_spec_digest,
+            isolation_policy_digest,
+        })
+    }
+
+    /// Launches an already-open executable with a nonempty retained runtime input tree.
+    ///
+    /// The Linux helper materializes each content-bound retained descriptor at
+    /// the fixed [`MANAGED_RUNTIME_INPUT_ROOT_V1`] alias. It transfers no caller
+    /// filesystem path and writes no host path. Evidence establishes retained
+    /// source identity plus a byte-identical private read-only view, not shared
+    /// inode identity, model use, or model semantics.
+    ///
+    /// Nonempty input bytes are materialized in a private tmpfs. Its 129 GiB
+    /// bound is a ceiling rather than eager allocation, but a 17-18 GiB model
+    /// still requires corresponding memory or swap-backed tmpfs capacity during
+    /// the lease. Callers must treat that resource cost as an admission concern.
+    ///
+    /// # Errors
+    ///
+    /// Returns a bounded isolation error when the input capability is empty,
+    /// reordered, changed, outside its fixed bounds, or cannot be mounted and
+    /// reobserved exactly.
+    pub fn launch_retained_with_inputs(
+        &self,
+        specification: &LaunchSpec,
+        executable: File,
+        inputs: RetainedRuntimeInputTree,
+        cancellation: &CancellationToken,
+    ) -> IsolationResult<RetainedIsolationLease> {
+        specification.validate(self.policy)?;
+        inputs.require_nonempty()?;
+        let launch_spec_digest = inputs.launch_digest(&specification.redacted_digest());
+        let isolation_policy_digest = self.policy.redacted_digest();
+        let platform = self.platform.launch_retained_with_inputs(
+            specification,
+            executable,
+            inputs,
+            self.policy,
+            cancellation,
+            None,
+        )?;
+        Ok(RetainedIsolationLease {
+            platform,
+            launch_spec_digest,
+            isolation_policy_digest,
+        })
+    }
+
+    /// Runs one retained build program with a read-only input capability and an
+    /// initially empty writable output capability.
+    ///
+    /// The Linux implementation adds a private mount namespace and Landlock policy
+    /// to the managed user, PID, and network namespaces. It validates the complete
+    /// retained input mapping against `input_root`, then constructs the target-facing
+    /// input tree only from those file descriptors. The mutable root is not passed to
+    /// either helper stage or the target.
+    ///
+    /// # Errors
+    ///
+    /// Returns a bounded isolation error when validation, retained-object
+    /// identity, filesystem confinement, cancellation, execution, or cleanup fails.
+    pub fn run_controlled_build_retained(
+        &self,
+        specification: &ControlledBuildLaunchSpec,
+        program: File,
+        input_root: File,
+        input_files: Vec<ControlledBuildInputFile>,
+        output_root: File,
+        cancellation: &CancellationToken,
+    ) -> IsolationResult<ControlledBuildExecution> {
+        specification.validate(self.policy)?;
+        self.platform.run_controlled_build_retained(
+            specification,
+            program,
+            input_root,
+            input_files,
+            output_root,
+            self.policy,
+            cancellation,
+        )
+    }
+
+    /// Runs one retained-program bootstrap attempt through its distinct root
+    /// preparation and controlled-build protocol.
+    ///
+    /// This path cannot fall back to the ordinary controlled-build mode. The
+    /// result is created only after root transition, old-root detachment,
+    /// read-only mount, host-path, privilege, Landlock, seccomp, and output
+    /// postconditions are observed.
+    ///
+    /// # Errors
+    ///
+    /// Returns a bounded isolation error for any invalid input join, unavailable
+    /// root-preparation operation, failed postcondition, cancellation, or build failure.
+    pub fn run_retained_program_bootstrap(
+        &self,
+        specification: &RetainedProgramBootstrapLaunchSpec,
+        capabilities: RetainedProgramBootstrapCapabilities,
+        cancellation: &CancellationToken,
+    ) -> IsolationResult<RetainedProgramBootstrapExecution> {
+        specification.controlled_build().validate(self.policy)?;
+        specification.validate_input_files(capabilities.input_files())?;
+        self.platform.run_retained_program_bootstrap(
+            specification,
+            capabilities,
+            self.policy,
+            cancellation,
+        )
     }
 }
 
@@ -227,9 +528,25 @@ impl PreparedIsolation {
 #[derive(Debug)]
 pub struct RetainedIsolationLease {
     platform: platform::Lease,
+    launch_spec_digest: Digest,
+    isolation_policy_digest: Digest,
 }
 
 impl RetainedIsolationLease {
+    /// Returns the redacted digest of the exact launch specification used to
+    /// create this retained process lease.
+    #[must_use]
+    pub const fn launch_spec_digest(&self) -> &Digest {
+        &self.launch_spec_digest
+    }
+
+    /// Returns the redacted digest of the exact isolation policy used to create
+    /// this retained process lease.
+    #[must_use]
+    pub const fn isolation_policy_digest(&self) -> &Digest {
+        &self.isolation_policy_digest
+    }
+
     /// Returns launch-time evidence.
     #[must_use]
     pub fn initial_evidence(&self) -> IsolationEvidence {
@@ -246,7 +563,22 @@ impl RetainedIsolationLease {
         &mut self,
         cancellation: &CancellationToken,
     ) -> IsolationResult<IsolationEvidence> {
-        self.platform.reobserve(cancellation)
+        self.platform.reobserve(cancellation, None)
+    }
+
+    /// Rechecks the retained isolation under an already-captured absolute deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IsolationError::OperationDeadlineExceeded`] at or after the
+    /// supplied deadline, or the same live-evidence errors as [`Self::reobserve`].
+    pub fn reobserve_until(
+        &mut self,
+        cancellation: &CancellationToken,
+        operation_deadline: Instant,
+    ) -> IsolationResult<IsolationEvidence> {
+        self.platform
+            .reobserve(cancellation, Some(operation_deadline))
     }
 
     /// Opens the lease's single exact loopback channel inside the retained namespace.
@@ -264,7 +596,24 @@ impl RetainedIsolationLease {
         endpoint: SocketAddr,
         cancellation: &CancellationToken,
     ) -> IsolationResult<ManagedLoopbackChannel> {
-        self.platform.connect_loopback(endpoint, cancellation)
+        self.platform.connect_loopback(endpoint, cancellation, None)
+    }
+
+    /// Opens the lease's single loopback channel under an already-captured
+    /// absolute operation deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IsolationError::OperationDeadlineExceeded`] at or after the
+    /// supplied deadline, or the same channel errors as [`Self::connect_loopback`].
+    pub fn connect_loopback_until(
+        &mut self,
+        endpoint: SocketAddr,
+        cancellation: &CancellationToken,
+        operation_deadline: Instant,
+    ) -> IsolationResult<ManagedLoopbackChannel> {
+        self.platform
+            .connect_loopback(endpoint, cancellation, Some(operation_deadline))
     }
 
     /// Terminates and reaps the complete managed process tree within the policy bound.
@@ -279,328 +628,4 @@ impl RetainedIsolationLease {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::{ffi::OsString, path::PathBuf, time::Duration};
-
-    use rewrite_types::{CancellationToken, Digest};
-
-    #[cfg(not(target_os = "linux"))]
-    use super::RetainedIsolationLease;
-    use super::{
-        IsolationEvidence, IsolationPolicy, IsolationPreparationEvidence, LaunchSpec,
-        NamespaceIdentity, PreparedIsolation, TargetProcessEvidence,
-    };
-    use crate::IsolationError;
-
-    #[test]
-    fn policy_rejects_zero_and_unbounded_values() {
-        assert_eq!(
-            IsolationPolicy::new(Duration::ZERO, Duration::from_secs(1), 1, 1, 1, 64, 8,),
-            Err(IsolationError::InvalidPolicy("startup timeout"))
-        );
-        assert_eq!(
-            IsolationPolicy::new(
-                Duration::from_secs(1),
-                Duration::from_secs(1),
-                4_097,
-                1,
-                1,
-                64,
-                8,
-            ),
-            Err(IsolationError::InvalidPolicy("argument count"))
-        );
-    }
-
-    #[test]
-    fn launch_validation_rejects_relative_paths_and_internal_environment() {
-        let token = CancellationToken::new();
-        let result =
-            PreparedIsolation::prepare("relative-helper", IsolationPolicy::default(), &token);
-        assert!(matches!(
-            result,
-            Err(IsolationError::UnsupportedPlatform | IsolationError::InvalidHelper)
-        ));
-
-        let mut spec = LaunchSpec::new(PathBuf::from("relative-target"));
-        spec.insert_environment("REWRITE_ISOLATION_INTERNAL_BAD", "value");
-        assert_eq!(
-            spec.validate(IsolationPolicy::default()),
-            Err(IsolationError::InvalidLaunch("executable path"))
-        );
-    }
-
-    #[test]
-    fn every_policy_bound_is_validated_and_exposed() {
-        let valid = IsolationPolicy::new(
-            Duration::from_secs(2),
-            Duration::from_secs(3),
-            2,
-            2,
-            16,
-            64,
-            8,
-        )
-        .expect("valid policy");
-        assert_eq!(valid.startup_timeout(), Duration::from_secs(2));
-        assert_eq!(valid.shutdown_timeout(), Duration::from_secs(3));
-        assert_ne!(
-            valid.redacted_digest(),
-            IsolationPolicy::default().redacted_digest()
-        );
-
-        let cases = [
-            (
-                IsolationPolicy::new(
-                    Duration::from_secs(31),
-                    Duration::from_secs(1),
-                    1,
-                    1,
-                    1,
-                    64,
-                    8,
-                ),
-                "startup timeout",
-            ),
-            (
-                IsolationPolicy::new(Duration::from_secs(1), Duration::ZERO, 1, 1, 1, 64, 8),
-                "shutdown timeout",
-            ),
-            (
-                IsolationPolicy::new(
-                    Duration::from_secs(1),
-                    Duration::from_secs(1),
-                    1,
-                    1_025,
-                    1,
-                    64,
-                    8,
-                ),
-                "environment count",
-            ),
-            (
-                IsolationPolicy::new(
-                    Duration::from_secs(1),
-                    Duration::from_secs(1),
-                    1,
-                    1,
-                    0,
-                    64,
-                    8,
-                ),
-                "value bytes",
-            ),
-            (
-                IsolationPolicy::new(
-                    Duration::from_secs(1),
-                    Duration::from_secs(1),
-                    1,
-                    1,
-                    1,
-                    63,
-                    8,
-                ),
-                "open-file limit",
-            ),
-            (
-                IsolationPolicy::new(
-                    Duration::from_secs(1),
-                    Duration::from_secs(1),
-                    1,
-                    1,
-                    1,
-                    64,
-                    7,
-                ),
-                "process limit",
-            ),
-        ];
-        for (result, field) in cases {
-            assert_eq!(result, Err(IsolationError::InvalidPolicy(field)));
-        }
-    }
-
-    #[test]
-    fn launch_builder_enforces_counts_values_keys_and_directories() {
-        let executable = std::env::current_exe().expect("current executable");
-        let policy = IsolationPolicy::new(
-            Duration::from_secs(1),
-            Duration::from_secs(1),
-            1,
-            1,
-            4,
-            64,
-            8,
-        )
-        .expect("valid policy");
-
-        let mut valid = LaunchSpec::new(&executable);
-        valid.push_argument("a");
-        valid.insert_environment("K", "V");
-        valid.set_current_directory(std::env::current_dir().expect("current directory"));
-        assert_eq!(
-            valid.environment_value(std::ffi::OsStr::new("K")),
-            Some(std::ffi::OsStr::new("V"))
-        );
-        assert_eq!(
-            valid.environment_value(std::ffi::OsStr::new("MISSING")),
-            None
-        );
-        assert!(valid.validate(policy).is_ok());
-        let original_digest = valid.redacted_digest();
-        let mut changed = valid.clone();
-        changed.insert_environment("K", "W");
-        assert_ne!(changed.redacted_digest(), original_digest);
-
-        let mut too_many_arguments = valid.clone();
-        too_many_arguments.push_argument("b");
-        assert_eq!(
-            too_many_arguments.validate(policy),
-            Err(IsolationError::InvalidLaunch("argument count"))
-        );
-
-        let mut too_many_environment = valid.clone();
-        too_many_environment.insert_environment("X", "Y");
-        assert_eq!(
-            too_many_environment.validate(policy),
-            Err(IsolationError::InvalidLaunch("environment count"))
-        );
-
-        let mut oversized = LaunchSpec::new(&executable);
-        oversized.push_argument("12345");
-        assert_eq!(
-            oversized.validate(policy),
-            Err(IsolationError::InvalidLaunch("value bytes"))
-        );
-
-        let mut invalid_key = LaunchSpec::new(&executable);
-        invalid_key.insert_environment("A=B", "V");
-        assert_eq!(
-            invalid_key.validate(policy),
-            Err(IsolationError::InvalidLaunch("environment key"))
-        );
-
-        let mut nul = LaunchSpec::new(&executable);
-        nul.push_argument(OsString::from("a\0b"));
-        assert_eq!(
-            nul.validate(policy),
-            Err(IsolationError::InvalidLaunch("value bytes"))
-        );
-
-        let mut relative_directory = LaunchSpec::new(executable);
-        relative_directory.set_current_directory("relative");
-        assert_eq!(
-            relative_directory.validate(policy),
-            Err(IsolationError::InvalidLaunch("current directory"))
-        );
-    }
-
-    #[test]
-    fn evidence_getters_preserve_exact_native_identity() {
-        let preparation = IsolationPreparationEvidence {
-            loopback_interface_index: 1,
-            canary_protocol_version: 1,
-            helper_digest: Digest::sha256(b"helper"),
-            helper_bytes: 6,
-        };
-        assert!(preparation.all_canaries_passed());
-        assert_eq!(preparation.helper_digest(), &Digest::sha256(b"helper"));
-        assert_eq!(preparation.helper_bytes(), 6);
-        assert!(
-            !IsolationPreparationEvidence {
-                loopback_interface_index: 0,
-                canary_protocol_version: 1,
-                helper_digest: Digest::sha256(b"helper"),
-                helper_bytes: 6,
-            }
-            .all_canaries_passed()
-        );
-        let network = NamespaceIdentity {
-            device: 1,
-            inode: 2,
-        };
-        let user = NamespaceIdentity {
-            device: 3,
-            inode: 4,
-        };
-        let process = NamespaceIdentity {
-            device: 5,
-            inode: 6,
-        };
-        assert_eq!(network.device(), 1);
-        assert_eq!(network.inode(), 2);
-        let target = TargetProcessEvidence {
-            outer_pid: 8,
-            namespace_pid: 2,
-            process_start_token: 9,
-            namespace_user_id: 0,
-            executable_device: 10,
-            executable_inode: 11,
-            executable_bytes: 12,
-        };
-        let evidence = IsolationEvidence {
-            guardian_pid: 7,
-            network_namespace: network,
-            user_namespace: user,
-            process_namespace: process,
-            preparation: preparation.clone(),
-            target,
-        };
-        assert_eq!(evidence.guardian_pid(), 7);
-        assert_eq!(evidence.network_namespace(), network);
-        assert_eq!(evidence.user_namespace(), user);
-        assert_eq!(evidence.process_namespace(), process);
-        assert_eq!(evidence.preparation(), &preparation);
-        assert_eq!(evidence.target().outer_pid(), 8);
-        assert_eq!(evidence.target().namespace_pid(), 2);
-        assert_eq!(evidence.target().process_start_token(), 9);
-        assert_eq!(evidence.target().namespace_user_id(), 0);
-        assert_eq!(evidence.target().executable_device(), 10);
-        assert_eq!(evidence.target().executable_inode(), 11);
-        assert_eq!(evidence.target().executable_bytes(), 12);
-        assert_eq!(evidence.redacted_digest().as_str().len(), 64);
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    #[test]
-    fn unsupported_prepared_and_lease_paths_remain_inert() {
-        let token = CancellationToken::new();
-        let prepared = PreparedIsolation {
-            policy: IsolationPolicy::default(),
-            preparation: IsolationPreparationEvidence {
-                loopback_interface_index: 1,
-                canary_protocol_version: 1,
-                helper_digest: Digest::sha256(b"helper"),
-                helper_bytes: 6,
-            },
-            platform: crate::platform::Prepared,
-        };
-        assert!(prepared.preparation_evidence().all_canaries_passed());
-        assert_eq!(prepared.policy_digest(), prepared.policy.redacted_digest());
-        let specification =
-            LaunchSpec::new(std::env::current_exe().expect("absolute current executable"));
-        assert!(matches!(
-            prepared.launch(&specification, &token),
-            Err(IsolationError::UnsupportedPlatform)
-        ));
-        let executable =
-            std::fs::File::open(std::env::current_exe().expect("absolute current executable"))
-                .expect("open retained executable");
-        assert!(matches!(
-            prepared.launch_retained(&specification, executable, &token),
-            Err(IsolationError::UnsupportedPlatform)
-        ));
-
-        let mut lease = RetainedIsolationLease {
-            platform: crate::platform::Lease,
-        };
-        assert_eq!(
-            lease.reobserve(&token),
-            Err(IsolationError::UnsupportedPlatform)
-        );
-        assert_eq!(
-            lease.close(&token),
-            Err(IsolationError::UnsupportedPlatform)
-        );
-    }
-}
+mod tests;

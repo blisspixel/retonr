@@ -19,7 +19,7 @@ impl ArtifactRepository {
     /// The caller supplies a reviewed layout file and a member tree whose regular
     /// files must equal the declared member set. The service reconstructs the
     /// canonical artifact set and runtime-package manifest, publishes the exact
-    /// set, and persists and reads back the semantic package under schema 6. It
+    /// set, and persists and reads back the semantic package in the current store. It
     /// does not execute members, qualify, activate, lease, or admit the package
     /// to the production cloud-disable allowlist.
     ///

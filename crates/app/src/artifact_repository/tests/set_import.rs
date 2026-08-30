@@ -171,7 +171,11 @@ fn set_import_refuses_legacy_schema_without_implicit_migration() {
     Connection::open(&state_path)
         .expect("open state fixture")
         .execute_batch(
-            "DROP TABLE artifact_set_removals; DROP TABLE installed_artifact_sets; PRAGMA user_version = 3;",
+            "DROP TABLE generation_qualification_request_projections;
+             DROP TABLE generation_qualification_operation_policies;
+             DROP TABLE artifact_set_removals;
+             DROP TABLE installed_artifact_sets;
+             PRAGMA user_version = 3;",
         )
         .expect("restore exact schema three");
 

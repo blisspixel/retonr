@@ -1,0 +1,12 @@
+diff --git a/x/mlxrunner/mlx/dynamic.h b/x/mlxrunner/mlx/dynamic.h
+--- a/x/mlxrunner/mlx/dynamic.h
++++ b/x/mlxrunner/mlx/dynamic.h
+@@ -27,7 +27,7 @@
+ #ifdef ERROR
+ #undef ERROR
+ #endif
+-#define MLX_ERROR(fmt, ...) fprintf(stderr, "%s %s - ERROR - %s:%d - " fmt "\n", __DATE__, __TIME__, __FILE__, __LINE__, ##__VA_ARGS__); return 1
++#define MLX_ERROR(fmt, ...) fprintf(stderr, "ERROR - %s:%d - " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); return 1
+ #define CHECK(x) if (!(x)) { MLX_ERROR("CHECK failed: " #x); }
+ #define CHECK_LOAD(handle, x) *(void**)(&x##_) = DLSYM(handle, #x); CHECK(x##_)
+ // OPTIONAL_LOAD: load symbol if available, leave function pointer NULL otherwise

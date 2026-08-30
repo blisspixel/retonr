@@ -130,7 +130,9 @@ The domain can represent all four identities and recheck their structural relati
 but their validity grants no authority. The separate qualification v2 record binds all
 four identities for exactly claim extraction, has no authorization operation, and cannot
 enter qualification v1 activation. Schema v3 introduced those separate immutable
-tables. Schema v4 is the current store and leaves the v3 evidence chain unchanged.
+tables. Schema v6 is the current store. It leaves the v3 evidence chain unchanged,
+retains the schema-v4 installed-set state and schema-v5 removal journal, and adds
+runtime-package, model-package, and native-load evidence without granting authority.
 Persistence revalidates canonical bytes,
 indexed identities, and the complete subject relationship on dependent writes and reads;
 it does not convert evidence into authority. The application must independently attest

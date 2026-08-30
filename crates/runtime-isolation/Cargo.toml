@@ -8,6 +8,10 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = []
+test-support = []
+
 [dependencies]
 rewrite-types = { path = "../types", version = "0.1.0" }
 sha2.workspace = true
@@ -15,12 +19,17 @@ thiserror.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 close_fds.workspace = true
+landlock.workspace = true
 libc.workspace = true
-rustix = { workspace = true, features = ["event", "fs", "net", "process", "thread"] }
+rustix = { workspace = true, features = ["event", "fs", "mount", "net", "process", "thread"] }
 seccompiler.workspace = true
+tar.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [[bin]]
 name = "rewrite-runtime-isolation-helper"

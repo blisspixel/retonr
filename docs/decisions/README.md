@@ -25,10 +25,11 @@ success and stop conditions.
 | --- | --- | --- |
 | [0001](0001-common-validation-cascade.md) | Proposed | One acceptance cascade for every strategy |
 | [0002](0002-private-codename.md) | Superseded | Private codename and neutral internal namespaces |
-| [0003](0003-artifact-qualification-activation.md) | Proposed | Separate artifact, qualification, and activation identity |
+| [0003](0003-artifact-qualification-activation.md) | Accepted | Separate artifact, qualification, and activation identity |
 | [0004](0004-inference-port-and-ollama-transport.md) | Proposed | Backend-neutral inference and bounded Ollama transport |
 | [0005](0005-grounded-strategy-authority.md) | Proposed | Grounded strategies propose but cannot accept or apply |
 | [0006](0006-retonr-public-identity.md) | Accepted | Retonr public project identity and namespace migration |
-| [0007](0007-development-host-identity.md) | Proposed | Development host identity and hardware-probe privacy fields |
+| [0007](0007-development-host-identity.md) | Accepted | Development host identity and hardware-probe privacy fields |
 | [0008](0008-attached-process-witness.md) | Proposed | Bounded native witness for an attached runtime process |
 | [0009](0009-retained-connection-attribution.md) | Proposed | One retained Ollama transport with repeated native connection attribution |
+| [0010](0010-controlled-runtime-source-build.md) | Proposed | Controlled source build for first runtime admission |

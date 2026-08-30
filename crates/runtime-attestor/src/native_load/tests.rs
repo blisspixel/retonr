@@ -1,19 +1,14 @@
 use std::{fs::File, time::Duration};
 
-use rewrite_model::{
-    ArtifactId, ArtifactSetManifest, ArtifactSetMember, ArtifactSetRelativePath,
-    NativeMappingClass, PackageSource, PackageSourceKind, PackageTransformation, RuntimeAbi,
-    RuntimeArchitecture, RuntimeOperatingSystem, RuntimePackageLoadPolicy, RuntimePackageManifest,
-    RuntimePackageMember, RuntimePackageMemberRole, RuntimeTarget,
-};
+use rewrite_model::{ArtifactId, ArtifactSetRelativePath, NativeMappingClass};
 use rewrite_types::Digest;
 
 use super::{
     ExpectedExternalNativeComponent, MAXIMUM_NATIVE_LOAD_HASH_BYTES,
     MAXIMUM_NATIVE_LOAD_OBSERVATION_MILLIS, MAXIMUM_NATIVE_LOADED_COMPONENTS,
-    MAXIMUM_NATIVE_MAPPING_METADATA_BYTES, MAXIMUM_NATIVE_MAPPING_REGIONS,
-    NativeLoadObservationLimits, NativeLoadObservationRequest, NativeLoadObserverError,
-    RetainedNativePackageMember, expected_key,
+    MAXIMUM_NATIVE_MAPPING_METADATA_BYTES, MAXIMUM_NATIVE_MAPPING_REGIONS, NativeLoadDiscovery,
+    NativeLoadDiscoveryRequest, NativeLoadObservationLimits, NativeLoadObservationRequest,
+    NativeLoadObserverError, RetainedNativePackageMember, expected_key,
 };
 
 #[test]
@@ -112,7 +107,7 @@ fn retained_member_requires_an_exact_nonempty_regular_file() {
 #[test]
 fn request_validation_binds_every_retained_member_and_external_component() {
     let temporary = tempfile::tempdir().expect("temporary directory");
-    let package = package();
+    let package = package_with_version(PACKAGE_VERSION);
     let package_id = package.runtime_package_manifest_id();
     let retained = retained_members(&package, temporary.path());
     let mut external = [
@@ -136,12 +131,27 @@ fn request_validation_binds_every_retained_member_and_external_component() {
         limits: NativeLoadObservationLimits::default(),
     };
     assert_eq!(request.validate(), Ok(request.limits));
+    let discovery = NativeLoadDiscoveryRequest {
+        package: &package,
+        expected_package_id: &package_id,
+        retained_package_members: &retained,
+        limits: NativeLoadObservationLimits::default(),
+    };
+    assert_eq!(discovery.validate(), Ok(discovery.limits));
 
     let other_id = package_with_version("2.0.0").runtime_package_manifest_id();
     assert_eq!(
         NativeLoadObservationRequest {
             expected_package_id: &other_id,
             ..request
+        }
+        .validate(),
+        Err(NativeLoadObserverError::InvalidRequest)
+    );
+    assert_eq!(
+        NativeLoadDiscoveryRequest {
+            expected_package_id: &other_id,
+            ..discovery
         }
         .validate(),
         Err(NativeLoadObserverError::InvalidRequest)
@@ -179,7 +189,7 @@ fn request_validation_binds_every_retained_member_and_external_component() {
 #[test]
 fn request_rejects_noncanonical_external_component_policies() {
     let temporary = tempfile::tempdir().expect("temporary directory");
-    let package = package();
+    let package = package_with_version(PACKAGE_VERSION);
     let package_id = package.runtime_package_manifest_id();
     let retained = retained_members(&package, temporary.path());
     let first = ExpectedExternalNativeComponent::new(
@@ -228,107 +238,154 @@ fn request_rejects_noncanonical_external_component_policies() {
     }
 }
 
-fn clone_retained(member: &RetainedNativePackageMember) -> RetainedNativePackageMember {
-    RetainedNativePackageMember::new(
-        member.relative_path().clone(),
-        member.artifact_id().clone(),
-        member.byte_size(),
-        member.file().try_clone().expect("clone retained member"),
+#[test]
+fn typed_review_and_verified_frozen_set_preserve_authority_boundaries() {
+    let package = package_with_version(PACKAGE_VERSION);
+    let discovery = discovery_fixture(&package);
+    let review_evidence = b"fixture reviewer evidence";
+    let review = super::ExternalNativeComponentReview::compile(
+        &discovery,
+        super::ExternalNativeComponentReviewDisposition::Approved,
+        review_evidence,
     )
-    .expect("clone exact retained member")
-}
-
-fn retained_members(
-    package: &RuntimePackageManifest,
-    root: &std::path::Path,
-) -> Vec<RetainedNativePackageMember> {
-    package
-        .members()
-        .iter()
-        .filter(|member| super::is_retained_package_member(member))
-        .map(|member| {
-            let bytes: &[u8] = if member.relative_path().as_str().contains("runtime") {
-                b"entrypoint"
-            } else {
-                b"native"
-            };
-            let file_path = root.join(member.relative_path().as_str().replace('/', "_"));
-            std::fs::write(&file_path, bytes).expect("write retained member");
-            RetainedNativePackageMember::new(
-                member.relative_path().clone(),
-                member.artifact_id().clone(),
-                member.byte_size(),
-                File::open(file_path).expect("open retained member"),
-            )
-            .expect("retain package member")
-        })
-        .collect()
-}
-
-fn package() -> RuntimePackageManifest {
-    package_with_version("1.0.0")
-}
-
-fn package_with_version(version: &str) -> RuntimePackageManifest {
-    let entrypoint_path = ArtifactSetRelativePath::new("bin/runtime").expect("entrypoint path");
-    let native_path = ArtifactSetRelativePath::new("lib/native.so").expect("native path");
-    let evidence_path = ArtifactSetRelativePath::new("legal/evidence.txt").expect("evidence path");
-    let entrypoint = ArtifactId::from_digest(Digest::sha256(b"entrypoint"));
-    let native = ArtifactId::from_digest(Digest::sha256(b"native"));
-    let evidence = ArtifactId::from_digest(Digest::sha256(b"package evidence"));
-    let artifact_set = ArtifactSetManifest::new(vec![
-        ArtifactSetMember::new(entrypoint.clone(), 10, entrypoint_path.clone()),
-        ArtifactSetMember::new(evidence.clone(), 16, evidence_path.clone()),
-        ArtifactSetMember::new(native.clone(), 6, native_path.clone()),
-    ])
-    .expect("artifact set");
-    RuntimePackageManifest::new(
-        &artifact_set,
-        "native-load-test",
-        version,
-        None,
-        RuntimeTarget::new(
-            RuntimeOperatingSystem::Linux,
-            RuntimeArchitecture::X86_64,
-            RuntimeAbi::LinuxGnuLibc,
+    .expect("compile review");
+    assert_review_binding(&review, &discovery, review_evidence);
+    assert_eq!(
+        super::ExternalNativeComponentReview::verify(
+            review.canonical_json_bytes(),
+            discovery.canonical_json_bytes(),
+            review_evidence,
+            &package.runtime_package_manifest_id(),
         )
-        .expect("Linux target"),
-        PackageSource::new(
-            PackageSourceKind::LocalArchive,
-            "local:native-load-test",
-            version,
-            Digest::sha256(b"source evidence"),
-        )
-        .expect("package source"),
-        PackageTransformation::Untransformed {
-            evidence_digest: Digest::sha256(b"comparison evidence"),
-        },
-        vec![
-            RuntimePackageMember::new(
-                entrypoint,
-                10,
-                entrypoint_path,
-                vec![RuntimePackageMemberRole::Entrypoint],
-                RuntimePackageLoadPolicy::RequiredAtReady,
-            ),
-            RuntimePackageMember::new(
-                evidence,
-                16,
-                evidence_path,
-                vec![
-                    RuntimePackageMemberRole::LicenseText,
-                    RuntimePackageMemberRole::ProvenanceRecord,
-                ],
-                RuntimePackageLoadPolicy::MustNotBeCodeLoaded,
-            ),
-            RuntimePackageMember::new(
-                native,
-                6,
-                native_path,
-                vec![RuntimePackageMemberRole::NativeDependency],
-                RuntimePackageLoadPolicy::BackendConditional,
-            ),
-        ],
+        .expect("verify review"),
+        review
+    );
+
+    let compiled = super::CompiledFrozenExternalNativeComponentSet::compile(&discovery, &review)
+        .expect("compile frozen set");
+    assert_compiled_frozen_binding(&compiled, &discovery, &review);
+    let verified = super::VerifiedFrozenExternalNativeComponentSet::verify(
+        compiled.canonical_json_bytes(),
+        discovery.canonical_json_bytes(),
+        review.canonical_json_bytes(),
+        review_evidence,
+        &package.runtime_package_manifest_id(),
     )
-    .expect("runtime package")
+    .expect("independently verify frozen set");
+    assert_verified_frozen_binding(&verified, &compiled, &discovery);
 }
+
+fn assert_review_binding(
+    review: &super::ExternalNativeComponentReview,
+    discovery: &NativeLoadDiscovery,
+    review_evidence: &[u8],
+) {
+    assert_eq!(
+        review.runtime_package_manifest_id(),
+        discovery.runtime_package_manifest_id()
+    );
+    assert_eq!(review.discovery_digest(), discovery.discovery_digest());
+    assert_eq!(
+        review.disposition(),
+        super::ExternalNativeComponentReviewDisposition::Approved
+    );
+    assert_eq!(
+        review.reviewer_evidence_digest(),
+        &Digest::sha256(review_evidence)
+    );
+    assert_eq!(
+        review.review_digest(),
+        &Digest::sha256(review.canonical_json_bytes())
+    );
+    assert_eq!(review.components().len(), 2);
+    assert_eq!(
+        review.components()[0].artifact_id(),
+        discovery.external_components()[0].artifact_id()
+    );
+    assert_eq!(
+        review.components()[0].byte_size(),
+        discovery.external_components()[0].byte_size()
+    );
+    assert_eq!(
+        review.components()[0].mapping_class(),
+        discovery.external_components()[0].mapping_class()
+    );
+}
+
+fn assert_compiled_frozen_binding(
+    compiled: &super::CompiledFrozenExternalNativeComponentSet,
+    discovery: &NativeLoadDiscovery,
+    review: &super::ExternalNativeComponentReview,
+) {
+    assert_eq!(
+        compiled.runtime_package_manifest_id(),
+        discovery.runtime_package_manifest_id()
+    );
+    assert_eq!(compiled.discovery_digest(), discovery.discovery_digest());
+    assert_eq!(
+        compiled.external_component_review_digest(),
+        review.review_digest()
+    );
+    assert_eq!(
+        compiled.reviewer_evidence_digest(),
+        review.reviewer_evidence_digest()
+    );
+    assert_eq!(
+        compiled.frozen_set_id().digest(),
+        &Digest::sha256(compiled.canonical_json_bytes())
+    );
+    assert_eq!(compiled.clone(), *compiled);
+    assert!(format!("{compiled:?}").contains("CompiledFrozenExternalNativeComponentSet"));
+    let encoded_id = serde_json::to_vec(compiled.frozen_set_id()).expect("encode frozen set ID");
+    let decoded_id: super::FrozenExternalNativeComponentSetId =
+        serde_json::from_slice(&encoded_id).expect("decode frozen set ID");
+    assert_eq!(&decoded_id, compiled.frozen_set_id());
+    let mut ids = std::collections::HashSet::new();
+    assert!(ids.insert(decoded_id));
+}
+
+fn assert_verified_frozen_binding(
+    verified: &super::VerifiedFrozenExternalNativeComponentSet,
+    compiled: &super::CompiledFrozenExternalNativeComponentSet,
+    discovery: &NativeLoadDiscovery,
+) {
+    assert_eq!(verified.frozen_set_id(), compiled.frozen_set_id());
+    assert_eq!(
+        verified.frozen_external_component_set_id().digest(),
+        verified.frozen_set_id().digest()
+    );
+    assert_eq!(
+        verified.runtime_package_manifest_id(),
+        compiled.runtime_package_manifest_id()
+    );
+    assert_eq!(verified.discovery_digest(), compiled.discovery_digest());
+    assert_eq!(
+        verified.external_component_review_digest(),
+        compiled.external_component_review_digest()
+    );
+    assert_eq!(
+        verified.reviewer_evidence_digest(),
+        compiled.reviewer_evidence_digest()
+    );
+    assert_eq!(
+        verified.canonical_json_bytes(),
+        compiled.canonical_json_bytes()
+    );
+    assert_eq!(
+        verified.expected_components().len(),
+        discovery.external_components().len()
+    );
+    assert_eq!(verified.clone(), *verified);
+    assert!(format!("{verified:?}").contains("VerifiedFrozenExternalNativeComponentSet"));
+}
+
+#[path = "tests/frozen.rs"]
+mod frozen_tests;
+#[path = "tests/worker_subject.rs"]
+mod worker_subject;
+
+#[path = "tests/fixtures.rs"]
+mod fixtures;
+use fixtures::{
+    PACKAGE_VERSION, clone_retained, discovery_fixture, package_with_version, retained_members,
+};

@@ -10,8 +10,8 @@ use rewrite_types::{CancellationToken, Digest};
 
 use crate::{
     AttachedProcessLease, AttachedProcessObserver, ListenerEndpoint, NativeAttachedProcessObserver,
-    NativeLoadObservationLimits, NativeLoadObservationRequest, NativeLoadObserverError,
-    RetainedNativePackageMember,
+    NativeLoadDiscoveryRequest, NativeLoadObservationLimits, NativeLoadObservationRequest,
+    NativeLoadObserverError, RetainedNativePackageMember,
 };
 
 #[test]
@@ -49,6 +49,16 @@ fn windows_native_load_observation_fails_closed_without_object_binding() {
     };
     assert_eq!(
         lease.observe_native_load(&request, &cancellation),
+        Err(NativeLoadObserverError::Unsupported)
+    );
+    let discovery = NativeLoadDiscoveryRequest {
+        package: &package,
+        expected_package_id: &package_id,
+        retained_package_members: &retained,
+        limits: NativeLoadObservationLimits::default(),
+    };
+    assert_eq!(
+        lease.discover_external_native_components(&discovery, &cancellation),
         Err(NativeLoadObserverError::Unsupported)
     );
 }

@@ -2,31 +2,44 @@ use std::{
     env,
     ffi::OsString,
     fs::File,
-    io::{BufRead as _, BufReader, Read as _, Write as _},
-    os::{
-        fd::{AsFd as _, AsRawFd as _, BorrowedFd},
-        unix::fs::PermissionsExt as _,
-    },
+    io::Write as _,
+    os::fd::{AsFd as _, AsRawFd as _, BorrowedFd},
     path::Path,
-    process::{Child, Command, Stdio},
+    process::{Command, Stdio},
     time::{Duration, Instant},
 };
 
-use rustix::process::{Signal, getpid, getppid, set_parent_process_death_signal};
+use rustix::process::{Signal, getpid, set_parent_process_death_signal};
 
 use super::{
-    linux_control::{ControlError, MessageKind, pair, receive, send},
+    linux_control::{MessageKind, pair, receive, send},
     linux_helper_channel::{serve_parent_control, serve_stage_control},
     linux_helper_setup::{
-        HelperFailure, NamespaceEvidence, establish_isolation, privileges_are_fully_reduced,
+        HelperFailure, drop_managed_privileges, establish_isolation, privileges_are_fully_reduced,
         validate_descriptor_set,
     },
-    linux_socket_policy::install_target_socket_policy,
+    linux_helper_support::{
+        apply_target_environment, arm_parent_death, control_failure, legacy_spawn_handshake,
+        open_executable, operation_timeout, read_go_message, read_internal_u32, read_limits,
+        validate_executable, write_protocol, write_ready,
+    },
+    linux_managed_input_protocol::{
+        MANAGED_INPUT_HEADER_BYTES, MANAGED_INPUT_VERIFICATION_TIMEOUT, decode_declaration,
+        decode_header, encode_declaration, encode_header, header, validate_complete,
+        validate_descriptor,
+    },
+    linux_managed_mount::{mount_private_proc, observe_current},
+    linux_managed_protocol::{MANAGED_EVIDENCE_BYTES, ManagedReadyEvidence, decode, encode},
+    linux_socket_policy::install_managed_target_policy,
     linux_startup::StartupDrains,
 };
+use crate::contract::{RetainedRuntimeInputDeclaration, RetainedRuntimeInputMember};
 
 const INTERNAL_PREFIX: &str = "REWRITE_ISOLATION_INTERNAL_";
-const HANDSHAKE_LIMIT: u64 = 32;
+
+pub(super) use super::linux_helper_support::{
+    decode_namespace_evidence, encode_namespace_evidence, validate_mode_arguments,
+};
 
 pub(crate) fn run() -> i32 {
     match run_inner() {
@@ -46,8 +59,12 @@ fn run_inner() -> Result<i32, HelperFailure> {
     match mode.to_str() {
         Some("--stage1-probe") => stage_one(Mode::Probe, &remaining),
         Some("--stage1-launch") => stage_one(Mode::Launch, &remaining),
+        Some("--stage1-build") => super::linux_helper_build::stage_one(&remaining),
+        Some("--stage1-bootstrap") => super::linux_helper_bootstrap::stage_one(&remaining),
         Some("--stage2-probe") => stage_two_probe(&remaining),
         Some("--stage2-launch") => stage_two_launch(&remaining),
+        Some("--stage2-build") => super::linux_helper_build::stage_two(&remaining),
+        Some("--stage2-bootstrap") => super::linux_helper_bootstrap::stage_two(&remaining),
         _ => Err(HelperFailure::InvalidLaunch),
     }
 }
@@ -56,6 +73,8 @@ fn run_inner() -> Result<i32, HelperFailure> {
 pub(super) enum Mode {
     Probe,
     Launch,
+    Build,
+    Bootstrap,
 }
 
 fn stage_one(mode: Mode, arguments: &[OsString]) -> Result<i32, HelperFailure> {
@@ -65,11 +84,12 @@ fn stage_one(mode: Mode, arguments: &[OsString]) -> Result<i32, HelperFailure> {
     match mode {
         Mode::Probe => stage_one_probe(),
         Mode::Launch => stage_one_launch(arguments),
+        Mode::Build | Mode::Bootstrap => Err(HelperFailure::InvalidLaunch),
     }
 }
 
 fn stage_one_probe() -> Result<i32, HelperFailure> {
-    let established = establish_isolation(read_limits()?)?;
+    let established = establish_isolation(read_limits()?, &[])?;
     let helper = open_executable(Path::new("/proc/self/exe"))?;
     let mut command = Command::new(format!("/proc/self/fd/{}", helper.as_raw_fd()));
     command
@@ -87,16 +107,22 @@ fn stage_one_probe() -> Result<i32, HelperFailure> {
         );
     let mut child = command.spawn().map_err(|_| HelperFailure::NamespaceSetup)?;
     let namespace_init_pid = child.id();
+    drop_managed_privileges()?;
     legacy_spawn_handshake(&mut child, namespace_init_pid)?;
     let status = child.wait().map_err(|_| HelperFailure::NamespaceSetup)?;
     Ok(status.code().unwrap_or(1))
 }
 
 fn stage_one_launch(arguments: &[OsString]) -> Result<i32, HelperFailure> {
-    let timeout = operation_timeout()?;
+    let startup_timeout = operation_timeout()?;
     let parent_control = std::io::stdin();
-    let target = receive_launch_descriptor(parent_control.as_fd(), Instant::now() + timeout)?;
-    let established = establish_isolation(read_limits()?)?;
+    let launch = receive_managed_launch(parent_control.as_fd(), Instant::now() + startup_timeout)?;
+    let timeout = if launch.inputs.is_empty() {
+        startup_timeout
+    } else {
+        MANAGED_INPUT_VERIFICATION_TIMEOUT
+    };
+    let established = establish_isolation(read_limits()?, &launch.inputs)?;
     let guardian_pid = u32::try_from(getpid().as_raw_nonzero().get())
         .map_err(|_| HelperFailure::NamespaceSetup)?;
     let helper = open_executable(Path::new("/proc/self/exe"))?;
@@ -118,26 +144,22 @@ fn stage_one_launch(arguments: &[OsString]) -> Result<i32, HelperFailure> {
         );
     let mut child = command.spawn().map_err(|_| HelperFailure::NamespaceSetup)?;
     let namespace_init_pid = child.id();
-    controlled_spawn_handshake(
-        stage_control.as_fd(),
-        target.as_fd(),
-        namespace_init_pid,
-        timeout,
-    )?;
-    drop(target);
+    drop_managed_privileges()?;
+    managed_spawn_handshake(stage_control.as_fd(), &launch, namespace_init_pid, timeout)?;
+    drop(launch);
     let started =
         receive(stage_control.as_fd(), Instant::now() + timeout, None).map_err(control_failure)?;
     if started.kind != MessageKind::TargetStarted
         || !started.descriptors.is_empty()
-        || started.payload.len() != 48
+        || started.payload.len() != MANAGED_EVIDENCE_BYTES
     {
         return Err(HelperFailure::InvalidLaunch);
     }
-    let evidence = decode_namespace_evidence(&started.payload)?;
+    let evidence = decode(&started.payload)?;
     write_ready(
         guardian_pid,
         namespace_init_pid,
-        evidence,
+        &evidence,
         established.loopback_index,
     );
     serve_parent_control(
@@ -148,17 +170,25 @@ fn stage_one_launch(arguments: &[OsString]) -> Result<i32, HelperFailure> {
     )
 }
 
-fn receive_launch_descriptor(
+struct ManagedLaunch {
+    target: File,
+    inputs: Vec<RetainedRuntimeInputMember>,
+}
+
+fn receive_managed_launch(
     control: BorrowedFd<'_>,
     deadline: Instant,
-) -> Result<File, HelperFailure> {
+) -> Result<ManagedLaunch, HelperFailure> {
     let message = receive(control, deadline, None).map_err(control_failure)?;
-    if message.kind != MessageKind::LaunchDescriptor
-        || !message.payload.is_empty()
-        || message.descriptors.len() != 1
-    {
+    if message.kind != MessageKind::LaunchDescriptor || message.descriptors.len() != 1 {
         return Err(HelperFailure::InvalidLaunch);
     }
+    let input_header = decode_header(&message.payload)?;
+    let deadline = if input_header.count == 0 {
+        deadline
+    } else {
+        Instant::now() + MANAGED_INPUT_VERIFICATION_TIMEOUT
+    };
     let descriptor = message
         .descriptors
         .into_iter()
@@ -166,32 +196,43 @@ fn receive_launch_descriptor(
         .ok_or(HelperFailure::InvalidLaunch)?;
     let file = File::from(descriptor);
     validate_executable(&file)?;
-    Ok(file)
-}
-
-fn controlled_spawn_handshake(
-    control: BorrowedFd<'_>,
-    target: BorrowedFd<'_>,
-    namespace_init_pid: u32,
-    timeout: Duration,
-) -> Result<(), HelperFailure> {
-    let deadline = Instant::now() + timeout;
-    let armed = receive(control, deadline, None).map_err(control_failure)?;
-    if armed.kind != MessageKind::Armed
-        || !armed.payload.is_empty()
-        || !armed.descriptors.is_empty()
-    {
-        return Err(HelperFailure::NamespaceSetup);
+    let mut inputs = Vec::with_capacity(input_header.count);
+    for index in 0..input_header.count {
+        let message = receive(control, deadline, None).map_err(control_failure)?;
+        if message.kind != MessageKind::ManagedInputDescriptor || message.descriptors.len() != 1 {
+            return Err(HelperFailure::InvalidLaunch);
+        }
+        let declaration = decode_declaration(&message.payload, index)?;
+        if inputs
+            .last()
+            .is_some_and(|input: &RetainedRuntimeInputMember| {
+                input.declaration.relative_alias >= declaration.relative_alias
+            })
+        {
+            return Err(HelperFailure::InvalidLaunch);
+        }
+        let input_file = File::from(
+            message
+                .descriptors
+                .into_iter()
+                .next()
+                .ok_or(HelperFailure::InvalidLaunch)?,
+        );
+        validate_descriptor(&declaration, &input_file, None)?;
+        inputs.push(RetainedRuntimeInputMember {
+            declaration,
+            file: input_file,
+        });
     }
-    send(
-        control,
-        MessageKind::Go,
-        &namespace_init_pid.to_be_bytes(),
-        &[target],
-        deadline,
-        None,
-    )
-    .map_err(control_failure)
+    let declarations = inputs
+        .iter()
+        .map(|input| input.declaration.clone())
+        .collect::<Vec<_>>();
+    validate_complete(&input_header, &declarations)?;
+    Ok(ManagedLaunch {
+        target: file,
+        inputs,
+    })
 }
 
 fn stage_two_probe(arguments: &[OsString]) -> Result<i32, HelperFailure> {
@@ -203,12 +244,10 @@ fn stage_two_probe(arguments: &[OsString]) -> Result<i32, HelperFailure> {
         .map_err(|_| HelperFailure::NamespaceSetup)?;
     stderr.flush().map_err(|_| HelperFailure::NamespaceSetup)?;
     let namespace_init_pid = read_go_message()?;
-    validate_reduced_privileges()?;
-    install_target_socket_policy()?;
-    let evidence = NamespaceEvidence::current()?;
+    let evidence = complete_managed_setup(&[])?;
     let guardian_pid = read_internal_u32("GUARDIAN_PID")?;
     let loopback_index = read_internal_u32("LOOPBACK_INDEX")?;
-    write_ready(guardian_pid, namespace_init_pid, evidence, loopback_index);
+    write_ready(guardian_pid, namespace_init_pid, &evidence, loopback_index);
     Ok(0)
 }
 
@@ -228,12 +267,14 @@ fn stage_two_launch(arguments: &[OsString]) -> Result<i32, HelperFailure> {
     )
     .map_err(control_failure)?;
     let go = receive(control.as_fd(), deadline, None).map_err(control_failure)?;
-    if go.kind != MessageKind::Go || go.payload.len() != 4 || go.descriptors.len() != 1 {
+    if go.kind != MessageKind::Go
+        || go.payload.len() != 4 + MANAGED_INPUT_HEADER_BYTES
+        || go.descriptors.len() != 1
+    {
         return Err(HelperFailure::InvalidLaunch);
     }
     let namespace_init_pid = u32::from_be_bytes(
-        go.payload
-            .as_slice()
+        go.payload[..4]
             .try_into()
             .map_err(|_| HelperFailure::InvalidLaunch)?,
     );
@@ -247,13 +288,113 @@ fn stage_two_launch(arguments: &[OsString]) -> Result<i32, HelperFailure> {
             .ok_or(HelperFailure::InvalidLaunch)?,
     );
     validate_executable(&target)?;
-    validate_reduced_privileges()?;
-    install_target_socket_policy()?;
-    let evidence = NamespaceEvidence::current()?;
-    launch_target(target, arguments, control.as_fd(), evidence, timeout)
+    let input_header = decode_header(&go.payload[4..])?;
+    let input_deadline = if input_header.count == 0 {
+        deadline
+    } else {
+        Instant::now() + MANAGED_INPUT_VERIFICATION_TIMEOUT
+    };
+    let inputs = receive_stage_inputs(control.as_fd(), input_deadline, &input_header)?;
+    let declarations = inputs
+        .iter()
+        .map(|input| input.declaration.clone())
+        .collect::<Vec<_>>();
+    drop(inputs);
+    let evidence = complete_managed_setup(&declarations)?;
+    launch_target(target, arguments, control.as_fd(), &evidence, timeout)
 }
 
-fn validate_stage_two() -> Result<(), HelperFailure> {
+fn complete_managed_setup(
+    inputs: &[RetainedRuntimeInputDeclaration],
+) -> Result<ManagedReadyEvidence, HelperFailure> {
+    mount_private_proc()?;
+    validate_descriptor_set()?;
+    drop_managed_privileges()?;
+    validate_reduced_privileges()?;
+    install_managed_target_policy()?;
+    ManagedReadyEvidence::current(
+        observe_current()?,
+        super::linux_managed_input_mount::observe(inputs)?,
+    )
+}
+
+fn managed_spawn_handshake(
+    control: BorrowedFd<'_>,
+    launch: &ManagedLaunch,
+    namespace_init_pid: u32,
+    timeout: Duration,
+) -> Result<(), HelperFailure> {
+    let deadline = Instant::now() + timeout;
+    let armed = receive(control, deadline, None).map_err(control_failure)?;
+    if armed.kind != MessageKind::Armed
+        || !armed.payload.is_empty()
+        || !armed.descriptors.is_empty()
+    {
+        return Err(HelperFailure::NamespaceSetup);
+    }
+    let declarations = launch
+        .inputs
+        .iter()
+        .map(|input| input.declaration.clone())
+        .collect::<Vec<_>>();
+    let input_header = header(&declarations)?;
+    let mut payload = Vec::with_capacity(4 + MANAGED_INPUT_HEADER_BYTES);
+    payload.extend_from_slice(&namespace_init_pid.to_be_bytes());
+    payload.extend_from_slice(&encode_header(&input_header));
+    send(
+        control,
+        MessageKind::Go,
+        &payload,
+        &[launch.target.as_fd()],
+        deadline,
+        None,
+    )
+    .map_err(control_failure)?;
+    for (index, input) in launch.inputs.iter().enumerate() {
+        send(
+            control,
+            MessageKind::ManagedInputDescriptor,
+            &encode_declaration(index, &input.declaration)?,
+            &[input.file.as_fd()],
+            deadline,
+            None,
+        )
+        .map_err(control_failure)?;
+    }
+    Ok(())
+}
+
+fn receive_stage_inputs(
+    control: BorrowedFd<'_>,
+    deadline: Instant,
+    expected: &super::linux_managed_input_protocol::ManagedInputHeader,
+) -> Result<Vec<RetainedRuntimeInputMember>, HelperFailure> {
+    let mut inputs = Vec::with_capacity(expected.count);
+    for index in 0..expected.count {
+        let message = receive(control, deadline, None).map_err(control_failure)?;
+        if message.kind != MessageKind::ManagedInputDescriptor || message.descriptors.len() != 1 {
+            return Err(HelperFailure::InvalidLaunch);
+        }
+        let declaration = decode_declaration(&message.payload, index)?;
+        let file = File::from(
+            message
+                .descriptors
+                .into_iter()
+                .next()
+                .ok_or(HelperFailure::InvalidLaunch)?,
+        );
+        validate_descriptor(&declaration, &file, None)?;
+        inputs.push(RetainedRuntimeInputMember { declaration, file });
+    }
+    let declarations = inputs
+        .iter()
+        .map(|input| input.declaration.clone())
+        .collect::<Vec<_>>();
+    validate_complete(expected, &declarations)?;
+    Ok(inputs)
+}
+
+pub(super) fn validate_stage_two() -> Result<(), HelperFailure> {
     if getpid().as_raw_nonzero().get() != 1 {
         return Err(HelperFailure::NamespaceSetup);
     }
@@ -261,7 +402,7 @@ fn validate_stage_two() -> Result<(), HelperFailure> {
     set_parent_process_death_signal(Some(Signal::KILL)).map_err(|_| HelperFailure::NamespaceSetup)
 }
 
-fn validate_reduced_privileges() -> Result<(), HelperFailure> {
+pub(super) fn validate_reduced_privileges() -> Result<(), HelperFailure> {
     if privileges_are_fully_reduced()? {
         Ok(())
     } else {
@@ -273,7 +414,7 @@ fn launch_target(
     target: File,
     arguments: &[OsString],
     control: BorrowedFd<'_>,
-    evidence: NamespaceEvidence,
+    evidence: &ManagedReadyEvidence,
     timeout: Duration,
 ) -> Result<i32, HelperFailure> {
     let mut command = Command::new(format!("/proc/self/fd/{}", target.as_raw_fd()));
@@ -298,217 +439,11 @@ fn launch_target(
     send(
         control,
         MessageKind::TargetStarted,
-        &encode_namespace_evidence(evidence),
+        &encode(evidence),
         &[],
         Instant::now() + timeout,
         None,
     )
     .map_err(control_failure)?;
     serve_stage_control(&mut child, &drains, control, timeout)
-}
-
-fn legacy_spawn_handshake(child: &mut Child, namespace_init_pid: u32) -> Result<(), HelperFailure> {
-    let stderr = child.stderr.take().ok_or(HelperFailure::NamespaceSetup)?;
-    let mut armed = Vec::new();
-    BufReader::new(stderr)
-        .take(HANDSHAKE_LIMIT)
-        .read_until(b'\n', &mut armed)
-        .map_err(|_| HelperFailure::NamespaceSetup)?;
-    if armed != b"ARMED 1\n" {
-        return Err(HelperFailure::NamespaceSetup);
-    }
-    let mut stdin = child.stdin.take().ok_or(HelperFailure::NamespaceSetup)?;
-    stdin
-        .write_all(format!("GO 1 {namespace_init_pid}\n").as_bytes())
-        .map_err(|_| HelperFailure::NamespaceSetup)?;
-    drop(stdin);
-    Ok(())
-}
-
-fn apply_target_environment(command: &mut Command) -> Result<(), HelperFailure> {
-    let count = read_internal_usize("ENV_COUNT")?;
-    if count > 1_024 {
-        return Err(HelperFailure::InvalidLaunch);
-    }
-    for index in 0..count {
-        let key = env::var_os(format!("{INTERNAL_PREFIX}ENV_{index}_KEY"))
-            .ok_or(HelperFailure::InvalidLaunch)?;
-        let value = env::var_os(format!("{INTERNAL_PREFIX}ENV_{index}_VALUE"))
-            .ok_or(HelperFailure::InvalidLaunch)?;
-        if key.is_empty()
-            || key.as_encoded_bytes().contains(&0)
-            || key.to_string_lossy().contains('=')
-            || key.to_string_lossy().starts_with(INTERNAL_PREFIX)
-            || value.as_encoded_bytes().contains(&0)
-        {
-            return Err(HelperFailure::InvalidLaunch);
-        }
-        command.env(key, value);
-    }
-    Ok(())
-}
-
-pub(super) fn validate_mode_arguments(
-    mode: Mode,
-    arguments: &[OsString],
-) -> Result<(), HelperFailure> {
-    match mode {
-        Mode::Probe if arguments.is_empty() => Ok(()),
-        Mode::Launch => Ok(()),
-        Mode::Probe => Err(HelperFailure::InvalidLaunch),
-    }
-}
-
-fn arm_parent_death() -> Result<(), HelperFailure> {
-    let parent = getppid().ok_or(HelperFailure::NamespaceSetup)?;
-    set_parent_process_death_signal(Some(Signal::KILL))
-        .map_err(|_| HelperFailure::NamespaceSetup)?;
-    if getppid() != Some(parent) {
-        return Err(HelperFailure::NamespaceSetup);
-    }
-    Ok(())
-}
-
-fn read_go_message() -> Result<u32, HelperFailure> {
-    let mut input = Vec::new();
-    std::io::stdin()
-        .lock()
-        .take(HANDSHAKE_LIMIT)
-        .read_until(b'\n', &mut input)
-        .map_err(|_| HelperFailure::NamespaceSetup)?;
-    let text = std::str::from_utf8(&input).map_err(|_| HelperFailure::NamespaceSetup)?;
-    let fields = text.split_ascii_whitespace().collect::<Vec<_>>();
-    if fields.len() != 3 || fields[0] != "GO" || fields[1] != "1" {
-        return Err(HelperFailure::NamespaceSetup);
-    }
-    fields[2]
-        .parse::<u32>()
-        .ok()
-        .filter(|pid| *pid > 0)
-        .ok_or(HelperFailure::NamespaceSetup)
-}
-
-fn read_limits() -> Result<(u64, u64), HelperFailure> {
-    Ok((
-        read_internal_u64("MAX_OPEN_FILES")?,
-        read_internal_u64("MAX_PROCESSES")?,
-    ))
-}
-
-fn operation_timeout() -> Result<Duration, HelperFailure> {
-    let milliseconds = read_internal_u64("STARTUP_TIMEOUT_MILLIS")?;
-    if !(1..=30_000).contains(&milliseconds) {
-        return Err(HelperFailure::InvalidLaunch);
-    }
-    Ok(Duration::from_millis(milliseconds))
-}
-
-fn read_internal_u32(name: &str) -> Result<u32, HelperFailure> {
-    u32::try_from(read_internal_u64(name)?).map_err(|_| HelperFailure::InvalidLaunch)
-}
-
-fn read_internal_usize(name: &str) -> Result<usize, HelperFailure> {
-    usize::try_from(read_internal_u64(name)?).map_err(|_| HelperFailure::InvalidLaunch)
-}
-
-fn read_internal_u64(name: &str) -> Result<u64, HelperFailure> {
-    env::var(format!("{INTERNAL_PREFIX}{name}"))
-        .ok()
-        .and_then(|value| value.parse::<u64>().ok())
-        .ok_or(HelperFailure::InvalidLaunch)
-}
-
-fn open_executable(path: &Path) -> Result<File, HelperFailure> {
-    let file = File::open(path).map_err(|_| HelperFailure::InvalidLaunch)?;
-    validate_executable(&file)?;
-    Ok(file)
-}
-
-fn validate_executable(file: &File) -> Result<(), HelperFailure> {
-    let metadata = file.metadata().map_err(|_| HelperFailure::InvalidLaunch)?;
-    if !metadata.is_file() || metadata.permissions().mode() & 0o111 == 0 {
-        return Err(HelperFailure::InvalidLaunch);
-    }
-    Ok(())
-}
-
-pub(super) fn encode_namespace_evidence(evidence: NamespaceEvidence) -> [u8; 48] {
-    let values = [
-        evidence.network.device,
-        evidence.network.inode,
-        evidence.user.device,
-        evidence.user.inode,
-        evidence.process.device,
-        evidence.process.inode,
-    ];
-    let mut encoded = [0_u8; 48];
-    for (index, value) in values.into_iter().enumerate() {
-        let start = index * 8;
-        encoded[start..start + 8].copy_from_slice(&value.to_be_bytes());
-    }
-    encoded
-}
-
-pub(super) fn decode_namespace_evidence(
-    payload: &[u8],
-) -> Result<NamespaceEvidence, HelperFailure> {
-    if payload.len() != 48 {
-        return Err(HelperFailure::InvalidLaunch);
-    }
-    let mut values = [0_u64; 6];
-    for (index, value) in values.iter_mut().enumerate() {
-        let start = index * 8;
-        *value = u64::from_be_bytes(
-            payload[start..start + 8]
-                .try_into()
-                .map_err(|_| HelperFailure::InvalidLaunch)?,
-        );
-    }
-    Ok(NamespaceEvidence {
-        network: super::linux_helper_setup::RawNamespaceIdentity {
-            device: values[0],
-            inode: values[1],
-        },
-        user: super::linux_helper_setup::RawNamespaceIdentity {
-            device: values[2],
-            inode: values[3],
-        },
-        process: super::linux_helper_setup::RawNamespaceIdentity {
-            device: values[4],
-            inode: values[5],
-        },
-    })
-}
-
-fn control_failure(error: ControlError) -> HelperFailure {
-    match error {
-        ControlError::Cancelled
-        | ControlError::Deadline
-        | ControlError::Closed
-        | ControlError::Invalid
-        | ControlError::Native => HelperFailure::InvalidLaunch,
-    }
-}
-
-fn write_ready(
-    guardian_pid: u32,
-    namespace_init_pid: u32,
-    evidence: NamespaceEvidence,
-    loopback_index: u32,
-) {
-    write_protocol(&format!(
-        "READY 1 {guardian_pid} {namespace_init_pid} {} {} {} {} {} {} {loopback_index}\n",
-        evidence.network.device,
-        evidence.network.inode,
-        evidence.user.device,
-        evidence.user.inode,
-        evidence.process.device,
-        evidence.process.inode,
-    ));
-}
-
-fn write_protocol(message: &str) {
-    let mut output = std::io::stdout().lock();
-    let _ = output.write_all(message.as_bytes());
-    let _ = output.flush();
 }

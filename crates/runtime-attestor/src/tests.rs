@@ -11,11 +11,62 @@ use crate::{
     AttachedProcessEvidence, AttachedProcessEvidenceClass, AttachedProcessEvidenceInput,
     AttachedProcessLaunchMode, AttachedProcessObserver, AttachedProcessWitnessError,
     AttachedProcessWitnessLimits, ListenerEndpoint, ManagedLinuxProcessExpectation,
-    NativeAttachedProcessObserver, RetainedTcpConnectionEvidence,
+    NativeAttachedProcessObserver, NativeLoadObserverError, RetainedTcpConnectionEvidence,
     RetainedTcpConnectionEvidenceInput, TcpConnectionAttributionKind,
-    TcpConnectionSharingLimitation, compare_evidence, observe_initial_connection,
-    observe_initial_connection_with_policy, reobserve_connection_once,
+    TcpConnectionSharingLimitation, attached_deadline_precedence, compare_evidence,
+    native_deadline_precedence, observe_initial_connection, observe_initial_connection_with_policy,
+    reobserve_connection_once,
 };
+
+#[test]
+fn expired_managed_process_deadline_overrides_post_observation_cancellation() {
+    let cancellation = CancellationToken::new();
+    cancellation.cancel();
+    assert_eq!(
+        attached_deadline_precedence::<()>(
+            Err(AttachedProcessWitnessError::InvalidEvidence),
+            &cancellation,
+            Some(std::time::Instant::now()),
+        ),
+        Err(AttachedProcessWitnessError::DeadlineExceeded)
+    );
+}
+
+#[test]
+fn managed_process_cancellation_overrides_other_post_observation_error() {
+    let cancellation = CancellationToken::new();
+    cancellation.cancel();
+    assert_eq!(
+        attached_deadline_precedence::<()>(
+            Err(AttachedProcessWitnessError::InvalidEvidence),
+            &cancellation,
+            Some(std::time::Instant::now() + Duration::from_secs(1)),
+        ),
+        Err(AttachedProcessWitnessError::Cancelled)
+    );
+}
+
+#[test]
+fn native_load_post_observation_precedence_is_deadline_then_cancellation_then_error() {
+    let cancellation = CancellationToken::new();
+    cancellation.cancel();
+    assert_eq!(
+        native_deadline_precedence::<()>(
+            Err(NativeLoadObserverError::InvalidObservation),
+            &cancellation,
+            Some(std::time::Instant::now()),
+        ),
+        Err(NativeLoadObserverError::DeadlineExceeded)
+    );
+    assert_eq!(
+        native_deadline_precedence::<()>(
+            Err(NativeLoadObserverError::InvalidObservation),
+            &cancellation,
+            Some(std::time::Instant::now() + Duration::from_secs(1)),
+        ),
+        Err(NativeLoadObserverError::Cancelled)
+    );
+}
 
 #[test]
 fn managed_expectation_requires_every_nonzero_object_identity() {

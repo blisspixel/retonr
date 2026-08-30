@@ -41,6 +41,11 @@ pub(super) enum FirstResponseMode {
     TooManyRequests,
     Rejected,
     InvalidJson,
+    ExtraJson,
+    ExtraAfterDeclaredBody,
+    ExtraVersionField,
+    OversizedVersionBody,
+    TruncatedBody,
     StallBody,
     StallHeaders,
     RuntimeDrift,
@@ -179,9 +184,23 @@ async fn serve(
         if ordinal == 1
             && matches!(
                 mode,
-                FirstResponseMode::ConnectionClose | FirstResponseMode::SilentClose
+                FirstResponseMode::SilentClose | FirstResponseMode::TruncatedBody
             )
         {
+            drop(stream);
+            if tokio::time::timeout(Duration::from_millis(100), listener.accept())
+                .await
+                .is_ok()
+            {
+                accepts += 1;
+            }
+            return Ok(ServerResult {
+                accepts,
+                requests,
+                client_closed: true,
+            });
+        }
+        if ordinal == 1 && matches!(mode, FirstResponseMode::ConnectionClose) {
             break;
         }
     }
@@ -284,9 +303,13 @@ async fn write_response(
     } else {
         "application/json"
     };
-    let head = format!(
-        "{status_line}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\n{extra_headers}\r\n",
+    let declared_body_bytes = if ordinal == 1 && matches!(mode, FirstResponseMode::TruncatedBody) {
+        body.len() + 8
+    } else {
         body.len()
+    };
+    let head = format!(
+        "{status_line}\r\nContent-Type: {content_type}\r\nContent-Length: {declared_body_bytes}\r\n{extra_headers}\r\n"
     );
     stream.write_all(head.as_bytes()).await?;
     let split = body.len() / 2;
@@ -297,6 +320,11 @@ async fn write_response(
         tokio::task::yield_now().await;
     }
     stream.write_all(&body.as_bytes()[split..]).await?;
+    if ordinal == 1 && matches!(mode, FirstResponseMode::ExtraAfterDeclaredBody) {
+        stream
+            .write_all(b"unexpected bytes after the declared body")
+            .await?;
+    }
     stream.flush().await
 }
 
@@ -335,6 +363,15 @@ pub(super) fn response_body(
 ) -> String {
     if ordinal == 1 && matches!(mode, FirstResponseMode::InvalidJson) {
         return "not-json".to_owned();
+    }
+    if ordinal == 1 && matches!(mode, FirstResponseMode::ExtraJson) {
+        return r#"{"version":"0.32.14"}{"extra":true}"#.to_owned();
+    }
+    if ordinal == 1 && matches!(mode, FirstResponseMode::ExtraVersionField) {
+        return r#"{"version":"0.32.14","model":"unexpected"}"#.to_owned();
+    }
+    if ordinal == 1 && matches!(mode, FirstResponseMode::OversizedVersionBody) {
+        return format!(r#"{{"version":"{}"}}"#, "x".repeat(1_024));
     }
     match path {
         "/api/version"

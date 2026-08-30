@@ -13,6 +13,7 @@ use crate::{
 use super::*;
 
 mod fixture;
+mod prompt_compatibility;
 
 use fixture::{JudgeServer, assert_judge_wire_policy, model_binding, output, preflighted_session};
 

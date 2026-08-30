@@ -17,7 +17,15 @@ use crate::{
     run_hybrid_scorecard,
 };
 
-mod prompt;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the exact normalizer is consumed by the next managed judge runner slice"
+    )
+)]
+pub(crate) mod normalization;
+pub(crate) mod prompt;
 mod receipt;
 mod rubric;
 

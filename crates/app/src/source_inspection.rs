@@ -1,8 +1,11 @@
 //! Pre-model plain-text inventory without rewrite or credential validation.
 
-use rewrite_text_adapter::{PlainTextInventory, TextAdapter};
+use rewrite_text_adapter::{MAX_PLAIN_TEXT_BYTES, PlainTextInventory, TextAdapter};
 
 use crate::AppError;
+
+/// Maximum accepted source or candidate size for the plain-text check service.
+pub const MAX_CANDIDATE_CHECK_BYTES: usize = MAX_PLAIN_TEXT_BYTES;
 
 /// Inventories one bounded source buffer before model work.
 ///

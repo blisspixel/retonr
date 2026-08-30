@@ -62,10 +62,18 @@ remains unreviewed.
 
 The repository's Linux CI does not treat an uncontrolled worker as proof of this
 native boundary. Ordinary tests may accept only a typed access-denied compatibility
-outcome when host proc policy blocks observation. A mandatory networkless container
-runs the managed attestor tests as the caller UID with all capabilities dropped and
-no-new-privileges set, requires native success, and contributes that execution to the
-workspace LLVM coverage profile before the 80 percent line floor is checked.
+outcome when host proc policy blocks observation. Linux CI uses three separate native
+proof gates. The managed attestor runs networkless as the caller UID with all
+capabilities dropped and no-new-privileges set. The statically linked worker fixture
+runs networkless with only `CAP_SETPCAP` on its root test process, drops that
+capability before worker execution, and requires the exact worker, native closure,
+private GGUF mapping, stable reobservation, and post-exit rejection path. The
+controlled source-build fixture runs in a privileged, networkless container and requires native success for two
+namespace-private quota-bounded tmpfs attempts, descendant drain, helper tree
+commitment, verified host export, independent application rehash, portable original
+path and ordinary Unix permission-bit commitment, special-bit rejection, durable
+publication, reacquisition, and blocked schema-2 review. All three executions contribute to the
+workspace LLVM profile before the 80 percent line floor is checked.
 
 An opt-in managed-preflight library call can return the unchanged report with a
 separate inert package-declared typed runtime-build binding. Only the exact entrypoint

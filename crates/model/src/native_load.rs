@@ -180,6 +180,44 @@ impl NativeLoadObservation {
         NativeLoadObservationId(Digest::sha256(&self.canonical_bytes()))
     }
 
+    /// Returns the portable identity of the normalized actual component set.
+    ///
+    /// This identity binds artifact bytes, byte sizes, portable origins, and
+    /// mapping classes. It excludes process and object evidence so equal loaded
+    /// component sets have one identity across installations and attempts.
+    #[must_use]
+    pub fn portable_component_set_digest(&self) -> Digest {
+        let mut material = Vec::new();
+        push_portable_field(
+            &mut material,
+            b"retonr:native-load-portable-component-set:v1",
+        );
+        material.extend_from_slice(&(self.components.len() as u64).to_be_bytes());
+        for component in &self.components {
+            push_portable_field(
+                &mut material,
+                component.artifact_id().digest().as_str().as_bytes(),
+            );
+            material.extend_from_slice(&component.byte_size().to_be_bytes());
+            match component.origin() {
+                NativeLoadOrigin::PackagedMember { relative_path } => {
+                    material.push(0);
+                    push_portable_field(&mut material, relative_path.as_str().as_bytes());
+                }
+                NativeLoadOrigin::ExternalPlatformComponent => {
+                    material.push(1);
+                    push_portable_field(&mut material, b"");
+                }
+            }
+            material.push(match component.mapping_class() {
+                NativeMappingClass::ExecutableImage => 0,
+                NativeMappingClass::ExecutableMapped => 1,
+                NativeMappingClass::DataMapped => 2,
+            });
+        }
+        Digest::sha256(&material)
+    }
+
     /// Returns the native-load observation contract version.
     #[must_use]
     pub const fn schema_version(&self) -> u32 {
@@ -227,6 +265,11 @@ impl NativeLoadObservation {
     pub fn components(&self) -> &[NativeLoadedComponent] {
         &self.components
     }
+}
+
+fn push_portable_field(material: &mut Vec<u8>, value: &[u8]) {
+    material.extend_from_slice(&(value.len() as u64).to_be_bytes());
+    material.extend_from_slice(value);
 }
 
 /// Content-derived identifier for one native-load observation.

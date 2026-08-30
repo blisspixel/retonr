@@ -7,6 +7,8 @@ mod linux_connection;
 #[cfg(target_os = "linux")]
 mod linux_managed;
 #[cfg(target_os = "linux")]
+mod linux_managed_worker;
+#[cfg(target_os = "linux")]
 mod linux_native_load;
 #[cfg(target_os = "linux")]
 mod linux_proc_holders;
@@ -25,6 +27,8 @@ mod windows_connection;
 pub(crate) use linux::Lease;
 #[cfg(target_os = "linux")]
 pub(crate) use linux_managed::Lease as ManagedLease;
+#[cfg(target_os = "linux")]
+pub(crate) use linux_managed_worker::Lease as WorkerLease;
 #[cfg(target_os = "macos")]
 pub(crate) use macos::Lease;
 #[cfg(windows)]
@@ -39,3 +43,7 @@ pub(crate) use unsupported::Lease;
 mod managed_unsupported;
 #[cfg(not(target_os = "linux"))]
 pub(crate) use managed_unsupported::Lease as ManagedLease;
+#[cfg(not(target_os = "linux"))]
+mod worker_unsupported;
+#[cfg(not(target_os = "linux"))]
+pub(crate) use worker_unsupported::Lease as WorkerLease;

@@ -114,11 +114,15 @@ flowchart TD
     Docx --> App
     subgraph Development["Development-only consumers"]
         Eval["rewrite-eval"]
+        SourceBuilder["rewrite-runtime-source-builder"]
         Fuzz["fuzz targets"]
         Compat["compatibility suites"]
     end
     Eval --> App
     Eval --> RuntimeAttestor
+    SourceBuilder --> OllamaPackage
+    SourceBuilder --> Model
+    SourceBuilder --> Types
     Fuzz --> Engine
     Compat --> App
 ```
@@ -213,6 +217,14 @@ returns a nonserializable, content-free receipt binding the preflight, complete
 request, complete structured response, and ordinal span. The session has no connector,
 pool, retry, reconnect, or fallback path and is permanently invalidated on failure.
 
+A smaller runtime-only probe consumes one caller-supplied retained loopback stream and
+can issue only one `GET /api/version`. It accepts at most 1 KiB of response body,
+requires exact typed version equality, checks persistent framing and full response
+drain, and exposes only non-authoritative version evidence. It has no connector,
+model, inventory, generation, retry, reconnect, or admission surface. Its connection
+observer runs before the request and after a fully drained response; that transport
+observation does not mean the response passed JSON or version validation.
+
 The legacy completion uses seven ordered responses and remains unchanged. A separate
 opt-in resident-completion profile is admitted only for Ollama v0.32.15 at reviewed
 source revision `b7871fc0d1d82fe109536efa3e0e8e411c766c75`, after an idle preflight.
@@ -256,12 +268,134 @@ parameters, license, source, transformations, weight layout, and embedded
 components. Evidence-only members remain distinct from output-affecting members.
 Neither manifest claims that a process loaded or used its bytes.
 
+Controlled runtime source builds use the same separation. The pure package layer
+validates a canonical frozen closure with explicit environment and ordered arguments,
+derives a content-free plan, compiles a canonical two-attempt output report from
+opened bytes, and independently verifies that report by reconstructing both runtime
+trees. The static `rewrite-runtime-source-builder` coordinator is the reviewed build
+program, not an admission authority. It consumes only capability ABI 2 input and
+private-output descriptors, extracts exact frozen archives, applies retained
+transformations, invokes the frozen toolchain, assembles the runtime tree, and writes
+layout, SBOM, provenance, and transformation evidence. Its two developer-only
+preparation binaries normalize already-fetched local trees and compile the frozen
+component manifest and evidence. None of these binaries fetches, admits, activates,
+or qualifies a runtime, and none is a user-facing `retonr` command.
+
+The application layer owns caller-selected filesystem authority. It pins the
+manifest, exact component tree, every component file, and distinct empty host output
+roots. Each Linux attempt starts from a retained helper and program, an exact
+path-to-retained-file map, and a retained host-output object inside fresh user, PID,
+network, and private mount namespaces. The mount tree is made recursively private and
+a fresh tmpfs with a 16 GiB byte quota and 262,144 inode quota is mounted at `/tmp`.
+The byte quota includes 4 GiB of scratch beyond the 4 GiB private-input and 8 GiB
+committed-output ceilings.
+Before the first isolation probe, the parent copies exactly the reviewed helper byte
+count from the retained helper into an executable anonymous file, verifies its SHA-256
+and trailing EOF, applies immutable size and write seals, and retains only that sealed
+snapshot for every later helper execution. A changed or oversized helper fails before
+unreviewed helper code can run.
+
+Stage one creates a normalized private input tree at
+`/tmp/retonr-controlled-build/input`. Each declared single-link regular file carries
+an exact path, byte count, and SHA-256. Stage one copies from the retained descriptor
+at offset zero, verifies exact length, trailing EOF, digest, and unchanged descriptor
+identity, normalizes the copied mode to `0444` or `0555`, and remounts the complete
+input root read-only. The aggregate declared input is capped at 4 GiB before any
+private file is created. The caller's input root is not passed to the helper or
+exposed to the target. The fixed `/tmp/retonr-controlled-build/output` alias is a new
+directory inside the private tmpfs. The retained host output is neither mounted nor
+passed to the target.
+
+The target receives controlled-build capability ABI 2 as inherited private-input and
+private-output descriptors plus those exact aliases, and starts in the private output
+directory. Before authorizing execution, the parent independently opens and compares
+the guardian network, user, and mount namespaces and the namespace-init PID namespace,
+then retains those handles through the attempt. The helper and source builder perform
+separate validation. The helper revalidates the retained program, every mapped input
+file, private-input and private-output aliases, and the distinct host-output object.
+The builder revalidates the capability ABI, private-input and private-output
+descriptor-to-alias identities, and output working directory. Landlock ABI 3 permits
+input read and execute access, exact read and write access to `/dev/null`, and
+private-output write access while denying ambient host reads and other device files.
+The launch uses a cleared reviewed environment, bounded time, cooperative
+cancellation, and process-tree teardown.
+
+The target can consume only the private bytes whose exact declared length and SHA-256
+were verified during snapshot creation. Path replacement or same-inode mutation of a
+retained host source cannot change the private input after the read-only remount.
+Parent revalidation still detects later retained-source drift before evidence is
+accepted. This is an exact byte and boundary claim, not a claim about source lineage,
+license, transformation correctness, build reproducibility, or semantic equivalence.
+
+Child-tool output is drained concurrently. Successful tool output is discarded; a
+failed tool may relay only the final 16 KiB of each stream with a stage label. The
+outer controlled-build boundary retains at most a 32 KiB prefix per stream and exposes
+raw bytes neither through serialization nor debug output. Stage two does not report
+completion until the coordinator is reaped and descendant-held diagnostic streams
+close. The guardian then waits for stage two to exit before inspecting output.
+
+On success, the guardian traverses the private output through retained handles,
+accepts only directories and single-link regular files, and commits at most 4,096
+entries and 8 GiB of regular-file bytes including paths, ordinary permission bits,
+sizes, and content digests. It requires a distinct initially empty host output,
+recomputes the private
+commitment, exports each committed member from retained handles without replacement,
+rehashes source bytes during copy, and requires the exported host tree to reproduce
+the exact commitment. Export is not atomic; any failure leaves the partial host tree
+inert and fails the attempt.
+
+The application then independently enumerates and rehashes the host output, requires
+exact equality with the helper commitment, and retains member handles, fingerprints,
+and byte digests. This is an evidence seal that detects substitution and later drift,
+not an operating-system write lock. The application derives a canonical portable
+output-tree sidecar directly from that retained inventory. The sidecar binds every
+original path, entry kind, ordinary Unix permission bits, file size, and file digest
+and must reproduce the helper commitment. Set-user-ID, set-group-ID, and sticky bits
+are rejected before the helper commits or exports an output, and the application
+independently rejects them before sealing a host output. The sidecar is app-owned
+evidence and is not written by the build program. The application also derives
+content-free isolation evidence, compiles the schema-2 report, and revalidates all
+held boundaries before later reads. A report is byte-identical only when the complete
+output-tree sidecars, artifact sets, and runtime-package identities agree, so an
+accepted permission-only difference fails reproducibility.
+It can copy the complete frozen input set, both attempt trees, app-owned evidence, and
+report into one application-owned staging tree, derive an exact artifact-set manifest,
+independently verify the staged closure, synchronize it bottom-up, and publish it with
+a no-replace rename. A retained verifier can reopen and rehash the published closure
+without the original build paths. A direct managed import accepts only a byte-identical
+two-attempt closure, derives only the primary report's exact runtime artifact set and
+package, copies only declared members from retained handles, and verifies size,
+trailing-byte absence, and SHA-256 during copy. It revalidates the retained evidence
+after staged-byte verification immediately before new-tree publication and again after
+durable package readback. The result is inert and changes neither production allowlist.
+
+From that retained root, the application compiles a schema-2 review without accepting
+copied digests or runtime identities, revalidates the closure, independently verifies
+the canonical review bytes, and requires both typed results to agree. The build-stage
+compiler keeps all six controls `not_run`: retained build evidence does not itself
+decide source lineage, transformation, license, native closure, managed startup, or
+cloud disable. A native deterministic fixture exercises this composed path and
+rejects overlap, post-export substitution, replacement, commitment mismatch, and later
+byte drift. The workspace produced and independently reacquired a durable real Ollama
+v0.32.15 source-build closure on 2026-08-26. A later workspace build-cache cleanup
+removed that target-owned local evidence, so it is now historical validation rather
+than a retained admission input. A fresh typed-receipt closure is required. Neither
+the historical result nor a replacement grants schema-2 admission or production
+policy authority by itself.
+
 A native-load observation binds a retained process evidence digest, an exact
-runtime-package manifest, and one bounded complete view of admitted file-backed
+runtime-package manifest, and one bounded complete view of permitted file-backed
 executable mappings. Linux resolves `/proc/PID/map_files` entries and compares each
-mapping to retained package-member file objects or a frozen list of admitted external
-platform components. Windows returns unsupported because the selected public APIs
-expose mapped paths but not section-bound file identities. macOS returns unsupported.
+mapping to retained package-member file objects or an independently verified frozen
+list of external platform components. Windows returns unsupported because the
+selected public APIs expose mapped paths but not section-bound file identities. macOS
+returns unsupported.
+Before a list is frozen, the Linux observer can emit a distinct canonical discovery
+report containing only the package and process binding plus sorted external artifact
+identities, byte sizes, and mapping classes. That report explicitly carries no
+authority and cannot satisfy the verifier's expected-component type. A separate
+frozen-set contract binds the exact discovery bytes and a distinct bounded review
+evidence record; the verification run consumes only that independently verified set.
 Typed builders can derive runtime-build and effective-state fields from package and
 load records, but those derived identities remain inert until the complete operation
 joins every required trust boundary.
@@ -356,21 +490,26 @@ and OS isolation evidence remain prerequisites for effective runtime identity an
 generation.
 
 The separate managed Linux boundary owns process creation rather than attaching to
-an ambient service. A retained helper establishes user, network, and PID namespaces,
-maps the caller identity, enables loopback as the only network interface, sets
+an ambient service. A retained helper establishes user, network, PID, and private
+mount namespaces, makes propagation recursively private, maps the caller identity,
+enables loopback as the only network interface, installs a private `/dev` containing
+exactly one retained usable `/dev/null`, mounts fresh PID-namespace procfs, sets
 no-new-privileges, removes capabilities, seals every ambient descriptor as
 close-on-exec, verifies the descriptor postcondition, applies process and
 file-descriptor limits, and launches an already-open executable object. Stage two
 exec closes the sealed descriptors before target launch.
-Before launch, namespace init installs a target-inherited seccomp socket allowlist.
-The target's `socket()` calls admit only `AF_INET` and `AF_INET6`; every other socket
-family and `io_uring_setup` are denied. The retained lease captures bounded startup
-streams, reobserves target and namespace identity, requires seccomp mode 2 on target
-reobservation, owns teardown of the process tree, and can request exactly one
-loopback TCP connection and namespace-local SOCK_DIAG descriptor. The guardian owns
-that diagnostic capability outside the target filter. Host policy that denies the
-required namespace operation or socket policy returns a typed failure; the operation
-never falls back to the host network.
+Before launch, namespace init installs a target-inherited containment filter. The
+target's `socket()` calls admit only `AF_INET` and `AF_INET6`; every other socket
+family, `io_uring_setup`, namespace and mount escape APIs, device creation, `bpf`,
+`clone3`, and namespace-bearing `clone` flags are denied. The retained lease captures
+bounded startup streams, strict READY2 device evidence, mount and namespace identity,
+usable null-device identity, exact device entries, and private proc identity. It
+reobserves every boundary, requires seccomp mode 2, owns teardown of the process tree,
+and can request exactly one loopback TCP connection and namespace-local SOCK_DIAG
+descriptor. The guardian owns that diagnostic capability outside the target filter.
+Host policy that denies the required namespace or containment operation returns a
+typed failure; the operation never falls back to the host network or device view.
+This is bounded visibility evidence, not formal CPU-placement proof.
 
 The managed Linux process observer consumes exact target, executable, namespace,
 UID, endpoint, and diagnostics facts from that lease. It rechecks the managed process
@@ -385,10 +524,16 @@ Ordinary hosted tests may treat only the exact `ProcessAccessDenied` result as a
 environment compatibility outcome when proc visibility is blocked. They cannot turn
 that outcome into evidence. A separate mandatory networkless container runs the
 managed attestor tests as the caller UID with all capabilities dropped and
-no-new-privileges set, and requires the native success path. The coverage job runs
-the same controlled gate with the workspace LLVM profile before applying the line
-floor, so the proof path is included in coverage rather than hidden behind a host
-skip.
+no-new-privileges set, and requires the native success path. A separate privileged,
+networkless native gate executes the retained two-attempt source-build fixture and
+its durable publication and reacquisition path, then compiles and independently
+verifies the blocked schema-2 build-stage review. A third networkless gate gives only
+`CAP_SETPCAP` to the root test process, which removes it before executing a statically
+linked worker. That gate requires exact worker discovery, privilege and command state,
+native closure, private GGUF mapping, final reobservation, and post-exit rejection.
+The coverage job runs all three controlled paths with the workspace LLVM profile
+before applying the line floor, so these proof paths are included in coverage rather
+than hidden behind host skips.
 
 Ollama provider evidence is a separate trust boundary. It accepts only an exact
 stable version and runtime-package identity admitted by a source-controlled review
@@ -448,15 +593,21 @@ binding the plan, rubric, observation batch, retained-session preflight, ordered
 request and response receipts, and ordinal range. That receipt does not prove managed
 isolation, handler execution, model load or use, candidate generation, effective
 identity, semantic correctness, or qualification. Its evidence class is
-`RetainedTransportBindingOnly`. The static model binding, managed runtime-build
-binding, resident-completion receipt, and judge receipt are implemented but not yet
-joined in one retained managed execution.
+`RetainedTransportBindingOnly`. The legacy static binding and retained-stream judge
+receipt remain distinct observation boundaries. The newer managed schedule executor
+joins the exact managed runner authorities, request and response evidence, residency,
+effective-state aggregates, and cleanup-gated judge receipt. Its evidence remains
+probabilistic, triage-only, and unqualified.
 
-The model store persists these inert records under SQLite schema 6 in separate,
-immutable tables. Schema 4 added a separate artifact-set installation record with a
+The model store now uses SQLite schema 7. It preserves the separate immutable records
+introduced through schema 6 and adds only generation-qualification operation-policy
+and complete request-projection preregistration tables. Schema 4 added a separate
+artifact-set installation record with a
 unique portable set-root key and a distinct positive generation. Schema 5 added a
 crash-recoverable artifact-set removal journal. Schema 6 adds runtime-package,
-model-package, and native-load tables with relationship foreign keys. Migration
+model-package, and native-load tables with relationship foreign keys. Schema-6-to-7
+migration requires an exact-shape source, a verified backup, byte-for-byte legacy
+preservation, and empty additive schema-7 tables. Migration
 creates additive tables empty and does not infer package, load, installation, or
 authority evidence from legacy state. Higher-level writes begin an immediate transaction, reload every
 referenced lower-level record, require canonical serialized bytes and matching indexed
@@ -848,18 +999,22 @@ and content-addressed blob path, opens source boundaries without following links
 requires the strict admitted manifest-v2 layer shape, streams bounded GGUF-v3
 structure, and reconstructs a canonical six-member set in application-owned staging.
 After managed publication it writes and reads back the semantic model-package
-manifest under schema 6. Config `rootfs.diff_ids` comparison is informational only.
+manifest in the table introduced by schema 6 and preserved unchanged by current
+schema 7. Config `rootfs.diff_ids` comparison is informational only.
 The result is inert structural evidence and has no CLI exposure, network access,
 qualification, activation, lease, load, or execution authority.
 
-A separate reviewed-runtime import reconstructs one admitted Linux x86_64 GNU libc
-Ollama runtime package from a caller-supplied layout JSON file and a member tree.
+A separate reviewed-runtime import reconstructs one review-eligible Linux x86_64
+GNU libc Ollama runtime package from a caller-supplied layout JSON file and a member
+tree.
 The layout is unique JSON, family `ollama` only, untransformed, and path-sorted. The
 observed regular-file set must equal the declared members; extra tree files fail
 closed. Reconstruction hashes each member once, builds the canonical artifact set and
-runtime-package manifest, publishes the set through the existing importer, and persists
-and reads back the semantic package under schema 6. The admitted layout requires
-exactly one isolation helper: a `HelperExecutable` member with `MustNotBeCodeLoaded`.
+runtime-package manifest, publishes the set through the existing importer, and
+persists and reads back the semantic package in the table introduced by schema 6 and
+preserved unchanged by current schema 9. A layout eligible for later
+admission requires exactly one isolation helper: a `HelperExecutable` member with
+`MustNotBeCodeLoaded`.
 The operation does not execute members, grant a lease, qualify a runtime, or add an
 identity to the empty production cloud-disable allowlist.
 

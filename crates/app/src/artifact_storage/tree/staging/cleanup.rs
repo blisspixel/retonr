@@ -3,11 +3,34 @@ use std::{collections::BTreeMap, ffi::OsStr};
 use rewrite_model::ArtifactSetRelativePath;
 use rewrite_types::CancellationToken;
 
+#[cfg(test)]
+use std::cell::Cell;
+
 use super::{
     ArtifactInventoryError, ManagedTreeEntryKind, ManagedTreeSnapshot, MetadataFingerprint,
     OwnedStagingTree, StableMetadataFingerprint, SyncedStagingTree, directory_for_parent, platform,
     split_parent,
 };
+
+#[cfg(test)]
+thread_local! {
+    static FAIL_CLOSED_LEDGER_CLEANUP_ONCE: Cell<bool> = const { Cell::new(false) };
+}
+
+#[cfg(test)]
+pub(in crate::artifact_storage::tree) fn inject_closed_ledger_cleanup_failure_once() {
+    FAIL_CLOSED_LEDGER_CLEANUP_ONCE.with(|fail| fail.set(true));
+}
+
+#[cfg(test)]
+fn take_closed_ledger_cleanup_failure() -> bool {
+    FAIL_CLOSED_LEDGER_CLEANUP_ONCE.with(|fail| fail.replace(false))
+}
+
+#[cfg(not(test))]
+const fn take_closed_ledger_cleanup_failure() -> bool {
+    false
+}
 
 pub(super) struct PublicationLedger {
     root: StableMetadataFingerprint,
@@ -178,6 +201,11 @@ impl OwnedStagingTree {
         self,
         ledger: &PublicationLedger,
     ) -> Result<(), ArtifactInventoryError> {
+        if take_closed_ledger_cleanup_failure() {
+            return Err(ArtifactInventoryError::StorageIo(std::io::Error::other(
+                "injected closed-ledger cleanup failure",
+            )));
+        }
         let snapshot = self
             .root
             .enumerate_tree(self.limits, &CancellationToken::new())?;
@@ -277,27 +305,6 @@ impl SyncedStagingTree {
         drop(self.snapshot.take());
         self.tree.close_descendant_handles();
         self.tree.cleanup_closed_ledger(&ledger)
-    }
-}
-
-pub(super) fn cleanup_prepublication_failure(
-    staging: SyncedStagingTree,
-    original: ArtifactInventoryError,
-) -> ArtifactInventoryError {
-    match staging.cleanup() {
-        Ok(()) => original,
-        Err(cleanup) => cleanup,
-    }
-}
-
-pub(super) fn cleanup_closed_publication_failure(
-    staging: OwnedStagingTree,
-    ledger: &PublicationLedger,
-    original: ArtifactInventoryError,
-) -> ArtifactInventoryError {
-    match staging.cleanup_closed_ledger(ledger) {
-        Ok(()) => original,
-        Err(cleanup) => cleanup,
     }
 }
 

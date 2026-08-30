@@ -27,6 +27,8 @@ use super::{
 
 mod owned_source;
 
+pub(crate) use owned_source::OwnedSourceStagingImportError;
+
 pub(crate) const SETS_DIRECTORY: &str = "sets";
 const SET_STAGING_DIRECTORY: &str = ".set-staging";
 const MAX_STORAGE_LAYOUT_ENTRIES: usize = 16;
@@ -238,6 +240,15 @@ impl<'a> OfflineArtifactSetImportService<'a> {
     {
         let manifest = &request.manifest;
         let final_name = OsStr::new(&plan.storage_key);
+        OwnedStagingTree::preflight_no_replace_publication(
+            &self.set_staging,
+            &self.sets,
+            tree_limits,
+            self.limits.maximum_staging_entries,
+            self.limits.maximum_storage_entries,
+            cancellation,
+        )
+        .map_err(map_staging)?;
         let mut staging = OwnedStagingTree::create(
             &self.set_staging,
             tree_limits,

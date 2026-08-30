@@ -142,6 +142,24 @@ pub(crate) fn verify_final_tree(
     }
 }
 
+/// Verifies the complete canonical managed tree without reading file contents.
+///
+/// This is a metadata and object-boundary check for a caller that separately
+/// consumes every retained member in a complete content verification pass. It
+/// must never replace [`verify_final_tree`] for ordinary artifact-set evidence.
+pub(crate) fn verify_final_tree_identity(
+    root: &PinnedDirectory,
+    manifest: &ArtifactSetManifest,
+    plan: &ValidatedSetPlan,
+    limits: ManagedTreeLimits,
+    cancellation: &CancellationToken,
+) -> Result<(), ArtifactSetImportError> {
+    let snapshot = root
+        .enumerate_tree(limits, cancellation)
+        .map_err(map_managed_tree)?;
+    validate_tree_shape(&snapshot, manifest, plan, true, false)
+}
+
 pub(super) fn validate_staged_snapshot(
     snapshot: &ManagedTreeSnapshot,
     manifest: &ArtifactSetManifest,

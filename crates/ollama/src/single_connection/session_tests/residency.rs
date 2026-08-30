@@ -115,6 +115,7 @@ async fn resident_completions_bind_exact_sequence_residency_and_ordinals() {
             generated["keep_alive"],
             OLLAMA_RESIDENT_COMPLETION_KEEP_ALIVE
         );
+        assert_eq!(generated["options"]["num_gpu"], 0);
     }
     assert_eq!(
         OLLAMA_RESIDENT_COMPLETION_SOURCE_REVISION,

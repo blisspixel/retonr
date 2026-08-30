@@ -6,7 +6,7 @@ use tempfile::tempdir;
 use super::{reserve_file, schema_version};
 use crate::{ArtifactStateStore, StoreMigrationDisposition};
 
-const LEGACY_TABLES: [&str; 14] = [
+pub(super) const LEGACY_TABLES: [&str; 14] = [
     "activation_decisions",
     "active_bindings",
     "artifact_manifests",
@@ -57,7 +57,7 @@ fn verified_wal_backup_and_schema_five_migration_preserve_all_legacy_rows() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (5, 6)
+        (5, 10)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -74,7 +74,7 @@ fn verified_wal_backup_and_schema_five_migration_preserve_all_legacy_rows() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 6);
+    assert_eq!(schema_version(&source), 10);
     assert_eq!(all_legacy_rows(&migrated), before);
     for table in NEW_TABLES {
         let count: i64 = migrated
@@ -129,7 +129,7 @@ fn compatibility_opens_require_explicit_schema_five_migration_without_mutation()
             result,
             Err(crate::StoreError::MigrationRequired {
                 found: 5,
-                current: 6
+                current: 10
             })
         ));
         let unchanged = Connection::open(&source).expect("reopen unchanged schema five");
@@ -142,7 +142,7 @@ fn compatibility_opens_require_explicit_schema_five_migration_without_mutation()
 }
 
 #[test]
-fn fresh_schema_six_has_the_exact_new_strict_tables_and_hex_checks() {
+fn fresh_schema_has_the_exact_package_strict_tables_and_hex_checks() {
     let connection = Connection::open_in_memory().expect("open memory database");
     let mut connection = connection;
     crate::schema::initialize_empty(&mut connection).expect("initialize exact schema");
@@ -169,7 +169,7 @@ fn fresh_schema_six_has_the_exact_new_strict_tables_and_hex_checks() {
     assert_eq!(names, NEW_TABLES);
 }
 
-fn seed_every_legacy_table(connection: &Connection) {
+pub(super) fn seed_every_legacy_table(connection: &Connection) {
     let artifact = "a".repeat(64);
     let qualification = "b".repeat(64);
     let activation = "c".repeat(64);
@@ -220,7 +220,7 @@ fn all_legacy_rows(connection: &Connection) -> BTreeMap<String, Vec<Vec<Vec<u8>>
         .collect()
 }
 
-fn table_rows(connection: &Connection, table: &str) -> Vec<Vec<Vec<u8>>> {
+pub(super) fn table_rows(connection: &Connection, table: &str) -> Vec<Vec<Vec<u8>>> {
     let mut statement = connection
         .prepare(&format!("SELECT * FROM {table} ORDER BY rowid"))
         .expect("prepare legacy snapshot");
@@ -259,7 +259,7 @@ fn encode_value(value: ValueRef<'_>) -> Vec<u8> {
     encoded
 }
 
-fn table_exists(connection: &Connection, name: &str) -> bool {
+pub(super) fn table_exists(connection: &Connection, name: &str) -> bool {
     connection
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = ?1)",

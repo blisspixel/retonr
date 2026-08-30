@@ -123,7 +123,9 @@ effective model-description digest, runtime package identity where available,
 running context, residency, and CPU, GPU, or hybrid execution class.
 
 The current trust primitives add strict runtime and model package contracts, offline
-Ollama model reconstruction, schema-6 persistence, retained package objects, Linux
+Ollama model reconstruction, schema-7 persistence with unchanged schema-6 package
+and evidence tables plus the atomic qualification-preregistration nucleus, retained
+package objects, Linux
 SOCK_DIAG, managed namespace isolation, process and connection attestation, exact
 native-load observation, version-gated provider declaration evidence, and a
 Linux-only read-only managed preflight that joins those runtime-side boundaries. The
@@ -248,6 +250,10 @@ manifest and local source directory; rejects undeclared, indirect, special,
 noncanonical path spellings, or missing entries; hashes every member; and publishes
 one synchronized no-replace tree under a content-derived set-root key. Source hard
 links may be copied, while managed members must be single-link regular files.
+On Windows, the commit uses the no-replace move contract without replacement or
+cross-volume copy flags. Regression coverage requires an existing empty directory,
+nonempty directory, or regular file at the destination to remain byte-for-byte
+unchanged while the source tree remains unpublished.
 Structural installation commits only after final bytes and the pinned
 repository-to-storage relationship are
 rechecked. Prepublication cancellation cleans only the exact current-operation ledger.
@@ -289,6 +295,12 @@ activation cannot commit. Activation and recovery require caller-reverified arti
 bytes before returning a binding. Qualification identifiers hash a versioned,
 length-delimited encoding of the complete record. Stored record content, indexed
 columns, and derived identities must agree before activation or recovery.
+
+Schema 7 also stores one generation-qualification operation policy and its complete
+request projection in a single typed immediate transaction before any traffic.
+Canonical readback and exact relationship revalidation occur before
+`PreparedGenerationQualificationOperation` is released. Persistence recreates no
+live authority.
 
 Profiles, evidence metadata, rules, versions, feedback, and redacted rewrite records
 remain planned for the same bounded persistence layer. Migrations require forward

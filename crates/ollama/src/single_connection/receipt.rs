@@ -1,6 +1,7 @@
 use std::fmt;
 
-use rewrite_inference::{InferenceError, StructuredCompletionResponse};
+use rewrite_inference::{InferenceError, StructuredCompletionFinish, StructuredCompletionResponse};
+use rewrite_model::OllamaRetainedSessionResponseId;
 use rewrite_types::Digest;
 
 use crate::response::malformed_error;
@@ -13,6 +14,21 @@ pub const OLLAMA_RESIDENT_COMPLETION_SOURCE_REVISION: &str =
     "b7871fc0d1d82fe109536efa3e0e8e411c766c75";
 /// Explicit model retention requested by the resident-completion profile.
 pub const OLLAMA_RESIDENT_COMPLETION_KEEP_ALIVE: &str = "5m";
+
+const RESIDENT_SESSION_EXECUTION_RECEIPT_COMPLETE_BINDING_DOMAIN: &[u8] =
+    b"ollama/retained-session/resident-execution-receipt/complete-binding/v1\0";
+
+/// Derives the inert typed identity of one exact structured response.
+///
+/// The identity binds every field of [`StructuredCompletionResponse`] using the
+/// unchanged retained-session response V1 encoding. It proves no transport,
+/// process, model-use, handler-placement, or qualification fact.
+#[must_use]
+pub fn derive_ollama_retained_session_response_id(
+    response: &StructuredCompletionResponse,
+) -> OllamaRetainedSessionResponseId {
+    OllamaRetainedSessionResponseId::from_derived_digest(response_binding_digest(response))
+}
 
 /// Content-free binding evidence for one retained-stream completion.
 ///
@@ -35,13 +51,37 @@ impl OllamaSessionExecutionReceipt {
         first_response_ordinal: usize,
         last_response_ordinal: usize,
     ) -> Result<Self, InferenceError> {
+        let response_id = derive_ollama_retained_session_response_id(response);
         Ok(Self {
             preflight_digest: preflight_binding_digest(preflight)?,
             request_digest: response.request_binding_digest().clone(),
-            response_digest: response_binding_digest(response),
+            response_digest: response_id.digest().clone(),
             first_response_ordinal,
             last_response_ordinal,
         })
+    }
+
+    /// Creates deterministic receipt evidence for downstream contract tests.
+    ///
+    /// This helper is unavailable unless the explicit `test-support` feature is
+    /// enabled. It applies the same complete derivation as a retained session.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InferenceError`] if the supplied preflight cannot be encoded.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn for_test(
+        preflight: &OllamaPreflight,
+        response: &StructuredCompletionResponse,
+        first_response_ordinal: usize,
+        last_response_ordinal: usize,
+    ) -> Result<Self, InferenceError> {
+        Self::new(
+            preflight,
+            response,
+            first_response_ordinal,
+            last_response_ordinal,
+        )
     }
 
     /// Returns the digest of the exact successful preflight evidence.
@@ -60,6 +100,16 @@ impl OllamaSessionExecutionReceipt {
     #[must_use]
     pub const fn response_digest(&self) -> &Digest {
         &self.response_digest
+    }
+
+    /// Returns the typed identity of the exact retained structured response.
+    ///
+    /// This wraps the unchanged V1 response binding. It deliberately excludes
+    /// preflight facts and retained-transport ordinals, which are bound by the
+    /// surrounding execution receipt instead.
+    #[must_use]
+    pub fn retained_response_id(&self) -> OllamaRetainedSessionResponseId {
+        OllamaRetainedSessionResponseId::from_derived_digest(self.response_digest.clone())
     }
 
     /// Returns the first response ordinal consumed by this completion.
@@ -150,6 +200,26 @@ impl OllamaResidentSessionExecutionReceipt {
         }
     }
 
+    /// Constructs inert resident execution evidence for downstream offline tests.
+    ///
+    /// This helper is absent unless the `test-support` feature is enabled and
+    /// does not construct retained transport or execution authority.
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub fn for_test(
+        execution: OllamaSessionExecutionReceipt,
+        running: &OllamaRunningModel,
+        first_residency_ordinal: usize,
+        last_residency_ordinal: usize,
+    ) -> Self {
+        Self::new(
+            execution,
+            running,
+            first_residency_ordinal,
+            last_residency_ordinal,
+        )
+    }
+
     /// Returns the underlying preflight, request, response, and ordinal binding.
     #[must_use]
     pub const fn execution(&self) -> &OllamaSessionExecutionReceipt {
@@ -208,6 +278,41 @@ impl OllamaResidentSessionExecutionReceipt {
     #[must_use]
     pub const fn last_residency_ordinal(&self) -> usize {
         self.last_residency_ordinal
+    }
+
+    /// Returns the owner-derived binding over every execution and residency field.
+    ///
+    /// This digest is an equality binding for exact receipt comparison. It does
+    /// not prove that execution occurred, that the selected model was used, or
+    /// that any runtime, response, or model is qualified.
+    #[must_use]
+    pub fn complete_binding_digest(&self) -> Digest {
+        let execution = &self.execution;
+        let mut material = Vec::with_capacity(640);
+        material.extend_from_slice(RESIDENT_SESSION_EXECUTION_RECEIPT_COMPLETE_BINDING_DOMAIN);
+        for digest in [
+            &execution.preflight_digest,
+            &execution.request_digest,
+            &execution.response_digest,
+        ] {
+            material.extend_from_slice(digest.as_str().as_bytes());
+        }
+        material.extend_from_slice(&(execution.first_response_ordinal as u64).to_be_bytes());
+        material.extend_from_slice(&(execution.last_response_ordinal as u64).to_be_bytes());
+        for digest in [
+            &self.residency_contract_digest,
+            &self.residency_observation_digest,
+            &self.runtime_reference_digest,
+            &self.inventory_digest,
+        ] {
+            material.extend_from_slice(digest.as_str().as_bytes());
+        }
+        material.extend_from_slice(&self.byte_size.to_be_bytes());
+        material.extend_from_slice(&self.accelerator_bytes.to_be_bytes());
+        material.extend_from_slice(&self.context_tokens.to_be_bytes());
+        material.extend_from_slice(&(self.first_residency_ordinal as u64).to_be_bytes());
+        material.extend_from_slice(&(self.last_residency_ordinal as u64).to_be_bytes());
+        Digest::sha256(&material)
     }
 
     /// Returns true because both admitted Ollama residency reports were equal.
@@ -293,6 +398,9 @@ fn preflight_binding_digest(preflight: &OllamaPreflight) -> Result<Digest, Infer
 
 fn response_binding_digest(response: &StructuredCompletionResponse) -> Digest {
     let mut encoded = Vec::new();
+    match response.finish() {
+        StructuredCompletionFinish::Complete => {}
+    }
     push_bytes(&mut encoded, response.runtime().backend.as_bytes());
     push_bytes(&mut encoded, response.runtime().version.as_bytes());
     match &response.runtime().digest {
@@ -340,3 +448,7 @@ fn push_optional_u64(target: &mut Vec<u8>, value: Option<u64>) {
         None => target.push(0),
     }
 }
+
+#[cfg(test)]
+#[path = "receipt/tests.rs"]
+mod tests;

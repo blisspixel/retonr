@@ -128,14 +128,17 @@ also requires one exact executable digest.
 - Decide whether an entitled macOS helper is justified before claiming parity.
 - Keep this attached report observation-only. The separate Linux managed-isolation
   and managed-attestation path must not promote or silently replace attached evidence.
-- Retain the admission-gated one-shot managed operation. The empty reviewed-runtime
-  allowlist blocks it before launch. Once admitted, it keeps the process, runtime
-  package lease, native observer, and direct connection live through one structured
-  completion and runtime-reported residency sequence. Only its exact entrypoint is
-  joined to live runtime-build evidence; other package semantics are not
-  independently live-observed. Add the four missing direct effective-state
-  relationships, then join the exact model-package lease, local-judge receipt, and
-  candidate-generation evidence before local generation becomes eligible. The
+- Retain the admission-gated one-shot managed operation. Separate empty
+  cloud-disable and generation-path allowlists block it before launch. Admission
+  requires both an exact reviewed cloud-disable declaration and an exact reviewed
+  package-and-worker generation path. It then keeps the process, runtime package
+  lease, native observer, and direct connection live through one structured
+  completion and runtime-reported residency sequence. Runtime admission alone does
+  not authorize generation. Only the operation's exact entrypoint is joined to live
+  runtime-build evidence; other package semantics are not independently
+  live-observed. Add the four missing direct effective-state relationships, then join
+  the exact model-package lease, local-judge receipt, and candidate-generation
+  evidence before local generation becomes eligible. The
   model-package binding consumes an opaque,
   nonserializable receipt from the exact preflight runner. Retained-session input has
   an absolute 4 MiB UTF-8 ceiling before wire serialization or completion traffic.

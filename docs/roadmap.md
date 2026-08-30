@@ -47,8 +47,9 @@ This order encodes five deliberate choices:
 
 ## Current build queue
 
-Milestone 0.1 technical evidence is complete, and 0.2 implementation is active. 0.1
-has not been tagged as a milestone release. INV-Q04 applies from the first completed
+Milestone 0.1 technical evidence is complete, and reversible 0.2 implementation is
+active under the roadmap's run-ahead policy. Milestone 0.1 remains open until its
+release closeout is tagged and published. INV-Q04 applies from the first completed
 0.2 closeout. The 1.0 include list lives in the
 [product 1.0 capability table](product.md#10-product-boundary). Work
 proceeds in this exact order:
@@ -70,17 +71,25 @@ proceeds in this exact order:
    artifact-set manifest, runtime-build and effective-state identities, and
    relationship-checked effective-package evidence. Preserve the separate inert
    qualification v2 that binds all four identities and exact qualification policy
-   without rewriting v1 evidence. Preserve current schema-6 persistence, recursive
-   relationship checks, distinct inert artifact-set installation generations,
+   without rewriting v1 evidence. Preserve current schema-10 persistence, including
+   every unchanged schema-7 preregistration and schema-6 artifact, lifecycle, package,
+   and evidence contract and
+   the schema-7 atomic preregistration nucleus, recursive relationship checks,
+   the schema-8 atomic effective-package V2 and generation-system foundation, the
+   schema-9 portable plan and case foundation,
+   distinct inert artifact-set installation generations,
    bounded exact folder import, the offline `import-set` CLI, backup-backed explicit
-   migration from schemas 1 through 5, repository-owned artifact-set leases, and read-only set
+   migration from schemas 1 through 6, repository-owned artifact-set leases, and read-only set
    inventory without implying set authority. Preserve the completed managed-process
    attestor, extractor manifest, strict ephemeral wire contract, cancellable pair
    operation, two-phase informational engine evidence join, and independent shadow
    calibration. Never treat probabilistic extraction as proof.
 5. Retain the versioned read-only Ollama preflight. It observes or verifies bounded
    runtime, inventory, model-description, and residency evidence, rechecks stable
-   state, performs no generation, and always reports `qualified: false`.
+   state, performs no generation, and always reports `qualified: false`. Retain the
+   smaller caller-stream runtime-only probe: exactly one 1 KiB-capped
+   `GET /api/version`, exact typed version equality, and non-authoritative
+   version-only evidence with no model, generation, or admission authority.
 6. Retain the attached-process witness. Windows and Linux bracket preflight with
    listener-owner, process-incarnation, and executable evidence; macOS fails closed.
    The report remains `response_bound: false` and `qualified: false`.
@@ -99,11 +108,15 @@ proceeds in this exact order:
    missing process only when the pidfd confirms exit. Fail closed on access denial,
    resource exhaustion, malformed state, or incomplete visibility. Retain the
    complete runtime-package, model-package,
-   native-load, static package-lease, and schema-6 persistence contracts. The
+   native-load, static package-lease, and schema-6 package and evidence contracts
+   preserved by the schema-10 store. The
    installed-Ollama import may reconstruct and persist only inert model-package
    evidence. The reviewed Linux Ollama runtime import may reconstruct and persist
    only inert runtime-package evidence from one caller-supplied exact tree and
-   layout; this is not a freeze or admission of an upstream package. Retain the
+   layout. A separate direct bridge may import only the exact byte-identical primary
+   package from a retained controlled-build evidence closure, with member rehashing and
+   evidence revalidation at the publication and readback boundaries. Both routes remain
+   inert; neither is a freeze or admission of an upstream package. Retain the
    v0.32.15 static import-to-inventory binding, neutral judge output contract,
    retained-stream executor, separate limited transport receipt, and opt-in
    runtime-reported residency profile. The static binding consumes the opaque,
@@ -123,7 +136,12 @@ proceeds in this exact order:
    Keep uncontrolled-host compatibility limited to the exact typed access-denied
    result. Require a separate networkless, dropped-capability, no-new-privileges
    native attestor success gate and include that execution in the LLVM profile before
-   enforcing the workspace line-coverage floor.
+   enforcing the workspace line-coverage floor. Require the separate static-musl live
+   worker gate under a networkless root process with only `CAP_SETPCAP`, and merge its
+   exact descendant, privilege, command, native-closure, private-model-mapping,
+   reobservation, and post-exit rejection profile into that same report. Also require the privileged,
+   networkless controlled source-build fixture gate and include its execution in the
+   same profile.
 10. Retain the Linux-only managed preflight that joins runtime-package, isolation,
     process, connection, provider-declaration, read-only API, and native-load evidence
     without an attached-process fallback. Its report remains inert and unqualified.
@@ -131,24 +149,152 @@ proceeds in this exact order:
     `RuntimeBuildIdentity`; only its entrypoint is joined to live evidence, other
     package semantics are not independently live-observed, cleanup completes before
     return, and effective runtime state remains unproven.
-    The exact v0.32.15 Linux CPU x64 candidate has frozen archive, transformation,
-    helper, selected closure, and license evidence under a typed non-admitted review.
-    Resolve its source-lineage and external-component blockers, then run managed
-    startup and cloud-disable observation before adding any package identity to the
-    empty production cloud-disable allowlist.
-11. Retain the completed admission-gated one-shot managed generation bracket. The
-    current empty reviewed-runtime allowlist blocks it before launch. Once admitted,
-    it keeps the exact process, runtime package lease, native observer, and direct
-    HTTP/1 connection live through one completion and two equal runtime-reported
-    residency observations,
+    Preserve the official v0.32.15 archive review as a blocked historical record. The
+    active admission root is the controlled source-built package defined by ADR 0010.
+    Retain the sealed, expected-identity helper snapshot before the first probe and
+    the exact digest-verified private input snapshot under the shared tmpfs quota.
+    The real frozen closure historically completed two byte-identical controlled builds
+    through capability ABI 2 on 2026-08-26 and was published and independently
+    reacquired. A later workspace cleanup removed that local target-owned evidence.
+    Preserve the replacement helper's completed private device and proc boundary and
+    retained-file private model-root capability. The helper is a runtime package
+    member, so changing that capability after admission would invalidate the reviewed
+    package. Build and independently reacquire a fresh typed-receipt closure before adjudicating
+    source lineage, transformation, license, frozen native closure, managed startup,
+    and cloud disable from typed retained evidence. Only an all-pass schema-2 review
+    may change the empty production cloud-disable allowlist. It must not populate the
+    separate generation-path allowlist.
+11. Retain the completed dual-gated one-shot managed generation bracket. The current
+    empty cloud-disable and exact package-and-worker generation allowlists both block
+    it before launch. After both independent reviews pass, it keeps the exact process,
+    runtime package lease, native observer, and direct HTTP/1 connection live through
+    one completion and two equal runtime-reported residency observations,
     records the directly reported effective context, and closes before return. Its
-    model artifact and Ollama inventory digests are distinct. Complete the remaining
-    generation-bound provider, effective configuration, platform and driver, and
-    compute-placement relationships before constructing effective state. Then join
-    the exact model-package lease and local-judge receipt and add a separate
-    candidate-generation receipt. The scorecard remains
-    caller-declared and triage-only; receipts do not prove handler execution, model
-    use, semantics, or qualification by themselves.
+    model artifact and Ollama inventory digests are distinct. The bracket now
+    constructs the inert app-observed effective runtime state from generation-bound
+    provider, closed configuration, platform and driver-class, actual server and
+    worker native closure, normalized worker configuration, and CPU-placement
+    relationships. Portable state excludes installation generations and other live
+    attempt provenance, while the app-owned live join retains those exact bindings.
+    The outcome is released only after cleanup and final revalidation of both package
+    leases. This state remains unqualified and is not formal placement, driver-absence,
+    handler-execution, model-use, or resident-page proof. Managed
+    Linux launch now establishes and reobserves a private mount namespace, private
+    procfs, and reviewed device view that exposes only the retained null device. Retain
+    those boundaries across worker and model-root work. A CPU-only build
+    and zero reported accelerator bytes are supporting evidence, not sufficient
+    placement evidence by themselves. The bracket now retains and repeatedly
+    revalidates the exact model-package lease, reconstructs the reviewed manifest and
+    blob layout from retained file objects inside a private read-only model root,
+    closes the version-scoped launch environment, and requires the separate
+    generation worker, native closure, and exact private GGUF mapping to remain stable.
+    This is bounded
+    model-load evidence, not proof of model use. Preserve the app-owned
+    effective-package v2 derivation, exact live-subject checks, shared-byte purpose
+    unions, cleanup-gated release, exact failed-attempt outcome, separate
+    candidate-generation receipt, opaque verified candidate batch and batch set,
+    retained exact case material, portable deterministic evaluation record,
+    qualified deterministic compiler, offline candidate-to-judge preparation join
+    with its exact two-order schedule, request aggregate, and compatibility hard-gate
+    projection, app-owned managed-judge precursor, exact no-launch pairing of both
+    runner handoffs, crate-private no-launch runner configuration with complete
+    retained authority and exact preflight, limits, runtime, isolation,
+    launch-plan-to-model-package lease identity, model, and installation-generation
+    closure, phase-ordered observer with exact per-attempt evidence sealing,
+    pure judge-output normalizer, schedule-wide observation authority with five
+    exact evidence aggregates and a dedicated effective-state join, and the distinct
+    app-owned schedule package released only after cleanup plus independent model,
+    runtime, evidence, and retained-authority validation. Preserve the
+    portable response record that binds plan, schedule, index, exact request, and
+    nested provider response identity. Its association is rederived from the loaded
+    schedule and request aggregate, so repeated equal provider response IDs remain
+    distinct portable presentation records. Preserve the Active operation's single
+    public high-level managed judge entry point, which consumes exact preregistered
+    repetitions in order, validates the complete operation scope, and supplies the
+    Prepared deadline and single lifecycle while executing the schedule. It derives an eval-owned
+    cleanup-gated durable receipt with exact resident response ordinals
+    `8..(7 + 9 * N)`, compiles canonical compatibility triage, and returns a
+    nonforgeable opaque join. Fresh join revalidation recompiles the triage and full
+    portable record from retained authorities. The scorecard remains
+    probabilistic and triage-only; receipts and joins
+    do not prove handler execution, model use, semantics, or qualification by
+    themselves. Preserve the implemented frozen attempt-ledger,
+    repeatability-result, repeatability-evidence, resource-evidence, and
+    human-adjudication contracts. Also preserve the implemented portable
+    `GenerationQualificationOperationPolicyV1`,
+    `GenerationQualificationRequestProjectionV1`,
+    `GenerationQualificationPlatformEvidenceV1`,
+    `GenerationQualificationLicenseEvidenceV1`, and
+    `GenerationQualificationOperationReceiptV1`. Their strict decoders require
+    trusted independently supplied expected policy, request, assessment, and runner
+    inputs rather than trusting serialized fields. The receipt admits peak-zero
+    `NotRequired` for
+    pre-acquisition cancellation, deadline, or failure, and for `Completed` only at
+    an exact rejected platform or license gate. Peak one requires passed or failed
+    live finalization, and `Completed` at peak one requires passed finalization.
+    Preserve the implemented
+    `GenerationQualificationPhaseInterruptionRecordV1` inert companion. It binds one
+    noncompleted receipt to its exact policy and frozen scope plus a closed phase,
+    checkpoint, optional planned attempt, and terminal reason. Keep it outside phase
+    manifests and prevent it from granting execution, persistence, activation,
+    qualification, or live-use authority.
+    Preserve the implemented compact `GenerationQualificationRecordV1`. Its
+    nine-field wire shape derives status internally after recursively checking the
+    trusted portable closure and rejects incomplete phase prefixes as operational
+    aborts rather than policy decisions. Preserve the implemented eval-owned
+    `VerifiedPassedRepeatabilityJoins` boundary, which binds each caller-supplied,
+    internally consistent Passed result to one distinct live opaque join in exact
+    order and runs mandatory fresh final validation across the supplied subset.
+    Preserve the implemented canonical app-owned
+    platform and license assessment-policy authorities, their empty production
+    roots, the implemented platform and license assessment compilers, the canonical
+    double-sampled current-host authority, the typed case request profile, the shared
+    byte-exact prompt renderer, the deterministic one-at-a-time request builder, and
+    the structural model-license proof separated from explicit launch-authority
+    promotion. Preserve the implemented streaming projection authority, structural
+    model-license proof, staged Draft -> Projected -> Prepared compiler, the schema-7
+    atomic preregistration cohort, the schema-8 effective-package V2 plus
+    generation-system foundation, the schema-9 portable plan and case foundation, and
+    the schema-10 precursor checkpoint and terminal candidate closure.
+    Preserve rejected pretraffic terminalization, the strict
+    resource and human phase-policy verifiers, their typed inert source-denial
+    records and app-owned denied-phase authorities, and fail-fast pretraffic
+    phase-policy refusal. Preserve the inert positive resource-attempt result, exact
+    verified package payload sizes, pidfd-bound Linux worker high-water observation,
+    inseparable retained-session resource completion, and Approved-only app
+    measurement authority. Preserve the strict eval runner and receipt-time portable
+    result compiler, strict batch-set mode, A/B target selection, repeatability
+    resource collection, complete Passed closure, and resource-manifest compiler.
+    Persist interruption records later in the same dependency-complete
+    terminal-evidence cohort as their receipts without allowing persistence to
+    recreate live authority.
+    Preserve the implemented strict candidate and judge routes that carry Active's
+    retained Prepared deadline through strict launch, preflight, generation,
+    observation, joins, and terminalization. Preserve the consuming Active operation
+    owner as the sole public high-level candidate and judge entry with exact plan-order
+    request and repetition scope, target resource observation, baseline compatibility,
+    candidate-before-judge ordering, Prepared's retained clock, one lifecycle,
+    no-retry terminalization, and mandatory finalization. Preserve the process-local
+    Active subject across outcomes, batches, batch sets, paired handoffs, and joins.
+    Preserve two-phase completed candidate settlement, target-only attempt-record
+    and completed-receipt collection, exact receipt-to-record validation, one-shot
+    attempt-ledger sealing, and the ledger-before-judge gate.
+    Preserve Active-owned publication, fresh readback, receipt failure closure,
+    exact failed-attempt derivation, and the fresh-revalidatable in-memory operation
+    interruption. Preserve foundation-gated preregistration with its retained cold
+    readback, the newly inserted pretraffic checkpoint, Active-owned completion,
+    app-root-bound publication and reacquisition, and atomic completed-or-failed
+    candidate closure. Add deterministic recovery and reconciliation for checkpoint-only
+    attempts, publication orphans, and ambiguous terminal commits before adding
+    operation-level terminal evidence. Complete that dependency chain
+    before populating a production Approved root. Positive
+    human authority
+    requires a reviewed V2 policy and explicit reviewer-governance and
+    evidence-retention decisions. Add later
+    dependency-complete schema cohorts before the final
+    `VerifiedGenerationQualification` compiler. Do not widen the
+    claim-extraction-only qualification-v2 record or reuse the weaker single-file
+    activation authority. No final generation-qualification authority exists yet.
     Independent CPU-bound work (frozen-file hashing, deterministic evaluation
     cases, later independent unit validation) may use a bounded worker pool whose
     results join by stable identifier. Retained inference sessions, managed
@@ -305,12 +451,15 @@ polished CLI.
 
 ### Completion evidence
 
-- Clean installations complete the documented workflows on Windows, macOS, and
-  Linux.
+- Clean installations complete every documented workflow supported on that platform
+  on Windows, macOS, and Linux. Unsupported managed-execution paths fail
+  deterministically without fallback and identify the supported Linux path.
 - Structured output, exit categories, pipes, hostile controls, line endings, broken
   pipes, cancellation, and recovery pass process-level compatibility fixtures.
-- The exact qualified model combination meets predeclared fidelity, coverage,
+- The exact qualified Linux model combination meets predeclared fidelity, coverage,
   latency, memory, and artifact-drift gates on at least one documented laptop class.
+  Windows and macOS complete their supported model-free, administration, recovery,
+  and deterministic unsupported-path fixtures without implying qualified generation.
 - A model failure cannot bypass validation, corrupt input, or activate an unqualified
   fallback.
 - The CLI is complete enough to serve as the reference surface for later adapters.

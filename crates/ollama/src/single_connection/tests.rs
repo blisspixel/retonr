@@ -9,6 +9,7 @@ use self::fixture::{FirstResponseMode, FixtureServer, context, preflight, target
 
 mod adversarial;
 mod fixture;
+mod probe;
 
 #[tokio::test]
 async fn one_connection_yields_exact_ordered_response_checkpoints() {

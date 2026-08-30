@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{EvaluationSuite, TransformationCoverage};
 
-mod deterministic;
+pub(crate) mod deterministic;
 mod normalize;
 
 use deterministic::run_deterministic_gates;
@@ -536,6 +536,19 @@ pub(crate) fn run_hybrid_scorecard_hard_gates(
 }
 
 fn validate_plan(plan: &HybridScorecardPlan) -> Result<(), HybridScorecardError> {
+    validate_plan_with_candidate_equality(plan, false)
+}
+
+pub(crate) fn validate_exact_projection_plan(
+    plan: &HybridScorecardPlan,
+) -> Result<(), HybridScorecardError> {
+    validate_plan_with_candidate_equality(plan, true)
+}
+
+fn validate_plan_with_candidate_equality(
+    plan: &HybridScorecardPlan,
+    allow_equal_candidates: bool,
+) -> Result<(), HybridScorecardError> {
     if plan.schema_version != HYBRID_SCORECARD_SCHEMA_VERSION {
         return Err(HybridScorecardError::UnsupportedSchema(plan.schema_version));
     }
@@ -574,8 +587,11 @@ fn validate_plan(plan: &HybridScorecardPlan) -> Result<(), HybridScorecardError>
     }
     let mut previous = None;
     for (index, case) in plan.cases.iter().enumerate() {
-        if !valid_case(case, &plan.judge.judge_system_digest)
-            || previous.is_some_and(|id: &str| id >= case.id.as_str())
+        if !valid_case(
+            case,
+            &plan.judge.judge_system_digest,
+            allow_equal_candidates,
+        ) || previous.is_some_and(|id: &str| id >= case.id.as_str())
         {
             return Err(HybridScorecardError::InvalidCase { index });
         }
@@ -584,10 +600,14 @@ fn validate_plan(plan: &HybridScorecardPlan) -> Result<(), HybridScorecardError>
     Ok(())
 }
 
-fn valid_case(case: &HybridScorecardCasePlan, judge_system: &Digest) -> bool {
+fn valid_case(
+    case: &HybridScorecardCasePlan,
+    judge_system: &Digest,
+    allow_equal_candidates: bool,
+) -> bool {
     valid_label(&case.id)
         && valid_label(&case.cluster_id)
-        && case.candidate_a_digest != case.candidate_b_digest
+        && (allow_equal_candidates || case.candidate_a_digest != case.candidate_b_digest)
         && &case.candidate_a_system_digest != judge_system
         && &case.candidate_b_system_digest != judge_system
         && !case.rubric_clauses.is_empty()

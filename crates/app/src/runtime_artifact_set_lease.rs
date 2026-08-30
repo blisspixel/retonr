@@ -12,7 +12,7 @@ use crate::{
     artifact_repository::DataDirectoryGuard,
     artifact_set_import::{
         SETS_DIRECTORY, map_managed_tree, map_set_capacity, map_storage_open, plan_artifact_set,
-        validate_plan_bounds, verify_final_tree,
+        validate_plan_bounds, verify_final_tree, verify_final_tree_identity,
     },
     artifact_storage::{
         ExactEntryCapacity, LIFECYCLE_LOCK_FILE, ManagedTreeLimits, PinnedDirectory,
@@ -110,6 +110,30 @@ impl RuntimeArtifactSetLease {
         let tree_limits = ManagedTreeLimits::new(self.limits.maximum_tree_entries)
             .map_err(|error| map_set_lease_error(map_managed_tree(error)))?;
         verify_final_tree(
+            &self.set_root,
+            &self.manifest,
+            &plan,
+            tree_limits,
+            cancellation,
+        )
+        .map_err(map_set_lease_error)?;
+        self.recheck_boundary(OsStr::new(&plan.storage_key))
+    }
+
+    /// Rechecks the exact tree and storage boundary without hashing member bytes.
+    ///
+    /// This narrow internal operation is only sound when its caller owns retained
+    /// handles and independently performs one complete content verification pass
+    /// over every manifest member before issuing authority.
+    pub(crate) fn revalidate_tree_identity(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<(), ArtifactSetLeaseError> {
+        let plan = plan_artifact_set(&self.manifest, self.limits.plan_bounds())
+            .map_err(map_set_lease_error)?;
+        let tree_limits = ManagedTreeLimits::new(self.limits.maximum_tree_entries)
+            .map_err(|error| map_set_lease_error(map_managed_tree(error)))?;
+        verify_final_tree_identity(
             &self.set_root,
             &self.manifest,
             &plan,

@@ -4,10 +4,12 @@ use thiserror::Error;
 
 use rewrite_model::{
     ActivationDecisionError, ArtifactSetManifestError, EffectivePackageEvidenceError,
-    EffectiveRuntimeStateError, InstallationError, InstalledArtifactSetError, ManifestError,
-    ModelPackageManifestError, NativeLoadObservationError, QualificationInvalidationError,
-    QualificationRecordError, QualificationRecordV2Error, RuntimeBuildIdentityError,
-    RuntimePackageManifestError,
+    EffectivePackageEvidenceV2Error, EffectiveRuntimeStateError,
+    GenerationDeterministicCaseContractError, GenerationQualificationContractError,
+    GenerationQualificationOperationContractError, InstallationError, InstalledArtifactSetError,
+    ManifestError, ModelPackageManifestError, NativeLoadObservationError,
+    QualificationInvalidationError, QualificationRecordError, QualificationRecordV2Error,
+    RuntimeBuildIdentityError, RuntimePackageManifestError,
 };
 
 /// Result returned by the durable artifact state adapter.
@@ -44,6 +46,29 @@ pub enum StoreError {
     /// A native-load observation failed domain or relationship validation.
     #[error("native-load observation is invalid")]
     InvalidNativeLoad(#[source] NativeLoadObservationError),
+    /// A generation-qualification preregistration contract failed validation.
+    #[error("generation qualification preregistration is invalid")]
+    InvalidGenerationQualificationPreregistration(
+        #[source] GenerationQualificationOperationContractError,
+    ),
+    /// A generation-qualification plan foundation failed relationship validation.
+    #[error("generation qualification plan foundation is invalid")]
+    InvalidGenerationQualificationPlan(#[source] GenerationQualificationContractError),
+    /// A candidate-generation attempt precursor failed relationship validation.
+    #[error("candidate generation attempt precursor is invalid")]
+    InvalidCandidateGenerationAttemptPrecursor(#[source] GenerationQualificationContractError),
+    /// A terminal candidate-generation execution failed relationship validation.
+    #[error("candidate generation execution is invalid")]
+    InvalidCandidateGenerationExecution(#[source] GenerationQualificationContractError),
+    /// A deterministic generation-case contract failed relationship validation.
+    #[error("generation deterministic case contract is invalid")]
+    InvalidGenerationDeterministicCaseContract(#[source] GenerationDeterministicCaseContractError),
+    /// Version 2 effective-package evidence failed domain validation.
+    #[error("effective package v2 evidence is invalid")]
+    InvalidEffectivePackageV2(#[source] EffectivePackageEvidenceV2Error),
+    /// A generation-system foundation record failed relationship validation.
+    #[error("generation system foundation is invalid")]
+    InvalidGenerationSystem(#[source] GenerationQualificationContractError),
     /// Installed artifact-set state failed domain validation.
     #[error("installed artifact-set state is invalid")]
     InvalidArtifactSetInstallation(#[source] InstalledArtifactSetError),

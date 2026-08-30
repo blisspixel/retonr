@@ -22,7 +22,9 @@ use crate::{
 
 use self::transport::SingleConnectionTransport;
 
+mod probe;
 mod receipt;
+mod resource_observation;
 mod session;
 #[cfg(test)]
 mod session_tests;
@@ -30,10 +32,18 @@ mod session_tests;
 mod tests;
 mod transport;
 
+pub use probe::{
+    OLLAMA_RUNTIME_PROBE_MAX_BODY_BYTES, OllamaObservedRuntimeProbeError,
+    OllamaRuntimeProbeEvidence, OllamaSingleConnectionRuntimeProbe,
+};
 pub use receipt::{
     OLLAMA_RESIDENT_COMPLETION_KEEP_ALIVE, OLLAMA_RESIDENT_COMPLETION_RUNTIME_VERSION,
     OLLAMA_RESIDENT_COMPLETION_SOURCE_REVISION, OllamaResidentSessionExecutionReceipt,
-    OllamaSessionExecutionReceipt,
+    OllamaSessionExecutionReceipt, derive_ollama_retained_session_response_id,
+};
+pub use resource_observation::{
+    OllamaGenerateResourceObservation, OllamaGenerateResourceObservationError,
+    OllamaResidentResourceObservedCompletion, OllamaRetainedSessionSubjectToken,
 };
 pub use session::{
     OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES, OllamaObservedSessionError,

@@ -5,13 +5,32 @@
 //! deterministic error and never launch the requested runtime.
 
 mod contract;
+#[cfg(any(target_os = "linux", test))]
+mod deadline;
 mod error;
 mod platform;
 
+#[cfg(target_os = "linux")]
+pub(crate) use contract::CONTROLLED_BUILD_INPUT_SNAPSHOT_TIMEOUT;
+
 pub use contract::{
+    AuthenticatedBusyboxExecutable, ControlledBuildExecution, ControlledBuildInputFile,
+    ControlledBuildIsolationEvidence, ControlledBuildLaunchSpec, ControlledBuildOutput,
+    ControlledBuildOutputTree, ControlledBuildOutputTreeEntry, ControlledBuildProcessStatus,
     IsolationEvidence, IsolationPolicy, IsolationPreparationEvidence, LaunchSpec,
-    LinuxSocketDiagnosticsCapability, MAXIMUM_STARTUP_STREAM_BYTES, ManagedLoopbackChannel,
-    ManagedStartupOutput, NamespaceIdentity, PreparedIsolation, RetainedIsolationLease,
+    LinuxSocketDiagnosticsCapability, MANAGED_RUNTIME_INPUT_ROOT_V1,
+    MAXIMUM_CONTROLLED_BUILD_INPUT_BYTES, MAXIMUM_CONTROLLED_BUILD_INPUT_FILES,
+    MAXIMUM_CONTROLLED_BUILD_OUTPUT_BYTES, MAXIMUM_CONTROLLED_BUILD_OUTPUT_TREE_ENTRIES,
+    MAXIMUM_CONTROLLED_BUILD_WORKSPACE_BYTES, MAXIMUM_CONTROLLED_BUILD_WORKSPACE_INODES,
+    MAXIMUM_MANAGED_RUNTIME_INPUT_BYTES, MAXIMUM_MANAGED_RUNTIME_INPUT_FILES,
+    MAXIMUM_STARTUP_STREAM_BYTES, ManagedDeviceBoundaryEvidence, ManagedDeviceVisibilityPolicy,
+    ManagedLoopbackChannel, ManagedRuntimeInputEvidence, ManagedStartupOutput, NamespaceIdentity,
+    PreparedIsolation, PreparedIsolationSubjectToken, RetainedIsolationLease,
+    RetainedProgramBootstrapAttempt, RetainedProgramBootstrapCapabilities,
+    RetainedProgramBootstrapExecution, RetainedProgramBootstrapInputKind,
+    RetainedProgramBootstrapInputMeasurement, RetainedProgramBootstrapLaunchSpec,
+    RetainedProgramBootstrapRootEvidence, RetainedProgramBootstrapSignedInputs,
+    RetainedRuntimeInputSink, RetainedRuntimeInputSource, RetainedRuntimeInputTree,
     TargetProcessEvidence,
 };
 pub use error::{IoErrorKind, IsolationError, IsolationResult};

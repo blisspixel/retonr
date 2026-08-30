@@ -5,17 +5,18 @@ use rewrite_model::ArtifactId;
 use rewrite_types::{CancellationToken, Digest};
 
 use super::{OllamaObservedSessionError, OllamaResponseObservationPhase};
-use crate::{
-    OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES, OllamaLimits, OllamaRetainedStreamSessionConfig,
-};
+use crate::{OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES, OllamaLimits};
 
 use self::fixture::{
-    SessionMode, SessionServer, binding, config, context, request, request_with_relaxed_self_limit,
+    SessionMode, SessionServer, config, context, request, request_with_relaxed_self_limit,
 };
 
+mod borrowed_residency;
+mod config_tests;
 mod fixture;
 mod judge;
 mod residency;
+mod resource_observation;
 
 #[tokio::test]
 async fn sequential_completions_retain_transport_observer_and_ordinals() {
@@ -111,6 +112,7 @@ async fn sequential_completions_retain_transport_observer_and_ordinals() {
         assert_eq!(generated["think"], false);
         assert_eq!(generated["raw"], false);
         assert_eq!(generated["options"]["temperature"], 0.0);
+        assert!(generated["options"].get("num_gpu").is_none());
     }
 }
 
@@ -307,6 +309,11 @@ async fn rejects_remote_nonterminal_invalid_and_truncated_generation() {
             "invalid_candidate_envelope",
         ),
         (
+            SessionMode::MultipleCandidateOutput,
+            InferenceErrorKind::MalformedResponse,
+            "candidate_count_mismatch",
+        ),
+        (
             SessionMode::TruncatedGeneration,
             InferenceErrorKind::Retryable,
             "transport_failed",
@@ -477,26 +484,4 @@ fn assert_session_error<E: std::fmt::Debug>(
     };
     assert_eq!(error.kind, expected_kind);
     assert_eq!(error.code, expected_code);
-}
-
-#[test]
-fn config_rejects_duplicate_and_unbounded_session_identity() {
-    let endpoint =
-        crate::OllamaEndpoint::parse("http://127.0.0.1:11434").expect("loopback endpoint");
-    let duplicate = OllamaRetainedStreamSessionConfig::new(
-        endpoint.clone(),
-        vec![binding(), binding()],
-        OllamaLimits::default(),
-        1024,
-    )
-    .expect_err("duplicate bindings fail");
-    assert_eq!(duplicate.code, "duplicate_session_binding");
-    let empty = OllamaRetainedStreamSessionConfig::new(
-        endpoint,
-        Vec::new(),
-        OllamaLimits::default(),
-        usize::MAX,
-    )
-    .expect_err("empty bindings fail");
-    assert_eq!(empty.code, "invalid_session_bindings");
 }

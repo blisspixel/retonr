@@ -19,6 +19,20 @@ mod contract;
 
 use contract::{artifact_set, logical_binding_digest, model_package};
 
+/// Derives the canonical logical binding for one parsed Ollama manifest plan.
+///
+/// The binding covers the raw manifest and the exact media type, digest, size,
+/// and reconstructed logical path of every supported descriptor. It does not
+/// read blobs or grant package, license, load, or generation authority.
+///
+/// # Errors
+///
+/// Returns [`ReconstructionError`] when the parsed plan does not match the
+/// closed supported descriptor contract.
+pub fn ollama_logical_binding_digest(plan: &OllamaManifestPlan) -> ReconstructionResult<Digest> {
+    logical_binding_digest(plan)
+}
+
 /// Informational comparison between config `rootfs.diff_ids` and layer descriptors.
 ///
 /// These booleans never select, open, or authorize a blob. The manifest

@@ -2,10 +2,12 @@ use std::{
     env,
     fs::File,
     path::Path,
-    process::{Child, Command, Stdio},
+    process::{Command, Stdio},
 };
 
 use crate::{IsolationPolicy, IsolationResult, LaunchSpec, error::native};
+
+use super::linux_process::HelperProcess;
 
 const INTERNAL_PREFIX: &str = "REWRITE_ISOLATION_INTERNAL_";
 
@@ -78,8 +80,9 @@ pub(super) fn apply_target_environment(command: &mut Command, specification: &La
     }
 }
 
-pub(super) fn spawn_helper(command: &mut Command) -> IsolationResult<Child> {
+pub(super) fn spawn_helper(command: &mut Command) -> IsolationResult<HelperProcess> {
     command
         .spawn()
+        .map(HelperProcess::new)
         .map_err(|error| native("spawn-isolation-helper", &error))
 }

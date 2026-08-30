@@ -12,23 +12,27 @@ use rewrite_types::CancellationToken;
 use super::{
     ArtifactInventoryError, FileShare, ManagedFile, ManagedTreeEntryKind, ManagedTreeLimits,
     ManagedTreeSnapshot, MetadataFingerprint, PinnedDirectory, ensure_not_cancelled,
-    map_publish_error, platform, validate_single_component,
+    map_publish_error, platform, remove_verified_managed_tree, validate_single_component,
 };
 use crate::artifact_storage::{StableMetadataFingerprint, mutation::random_staging_name};
 
 mod cleanup;
 mod creation;
-use cleanup::{
-    PublicationLedger, cleanup_closed_publication_failure, cleanup_prepublication_failure,
-};
+mod publication;
+mod publication_failure;
+use cleanup::PublicationLedger;
+#[cfg(test)]
+pub(in crate::artifact_storage::tree) use cleanup::inject_closed_ledger_cleanup_failure_once;
 use creation::{create_retained_directory, create_retained_file};
 #[cfg(test)]
 pub(super) use creation::{
     create_retained_directory_with_failure, create_retained_file_with_failure,
 };
+pub(crate) use publication_failure::NoReplacePublicationFailure;
 
 const STAGING_NAME_ATTEMPTS: usize = 1_024;
 const STAGING_PREFIX: &str = ".set-import-";
+const PUBLICATION_PROBE_PREFIX: &str = ".set-publication-probe-";
 
 struct RetainedDirectory {
     directory: PinnedDirectory,
@@ -66,6 +70,20 @@ impl OwnedStagingTree {
 
     /// Creates and pins a fresh random staging root beneath the supplied parent.
     pub(crate) fn create(
+        parent: &PinnedDirectory,
+        limits: ManagedTreeLimits,
+        maximum_staging_roots: usize,
+        cancellation: &CancellationToken,
+    ) -> Result<Self, ArtifactInventoryError> {
+        Self::create_without_publication_preflight(
+            parent,
+            limits,
+            maximum_staging_roots,
+            cancellation,
+        )
+    }
+
+    fn create_without_publication_preflight(
         parent: &PinnedDirectory,
         limits: ManagedTreeLimits,
         maximum_staging_roots: usize,
@@ -116,6 +134,82 @@ impl OwnedStagingTree {
             io::ErrorKind::AlreadyExists,
             "could not reserve a unique staging directory",
         )))
+    }
+
+    /// Proves that one exact parent pair supports atomic no-replace publication.
+    ///
+    /// The capability probe publishes an empty random tree and removes it through
+    /// retained identity handles. A rejecting filesystem therefore fails before
+    /// callers copy any retained bytes. This never falls back to replacing rename.
+    pub(crate) fn preflight_no_replace_publication(
+        staging_parent: &PinnedDirectory,
+        destination_parent: &PinnedDirectory,
+        limits: ManagedTreeLimits,
+        maximum_staging_roots: usize,
+        maximum_destination_entries: usize,
+        cancellation: &CancellationToken,
+    ) -> Result<(), ArtifactInventoryError> {
+        Self::preflight_no_replace_publication_preserving_cleanup(
+            staging_parent,
+            destination_parent,
+            limits,
+            maximum_staging_roots,
+            maximum_destination_entries,
+            cancellation,
+        )
+        .map_err(NoReplacePublicationFailure::into_legacy_error)
+    }
+
+    pub(crate) fn preflight_no_replace_publication_preserving_cleanup(
+        staging_parent: &PinnedDirectory,
+        destination_parent: &PinnedDirectory,
+        limits: ManagedTreeLimits,
+        maximum_staging_roots: usize,
+        maximum_destination_entries: usize,
+        cancellation: &CancellationToken,
+    ) -> Result<(), NoReplacePublicationFailure> {
+        let mut staging = Self::create_without_publication_preflight(
+            staging_parent,
+            limits,
+            maximum_staging_roots,
+            cancellation,
+        )
+        .map_err(|error| NoReplacePublicationFailure::before_commit(error, None))?;
+        if let Err(original) = staging.sync_bottom_up(cancellation) {
+            return Err(NoReplacePublicationFailure::before_commit(
+                original,
+                staging.cleanup().err(),
+            ));
+        }
+        let synced = staging
+            .into_synced()
+            .map_err(|error| NoReplacePublicationFailure::before_commit(error, None))?;
+        let destination_name = match random_staging_name(PUBLICATION_PROBE_PREFIX) {
+            Ok(name) => name,
+            Err(original) => {
+                return Err(NoReplacePublicationFailure::before_commit(
+                    original,
+                    synced.cleanup().err(),
+                ));
+            }
+        };
+        let published = synced.publish_no_replace_preserving_cleanup(
+            destination_parent,
+            &destination_name,
+            maximum_destination_entries,
+            cancellation,
+        )?;
+        remove_verified_managed_tree(
+            destination_parent,
+            &destination_name,
+            published,
+            limits,
+            maximum_destination_entries,
+        )
+        .map_err(NoReplacePublicationFailure::after_commit)?;
+        destination_parent
+            .sync()
+            .map_err(NoReplacePublicationFailure::after_commit)
     }
 
     /// Exclusively creates and retains every missing component of one directory.
@@ -334,104 +428,6 @@ impl OwnedStagingTree {
             }
         }
         Ok(())
-    }
-}
-
-impl SyncedStagingTree {
-    /// Returns the pinned synchronized root for exact domain verification.
-    pub(crate) const fn root(&self) -> &PinnedDirectory {
-        &self.tree.root
-    }
-
-    /// Publishes after one final snapshot and cancellation check, without replacement.
-    pub(crate) fn publish_no_replace(
-        mut self,
-        destination_parent: &PinnedDirectory,
-        destination_name: &OsStr,
-        maximum_destination_entries: usize,
-        cancellation: &CancellationToken,
-    ) -> Result<PinnedDirectory, ArtifactInventoryError> {
-        let preflight = self.preflight_publish(
-            destination_parent,
-            destination_name,
-            maximum_destination_entries,
-        );
-        if let Err(error) = preflight {
-            return Err(cleanup_prepublication_failure(self, error));
-        }
-        if let Err(error) = ensure_not_cancelled(cancellation) {
-            return Err(cleanup_prepublication_failure(self, error));
-        }
-        let ledger = PublicationLedger::from_snapshot(
-            self.snapshot
-                .as_ref()
-                .expect("synchronized staging retains its snapshot"),
-        );
-        drop(self.snapshot.take());
-        self.tree.close_descendant_handles();
-        if let Err(error) = platform::rename_directory_no_replace(
-            &self.tree.parent.handle,
-            &self.tree.name,
-            &destination_parent.handle,
-            destination_name,
-        ) {
-            return Err(cleanup_closed_publication_failure(
-                self.tree,
-                &ledger,
-                map_publish_error(error),
-            ));
-        }
-        let SyncedStagingTree { tree, snapshot: _ } = self;
-        let OwnedStagingTree {
-            parent,
-            name: _,
-            root,
-            root_fingerprint,
-            directories,
-            files,
-            limits: _,
-            synced_snapshot: _,
-        } = tree;
-        drop(directories);
-        drop(files);
-        let published = destination_parent.open_direct_child_directory(destination_name)?;
-        if !published.fingerprint()?.same_identity(&root_fingerprint) {
-            return Err(ArtifactInventoryError::ConcurrentModification);
-        }
-        drop(root);
-        parent.sync()?;
-        destination_parent.sync()?;
-        Ok(published)
-    }
-
-    fn preflight_publish(
-        &self,
-        destination_parent: &PinnedDirectory,
-        destination_name: &OsStr,
-        maximum_destination_entries: usize,
-    ) -> Result<(), ArtifactInventoryError> {
-        validate_single_component(destination_name)?;
-        if maximum_destination_entries == 0 {
-            return Err(ArtifactInventoryError::InvalidLimits);
-        }
-        self.tree.verify_directory_bindings()?;
-        let current = self.tree.enumerate(&CancellationToken::new())?;
-        if self.snapshot.as_ref() != Some(&current) {
-            return Err(ArtifactInventoryError::ConcurrentModification);
-        }
-        match destination_parent.exact_entry_capacity(
-            destination_name,
-            maximum_destination_entries,
-            &CancellationToken::new(),
-        )? {
-            crate::artifact_storage::ExactEntryCapacity::Available => Ok(()),
-            crate::artifact_storage::ExactEntryCapacity::Present => {
-                Err(ArtifactInventoryError::ConcurrentModification)
-            }
-            crate::artifact_storage::ExactEntryCapacity::Full => {
-                Err(ArtifactInventoryError::StorageEntryLimitExceeded)
-            }
-        }
     }
 }
 

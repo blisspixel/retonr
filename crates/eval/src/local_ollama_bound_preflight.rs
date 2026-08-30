@@ -1,5 +1,7 @@
 //! Native exact-connection witness joined to one retained Ollama preflight transport.
 
+use std::time::Instant;
+
 use rewrite_inference::OperationContext;
 use rewrite_ollama::{
     OllamaEndpoint, OllamaLimits, OllamaObservedPreflightError, OllamaResponseObservation,
@@ -8,8 +10,8 @@ use rewrite_ollama::{
 use rewrite_runtime_attestor::{
     AttachedProcessEvidence, AttachedProcessLease, AttachedProcessObserver,
     AttachedProcessWitnessError, AttachedProcessWitnessLimits, ListenerEndpoint,
-    MAXIMUM_ENTRYPOINT_BYTES, NativeAttachedProcessObserver, RetainedTcpConnection,
-    RetainedTcpConnectionEvidence,
+    MAXIMUM_ENTRYPOINT_BYTES, NativeAttachedProcessObserver, NativeManagedLinuxProcessLease,
+    RetainedTcpConnection, RetainedTcpConnectionEvidence,
 };
 use rewrite_types::{CancellationToken, Digest};
 use serde::{Deserialize, Serialize};
@@ -370,6 +372,82 @@ impl ConnectionObservationSequence {
                     .ok_or(LocalOllamaBoundPreflightError::InvalidObservationSequence)?;
                 lease
                     .reobserve_connection(connection, initial, cancellation)
+                    .map_err(LocalOllamaBoundPreflightError::Witness)?;
+                self.failed_attempt_observed = true;
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn observe_until(
+        &mut self,
+        lease: &mut NativeManagedLinuxProcessLease,
+        cancellation: &CancellationToken,
+        observation: OllamaResponseObservation,
+        operation_deadline: Instant,
+    ) -> Result<(), LocalOllamaBoundPreflightError> {
+        let addresses = observation.addresses();
+        let connection = RetainedTcpConnection::new(addresses.client(), addresses.server())
+            .map_err(LocalOllamaBoundPreflightError::Witness)?;
+        match observation.phase() {
+            OllamaResponseObservationPhase::BeforeResponses => {
+                if self.connection.is_some()
+                    || self.initial.is_some()
+                    || self.completed_responses != 0
+                    || self.failed_attempt_observed
+                {
+                    return Err(LocalOllamaBoundPreflightError::InvalidObservationSequence);
+                }
+                let evidence = lease
+                    .observe_connection_until(connection, cancellation, operation_deadline)
+                    .map_err(LocalOllamaBoundPreflightError::Witness)?;
+                self.connection = Some(connection);
+                self.initial = Some(evidence.clone());
+                self.evidence.push(evidence);
+            }
+            OllamaResponseObservationPhase::AfterResponse { ordinal } => {
+                if self.failed_attempt_observed
+                    || ordinal != self.completed_responses.saturating_add(1)
+                    || ordinal > self.expected_responses
+                    || self.connection != Some(connection)
+                {
+                    return Err(LocalOllamaBoundPreflightError::InvalidObservationSequence);
+                }
+                let initial = self
+                    .initial
+                    .as_ref()
+                    .ok_or(LocalOllamaBoundPreflightError::InvalidObservationSequence)?;
+                let evidence = lease
+                    .reobserve_connection_until(
+                        connection,
+                        initial,
+                        cancellation,
+                        operation_deadline,
+                    )
+                    .map_err(LocalOllamaBoundPreflightError::Witness)?;
+                self.completed_responses = ordinal;
+                self.evidence.push(evidence);
+            }
+            OllamaResponseObservationPhase::AfterFailedAttempt {
+                completed_responses,
+            } => {
+                if self.failed_attempt_observed
+                    || completed_responses != self.completed_responses
+                    || self.connection != Some(connection)
+                {
+                    return Err(LocalOllamaBoundPreflightError::InvalidObservationSequence);
+                }
+                let initial = self
+                    .initial
+                    .as_ref()
+                    .ok_or(LocalOllamaBoundPreflightError::InvalidObservationSequence)?;
+                lease
+                    .reobserve_connection_until(
+                        connection,
+                        initial,
+                        cancellation,
+                        operation_deadline,
+                    )
                     .map_err(LocalOllamaBoundPreflightError::Witness)?;
                 self.failed_attempt_observed = true;
             }

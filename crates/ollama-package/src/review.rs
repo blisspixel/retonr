@@ -3,7 +3,7 @@ use rewrite_model::{
     RuntimeOperatingSystem, RuntimePackageManifestId, RuntimeTarget,
 };
 use rewrite_types::Digest;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::json::validate_unique_json;
@@ -17,7 +17,7 @@ const MAX_LOCATOR_BYTES: usize = 2_048;
 const MAX_IDENTITY_BYTES: usize = 128;
 
 /// One independently decided control in an exact runtime-package review.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RuntimePackageReviewCheck {
     /// Published bytes are bound to an immutable source and build lineage.
@@ -46,7 +46,7 @@ impl RuntimePackageReviewCheck {
 }
 
 /// Review result for one exact package control.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RuntimePackageReviewCheckStatus {
     /// Retained evidence satisfies this control.

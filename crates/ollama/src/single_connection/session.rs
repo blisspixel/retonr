@@ -15,6 +15,7 @@ use crate::{
 };
 
 use super::receipt::OllamaSessionExecutionReceipt;
+use super::resource_observation::OllamaRetainedSessionSubject;
 use completion::{run_completion, validate_completion_request};
 
 mod completion;
@@ -153,6 +154,7 @@ impl OllamaRetainedStreamSessionConfig {
             preflight: None,
             preflight_attempted: false,
             completion_input_bytes: self.completion_input_bytes,
+            resource_subject: OllamaRetainedSessionSubject::new(),
         })
     }
 }
@@ -169,6 +171,7 @@ pub struct OllamaRetainedStreamSession<F> {
     preflight: Option<OllamaPreflight>,
     preflight_attempted: bool,
     completion_input_bytes: u32,
+    resource_subject: OllamaRetainedSessionSubject,
 }
 
 impl<F> OllamaRetainedStreamSession<F> {

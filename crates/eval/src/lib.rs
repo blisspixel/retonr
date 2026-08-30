@@ -4,13 +4,19 @@
 #![deny(missing_docs)]
 
 use rewrite_app::{AppError, CandidateCheckRequest, CandidateCheckService};
+pub use rewrite_model::{EvaluationCase, ExpectedOutput, ReferenceJudgment};
 use rewrite_types::{ReasonCode, RewriteStatus};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+mod active_generation_qualification_subject;
 mod baseline;
+mod candidate_deterministic_compiler;
+mod candidate_judge_preparation;
 mod claim_shadow_calibration;
 mod editorial_corpus;
+mod generation_case_material;
+mod generation_qualification_preregistration;
 mod hybrid_scorecard;
 mod local_judge_execution;
 mod local_ollama_attested_preflight;
@@ -18,6 +24,8 @@ mod local_ollama_bound_preflight;
 mod local_ollama_managed_preflight;
 mod local_ollama_model_binding;
 mod local_ollama_preflight;
+mod verified_candidate_batch;
+mod verified_candidate_batch_set;
 mod watermark_research;
 mod writing_sample_library;
 
@@ -26,6 +34,20 @@ pub use baseline::{
     BaselineError, BaselineInferencePolicy, BaselineKind, BaselineReport, BaselineStatusCounts,
     MAX_BASELINE_DEFINITION_BYTES, parse_baseline_definition, run_attached_baseline, run_baseline,
     run_offline_baseline,
+};
+pub use candidate_deterministic_compiler::{
+    CandidateDeterministicCompilerError, CandidateDeterministicCompilerRelationship,
+    CandidateDeterministicCompilerSide, MAX_CANDIDATE_DETERMINISTIC_COMPILER_CASES,
+    MAX_CANDIDATE_DETERMINISTIC_PROJECTED_SUITE_BYTES, compile_candidate_deterministic_evaluation,
+};
+pub use candidate_judge_preparation::{
+    CandidateJudgePreparationError, CandidateJudgePreparationInput,
+    CandidateJudgePreparationOutcome, CandidateJudgePreparationRelationship,
+    CandidateJudgePreparationRequestFailure, CandidateJudgePreparationSide,
+    CandidateJudgeRunnerHandoff, CandidateJudgeRunnerPairingError,
+    CandidateJudgeRunnerPairingRelationship, CandidateJudgeRunnerPairingValidationPhase,
+    PairedCandidateJudgeRunnerHandoff, PreparedCandidateJudgeRun,
+    pair_candidate_judge_runner_handoffs, prepare_candidate_judge,
 };
 pub use claim_shadow_calibration::{
     CLAIM_SHADOW_CALIBRATION_SCHEMA_VERSION, ClaimShadowCalibrationCorpus,
@@ -38,6 +60,45 @@ pub use editorial_corpus::{
     EditorialCorpusError, EditorialCorpusOrigin, EditorialCorpusSummary,
     EditorialFindingExpectation, MAX_EDITORIAL_CASES, MAX_EDITORIAL_CORPUS_BYTES,
     parse_editorial_corpus,
+};
+pub use generation_case_material::{
+    GENERATION_CASE_MATERIAL_SET_DIGEST_DOMAIN,
+    GENERATION_DETERMINISTIC_CASE_CONTRACT_SCHEMA_VERSION, GenerationCaseMaterialLimits,
+    GenerationDeterministicCaseContractError, GenerationDeterministicCaseContractV1,
+    GenerationDeterministicCaseContractV1Input, MAX_GENERATION_CASE_MATERIAL_CASES,
+    MAX_GENERATION_CASE_MATERIAL_IDENTITY_BYTES, MAX_GENERATION_CASE_MATERIAL_TOTAL_SOURCE_BYTES,
+    MAX_GENERATION_DETERMINISTIC_CASE_CONTRACT_JSON_BYTES,
+    MAX_GENERATION_DETERMINISTIC_CASE_PROTECTED_TERMS,
+    MAX_GENERATION_DETERMINISTIC_CASE_RUBRIC_CLAUSES, VerifiedGenerationCaseMaterial,
+    VerifiedGenerationCaseMaterialError, VerifiedGenerationCaseMaterialRelationship,
+    VerifiedGenerationCaseMaterialTraversalError,
+};
+pub use generation_qualification_preregistration::{
+    ActiveGenerationQualificationAttemptLedgerClosure,
+    ActiveGenerationQualificationAttemptLedgerError,
+    ActiveGenerationQualificationAttemptLedgerErrorKind,
+    ActiveGenerationQualificationCandidateCloseoutError,
+    ActiveGenerationQualificationCandidateCloseoutErrorKind,
+    ActiveGenerationQualificationCandidateCloseoutInput,
+    ActiveGenerationQualificationCandidateRunError,
+    ActiveGenerationQualificationCandidateRunErrorKind,
+    ActiveGenerationQualificationCandidateRunInput,
+    ActiveGenerationQualificationCandidateRunOutcome,
+    ActiveGenerationQualificationCandidateSettlementError,
+    ActiveGenerationQualificationCandidateSettlementErrorKind,
+    ActiveGenerationQualificationJudgeRunError, ActiveGenerationQualificationJudgeRunErrorKind,
+    ActiveGenerationQualificationJudgeRunInput, ActiveGenerationQualificationOperation,
+    ActiveGenerationQualificationOperationInterruption,
+    ActiveGenerationQualificationOperationInterruptionError,
+    ActiveGenerationQualificationOperationInterruptionErrorKind,
+    FinalizedPhasePolicyRefusedPretrafficGenerationQualification,
+    FinalizedRejectedPretrafficGenerationQualification, GenerationQualificationActivationError,
+    GenerationQualificationOperationDraft, GenerationQualificationPhasePolicyRefusalError,
+    GenerationQualificationPreparationDisposition, GenerationQualificationPreparationError,
+    GenerationQualificationPreregistrationOpenError,
+    GenerationQualificationPreregistrationRepository,
+    GenerationQualificationPretrafficTerminalizationError,
+    PreparedGenerationQualificationOperation, ProjectedGenerationQualificationOperation,
 };
 pub use hybrid_scorecard::{
     HYBRID_SCORECARD_SCHEMA_VERSION, HybridScorecardCasePlan, HybridScorecardError,
@@ -70,6 +131,11 @@ pub use local_ollama_bound_preflight::{
     parse_local_ollama_bound_preflight_plan, run_local_ollama_bound_preflight,
 };
 pub use local_ollama_managed_preflight::{
+    CompletePassedRepeatabilityRelations, FailedManagedCandidateAttempt,
+    GenerationQualificationResourcePhaseAuthorityError,
+    GenerationQualificationResourcePhaseCompilationError,
+    GenerationQualificationResourcePhaseCompiler,
+    GenerationQualificationResourcePhaseDerivationError,
     LOCAL_OLLAMA_MANAGED_BUILD_BINDING_SCHEMA_VERSION,
     LOCAL_OLLAMA_MANAGED_GENERATION_EVIDENCE_SCHEMA_VERSION,
     LOCAL_OLLAMA_MANAGED_PREFLIGHT_REPORT_SCHEMA_VERSION,
@@ -78,8 +144,20 @@ pub use local_ollama_managed_preflight::{
     LocalOllamaManagedGenerationEvidence, LocalOllamaManagedGenerationOutcome,
     LocalOllamaManagedPreflightError, LocalOllamaManagedPreflightLimits,
     LocalOllamaManagedPreflightOutcome, LocalOllamaManagedPreflightReport,
-    LocalOllamaManagedProcessEvidenceLevel, run_local_ollama_managed_generation,
+    LocalOllamaManagedProcessEvidenceLevel,
+    MANAGED_OLLAMA_GENERATION_BRACKET_OBSERVATION_SCHEMA_VERSION,
+    ManagedCandidateAttemptCleanupFailures, ManagedCandidateAttemptExecutionError,
+    ManagedCandidateAttemptExecutionOutcome, ManagedCandidateAttemptFailureRecordError,
+    ManagedCandidateAttemptPrimaryFailure, ManagedCandidateAttemptRunInput,
+    ManagedCandidateJudgeRunError, ManagedCandidateJudgeRunErrorKind,
+    ManagedOllamaGenerationBracketObservationV1, VerifiedCandidateJudgeJoin,
+    VerifiedCandidateJudgeJoinRevalidationError, VerifiedCandidateJudgeJoinRevalidationErrorKind,
+    VerifiedCompletePassedRepeatabilityJoins, VerifiedCompletePassedRepeatabilityJoinsError,
+    VerifiedCompletedManagedCandidateAttempt, VerifiedGenerationQualificationResourcePhase,
+    VerifiedPassedRepeatabilityJoins, VerifiedPassedRepeatabilityJoinsError,
+    VerifiedPassedRepeatabilityJoinsErrorKind, run_local_ollama_managed_generation,
     run_local_ollama_managed_preflight, run_local_ollama_managed_preflight_with_build_binding,
+    verify_complete_passed_repeatability_joins, verify_passed_repeatability_joins,
 };
 pub use local_ollama_model_binding::{
     LOCAL_OLLAMA_MODEL_BINDING_RUNTIME_VERSION, LOCAL_OLLAMA_MODEL_BINDING_SCHEMA_VERSION,
@@ -94,6 +172,14 @@ pub use local_ollama_preflight::{
     LocalOllamaPreflightReport, MAX_LOCAL_OLLAMA_MODELS, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES,
     parse_local_ollama_preflight_plan, run_local_ollama_preflight,
     run_local_ollama_preflight_with_receipt,
+};
+pub use verified_candidate_batch::{
+    VerifiedCandidateBatch, VerifiedCandidateBatchError, VerifiedCandidateBatchRelationship,
+    VerifiedCandidateBatchResourceInput,
+};
+pub use verified_candidate_batch_set::{
+    VerifiedCandidateBatchSet, VerifiedCandidateBatchSetError, VerifiedCandidateBatchSetInput,
+    VerifiedCandidateBatchSetRelationship,
 };
 pub use watermark_research::{
     MAX_WATERMARK_RESEARCH_BYTES, WATERMARK_RESEARCH_SCHEMA_VERSION, WatermarkResearchCorpus,
@@ -121,57 +207,6 @@ pub struct EvaluationSuite {
     pub schema_version: u32,
     /// Independently reported cases.
     pub cases: Vec<EvaluationCase>,
-}
-
-/// One deterministic source and candidate expectation.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct EvaluationCase {
-    /// Stable fixture identifier.
-    pub id: String,
-    /// Stable category used for risk-stratified reports.
-    pub category: String,
-    /// Synthetic source text.
-    pub source: String,
-    /// Synthetic candidate text.
-    pub candidate: String,
-    /// Exact caller-declared terms.
-    #[serde(default)]
-    pub protected_terms: Vec<String>,
-    /// Human reference judgment for aggregate transformation coverage.
-    pub reference_judgment: ReferenceJudgment,
-    /// Required transaction status.
-    pub expected_status: RewriteStatus,
-    /// Required reason when the case should abstain.
-    pub expected_reason: Option<ReasonCode>,
-    /// Which complete byte sequence must be returned.
-    pub expected_output: ExpectedOutput,
-}
-
-/// Human reference judgment for a complete candidate.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ReferenceJudgment {
-    /// The changed candidate is acceptable under the fixture's intended meaning and
-    /// document contract.
-    Acceptable,
-    /// The candidate violates meaning, structure, safety, or another required
-    /// contract.
-    Unacceptable,
-    /// The candidate is intentionally identical to the source.
-    Identity,
-    /// Transformation coverage does not apply to this fixture.
-    NotApplicable,
-}
-
-/// Expected output identity for an evaluation case.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ExpectedOutput {
-    /// The exact source bytes must be returned.
-    Source,
-    /// The exact candidate bytes must be returned.
-    Candidate,
 }
 
 /// Redacted aggregate result for one suite execution.

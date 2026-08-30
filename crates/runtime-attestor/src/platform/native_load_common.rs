@@ -13,8 +13,8 @@ use rewrite_types::{CancellationToken, Digest};
 use sha2::{Digest as _, Sha256};
 
 use crate::{
-    ExpectedExternalNativeComponent, NativeLoadObservationLimits, NativeLoadObserverError,
-    ensure_native_active, native_load::expected_key,
+    ExpectedExternalNativeComponent, NativeLoadDiscovery, NativeLoadObservationLimits,
+    NativeLoadObserverError, ensure_native_active, native_load::expected_key,
 };
 
 const HASH_BUFFER_BYTES: usize = 1024 * 1024;
@@ -91,8 +91,11 @@ pub(super) fn finish_observation(
     components.sort_by_key(component_key);
     if components.iter().any(|component| {
         package.members().iter().any(|member| {
-            member.load_policy() == RuntimePackageLoadPolicy::MustNotBeCodeLoaded
-                && member.artifact_id() == component.artifact_id()
+            member.artifact_id() == component.artifact_id()
+                && (member.load_policy() == RuntimePackageLoadPolicy::MustNotBeCodeLoaded
+                    || member
+                        .roles()
+                        .contains(&rewrite_model::RuntimePackageMemberRole::WorkerExecutable))
         })
     }) {
         return Err(NativeLoadObserverError::ComponentPolicyMismatch);
@@ -110,6 +113,49 @@ pub(super) fn finish_observation(
         },
     )
     .map_err(|_error| NativeLoadObserverError::InvalidObservation)
+}
+
+pub(super) fn finish_discovery(
+    package: &RuntimePackageManifest,
+    evidence_class: NativeLoadEvidenceClass,
+    contract_id: &str,
+    process_evidence_digest: &Digest,
+    mut components: Vec<NativeLoadedComponent>,
+) -> Result<NativeLoadDiscovery, NativeLoadObserverError> {
+    components.sort_by_key(component_key);
+    let mut expected = components
+        .iter()
+        .filter(|component| {
+            matches!(
+                component.origin(),
+                NativeLoadOrigin::ExternalPlatformComponent
+            )
+        })
+        .map(|component| {
+            ExpectedExternalNativeComponent::new(
+                component.artifact_id().clone(),
+                component.byte_size(),
+                component.mapping_class(),
+            )
+        })
+        .collect::<Vec<_>>();
+    expected.sort_by_key(expected_key);
+    let observation = finish_observation(
+        package,
+        &expected,
+        evidence_class,
+        contract_id,
+        process_evidence_digest,
+        components,
+    )?;
+    NativeLoadDiscovery::from_observed_components(
+        package,
+        process_evidence_digest.clone(),
+        evidence_class,
+        contract_id,
+        1,
+        observation.components(),
+    )
 }
 
 fn validate_external_set(

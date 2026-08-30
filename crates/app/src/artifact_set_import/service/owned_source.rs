@@ -15,6 +15,17 @@ use crate::artifact_set_import::{
     verify::{validate_staged_snapshot, verify_final_tree},
 };
 
+pub(crate) enum OwnedSourceStagingImportError<E> {
+    ArtifactSet(ArtifactSetImportError),
+    BeforePublication(E),
+}
+
+impl<E> From<ArtifactSetImportError> for OwnedSourceStagingImportError<E> {
+    fn from(error: ArtifactSetImportError) -> Self {
+        Self::ArtifactSet(error)
+    }
+}
+
 impl OfflineArtifactSetImportService<'_> {
     pub(crate) fn create_owned_source_staging(
         &self,
@@ -47,39 +58,72 @@ impl OfflineArtifactSetImportService<'_> {
         &mut self,
         manifest: &ArtifactSetManifest,
         expected_plan: &ValidatedSetPlan,
-        mut staging: OwnedStagingTree,
+        staging: OwnedStagingTree,
         cancellation: &CancellationToken,
     ) -> Result<ArtifactSetImportResult, ArtifactSetImportError> {
+        match self.import_owned_source_staging_with_prepublication(
+            manifest,
+            expected_plan,
+            staging,
+            cancellation,
+            || Ok::<(), std::convert::Infallible>(()),
+        ) {
+            Ok(result) => Ok(result),
+            Err(OwnedSourceStagingImportError::ArtifactSet(error)) => Err(error),
+            Err(OwnedSourceStagingImportError::BeforePublication(never)) => match never {},
+        }
+    }
+
+    /// Imports application-owned staging after one final caller recheck.
+    ///
+    /// The callback runs after staged-byte synchronization and verification and
+    /// immediately before the service hands a new tree to no-replace publication.
+    /// Callback failure cleans the unpublished staging tree. No callback runs
+    /// when an exact managed tree already exists because that branch performs no
+    /// publication.
+    pub(crate) fn import_owned_source_staging_with_prepublication<E, F>(
+        &mut self,
+        manifest: &ArtifactSetManifest,
+        expected_plan: &ValidatedSetPlan,
+        mut staging: OwnedStagingTree,
+        cancellation: &CancellationToken,
+        mut before_publication: F,
+    ) -> Result<ArtifactSetImportResult, OwnedSourceStagingImportError<E>>
+    where
+        F: FnMut() -> Result<(), E>,
+    {
         if let Err(error) = super::ensure_not_cancelled(cancellation) {
-            return fail_with_cleanup(staging, error);
+            return fail_with_cleanup(staging, error).map_err(Into::into);
         }
         let plan = match validate_manifest_and_limits(manifest, self.limits) {
             Ok(plan) => plan,
-            Err(error) => return fail_with_cleanup(staging, error),
+            Err(error) => return fail_with_cleanup(staging, error).map_err(Into::into),
         };
         if &plan != expected_plan {
-            return fail_with_cleanup(staging, ArtifactSetImportError::StorageChanged);
+            return fail_with_cleanup(staging, ArtifactSetImportError::StorageChanged)
+                .map_err(Into::into);
         }
         if let Err(error) = self.validate_storage_layout() {
-            return fail_with_cleanup(staging, error);
+            return fail_with_cleanup(staging, error).map_err(Into::into);
         }
         let prior = match self.preload_state(manifest, &plan) {
             Ok(prior) => prior,
-            Err(error) => return fail_with_cleanup(staging, error),
+            Err(error) => return fail_with_cleanup(staging, error).map_err(Into::into),
         };
         let final_name = OsString::from(&plan.storage_key);
         let existing_final = match self.open_final_root(&final_name, cancellation) {
             Ok(root) => root,
-            Err(error) => return fail_with_cleanup(staging, error),
+            Err(error) => return fail_with_cleanup(staging, error).map_err(Into::into),
         };
         if prior.is_some() && existing_final.is_none() {
-            return fail_with_cleanup(staging, ArtifactSetImportError::StateStorageMismatch);
+            return fail_with_cleanup(staging, ArtifactSetImportError::StateStorageMismatch)
+                .map_err(Into::into);
         }
         let tree_limits = match ManagedTreeLimits::new(self.limits.maximum_tree_entries)
             .map_err(map_managed_tree)
         {
             Ok(limits) => limits,
-            Err(error) => return fail_with_cleanup(staging, error),
+            Err(error) => return fail_with_cleanup(staging, error).map_err(Into::into),
         };
         let disposition = match (&prior, &existing_final) {
             (Some(_), Some(_)) => ArtifactSetImportDisposition::AlreadyPresent,
@@ -87,28 +131,20 @@ impl OfflineArtifactSetImportService<'_> {
             (None, None) => ArtifactSetImportDisposition::Imported,
             (Some(_), None) => unreachable!("missing managed root was rejected"),
         };
-        if let Err(error) = staging
-            .sync_bottom_up(cancellation)
-            .map_err(map_managed_tree)
-        {
-            return fail_with_cleanup(staging, error);
-        }
-        let snapshot = match staging.enumerate(cancellation).map_err(map_managed_tree) {
-            Ok(snapshot) => snapshot,
-            Err(error) => return fail_with_cleanup(staging, error),
-        };
-        if let Err(error) = validate_staged_snapshot(&snapshot, manifest, &plan) {
-            drop(snapshot);
-            return fail_with_cleanup(staging, error);
-        }
-        drop(snapshot);
         if let Err(error) =
-            verify_final_tree(staging.root(), manifest, &plan, tree_limits, cancellation)
+            verify_owned_staging(&mut staging, manifest, &plan, tree_limits, cancellation)
         {
-            return fail_with_cleanup(staging, error);
+            return fail_with_cleanup(staging, error).map_err(Into::into);
         }
-        if let Err(error) = super::ensure_not_cancelled(cancellation) {
-            return fail_with_cleanup(staging, error);
+        if existing_final.is_none()
+            && let Err(error) = before_publication()
+        {
+            return match staging.cleanup() {
+                Ok(()) => Err(OwnedSourceStagingImportError::BeforePublication(error)),
+                Err(cleanup) => Err(OwnedSourceStagingImportError::ArtifactSet(
+                    map_managed_tree(cleanup),
+                )),
+            };
         }
         let final_root = match existing_final {
             Some(root) => {
@@ -145,4 +181,21 @@ impl OfflineArtifactSetImportService<'_> {
             disposition,
         })
     }
+}
+
+fn verify_owned_staging(
+    staging: &mut OwnedStagingTree,
+    manifest: &ArtifactSetManifest,
+    plan: &ValidatedSetPlan,
+    tree_limits: ManagedTreeLimits,
+    cancellation: &CancellationToken,
+) -> Result<(), ArtifactSetImportError> {
+    staging
+        .sync_bottom_up(cancellation)
+        .map_err(map_managed_tree)?;
+    let snapshot = staging.enumerate(cancellation).map_err(map_managed_tree)?;
+    validate_staged_snapshot(&snapshot, manifest, plan)?;
+    drop(snapshot);
+    verify_final_tree(staging.root(), manifest, plan, tree_limits, cancellation)?;
+    super::ensure_not_cancelled(cancellation)
 }

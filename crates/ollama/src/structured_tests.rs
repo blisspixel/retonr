@@ -138,7 +138,7 @@ async fn mount_generation(server: &MockServer, payload: &str, done_reason: &str)
 }
 
 #[tokio::test]
-async fn returns_bounded_structured_json_without_domain_parsing() {
+async fn returns_bounded_provider_neutral_candidate_json() {
     let server = MockServer::start().await;
     mount_common(&server).await;
     let payload = r#"{"candidates":[{"text":"opaque payload"}]}"#;
@@ -157,10 +157,21 @@ async fn returns_bounded_structured_json_without_domain_parsing() {
 
 #[tokio::test]
 async fn rejects_oversized_invalid_or_truncated_structured_output() {
-    for (payload, limit, done_reason) in [
-        ("{\"too_long\":true}", 4_u64, "stop"),
-        ("not json", 1024_u64, "stop"),
-        ("{}", 1024_u64, "length"),
+    for (payload, limit, done_reason, expected_code) in [
+        (
+            "{\"too_long\":true}",
+            4_u64,
+            "stop",
+            "invalid_candidate_envelope",
+        ),
+        ("not json", 1024_u64, "stop", "invalid_candidate_envelope"),
+        (
+            "{\"candidates\":[{\"text\":\"one\"},{\"text\":\"two\"}]}",
+            1024_u64,
+            "stop",
+            "candidate_count_mismatch",
+        ),
+        ("{}", 1024_u64, "length", "invalid_generation_response"),
     ] {
         let server = MockServer::start().await;
         mount_common(&server).await;
@@ -173,10 +184,7 @@ async fn rejects_oversized_invalid_or_truncated_structured_output() {
             .await
             .expect_err("invalid structured payload is rejected");
         assert_eq!(error.kind, InferenceErrorKind::MalformedResponse);
-        assert!(matches!(
-            error.code.as_str(),
-            "invalid_generation_response" | "invalid_structured_output"
-        ));
+        assert_eq!(error.code, expected_code);
     }
 }
 

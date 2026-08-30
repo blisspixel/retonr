@@ -12,6 +12,7 @@ members = [
     "crates/ollama-package",
     "crates/runtime-attestor",
     "crates/runtime-isolation",
+    "crates/runtime-source-builder",
     "crates/text-adapter",
     "crates/types",
 ]
@@ -29,6 +30,7 @@ repository = "https://github.com/blisspixel/retonr"
 aho-corasick = "1.1.5"
 assert_cmd = "2.2.2"
 bytes = "1.12.1"
+cargo-lock = { version = "=11.1.0", default-features = false }
 cap-fs-ext = { version = "4.0.2", default-features = false }
 cap-primitives = "4.0.2"
 clap = { version = "4.6.0", features = ["derive", "env"] }
@@ -37,28 +39,34 @@ clap_mangen = "0.2.33"
 close_fds = "0.3.2"
 ctrlc = "3.5.2"
 futures-util = "0.3.34"
+flate2 = { version = "=1.1.9", default-features = false, features = ["rust_backend"] }
 fs_at = "0.2.1"
 getrandom = "0.4.3"
 http-body-util = "0.1.4"
 hyper = { version = "1.11.0", features = ["client", "http1"] }
 hyper-util = { version = "0.1.20", features = ["tokio"] }
+landlock = "0.4.7"
 libc = "0.2.189"
 predicates = "3.1.4"
 proptest = "1.9.0"
 regex = "1.11.2"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "stream"] }
+ring = "=0.17.14"
 rusqlite = { version = "0.40.2", default-features = false, features = ["backup", "bundled", "serialize"] }
 rustix = { version = "1.1.4", features = ["fs"] }
 same-file = "1.0.6"
 winx = "0.36.4"
 windows-sys = "0.61.2"
+winsafe = { version = "0.0.28", default-features = false, features = ["kernel"] }
 schemars = { version = "1.0.4", features = ["derive"] }
 seccompiler = "0.5.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
 thiserror = "2.0.17"
+toml = { version = "=1.1.4", default-features = false, features = ["parse", "serde", "std"] }
 tempfile = "3.27.0"
+tar = "0.4.44"
 tokio = { version = "1.53.1", features = ["macros", "rt", "sync", "test-util", "time"] }
 wiremock = "0.6.5"
 

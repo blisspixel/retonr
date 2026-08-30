@@ -111,7 +111,7 @@ fn structured_response(text: &str, status: &str) -> StructuredCompletionResponse
         schema_version: STRUCTURED_COMPLETION_REQUEST_SCHEMA_VERSION,
         artifact_id: request.artifact_id.clone(),
         artifact_digest: request.artifact_digest.clone(),
-        input: "placeholder".to_owned(),
+        input: text.to_owned(),
         output: claim_output_contract(),
         source_byte_count: u64::try_from(text.len()).expect("text size"),
         source_byte_limit: request.source_byte_limit,

@@ -72,4 +72,34 @@ impl Lease {
     ) -> Result<rewrite_model::NativeLoadObservation, NativeLoadObserverError> {
         Err(NativeLoadObserverError::Unsupported)
     }
+
+    #[expect(
+        clippy::unused_self,
+        reason = "the platform lease facade has one method shape on every target"
+    )]
+    pub(crate) fn discover_external_native_components(
+        &mut self,
+        _request: &crate::NativeLoadDiscoveryRequest<'_>,
+        _limits: NativeLoadObservationLimits,
+        _cancellation: &CancellationToken,
+        _started: Instant,
+        _process_evidence_digest: &Digest,
+    ) -> Result<crate::NativeLoadDiscovery, NativeLoadObserverError> {
+        Err(NativeLoadObserverError::Unsupported)
+    }
+
+    #[expect(
+        clippy::unused_self,
+        reason = "the platform lease facade has one method shape on every target"
+    )]
+    pub(crate) fn observe_generation_worker(
+        &mut self,
+        _request: &crate::ManagedGenerationWorkerObservationRequest<'_>,
+        _limits: crate::ManagedGenerationWorkerLimits,
+        _cancellation: &CancellationToken,
+        _started: Instant,
+        _process_evidence_digest: &Digest,
+    ) -> Result<crate::platform::WorkerLease, crate::ManagedGenerationWorkerError> {
+        Err(crate::ManagedGenerationWorkerError::Unsupported)
+    }
 }

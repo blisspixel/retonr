@@ -3,8 +3,9 @@ use std::fmt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use rewrite_model::{ArtifactId, RuntimeIdentity};
+use rewrite_model::{ArtifactId, RuntimeIdentity, StructuredCompletionRequestBindingId};
 use rewrite_types::Digest;
+use sha2::{Digest as _, Sha256};
 
 use crate::{ContractError, OutputContract, ReasoningPolicy, SamplingParameters, UsageObservation};
 
@@ -25,7 +26,7 @@ pub struct StructuredCompletionRequest {
     pub input: String,
     /// Exact structured-output contract.
     pub output: OutputContract,
-    /// Observed source bytes represented inside the complete input.
+    /// Original source bytes associated with the complete input.
     pub source_byte_count: u64,
     /// Qualified source-byte envelope.
     pub source_byte_limit: u64,
@@ -77,13 +78,14 @@ impl StructuredCompletionRequest {
         if self.artifact_id.digest() != &self.artifact_digest {
             return Err(ContractError::ArtifactMismatch);
         }
+        let input_byte_count = u64::try_from(self.input.len()).unwrap_or(u64::MAX);
         if self.source_byte_count > self.source_byte_limit
             || self.source_byte_limit == 0
             || self.input_byte_limit == 0
             || self.context_token_limit == 0
             || self.output_token_limit == 0
             || self.output_byte_limit == 0
-            || u64::try_from(self.input.len()).unwrap_or(u64::MAX) > self.input_byte_limit
+            || input_byte_count > self.input_byte_limit
         {
             return Err(ContractError::InvalidLimits);
         }
@@ -100,10 +102,12 @@ impl StructuredCompletionRequest {
     /// Returns a canonical digest binding the full effective request.
     ///
     /// The digest is an equality binding, not anonymization. Short predictable
-    /// inputs can still be guessed by dictionary attack.
+    /// inputs can still be guessed by dictionary attack. Canonical fields are
+    /// hashed incrementally without a second input-sized buffer.
     #[must_use]
     pub fn binding_digest(&self) -> Digest {
-        let mut material = b"retonr:structured-completion-request:v1\0".to_vec();
+        let mut material = Sha256::new();
+        material.update(b"retonr:structured-completion-request:v1\0");
         append_u32(&mut material, self.schema_version);
         append_digest(&mut material, self.artifact_id.digest());
         append_digest(&mut material, &self.artifact_digest);
@@ -116,14 +120,23 @@ impl StructuredCompletionRequest {
         append_u32(&mut material, self.context_token_limit);
         append_u32(&mut material, self.output_token_limit);
         append_u64(&mut material, self.output_byte_limit);
-        material.extend_from_slice(&self.sampling.temperature.to_bits().to_be_bytes());
-        material.extend_from_slice(&self.sampling.top_p.to_bits().to_be_bytes());
+        material.update(self.sampling.temperature.to_bits().to_be_bytes());
+        material.update(self.sampling.top_p.to_bits().to_be_bytes());
         append_optional_u64(&mut material, self.sampling.seed);
-        material.push(match self.reasoning {
+        material.update([match self.reasoning {
             ReasoningPolicy::Disabled => 0,
             ReasoningPolicy::Discard => 1,
-        });
-        Digest::sha256(&material)
+        }]);
+        finish_digest(material)
+    }
+
+    /// Returns the typed portable identity for this exact structured wire request.
+    ///
+    /// This is an inert equality binding. It does not establish transport,
+    /// response, runtime, or qualification facts.
+    #[must_use]
+    pub fn structured_request_binding_id(&self) -> StructuredCompletionRequestBindingId {
+        StructuredCompletionRequestBindingId::from_derived_digest(self.binding_digest())
     }
 }
 
@@ -251,29 +264,38 @@ fn is_complete_json(value: &str) -> bool {
     serde::de::IgnoredAny::deserialize(&mut deserializer).is_ok() && deserializer.end().is_ok()
 }
 
-fn append_u32(material: &mut Vec<u8>, value: u32) {
-    material.extend_from_slice(&value.to_be_bytes());
+fn append_u32(material: &mut Sha256, value: u32) {
+    material.update(value.to_be_bytes());
 }
 
-fn append_u64(material: &mut Vec<u8>, value: u64) {
-    material.extend_from_slice(&value.to_be_bytes());
+fn append_u64(material: &mut Sha256, value: u64) {
+    material.update(value.to_be_bytes());
 }
 
-fn append_bytes(material: &mut Vec<u8>, value: &[u8]) {
+fn append_bytes(material: &mut Sha256, value: &[u8]) {
     append_u64(material, value.len() as u64);
-    material.extend_from_slice(value);
+    material.update(value);
 }
 
-fn append_digest(material: &mut Vec<u8>, value: &Digest) {
-    material.extend_from_slice(value.as_str().as_bytes());
+fn append_digest(material: &mut Sha256, value: &Digest) {
+    material.update(value.as_str().as_bytes());
 }
 
-fn append_optional_u64(material: &mut Vec<u8>, value: Option<u64>) {
+fn append_optional_u64(material: &mut Sha256, value: Option<u64>) {
     match value {
         Some(value) => {
-            material.push(1);
+            material.update([1]);
             append_u64(material, value);
         }
-        None => material.push(0),
+        None => material.update([0]),
     }
 }
+
+fn finish_digest(material: Sha256) -> Digest {
+    Digest::from_sha256_hex(format!("{:x}", material.finalize()))
+        .expect("SHA-256 output is canonical lowercase hexadecimal")
+}
+
+#[cfg(test)]
+#[path = "structured/tests.rs"]
+mod tests;

@@ -32,7 +32,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         Err(ArtifactRepositoryError::State(
             rewrite_model_store::StoreError::MigrationRequired {
                 found: 2,
-                current: 6
+                current: 10
             }
         ))
     ));
@@ -44,7 +44,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (2, 6));
+    assert_eq!((result.from_schema, result.to_schema), (2, 10));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -74,7 +74,7 @@ fn schema_three_migration_retains_a_verified_backup() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (3, 6));
+    assert_eq!((result.from_schema, result.to_schema), (3, 10));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -239,9 +239,14 @@ fn live_runtime_lease_blocks_repository_migration() {
 fn downgrade_to_schema_two(repository: &ArtifactRepository) {
     let connection = rusqlite::Connection::open(repository.state_database())
         .expect("open fixture database for downgrade");
+    drop_current_generation_tables(&connection);
     connection
         .execute_batch(
             "PRAGMA foreign_keys = OFF;
+             DROP TABLE generation_system_records;
+             DROP TABLE effective_package_evidence_v2;
+             DROP TABLE generation_qualification_request_projections;
+             DROP TABLE generation_qualification_operation_policies;
              DROP TABLE native_load_observations;
              DROP TABLE model_package_manifests;
              DROP TABLE runtime_package_manifests;
@@ -260,9 +265,14 @@ fn downgrade_to_schema_two(repository: &ArtifactRepository) {
 fn downgrade_to_schema_three(repository: &ArtifactRepository) {
     let connection = rusqlite::Connection::open(repository.state_database())
         .expect("open fixture database for downgrade");
+    drop_current_generation_tables(&connection);
     connection
         .execute_batch(
             "PRAGMA foreign_keys = OFF;
+             DROP TABLE generation_system_records;
+             DROP TABLE effective_package_evidence_v2;
+             DROP TABLE generation_qualification_request_projections;
+             DROP TABLE generation_qualification_operation_policies;
              DROP TABLE native_load_observations;
              DROP TABLE model_package_manifests;
              DROP TABLE runtime_package_manifests;
@@ -271,4 +281,32 @@ fn downgrade_to_schema_three(repository: &ArtifactRepository) {
              PRAGMA user_version = 3;",
         )
         .expect("downgrade fixture to exact schema three");
+}
+
+fn drop_current_generation_tables(connection: &rusqlite::Connection) {
+    connection
+        .execute_batch(
+            "PRAGMA foreign_keys = OFF;
+             DROP TABLE candidate_generation_attempt_records;
+             DROP TABLE candidate_generation_receipts;
+             DROP TABLE generation_evidence_bundle_readbacks;
+             DROP TABLE generation_evidence_bundle_storage;
+             DROP TABLE generation_evidence_bundles;
+             DROP TABLE candidate_generation_cleanup_records;
+             DROP TABLE managed_candidate_generation_evidence;
+             DROP TABLE candidate_generation_attempt_precursors;
+             DROP TABLE generation_qualification_plan_attempts;
+             DROP TABLE generation_qualification_plan_systems;
+             DROP TABLE generation_qualification_plan_repetitions;
+             DROP TABLE generation_qualification_plans;
+             DROP TABLE candidate_selection_policies;
+             DROP TABLE planned_candidate_attempts;
+             DROP TABLE generation_repetition_records;
+             DROP TABLE generation_suite_cases;
+             DROP TABLE generation_suite_manifests;
+             DROP TABLE generation_case_manifests;
+             DROP TABLE generation_deterministic_case_contracts;
+             DROP TABLE generation_cluster_records;",
+        )
+        .expect("drop current generation fixture tables");
 }

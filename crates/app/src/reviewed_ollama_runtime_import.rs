@@ -8,6 +8,7 @@ use thiserror::Error;
 use crate::{
     ArtifactRepositoryErrorKind, ArtifactSetImportDisposition, ArtifactSetImportError,
     ArtifactSetImportLimits, ArtifactSetInstallationKey, PackageManifestWriteDisposition,
+    RuntimeSourceBuildEvidenceBundleError,
 };
 
 mod source;
@@ -129,6 +130,12 @@ impl OllamaRuntimeImportResult {
 /// Failure from the reviewed Ollama runtime import boundary.
 #[derive(Debug, Error)]
 pub enum OllamaRuntimeImportError {
+    /// The retained controlled-build attempts did not produce one exact package.
+    #[error("controlled runtime source-build attempts are not byte-identical")]
+    NonIdenticalSourceBuild,
+    /// The retained controlled-build evidence boundary failed revalidation.
+    #[error(transparent)]
+    SourceBuildEvidence(#[from] RuntimeSourceBuildEvidenceBundleError),
     /// A selected layout or member-tree path could not be made absolute.
     #[error("reviewed Ollama runtime source path is invalid")]
     InvalidSource(#[source] io::Error),
@@ -162,6 +169,22 @@ impl OllamaRuntimeImportError {
     pub(crate) fn kind(&self) -> ArtifactRepositoryErrorKind {
         use ArtifactRepositoryErrorKind as Kind;
         match self {
+            Self::SourceBuildEvidence(error) => match error {
+                RuntimeSourceBuildEvidenceBundleError::StorageIo(_) => Kind::Operational,
+                RuntimeSourceBuildEvidenceBundleError::LimitExceeded => Kind::ResourceLimit,
+                RuntimeSourceBuildEvidenceBundleError::Changed => Kind::ConcurrentModification,
+                RuntimeSourceBuildEvidenceBundleError::Cancelled => Kind::Cancelled,
+                RuntimeSourceBuildEvidenceBundleError::InvalidPath(_)
+                | RuntimeSourceBuildEvidenceBundleError::UnsafeBoundary
+                | RuntimeSourceBuildEvidenceBundleError::TreeMismatch
+                | RuntimeSourceBuildEvidenceBundleError::InvalidPlanBinding
+                | RuntimeSourceBuildEvidenceBundleError::Manifest(_)
+                | RuntimeSourceBuildEvidenceBundleError::SourceBundle(_)
+                | RuntimeSourceBuildEvidenceBundleError::Execution(_)
+                | RuntimeSourceBuildEvidenceBundleError::Compilation(_)
+                | RuntimeSourceBuildEvidenceBundleError::Inputs(_)
+                | RuntimeSourceBuildEvidenceBundleError::Report(_) => Kind::Conflict,
+            },
             Self::InvalidSource(_) => Kind::InvalidInput,
             Self::SourceIo(_) => Kind::Operational,
             Self::SourceChanged => Kind::ConcurrentModification,
@@ -172,7 +195,10 @@ impl OllamaRuntimeImportError {
                 RuntimeReconstructionError::LayoutTooLarge
                 | RuntimeReconstructionError::LimitExceeded,
             ) => Kind::ResourceLimit,
-            Self::UnsafeSource | Self::ReadbackConflict | Self::Reconstruction(_) => Kind::Conflict,
+            Self::NonIdenticalSourceBuild
+            | Self::UnsafeSource
+            | Self::ReadbackConflict
+            | Self::Reconstruction(_) => Kind::Conflict,
             Self::ArtifactSet(error) => crate::artifact_repository::set_import_error_kind(error),
             Self::State(error) => crate::artifact_repository::store_error_kind(error),
         }

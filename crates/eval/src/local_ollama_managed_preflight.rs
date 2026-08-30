@@ -38,16 +38,38 @@ mod report;
 mod test_support;
 mod validation;
 
-use build_binding::bind_successful_managed_preflight;
 pub use build_binding::{
     LOCAL_OLLAMA_MANAGED_BUILD_BINDING_SCHEMA_VERSION,
     LocalOllamaEffectiveStateMissingRelationship, LocalOllamaManagedBuildBinding,
     LocalOllamaManagedBuildEvidenceClass, LocalOllamaManagedPreflightOutcome,
 };
+use build_binding::{bind_successful_managed_preflight, revalidate_managed_preflight_outcome};
+pub(crate) use generation::ResourceObservedManagedCandidateAttemptClosure;
 pub use generation::{
+    CompletePassedRepeatabilityRelations, FailedManagedCandidateAttempt,
+    GenerationQualificationResourcePhaseAuthorityError,
+    GenerationQualificationResourcePhaseCompilationError,
+    GenerationQualificationResourcePhaseCompiler,
+    GenerationQualificationResourcePhaseDerivationError,
     LOCAL_OLLAMA_MANAGED_GENERATION_EVIDENCE_SCHEMA_VERSION, LocalOllamaManagedGenerationError,
     LocalOllamaManagedGenerationEvidence, LocalOllamaManagedGenerationOutcome,
-    run_local_ollama_managed_generation,
+    MANAGED_OLLAMA_GENERATION_BRACKET_OBSERVATION_SCHEMA_VERSION,
+    ManagedCandidateAttemptCleanupFailures, ManagedCandidateAttemptExecutionError,
+    ManagedCandidateAttemptExecutionOutcome, ManagedCandidateAttemptFailureRecordError,
+    ManagedCandidateAttemptPrimaryFailure, ManagedCandidateAttemptRunInput,
+    ManagedCandidateJudgeRunError, ManagedCandidateJudgeRunErrorKind,
+    ManagedOllamaGenerationBracketObservationV1, VerifiedCandidateJudgeJoin,
+    VerifiedCandidateJudgeJoinRevalidationError, VerifiedCandidateJudgeJoinRevalidationErrorKind,
+    VerifiedCompletePassedRepeatabilityJoins, VerifiedCompletePassedRepeatabilityJoinsError,
+    VerifiedCompletedManagedCandidateAttempt, VerifiedGenerationQualificationResourcePhase,
+    VerifiedPassedRepeatabilityJoins, VerifiedPassedRepeatabilityJoinsError,
+    VerifiedPassedRepeatabilityJoinsErrorKind, run_local_ollama_managed_generation,
+    verify_complete_passed_repeatability_joins, verify_passed_repeatability_joins,
+};
+pub(crate) use generation::{
+    GenerationQualificationLiveLifecycle, ResourceObservedManagedCandidateAttemptRunInput,
+    run_resource_observed_verified_managed_candidate_attempt_until,
+    run_verified_managed_candidate_attempt_until, run_verified_managed_candidate_judge_until,
 };
 use report::{build_report, report_evidence_digests};
 use validation::{

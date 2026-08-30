@@ -1,9 +1,9 @@
 # ADR 0007: Development host identity and hardware-probe privacy fields
 
-- Status: proposed
+- Status: accepted
 - Decision owners: project maintainers
 - Decision gate: milestone 0.2 required decisions
-- Last reviewed: 2026-08-17
+- Last reviewed: 2026-08-27
 
 ## Context
 
@@ -96,27 +96,57 @@ Rejected.
 
 ## Decision
 
-Adopt Option B, with an explicit field policy.
+Adopt the capability-record portion of Option B as a narrow, additive milestone-0.2
+contract. Broader development-host registration and accelerator characterization remain
+separate future decisions.
 
-Define a `HostEnvironment` record in the model domain, following the pattern already used
-by `EffectiveRuntimeState`: private fields, closed vocabularies, a bounded decoder, a
-fixed canonical encoding, and a frozen digest. It becomes the defined preimage of
-`platform_digest` and `execution_class_digest`, and of the qualification v2
-`hardware_envelope_digest`.
+`HostEnvironmentV1` is a model-domain inert record with private fields, closed
+vocabularies, bounded canonical JSON decoding, exact re-encoding, and a content-derived
+identity. V1 admits only the reviewed Linux, x86-64, GNU-libc native-CPU profile. It has
+four independently domain-separated typed projections plus one complete identity:
 
-Permitted fields describe capability only:
+- `retonr:host-environment-operating-system:v1\0`
+- `retonr:host-environment-architecture:v1\0`
+- `retonr:host-environment-execution-class:v1\0`
+- `retonr:host-environment-hardware-envelope:v1\0`
+- `retonr:host-environment:v1\0`
 
-- Operating-system family and version string
-- Architecture and application binary interface
-- CPU model string, physical core count, and logical core count
-- Total system memory, rounded to a declared granularity
-- Accelerator model string, reported memory, and device class
-- Memory model, either unified and shared or dedicated
-- Compute backend and execution placement, reusing the existing closed vocabularies
-- Backends that were present but rejected, with the reported reason
-- Driver or runtime library version strings
-- Binary profile, because a debug build measured artifact import 14.5 times slower than
-  a release build on the same host and the same bytes
+Every identity hashes its domain, the big-endian `u64` byte length, and the exact compact
+canonical JSON bytes. Projection types are distinct so an operating-system,
+architecture, execution, or hardware digest cannot be silently transposed at a typed
+boundary.
+
+V1 permits only these capability fields:
+
+- Linux family and the normalized kernel release
+- x86-64 instruction set and GNU-libc ABI
+- The closed managed-Linux native-CPU execution profile, `NativeCpu` backend, and
+  `CpuOnly` placement
+- Whether the observing binary included debug assertions
+- An explicit statement that accelerator capability was not assessed for this profile
+- A normalized CPU model class, physical core count, and logical core count
+- Total system memory rounded down to a fixed 1,024 MiB granularity
+
+The app-owned current-host observer uses bounded local reads, `uname`, process affinity,
+and cgroup-v2 CPU, memory, and cpuset state. The cgroup observation requires the Linux
+UAPI initial cgroup-namespace inode, an exact cgroup2 mount at `/sys/fs/cgroup` whose
+filesystem root is `/`, unlimited CPU and memory controls at every membership ancestor,
+an exact domain cgroup type, and a leaf effective cpuset equal to the online CPU set.
+Every sensitive proc, sysfs, and cgroup file is opened relative to a retained verified
+filesystem root and must report that root's kernel mount ID. The namespace link must
+remain on the verified proc mount before it is followed to the expected nsfs object.
+Namespace and mount scope are rechecked after the control reads. It starts no external
+process, performs no network access, and fails closed when required evidence is
+unavailable, ambiguous, or resource constrained. Construction requires two equal fresh
+observations. Revalidation requires another two equal observations and equality to the
+retained record. The opaque authority is noncloneable and nonserializable. A
+debug-assertion observer may produce portable rejected evidence but can never produce
+the reviewed supported result.
+
+This record is additive. It supplies the exact preimages used by the generation
+qualification system's four platform fields. It does not reinterpret or replace the
+existing `EffectiveRuntimeState.platform_digest`, the Ollama execution digest, or any
+legacy serialized identity.
 
 Prohibited fields, which must never enter this record or any digest derived from it:
 
@@ -127,55 +157,47 @@ Prohibited fields, which must never enter this record or any digest derived from
 - Absolute filesystem paths of any kind
 - Geolocation, network identity, or organization identity
 
-A model store root is recorded as a declared symbolic name, never as an absolute path,
-consistent with the existing rule that portable manifests store normalized relative paths
-rather than a machine-specific root.
+A model store root remains a declared symbolic name, never an absolute path. V1 records
+no model-store root at all.
 
-Add a `development-hosts` register document holding one entry per owner-controlled host.
-Each entry declares a stable label matching the lowercase identifier convention already
-used for fixture and category names, an entry version, an observation date, and the
-permitted fields above. Every artifact-inventory table, hardware tier, bakeoff budget, and
-resource claim references an entry label and version instead of asserting an unnamed
-current machine.
-
-Add a third `QualificationStatus` variant meaning not attempted on this host, so coverage
-is representable rather than inferred from absence. The variant carries no authority: it
-can never satisfy an activation check, and existing serialized records remain readable.
-
-Deliberately left open: whether the register is machine-readable in 0.2 or remains
-documentation, how tier vocabularies are revised to admit a high-memory integrated-GPU
-class, and whether a future consented opt-in permits richer local diagnostics. None of
-those block the record or the status variant.
+Deliberately left open: a development-host register, a host-specific not-attempted
+qualification state, accelerator and driver characterization, revised hardware tiers,
+and any future consented richer local diagnostics. None is implied by `HostEnvironmentV1`
+or required to validate its exact native-CPU qualification preimage.
 
 ## Consequences
 
 ### Positive
 
-- Results from separate owner-controlled machines coexist as strata rather than
-  overwriting one another.
-- Qualified on host A and not yet run on host B becomes a statement the evidence model can
-  make.
-- The opaque digests gain a defined, inspectable preimage without changing their role.
+- Qualification platform digests gain defined, inspectable preimages without changing
+  the role or bytes of older runtime digests.
+- Separate typed projections prevent category transposition at app and model boundaries.
+- A retained current-host capability can be freshly revalidated before and after
+  pretraffic assessment.
 - A reader can reconstruct what differed between two hosts from retained records.
 - The privacy boundary is stated once, in a place a reviewer can check, rather than being
   decided implicitly by whichever probe is written first.
 
 ### Negative
 
-- Host labels are owner-declared and therefore not self-verifying.
 - A new canonical encoding is one more frozen format to maintain.
 - Rounding total memory to a declared granularity slightly reduces measurement fidelity,
   which is accepted because exact byte counts add fingerprinting surface without changing
   any tier decision.
+- The deliberately narrow V1 profile rejects constrained, non-Linux, non-x86-64,
+  non-GNU-libc, and accelerator-characterized environments instead of partially describing
+  them.
 
 ### Follow-up
 
-- Add the `HostEnvironment` record with round-trip, bounded-decoder, closed-vocabulary,
-  and canonical-encoding tests matching the existing identity records.
-- Add the third qualification status with a test proving it cannot authorize activation.
-- Create the register with entries for both current development hosts.
-- Update the readme, roadmap build queue, and the three research documents that assert an
-  unnamed current machine.
+- Persist the canonical host preimage beside schema-7 qualification evidence without
+  treating it as authority.
+- Add a third qualification status only if host-stratified coverage is implemented; it
+  remains outside this decision's V1 contract.
+- Create a development-host register only after its authority, lifecycle, and privacy
+  semantics are separately reviewed.
+- Update current-state and qualification planning documents when the prepared operation
+  starts retaining this host preimage.
 - Add a revalidation trigger for a change to the set of locally installed artifacts. No
   such trigger exists today, so replacing the installed model set fires no named review.
 - Revise the hardware tier vocabularies to admit the observed high-memory
@@ -183,9 +205,10 @@ those block the record or the status variant.
 
 ## Validation
 
-The decision is confirmed when two register entries exist, a qualification record on each
-host references its entry, a report can state coverage per host without inferring anything
-from a missing record, and no prohibited field appears in any canonical encoding.
+The accepted V1 decision is confirmed by stable identity vectors, strict canonical
+round-trip and malformed-input tests, projection-isolation tests, compile-fail typed
+transposition coverage, content-redacted debug output, and double-sampled current-host
+revalidation. No prohibited field may appear in any canonical encoding.
 
 Revisit the decision if a register label proves insufficient to distinguish two materially
 different machines, if a permitted field is shown to identify a device or person more

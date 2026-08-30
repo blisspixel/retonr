@@ -21,31 +21,43 @@ use crate::{
 };
 
 use super::{
-    ModelPackageLease, PackageAttestationError, PackageAttestationScope, PackageAttestationService,
+    ManagedOllamaInputError, ManagedOllamaInputPlan, ModelPackageLease, ModelPackageLeaseLimits,
+    PackageAttestationError, PackageAttestationScope, PackageAttestationService,
     RuntimePackageLease, RuntimePackageLeaseLimits,
     verification::{VerificationObserver, VerificationStage},
 };
 
 mod adversarial;
+#[path = "tests/managed_ollama_model.rs"]
+mod managed_ollama_model;
+#[path = "tests/ollama_input.rs"]
+mod ollama_input;
 #[cfg(unix)]
 #[path = "tests/retained_entrypoint.rs"]
 mod retained_entrypoint;
 #[path = "tests/retained_members.rs"]
 mod retained_members;
 
-pub(super) const RUNTIME_FILES: [(&str, &[u8]); 6] = [
+pub(super) const RUNTIME_FILES: [(&str, &[u8]); 7] = [
     ("bin/helper", b"helper-v1"),
     ("bin/runtime", b"runtime-v1"),
     ("config/build.json", b"{\"build\":1}"),
     ("legal/license.txt", b"license"),
     ("legal/provenance.txt", b"provenance"),
     ("lib/backend.so", b"backend-v1"),
+    ("lib/worker", b"worker-v1"),
 ];
 
-const MODEL_FILES: [(&str, &[u8]); 3] = [
+pub(super) const MODEL_FILES: [(&str, &[u8]); 6] = [
+    ("config/ollama-config.json", b"{\"model\":\"fixture\"}"),
+    ("config/parameters.json", b"{\"temperature\":0}"),
     ("legal/license.txt", b"model-license"),
-    ("legal/provenance.txt", b"model-provenance"),
     ("model/model.gguf", b"model-weights"),
+    ("prompts/template.go.tmpl", b"{{ .Prompt }}"),
+    (
+        "provenance/ollama-manifest-v2.json",
+        b"{\"schemaVersion\":2}",
+    ),
 ];
 
 pub(super) const SET_LIMITS: RuntimeArtifactSetLeaseLimits = RuntimeArtifactSetLeaseLimits {
@@ -69,6 +81,12 @@ pub(super) const PACKAGE_LIMITS: RuntimePackageLeaseLimits = RuntimePackageLease
     maximum_code_members: 8,
     maximum_code_member_bytes: 1024,
     maximum_code_bytes: 4096,
+};
+
+pub(super) const MODEL_LIMITS: ModelPackageLeaseLimits = ModelPackageLeaseLimits {
+    maximum_members: 8,
+    maximum_member_bytes: 1_024,
+    maximum_bytes: 4_096,
 };
 
 pub(super) fn path(value: &str) -> ArtifactSetRelativePath {
@@ -131,6 +149,10 @@ pub(super) fn runtime_package(set: &ArtifactSetManifest) -> RuntimePackageManife
             RuntimePackageMemberRole::NativeDependency,
             RuntimePackageLoadPolicy::BackendConditional,
         ),
+        (
+            RuntimePackageMemberRole::WorkerExecutable,
+            RuntimePackageLoadPolicy::BackendConditional,
+        ),
     ];
     let members = set
         .members()
@@ -166,11 +188,14 @@ pub(super) fn runtime_package(set: &ArtifactSetManifest) -> RuntimePackageManife
     .expect("valid runtime package")
 }
 
-fn model_package(set: &ArtifactSetManifest) -> ModelPackageManifest {
+pub(super) fn model_package(set: &ArtifactSetManifest) -> ModelPackageManifest {
     let roles = [
+        ModelPackageMemberRole::AuxiliaryData,
+        ModelPackageMemberRole::GenerationConfiguration,
         ModelPackageMemberRole::LicenseText,
-        ModelPackageMemberRole::ProvenanceRecord,
         ModelPackageMemberRole::ModelWeights,
+        ModelPackageMemberRole::PromptTemplate,
+        ModelPackageMemberRole::ProvenanceRecord,
     ];
     let members = set
         .members()
@@ -273,6 +298,19 @@ pub(super) fn runtime_fixture() -> (
     (directory, repository, set, package)
 }
 
+pub(super) fn model_fixture() -> (
+    TempDir,
+    ArtifactRepository,
+    ArtifactSetManifest,
+    ModelPackageManifest,
+) {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let repository = ArtifactRepository::new(directory.path().join("data")).expect("repository");
+    let set = import_set(&repository, directory.path(), "model", &MODEL_FILES);
+    let package = model_package(&set);
+    (directory, repository, set, package)
+}
+
 pub(super) fn lease_set(
     repository: &ArtifactRepository,
     id: &ArtifactSetId,
@@ -303,6 +341,18 @@ fn attest_runtime(
     .expect("attest runtime fixture")
 }
 
+pub(super) fn attest_model(
+    repository: &ArtifactRepository,
+    package: &ModelPackageManifest,
+) -> ModelPackageLease {
+    PackageAttestationService::attest_model(
+        lease_set(repository, package.artifact_set_id()),
+        package,
+        &CancellationToken::new(),
+    )
+    .expect("attest model fixture")
+}
+
 #[test]
 fn runtime_evidence_is_typed_redacted_and_revalidatable() {
     let (_directory, repository, set, package) = runtime_fixture();
@@ -322,12 +372,16 @@ fn runtime_evidence_is_typed_redacted_and_revalidatable() {
         evidence.entrypoint_artifact_id(),
         package.entrypoint().artifact_id()
     );
-    assert_eq!(evidence.code_member_count(), 3);
+    assert_eq!(evidence.code_member_count(), 4);
     assert_eq!(
         evidence.code_byte_size(),
-        u64::try_from(b"helper-v1".len() + b"runtime-v1".len() + b"backend-v1".len())
-            .expect("fixture size")
+        u64::try_from(
+            b"helper-v1".len() + b"runtime-v1".len() + b"backend-v1".len() + b"worker-v1".len()
+        )
+        .expect("fixture size")
     );
+    assert_eq!(evidence.payload_byte_size(), set.total_byte_size());
+    assert!(evidence.payload_byte_size() > evidence.code_byte_size());
     assert!(!format!("{lease:?}").contains("bin/"));
     lease
         .revalidate(&CancellationToken::new())
@@ -346,39 +400,16 @@ fn runtime_evidence_is_typed_redacted_and_revalidatable() {
 }
 
 #[test]
-fn model_evidence_pins_and_revalidates_the_exact_set() {
-    let directory = tempfile::tempdir().expect("temporary directory");
-    let repository = ArtifactRepository::new(directory.path().join("data")).expect("repository");
-    let set = import_set(&repository, directory.path(), "model", &MODEL_FILES);
-    let package = model_package(&set);
-    let lease: ModelPackageLease = PackageAttestationService::attest_model(
-        lease_set(&repository, &set.artifact_set_id()),
-        &package,
-        &CancellationToken::new(),
-    )
-    .expect("attest model package");
-    assert_eq!(lease.evidence().artifact_set_id(), &set.artifact_set_id());
-    assert_eq!(
-        lease.evidence().model_package_manifest_id(),
-        &package.model_package_manifest_id()
-    );
-    assert_eq!(lease.evidence().member_count(), 3);
-    assert_eq!(lease.evidence().byte_size(), set.total_byte_size());
-    lease
-        .revalidate(&CancellationToken::new())
-        .expect("stable model package revalidates");
-}
-
-#[test]
 fn exact_runtime_and_model_relationship_mismatches_fail_closed() {
     let (directory, repository, runtime_set, _runtime) = runtime_fixture();
-    let changed_files: [(&str, &[u8]); 6] = [
+    let changed_files: [(&str, &[u8]); 7] = [
         ("bin/helper", b"helper-v2"),
         RUNTIME_FILES[1],
         RUNTIME_FILES[2],
         RUNTIME_FILES[3],
         RUNTIME_FILES[4],
         RUNTIME_FILES[5],
+        RUNTIME_FILES[6],
     ];
     let other_set = artifact_set(&changed_files);
     let other_runtime = runtime_package(&other_set);

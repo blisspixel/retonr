@@ -29,6 +29,7 @@ mod inspect;
 mod migration;
 mod ollama_import;
 mod ollama_runtime_import;
+mod runtime_source_build_import;
 mod selection;
 mod set_import;
 mod set_inventory;

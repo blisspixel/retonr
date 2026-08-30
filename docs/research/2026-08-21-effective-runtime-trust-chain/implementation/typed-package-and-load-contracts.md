@@ -15,15 +15,17 @@ details observation while keeping model load, use, handler, effective identity, 
 qualification false. A retained-session judge receipt is also implemented separately.
 The managed preflight can derive typed runtime-build identity from its exact package,
 process, and native-load join. An admission-gated one-shot managed operation is
-implemented, but the empty reviewed-runtime allowlist blocks it before launch. Once
-admitted, it retains that process, runtime package lease, native observer, and direct
-connection through one structured completion and two equal post-generation residency
-observations. It keeps the model artifact digest separate from the Ollama inventory
-digest and records effective context before cleanup. Generation-bound provider,
-effective configuration, platform and driver, and compute-placement relationships
-remain absent, so no effective runtime state is constructed. One admitted runtime
-package, the remaining direct effective-state evidence, exact model-package and judge
-joins, and a distinct candidate-generation receipt remain downstream.
+implemented, but separate empty cloud-disable and package-and-worker generation-path
+allowlists block it before launch. Both exact reviews are required; runtime admission
+alone does not authorize generation. After both reviews pass, the operation retains
+that process, runtime package lease, native observer, and direct connection through
+one structured completion and two equal post-generation residency observations. It
+keeps the model artifact digest separate from the Ollama inventory digest and records
+effective context before cleanup. Generation-bound provider, effective configuration,
+platform and driver, and compute-placement relationships remain absent, so no
+effective runtime state is constructed. One admitted runtime package, the remaining
+direct effective-state evidence, exact model-package and judge joins, and a distinct
+candidate-generation receipt remain downstream.
 
 ## Selected Design And Constraints
 

@@ -23,8 +23,19 @@ pub(super) const ARTIFACT_DIGEST: &str =
 
 #[derive(Clone, Copy)]
 pub(super) enum SessionMode {
-    Normal { completions: usize },
-    ResidentNormal { completions: usize },
+    Normal {
+        completions: usize,
+    },
+    ResidentNormal {
+        completions: usize,
+    },
+    ResidentResource {
+        metrics: &'static str,
+        delayed_body: bool,
+    },
+    ResidentJudgeOutput {
+        completions: usize,
+    },
     ResidentDrift,
     ResidentAmbiguous,
     ResidentDelayed,
@@ -43,6 +54,7 @@ pub(super) enum SessionMode {
     RemoteGeneration,
     NonterminalGeneration,
     InvalidGenerationOutput,
+    MultipleCandidateOutput,
     TruncatedGeneration,
     CloseGeneration,
     StallGeneration,
@@ -60,6 +72,7 @@ pub(super) struct SessionServerResult {
     pub(super) accepts: usize,
     pub(super) requests: Vec<String>,
     pub(super) generate_requests: Vec<serde_json::Value>,
+    pub(super) generate_request_bodies: Vec<Vec<u8>>,
 }
 
 impl SessionServer {
@@ -168,6 +181,7 @@ async fn serve(listener: TcpListener, mode: SessionMode) -> io::Result<SessionSe
     let mut buffer = Vec::new();
     let mut requests = Vec::new();
     let mut generate_requests = Vec::new();
+    let mut generate_request_bodies = Vec::new();
     let mut truncated = false;
     for ordinal in 1..=maximum_requests(mode) {
         let Some(request) = read_request(&mut stream, &mut buffer).await? else {
@@ -184,6 +198,7 @@ async fn serve(listener: TcpListener, mode: SessionMode) -> io::Result<SessionSe
                 serde_json::from_slice(&request.body)
                     .map_err(|_error| io::Error::other("invalid generate request"))?,
             );
+            generate_request_bodies.push(request.body.clone());
         }
         if (matches!(mode, SessionMode::StallGeneration) && path == "/api/generate")
             || (matches!(mode, SessionMode::StallResidency) && path == "/api/ps" && ordinal > 7)
@@ -197,7 +212,19 @@ async fn serve(listener: TcpListener, mode: SessionMode) -> io::Result<SessionSe
         }
         let close = (matches!(mode, SessionMode::CloseGeneration) && path == "/api/generate")
             || (matches!(mode, SessionMode::CloseResidency) && path == "/api/ps" && ordinal > 7);
-        write_response(&mut stream, &response_body(path, mode, ordinal), close).await?;
+        let response_body = response_body(path, mode, ordinal);
+        if matches!(
+            mode,
+            SessionMode::ResidentResource {
+                delayed_body: true,
+                ..
+            }
+        ) && path == "/api/generate"
+        {
+            write_response_with_delayed_body(&mut stream, &response_body).await?;
+        } else {
+            write_response(&mut stream, &response_body, close).await?;
+        }
         if close {
             break;
         }
@@ -219,13 +246,15 @@ async fn serve(listener: TcpListener, mode: SessionMode) -> io::Result<SessionSe
         accepts,
         requests,
         generate_requests,
+        generate_request_bodies,
     })
 }
 
 const fn maximum_requests(mode: SessionMode) -> usize {
     match mode {
         SessionMode::Normal { completions } => 7 + completions * 7,
-        SessionMode::ResidentNormal { completions } => 7 + completions * 9,
+        SessionMode::ResidentNormal { completions }
+        | SessionMode::ResidentJudgeOutput { completions } => 7 + completions * 9,
         _ => 16,
     }
 }
@@ -300,6 +329,8 @@ const fn resident_mode(mode: SessionMode) -> bool {
     matches!(
         mode,
         SessionMode::ResidentNormal { .. }
+            | SessionMode::ResidentResource { .. }
+            | SessionMode::ResidentJudgeOutput { .. }
             | SessionMode::ResidentDrift
             | SessionMode::ResidentAmbiguous
             | SessionMode::ResidentDelayed
@@ -378,7 +409,12 @@ fn generate(mode: SessionMode) -> String {
     let done = !matches!(mode, SessionMode::NonterminalGeneration);
     let output = if matches!(mode, SessionMode::InvalidGenerationOutput) {
         "{"
-    } else if matches!(mode, SessionMode::JudgeOutput) {
+    } else if matches!(mode, SessionMode::MultipleCandidateOutput) {
+        r#"{\"candidates\":[{\"text\":\"one\"},{\"text\":\"two\"}]}"#
+    } else if matches!(
+        mode,
+        SessionMode::JudgeOutput | SessionMode::ResidentJudgeOutput { .. }
+    ) {
         r#"{\"schema_version\":1,\"case_id\":\"case_01\",\"choice\":\"first\",\"rubric_clauses\":[\"clarity\"],\"source_spans\":[{\"start\":0,\"end\":4}],\"first_candidate_spans\":[],\"second_candidate_spans\":[]}"#
     } else if matches!(mode, SessionMode::InvalidJudgeOutput) {
         r#"{\"schema_version\":1,\"case_id\":\"case_01\",\"choice\":\"first\",\"rubric_clauses\":[\"meaning\",\"clarity\"],\"source_spans\":[],\"first_candidate_spans\":[],\"second_candidate_spans\":[]}"#
@@ -390,8 +426,14 @@ fn generate(mode: SessionMode) -> String {
     } else {
         r#"{\"candidates\":[{\"text\":\"ok\"}]}"#
     };
+    let metrics = match mode {
+        SessionMode::ResidentResource { metrics, .. } => metrics,
+        _ => {
+            r#""total_duration":9000,"load_duration":1000,"prompt_eval_count":4,"prompt_eval_duration":2000,"eval_count":2,"eval_duration":3000"#
+        }
+    };
     format!(
-        r#"{{"model":"{MODEL}"{remote},"response":"{output}","done":{done},"done_reason":"stop","prompt_eval_count":4,"eval_count":2,"eval_duration":3000}}"#
+        r#"{{"model":"{MODEL}"{remote},"response":"{output}","done":{done},"done_reason":"stop",{metrics}}}"#
     )
 }
 
@@ -402,6 +444,18 @@ async fn write_response(stream: &mut TcpStream, body: &str, close: bool) -> io::
         body.len()
     );
     stream.write_all(response.as_bytes()).await?;
+    stream.flush().await
+}
+
+async fn write_response_with_delayed_body(stream: &mut TcpStream, body: &str) -> io::Result<()> {
+    let head = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+        body.len()
+    );
+    stream.write_all(head.as_bytes()).await?;
+    stream.flush().await?;
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    stream.write_all(body.as_bytes()).await?;
     stream.flush().await
 }
 

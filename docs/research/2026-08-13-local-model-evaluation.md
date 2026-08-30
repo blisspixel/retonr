@@ -13,6 +13,10 @@ projection at this document's evidence cutoff, not current repository totals. Th
 recorded local artifact observations have expired and cannot support a new run without
 fresh approved identity and runtime evidence.
 
+Roadmap clarification: milestone 0.2 now requires a narrow locked qualification for
+the first exact plain-text generation tuple. The broader cross-format and release
+qualification described below remains deferred until the corresponding later phases.
+
 ## Decision summary
 
 Retonr should evaluate the complete editorial transaction, not select a model from a

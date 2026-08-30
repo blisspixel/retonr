@@ -1,0 +1,44 @@
+[package]
+name = "rewrite-runtime-source-builder"
+description = "Static offline coordinator for one reviewed Ollama runtime source build"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+cargo-lock.workspace = true
+rewrite-model = { path = "../model", version = "0.1.0" }
+rewrite-ollama-package = { path = "../ollama-package", version = "0.1.0", default-features = false }
+rewrite-types = { path = "../types", version = "0.1.0" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+same-file.workspace = true
+tar.workspace = true
+tempfile.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true, features = ["fs"] }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "rewrite-runtime-source-builder"
+path = "src/main.rs"
+
+[[bin]]
+name = "rewrite-runtime-source-archive"
+path = "src/bin/rewrite-runtime-source-archive.rs"
+
+[[bin]]
+name = "rewrite-runtime-source-manifest"
+path = "src/bin/rewrite-runtime-source-manifest.rs"
+
+[[test]]
+name = "runtime_source_build_fixture"
+path = "tests/runtime_source_build_fixture.rs"
+harness = false

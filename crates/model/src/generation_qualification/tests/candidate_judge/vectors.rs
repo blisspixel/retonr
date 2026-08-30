@@ -1,0 +1,50 @@
+use super::fixture::judge_fixture;
+
+#[test]
+fn aggregate_and_observation_identity_vectors_are_stable() {
+    let fixture = judge_fixture();
+    assert_eq!(
+        fixture.responses.responses()[0]
+            .candidate_judge_response_id()
+            .digest()
+            .as_str(),
+        "d98c75383331c9f6edb96c547dbbd99f4bcbfcbec5ba31b9c3a82caea48d7ea8"
+    );
+    assert_eq!(
+        fixture.responses.responses()[1]
+            .candidate_judge_response_id()
+            .digest()
+            .as_str(),
+        "7d4e32ec571fe863c1df9e94d44386f55a039e8192733f4c34f7729d8da1ed8f"
+    );
+    assert_eq!(
+        fixture.requests.request_aggregate_id().digest().as_str(),
+        "fdaa9d89e5e2e5df064684395d05ec7598bb84e685d53aeb57558143ebd117fd"
+    );
+    assert_eq!(
+        fixture.responses.response_aggregate_id().digest().as_str(),
+        "0132292094cad7c1004d8866d03fdc48fa8c8365700431b0142e86671777ad6a"
+    );
+    assert_eq!(
+        fixture.observations.observations()[0]
+            .observation_id()
+            .digest()
+            .as_str(),
+        "0e96a51b0c15df74be434ed903505e9d9ea744568189db3585546e5f385e707a"
+    );
+    assert_eq!(
+        fixture.observations.observations()[1]
+            .observation_id()
+            .digest()
+            .as_str(),
+        "1494bcd0442e5c83a1ad471899ef0a7ff579e04f124f2730b808f4af04edfad1"
+    );
+    assert_eq!(
+        fixture
+            .observations
+            .observation_batch_id()
+            .digest()
+            .as_str(),
+        "dc13832c38bdeb71b98a1190e4f1d0123f9b8d36bc113bd6c04872ee71c596f9"
+    );
+}

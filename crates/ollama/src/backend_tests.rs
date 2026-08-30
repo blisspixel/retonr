@@ -23,6 +23,7 @@ use wiremock::{
 use crate::{OllamaBackend, OllamaEndpoint, OllamaLimits, OllamaModelBinding};
 
 mod binding_validation;
+mod candidate_output;
 
 const MODEL: &str = "fixture:latest";
 const INVENTORY_DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";

@@ -43,6 +43,51 @@ impl RuntimePackageLeaseLimits {
     }
 }
 
+/// Caller-owned ceilings for retained model-package verification.
+///
+/// Explicit values may lower the defaults. Values above a default are rejected
+/// and cannot relax the application's retained-handle and hashing bounds.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ModelPackageLeaseLimits {
+    /// Maximum regular-file members retained by one model-package lease.
+    pub maximum_members: usize,
+    /// Maximum bytes hashed for any one model-package member.
+    pub maximum_member_bytes: u64,
+    /// Maximum checked sum of all retained model-package member bytes.
+    pub maximum_bytes: u64,
+}
+
+const DEFAULT_MODEL_PACKAGE_MEMBERS: usize = 64;
+const DEFAULT_MODEL_PACKAGE_MEMBER_BYTES: u64 = 128 * 1_024 * 1_024 * 1_024;
+const DEFAULT_MODEL_PACKAGE_BYTES: u64 = 129 * 1_024 * 1_024 * 1_024;
+
+impl Default for ModelPackageLeaseLimits {
+    fn default() -> Self {
+        Self {
+            maximum_members: DEFAULT_MODEL_PACKAGE_MEMBERS,
+            maximum_member_bytes: DEFAULT_MODEL_PACKAGE_MEMBER_BYTES,
+            maximum_bytes: DEFAULT_MODEL_PACKAGE_BYTES,
+        }
+    }
+}
+
+impl ModelPackageLeaseLimits {
+    pub(super) fn validate(self) -> Result<(), PackageAttestationError> {
+        if self.maximum_members == 0
+            || self.maximum_member_bytes == 0
+            || self.maximum_bytes == 0
+            || self.maximum_members.checked_add(1).is_none()
+            || self.maximum_members > DEFAULT_MODEL_PACKAGE_MEMBERS
+            || self.maximum_member_bytes > DEFAULT_MODEL_PACKAGE_MEMBER_BYTES
+            || self.maximum_bytes > DEFAULT_MODEL_PACKAGE_BYTES
+        {
+            Err(PackageAttestationError::InvalidModelLimits)
+        } else {
+            Ok(())
+        }
+    }
+}
+
 /// Redacted point-in-time evidence for one verified runtime package.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RuntimePackageAttestationEvidence {
@@ -53,6 +98,7 @@ pub struct RuntimePackageAttestationEvidence {
     entrypoint_artifact_id: ArtifactId,
     code_member_count: u32,
     code_byte_size: u64,
+    payload_byte_size: u64,
 }
 
 impl RuntimePackageAttestationEvidence {
@@ -62,6 +108,7 @@ impl RuntimePackageAttestationEvidence {
         entrypoint_artifact_id: ArtifactId,
         code_member_count: u32,
         code_byte_size: u64,
+        payload_byte_size: u64,
     ) -> Self {
         Self {
             schema_version: PACKAGE_ATTESTATION_SCHEMA_VERSION,
@@ -71,6 +118,7 @@ impl RuntimePackageAttestationEvidence {
             entrypoint_artifact_id,
             code_member_count,
             code_byte_size,
+            payload_byte_size,
         }
     }
 
@@ -114,6 +162,12 @@ impl RuntimePackageAttestationEvidence {
     #[must_use]
     pub const fn code_byte_size(&self) -> u64 {
         self.code_byte_size
+    }
+
+    /// Returns the checked sum of every verified runtime-package payload byte.
+    #[must_use]
+    pub const fn payload_byte_size(&self) -> u64 {
+        self.payload_byte_size
     }
 }
 
@@ -188,6 +242,9 @@ pub enum PackageAttestationError {
     /// One or more caller-owned ceilings are zero or unrepresentable.
     #[error("runtime-package lease limits are invalid")]
     InvalidLimits,
+    /// One or more model-package ceilings are zero or unrepresentable.
+    #[error("model-package lease limits are invalid")]
+    InvalidModelLimits,
     /// Runtime semantic meaning does not exactly cover the leased byte set.
     #[error("runtime package does not match the leased artifact set")]
     RuntimeRelationship(#[source] RuntimePackageManifestError),
@@ -216,6 +273,30 @@ pub enum PackageAttestationError {
         /// Checked manifest-declared code bytes.
         actual: u64,
         /// Caller-owned aggregate code byte ceiling.
+        maximum: u64,
+    },
+    /// Model-package member count exceeds the caller ceiling.
+    #[error("model package has {actual} members; the configured maximum is {maximum}")]
+    TooManyModelMembers {
+        /// Manifest-declared model-package member count.
+        actual: usize,
+        /// Caller-owned model-package member ceiling.
+        maximum: usize,
+    },
+    /// One model-package member exceeds the caller byte ceiling.
+    #[error("model package member has {actual} bytes; the configured maximum is {maximum}")]
+    ModelMemberTooLarge {
+        /// Manifest-declared member bytes.
+        actual: u64,
+        /// Caller-owned member byte ceiling.
+        maximum: u64,
+    },
+    /// Aggregate model-package member bytes exceed the caller ceiling.
+    #[error("model package has {actual} bytes; the configured maximum is {maximum}")]
+    ModelBytesTooLarge {
+        /// Checked manifest-declared model-package bytes.
+        actual: u64,
+        /// Caller-owned aggregate byte ceiling.
         maximum: u64,
     },
     /// A retained member had unexpected length or digest.

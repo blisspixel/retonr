@@ -18,7 +18,7 @@ mod staging;
 mod traversal;
 
 pub(crate) use removal::remove_verified_managed_tree;
-pub(crate) use staging::OwnedStagingTree;
+pub(crate) use staging::{NoReplacePublicationFailure, OwnedStagingTree};
 
 #[cfg(test)]
 mod tests;
@@ -89,7 +89,7 @@ impl ManagedTreeEntry {
         self.fingerprint.has_single_link()
     }
 
-    fn fingerprint(&self) -> &MetadataFingerprint {
+    pub(crate) const fn fingerprint(&self) -> &MetadataFingerprint {
         &self.fingerprint
     }
 }
@@ -162,6 +162,15 @@ impl PinnedDirectory {
             .map_err(ArtifactInventoryError::StorageIo)?;
         validate_directory_handle(&handle, false)?;
         Ok(Self { handle })
+    }
+
+    pub(crate) fn clone_handle(&self) -> Result<std::fs::File, ArtifactInventoryError> {
+        let handle = self
+            .handle
+            .try_clone()
+            .map_err(ArtifactInventoryError::StorageIo)?;
+        validate_directory_handle(&handle, false)?;
+        Ok(handle)
     }
 
     fn open_direct_child_directory(&self, name: &OsStr) -> Result<Self, ArtifactInventoryError> {

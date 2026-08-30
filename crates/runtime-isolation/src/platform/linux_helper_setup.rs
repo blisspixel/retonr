@@ -1,20 +1,28 @@
 use std::{
     fs::{self, File},
     io,
-    net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream},
     os::unix::fs::MetadataExt as _,
-    time::Duration,
+    time::Instant,
 };
 
 use rustix::{
-    process::{Resource, Rlimit, getgid, getrlimit, getuid, setrlimit},
+    process::{getgid, getuid},
     thread::{
-        CapabilitySet, CapabilitySets, UnshareFlags, capabilities, capability_is_in_bounding_set,
-        no_new_privs, remove_capability_from_bounding_set, set_capabilities, set_no_new_privs,
+        CapabilitySet, UnshareFlags, capabilities, capability_is_in_bounding_set, no_new_privs,
     },
 };
 
-const CANARY_TIMEOUT: Duration = Duration::from_millis(100);
+pub(super) use super::linux_helper_guards::privileges_are_fully_reduced;
+use super::{
+    linux_build_mount,
+    linux_helper_guards::{
+        apply_resource_limits, drop_capabilities, drop_privileges, read_capability_limit,
+        run_network_canaries,
+    },
+    linux_managed_mount,
+};
+use crate::contract::RetainedRuntimeInputMember;
+use crate::{ControlledBuildInputFile, IsolationError};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum HelperFailure {
@@ -28,6 +36,38 @@ pub(super) enum HelperFailure {
     SocketPolicyInstall,
     SocketPolicyInactive,
     SocketPolicyBehavior,
+    ManagedDeviceBoundaryUnavailable,
+    ManagedDeviceBoundarySetup,
+    ManagedPrivatePropagationSetup,
+    ManagedNullStageMount,
+    ManagedDeviceTmpfsSetup,
+    ManagedNullStagingSetup,
+    ManagedNullBind,
+    ManagedNullMountRemount,
+    ManagedProcSetup,
+    ManagedDeviceBoundaryBehavior,
+    ManagedContainmentPolicyCompile,
+    ManagedContainmentPolicyInstall,
+    ManagedContainmentPolicyInactive,
+    ManagedContainmentPolicyBehavior,
+    RuntimeInputObjectMismatch,
+    RuntimeInputBoundaryUnavailable,
+    RuntimeInputBoundarySetup,
+    RuntimeInputBoundaryBehavior,
+    FilesystemIsolationUnavailable,
+    FilesystemIsolationSetup,
+    FilesystemAliasPropagation,
+    FilesystemAliasWorkspace,
+    FilesystemAliasInput,
+    FilesystemAliasInputPermission,
+    FilesystemAliasInputNotFound,
+    FilesystemAliasOutput,
+    FilesystemIsolationBehavior,
+    ControlledBuildObjectMismatch,
+    ControlledBuildOutputNotEmpty,
+    ControlledBuildSnapshotTimeout,
+    BootstrapRootPreparation,
+    BootstrapRootVerification,
     InvalidLaunch,
 }
 
@@ -44,9 +84,152 @@ impl HelperFailure {
             Self::SocketPolicyInstall => "socket-policy-install",
             Self::SocketPolicyInactive => "socket-policy-inactive",
             Self::SocketPolicyBehavior => "socket-policy-behavior",
+            Self::ManagedDeviceBoundaryUnavailable => "managed-device-boundary-unavailable",
+            Self::ManagedDeviceBoundarySetup => "managed-device-boundary-setup",
+            Self::ManagedPrivatePropagationSetup => "managed-private-propagation-setup",
+            Self::ManagedNullStageMount => "managed-null-stage-mount",
+            Self::ManagedDeviceTmpfsSetup => "managed-device-tmpfs-setup",
+            Self::ManagedNullStagingSetup => "managed-null-staging-setup",
+            Self::ManagedNullBind => "managed-null-bind",
+            Self::ManagedNullMountRemount => "managed-null-mount-remount",
+            Self::ManagedProcSetup => "managed-proc-setup",
+            Self::ManagedDeviceBoundaryBehavior => "managed-device-boundary-behavior",
+            Self::ManagedContainmentPolicyCompile => "managed-containment-policy-compile",
+            Self::ManagedContainmentPolicyInstall => "managed-containment-policy-install",
+            Self::ManagedContainmentPolicyInactive => "managed-containment-policy-inactive",
+            Self::ManagedContainmentPolicyBehavior => "managed-containment-policy-behavior",
+            Self::RuntimeInputObjectMismatch => "runtime-input-object-mismatch",
+            Self::RuntimeInputBoundaryUnavailable => "runtime-input-boundary-unavailable",
+            Self::RuntimeInputBoundarySetup => "runtime-input-boundary-setup",
+            Self::RuntimeInputBoundaryBehavior => "runtime-input-boundary-behavior",
+            Self::FilesystemIsolationUnavailable => "filesystem-isolation-unavailable",
+            Self::FilesystemIsolationSetup => "filesystem-isolation-setup",
+            Self::FilesystemAliasPropagation => "filesystem-alias-propagation",
+            Self::FilesystemAliasWorkspace => "filesystem-alias-workspace",
+            Self::FilesystemAliasInput => "filesystem-alias-input",
+            Self::FilesystemAliasInputPermission => "filesystem-alias-input-permission",
+            Self::FilesystemAliasInputNotFound => "filesystem-alias-input-not-found",
+            Self::FilesystemAliasOutput => "filesystem-alias-output",
+            Self::FilesystemIsolationBehavior => "filesystem-isolation-behavior",
+            Self::ControlledBuildObjectMismatch => "controlled-build-object-mismatch",
+            Self::ControlledBuildOutputNotEmpty => "controlled-build-output-not-empty",
+            Self::ControlledBuildSnapshotTimeout => "controlled-build-snapshot-timeout",
+            Self::BootstrapRootPreparation => "bootstrap-root-preparation",
+            Self::BootstrapRootVerification => "bootstrap-root-verification",
             Self::InvalidLaunch => "invalid-launch",
         }
     }
+
+    pub(super) const fn into_isolation_error(self) -> IsolationError {
+        match self {
+            Self::HostPolicyDenied => IsolationError::HostPolicyDenied,
+            Self::NamespaceSetup => IsolationError::NamespaceSetup,
+            Self::LoopbackSetup => IsolationError::LoopbackSetup,
+            Self::NetworkCanary => IsolationError::NetworkCanary,
+            Self::DescriptorLeak => IsolationError::DescriptorLeak,
+            Self::PrivilegeDrop => IsolationError::PrivilegeDrop,
+            Self::SocketPolicyCompile => IsolationError::SocketPolicyCompile,
+            Self::SocketPolicyInstall => IsolationError::SocketPolicyInstall,
+            Self::SocketPolicyInactive => IsolationError::SocketPolicyInactive,
+            Self::SocketPolicyBehavior => IsolationError::SocketPolicyBehavior,
+            Self::ManagedDeviceBoundaryUnavailable => {
+                IsolationError::ManagedDeviceBoundaryUnavailable
+            }
+            Self::ManagedDeviceBoundarySetup
+            | Self::ManagedPrivatePropagationSetup
+            | Self::ManagedNullStageMount
+            | Self::ManagedDeviceTmpfsSetup
+            | Self::ManagedNullStagingSetup
+            | Self::ManagedNullBind
+            | Self::ManagedNullMountRemount
+            | Self::ManagedProcSetup => IsolationError::ManagedDeviceBoundarySetup,
+            Self::ManagedDeviceBoundaryBehavior => IsolationError::ManagedDeviceBoundaryBehavior,
+            Self::ManagedContainmentPolicyCompile => {
+                IsolationError::ManagedContainmentPolicyCompile
+            }
+            Self::ManagedContainmentPolicyInstall => {
+                IsolationError::ManagedContainmentPolicyInstall
+            }
+            Self::ManagedContainmentPolicyInactive => {
+                IsolationError::ManagedContainmentPolicyInactive
+            }
+            Self::ManagedContainmentPolicyBehavior => {
+                IsolationError::ManagedContainmentPolicyBehavior
+            }
+            Self::RuntimeInputObjectMismatch => IsolationError::RuntimeInputObjectMismatch,
+            Self::RuntimeInputBoundaryUnavailable => {
+                IsolationError::RuntimeInputBoundaryUnavailable
+            }
+            Self::RuntimeInputBoundarySetup => IsolationError::RuntimeInputBoundarySetup,
+            Self::RuntimeInputBoundaryBehavior => IsolationError::RuntimeInputBoundaryBehavior,
+            Self::FilesystemIsolationUnavailable => IsolationError::FilesystemIsolationUnavailable,
+            Self::FilesystemIsolationSetup => IsolationError::FilesystemIsolationSetup,
+            Self::FilesystemAliasPropagation => IsolationError::FilesystemAliasSetup("propagation"),
+            Self::FilesystemAliasWorkspace => IsolationError::FilesystemAliasSetup("workspace"),
+            Self::FilesystemAliasInput => IsolationError::FilesystemAliasSetup("input"),
+            Self::FilesystemAliasInputPermission => {
+                IsolationError::FilesystemAliasSetup("input-permission")
+            }
+            Self::FilesystemAliasInputNotFound => {
+                IsolationError::FilesystemAliasSetup("input-not-found")
+            }
+            Self::FilesystemAliasOutput => IsolationError::FilesystemAliasSetup("output"),
+            Self::FilesystemIsolationBehavior => IsolationError::FilesystemIsolationBehavior,
+            Self::ControlledBuildObjectMismatch => IsolationError::ControlledBuildObjectMismatch,
+            Self::ControlledBuildOutputNotEmpty => IsolationError::ControlledBuildOutputNotEmpty,
+            Self::ControlledBuildSnapshotTimeout => IsolationError::ControlledBuildSnapshotTimeout,
+            Self::BootstrapRootPreparation => IsolationError::BootstrapRootPreparation,
+            Self::BootstrapRootVerification => IsolationError::BootstrapRootVerification,
+            Self::InvalidLaunch => IsolationError::InvalidLaunch("helper validation"),
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) const ALL: [Self; 43] = [
+        Self::HostPolicyDenied,
+        Self::NamespaceSetup,
+        Self::LoopbackSetup,
+        Self::NetworkCanary,
+        Self::DescriptorLeak,
+        Self::PrivilegeDrop,
+        Self::SocketPolicyCompile,
+        Self::SocketPolicyInstall,
+        Self::SocketPolicyInactive,
+        Self::SocketPolicyBehavior,
+        Self::ManagedDeviceBoundaryUnavailable,
+        Self::ManagedDeviceBoundarySetup,
+        Self::ManagedPrivatePropagationSetup,
+        Self::ManagedNullStageMount,
+        Self::ManagedDeviceTmpfsSetup,
+        Self::ManagedNullStagingSetup,
+        Self::ManagedNullBind,
+        Self::ManagedNullMountRemount,
+        Self::ManagedProcSetup,
+        Self::ManagedDeviceBoundaryBehavior,
+        Self::ManagedContainmentPolicyCompile,
+        Self::ManagedContainmentPolicyInstall,
+        Self::ManagedContainmentPolicyInactive,
+        Self::ManagedContainmentPolicyBehavior,
+        Self::RuntimeInputObjectMismatch,
+        Self::RuntimeInputBoundaryUnavailable,
+        Self::RuntimeInputBoundarySetup,
+        Self::RuntimeInputBoundaryBehavior,
+        Self::FilesystemIsolationUnavailable,
+        Self::FilesystemIsolationSetup,
+        Self::FilesystemAliasPropagation,
+        Self::FilesystemAliasWorkspace,
+        Self::FilesystemAliasInput,
+        Self::FilesystemAliasInputPermission,
+        Self::FilesystemAliasInputNotFound,
+        Self::FilesystemAliasOutput,
+        Self::FilesystemIsolationBehavior,
+        Self::ControlledBuildObjectMismatch,
+        Self::ControlledBuildOutputNotEmpty,
+        Self::ControlledBuildSnapshotTimeout,
+        Self::BootstrapRootPreparation,
+        Self::BootstrapRootVerification,
+        Self::InvalidLaunch,
+    ];
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -77,23 +260,167 @@ impl NamespaceEvidence {
     }
 }
 
+pub(super) fn mount_namespace_identity() -> Result<RawNamespaceIdentity, HelperFailure> {
+    namespace_identity("/proc/self/ns/mnt")
+}
+
 pub(super) fn establish_isolation(
     limits: (u64, u64),
+    inputs: &[RetainedRuntimeInputMember],
 ) -> Result<EstablishedIsolation, HelperFailure> {
+    let null = linux_managed_mount::open_retained_null()?;
+    establish_managed_namespaces()?;
+    linux_managed_mount::establish_private_device(&null, inputs)?;
+    apply_resource_limits(limits)?;
+    let loopback_index = super::linux_link::enable_and_validate_loopback()?;
+    run_network_canaries()?;
+    Ok(EstablishedIsolation { loopback_index })
+}
+
+pub(super) fn drop_managed_privileges() -> Result<(), HelperFailure> {
+    drop_privileges()
+}
+
+pub(super) fn establish_build_isolation(
+    limits: (u64, u64),
+    output: &File,
+    input_files: &[ControlledBuildInputFile],
+    snapshot_deadline: Instant,
+) -> Result<EstablishedIsolation, HelperFailure> {
+    establish_isolation_inner(limits, Some((output, input_files, snapshot_deadline)))
+}
+
+pub(super) fn begin_bootstrap_isolation(
+    output: &File,
+    input_files: &[ControlledBuildInputFile],
+    snapshot_deadline: Instant,
+) -> Result<(), HelperFailure> {
+    establish_bootstrap_namespaces(output, input_files, snapshot_deadline)
+}
+
+pub(super) fn prepare_bootstrap_child_namespace(
+    limits: (u64, u64),
+) -> Result<EstablishedIsolation, HelperFailure> {
+    enter_bootstrap_process_namespace()?;
+    apply_resource_limits(limits)?;
+    let loopback_index = super::linux_link::enable_and_validate_loopback()?;
+    run_network_canaries()?;
+    Ok(EstablishedIsolation { loopback_index })
+}
+
+pub(super) fn bootstrap_capability_limit() -> Result<u32, HelperFailure> {
+    read_capability_limit()
+}
+
+pub(super) fn drop_bootstrap_guardian_privileges(
+    last_capability: u32,
+) -> Result<(), HelperFailure> {
+    drop_capabilities(last_capability)?;
+    let current = capabilities(None).map_err(|_| HelperFailure::PrivilegeDrop)?;
+    let bounding_empty = (0..=last_capability).try_fold(true, |empty, bit| {
+        let capability = CapabilitySet::from_bits_retain(1_u64 << bit);
+        capability_is_in_bounding_set(capability)
+            .map(|present| empty && !present)
+            .map_err(|_| HelperFailure::PrivilegeDrop)
+    })?;
+    if no_new_privs().map_err(|_| HelperFailure::PrivilegeDrop)?
+        && current.effective.is_empty()
+        && current.permitted.is_empty()
+        && current.inheritable.is_empty()
+        && bounding_empty
+    {
+        Ok(())
+    } else {
+        Err(HelperFailure::PrivilegeDrop)
+    }
+}
+
+pub(super) fn drop_bootstrap_namespace_init_privileges() -> Result<(), HelperFailure> {
+    drop_privileges()
+}
+
+fn establish_bootstrap_namespaces(
+    output: &File,
+    input_files: &[ControlledBuildInputFile],
+    snapshot_deadline: Instant,
+) -> Result<(), HelperFailure> {
     if visible_thread_count()? != 1 {
         return Err(HelperFailure::NamespaceSetup);
     }
     let host_user_id = getuid().as_raw();
     let host_group_id = getgid().as_raw();
+    let namespaces = UnshareFlags::NEWUSER
+        | UnshareFlags::NEWNET
+        | UnshareFlags::NEWNS
+        | UnshareFlags::NEWIPC
+        | UnshareFlags::NEWUTS;
     #[expect(
         deprecated,
         reason = "the dedicated helper is verified single-threaded"
     )]
-    let result = rustix::thread::unshare(
-        UnshareFlags::NEWUSER | UnshareFlags::NEWNET | UnshareFlags::NEWPID,
-    );
+    rustix::thread::unshare(namespaces).map_err(classify_unshare_error)?;
+    write_identity_maps(host_user_id, host_group_id)?;
+    linux_build_mount::establish(output, input_files, snapshot_deadline)
+}
+
+fn enter_bootstrap_process_namespace() -> Result<(), HelperFailure> {
+    #[expect(
+        deprecated,
+        reason = "the dedicated helper is verified single-threaded"
+    )]
+    rustix::thread::unshare(UnshareFlags::NEWPID).map_err(classify_unshare_error)
+}
+
+fn establish_isolation_inner(
+    limits: (u64, u64),
+    build_roots: Option<(&File, &[ControlledBuildInputFile], Instant)>,
+) -> Result<EstablishedIsolation, HelperFailure> {
+    establish_namespaces(build_roots)?;
+    finish_isolation(limits)
+}
+
+fn establish_managed_namespaces() -> Result<(), HelperFailure> {
+    if visible_thread_count()? != 1 {
+        return Err(HelperFailure::NamespaceSetup);
+    }
+    let host_user_id = getuid().as_raw();
+    let host_group_id = getgid().as_raw();
+    let namespaces =
+        UnshareFlags::NEWUSER | UnshareFlags::NEWNET | UnshareFlags::NEWPID | UnshareFlags::NEWNS;
+    #[expect(
+        deprecated,
+        reason = "the dedicated helper is verified single-threaded"
+    )]
+    rustix::thread::unshare(namespaces).map_err(classify_unshare_error)?;
+    write_identity_maps(host_user_id, host_group_id)
+}
+
+fn establish_namespaces(
+    build_roots: Option<(&File, &[ControlledBuildInputFile], Instant)>,
+) -> Result<(), HelperFailure> {
+    if visible_thread_count()? != 1 {
+        return Err(HelperFailure::NamespaceSetup);
+    }
+    let host_user_id = getuid().as_raw();
+    let host_group_id = getgid().as_raw();
+    let mut namespaces = UnshareFlags::NEWUSER | UnshareFlags::NEWNET | UnshareFlags::NEWPID;
+    if build_roots.is_some() {
+        namespaces |= UnshareFlags::NEWNS | UnshareFlags::NEWIPC | UnshareFlags::NEWUTS;
+    }
+    #[expect(
+        deprecated,
+        reason = "the dedicated helper is verified single-threaded"
+    )]
+    let result = rustix::thread::unshare(namespaces);
     result.map_err(classify_unshare_error)?;
     write_identity_maps(host_user_id, host_group_id)?;
+    if let Some((output, input_files, snapshot_deadline)) = build_roots {
+        linux_build_mount::establish(output, input_files, snapshot_deadline)?;
+    }
+    Ok(())
+}
+
+fn finish_isolation(limits: (u64, u64)) -> Result<EstablishedIsolation, HelperFailure> {
     apply_resource_limits(limits)?;
     let loopback_index = super::linux_link::enable_and_validate_loopback()?;
     run_network_canaries()?;
@@ -171,102 +498,6 @@ fn classify_mapping_error(error: &io::Error) -> HelperFailure {
     } else {
         HelperFailure::NamespaceSetup
     }
-}
-
-fn apply_resource_limits((open_files, processes): (u64, u64)) -> Result<(), HelperFailure> {
-    let open_files = bounded_resource_limit(Resource::Nofile, open_files);
-    let processes = bounded_resource_limit(Resource::Nproc, processes);
-    setrlimit(
-        Resource::Nofile,
-        Rlimit {
-            current: Some(open_files),
-            maximum: Some(open_files),
-        },
-    )
-    .map_err(|_| HelperFailure::NamespaceSetup)?;
-    setrlimit(
-        Resource::Nproc,
-        Rlimit {
-            current: Some(processes),
-            maximum: Some(processes),
-        },
-    )
-    .map_err(|_| HelperFailure::NamespaceSetup)
-}
-
-fn bounded_resource_limit(resource: Resource, requested: u64) -> u64 {
-    getrlimit(resource)
-        .maximum
-        .map_or(requested, |maximum| requested.min(maximum))
-}
-
-fn run_network_canaries() -> Result<(), HelperFailure> {
-    allow_loopback(SocketAddr::from((Ipv4Addr::LOCALHOST, 0)))?;
-    allow_loopback(SocketAddr::from((Ipv6Addr::LOCALHOST, 0)))?;
-    deny_non_loopback(SocketAddr::from((Ipv4Addr::new(192, 0, 2, 1), 9)))?;
-    deny_non_loopback(SocketAddr::from((
-        Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1),
-        9,
-    )))?;
-    Ok(())
-}
-
-fn allow_loopback(address: SocketAddr) -> Result<(), HelperFailure> {
-    let listener = TcpListener::bind(address).map_err(|_| HelperFailure::NetworkCanary)?;
-    let address = listener
-        .local_addr()
-        .map_err(|_| HelperFailure::NetworkCanary)?;
-    TcpStream::connect_timeout(&address, CANARY_TIMEOUT)
-        .map(|_stream| ())
-        .map_err(|_| HelperFailure::NetworkCanary)
-}
-
-fn deny_non_loopback(address: SocketAddr) -> Result<(), HelperFailure> {
-    if TcpStream::connect_timeout(&address, CANARY_TIMEOUT).is_err() {
-        Ok(())
-    } else {
-        Err(HelperFailure::NetworkCanary)
-    }
-}
-
-fn drop_privileges() -> Result<(), HelperFailure> {
-    set_no_new_privs(true).map_err(|_| HelperFailure::PrivilegeDrop)?;
-    let last_capability = fs::read_to_string("/proc/sys/kernel/cap_last_cap")
-        .ok()
-        .and_then(|value| value.trim().parse::<u32>().ok())
-        .filter(|value| *value < u64::BITS)
-        .ok_or(HelperFailure::PrivilegeDrop)?;
-    for bit in 0..=last_capability {
-        let capability = CapabilitySet::from_bits_retain(1_u64 << bit);
-        if capability_is_in_bounding_set(capability).map_err(|_| HelperFailure::PrivilegeDrop)? {
-            remove_capability_from_bounding_set(capability)
-                .map_err(|_| HelperFailure::PrivilegeDrop)?;
-        }
-    }
-    let empty = CapabilitySets {
-        effective: CapabilitySet::empty(),
-        permitted: CapabilitySet::empty(),
-        inheritable: CapabilitySet::empty(),
-    };
-    set_capabilities(None, empty).map_err(|_| HelperFailure::PrivilegeDrop)?;
-    if privileges_are_fully_reduced()? {
-        Ok(())
-    } else {
-        Err(HelperFailure::PrivilegeDrop)
-    }
-}
-
-pub(super) fn privileges_are_fully_reduced() -> Result<bool, HelperFailure> {
-    let current = capabilities(None).map_err(|_| HelperFailure::PrivilegeDrop)?;
-    let status =
-        fs::read_to_string("/proc/self/status").map_err(|_| HelperFailure::PrivilegeDrop)?;
-    Ok(no_new_privs().map_err(|_| HelperFailure::PrivilegeDrop)?
-        && current.effective.is_empty()
-        && current.permitted.is_empty()
-        && current.inheritable.is_empty()
-        && ["CapBnd:\t0000000000000000", "CapAmb:\t0000000000000000"]
-            .iter()
-            .all(|field| status.lines().any(|line| line == *field)))
 }
 
 fn namespace_identity(path: &str) -> Result<RawNamespaceIdentity, HelperFailure> {

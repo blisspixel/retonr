@@ -3,22 +3,27 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod candidate;
 mod conformance;
 mod contract;
 mod error;
 mod local_judge;
 mod port;
+mod request_identity;
 mod schemas;
+mod single_candidate;
 mod structured;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod testing;
 
+pub use candidate::{CandidateOutputError, CandidateOutputPolicy, parse_candidate_output};
 pub use conformance::{CONFORMANCE_BACKEND_ID, ConformanceInferenceBackend};
 pub use contract::{
     BackendDiscovery, BackendId, BackendIdError, GENERATION_REQUEST_SCHEMA_VERSION,
     GenerationCandidate, GenerationRequest, GenerationResponse, InferenceCapabilities,
-    InventoryEntry, OutputContract, ReasoningPolicy, SamplingParameters, UsageObservation,
+    InventoryEntry, MAX_INFERENCE_CANDIDATES, OutputContract, ReasoningPolicy, SamplingParameters,
+    UsageObservation,
 };
 pub use error::{ContractError, InferenceError, InferenceErrorKind};
 pub use local_judge::{
@@ -30,6 +35,10 @@ pub use local_judge::{
 };
 pub use port::{InferenceBackend, OperationContext, PortFuture};
 pub use schemas::{candidate_output_contract, claim_output_contract};
+pub use single_candidate::{
+    SingleCandidateRequestMappingError, derive_single_candidate_structured_request,
+    validate_single_candidate_structured_request,
+};
 pub use structured::{
     STRUCTURED_COMPLETION_REQUEST_SCHEMA_VERSION, StructuredCompletionFinish,
     StructuredCompletionRequest, StructuredCompletionResponse,

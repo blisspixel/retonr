@@ -1,14 +1,24 @@
 use std::{cell::RefCell, rc::Rc};
 
+use rewrite_app::{
+    MANAGED_OLLAMA_V0_32_15_ENDPOINT, ManagedOllamaIsolationLease, VerifiedAdmittedRuntime,
+    VerifiedManagedGenerationPath, VerifiedManagedOllamaLaunchPlan,
+};
 use rewrite_inference::StructuredCompletionRequest;
 use rewrite_model::{NativeLoadObservation, RuntimePackageManifest, RuntimePackageManifestId};
 use rewrite_ollama::{
-    OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES, OllamaCloudDisableFeaturePolicy,
-    OllamaCloudDisableVersionStatus, OllamaModelBinding, OllamaObservedSessionError, OllamaVersion,
+    OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES, OllamaModelBinding, OllamaObservedSessionError,
+    OllamaResponseObservation, OllamaResponseObservationPhase, OllamaVersion,
 };
 use rewrite_runtime_attestor::{
-    AttachedProcessEvidence, AttachedProcessLease, ExpectedExternalNativeComponent,
-    NativeLoadObservationRequest, NativeManagedLinuxProcessLease, RetainedNativePackageMember,
+    AttachedProcessEvidence, AttachedProcessLease, ManagedGenerationWorkerError,
+    ManagedGenerationWorkerEvidence, ManagedGenerationWorkerLimits,
+    ManagedGenerationWorkerModelMappingEvidence, ManagedGenerationWorkerNativeLoadEvidence,
+    ManagedGenerationWorkerNativeLoadRequest, ManagedGenerationWorkerObservationRequest,
+    ManagedGenerationWorkerProfile, ManagedGenerationWorkerResourceObservation,
+    NativeLoadObservationRequest, NativeManagedGenerationWorkerLease,
+    NativeManagedLinuxProcessLease, RetainedNativePackageMember,
+    VerifiedFrozenExternalNativeComponentSet,
 };
 use rewrite_types::{CancellationToken, Digest};
 
@@ -25,27 +35,59 @@ use super::super::{
     validation::validate_process_binding,
 };
 use super::LocalOllamaManagedGenerationError;
+use super::deadline::CandidateOperationDeadline;
 
 pub(super) struct ManagedSessionObserver {
     pub(super) process: NativeManagedLinuxProcessLease,
     pub(super) connections: ConnectionObservationSequence,
+    pub(super) worker: Option<ManagedGenerationWorkerObservation>,
 }
 
-pub(super) fn validate_generation_admission(
+pub(super) struct ManagedGenerationWorkerObservation {
+    lease: NativeManagedGenerationWorkerLease,
+    pub(super) initial: ManagedGenerationWorkerEvidence,
+    pub(super) native_load: ManagedGenerationWorkerNativeLoadEvidence,
+    pub(super) model_mapping: ManagedGenerationWorkerModelMappingEvidence,
+}
+
+pub(super) struct FinalManagedGenerationWorkerEvidence {
+    pub(super) initial: ManagedGenerationWorkerEvidence,
+    pub(super) final_evidence: ManagedGenerationWorkerEvidence,
+    pub(super) native_load: ManagedGenerationWorkerNativeLoadEvidence,
+    pub(super) model_mapping: ManagedGenerationWorkerModelMappingEvidence,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub(super) enum ManagedGenerationSessionObservationError {
+    #[error(transparent)]
+    Connection(#[from] LocalOllamaBoundPreflightError),
+    #[error(transparent)]
+    Worker(#[from] ManagedGenerationWorkerError),
+    #[error(transparent)]
+    Gate(LocalOllamaManagedGenerationError),
+}
+
+pub(super) fn validate_generation_authority(
     package: &RuntimePackageManifest,
     plan: &LocalOllamaBoundPreflightPlan,
+    admitted_runtime: &VerifiedAdmittedRuntime,
+    generation_path: &VerifiedManagedGenerationPath,
+    frozen_external_components: &VerifiedFrozenExternalNativeComponentSet,
 ) -> Result<(), LocalOllamaManagedGenerationError> {
     let runtime_version = plan
         .preflight
         .expected_runtime_version
         .parse::<OllamaVersion>()
         .map_err(|_error| LocalOllamaManagedPreflightError::InvalidInput)?;
-    if OllamaCloudDisableFeaturePolicy::assess(
+    let package_id = package.runtime_package_manifest_id();
+    let valid = generation_path.matches_runtime(
+        admitted_runtime,
+        package,
         runtime_version,
-        &package.runtime_package_manifest_id(),
-    ) != OllamaCloudDisableVersionStatus::Reviewed
-    {
-        return Err(LocalOllamaManagedGenerationError::RuntimeNotAdmitted);
+        frozen_external_components.frozen_set_id(),
+    ) && frozen_external_components.runtime_package_manifest_id() == &package_id;
+    if !valid {
+        return Err(LocalOllamaManagedGenerationError::InvalidGenerationAuthority);
     }
     Ok(())
 }
@@ -56,6 +98,24 @@ pub(super) fn validate_generation_binding(
     static_model: &LocalOllamaModelBindingEvidence,
     model: &OllamaModelBinding,
     request: &StructuredCompletionRequest,
+) -> Result<(), LocalOllamaManagedPreflightError> {
+    validate_generation_model_binding(package, plan, static_model, model)?;
+    let valid = request.artifact_id == *model.artifact_id()
+        && request.artifact_digest == *model.artifact_digest()
+        && u64::try_from(request.input.len()).unwrap_or(u64::MAX)
+            <= u64::from(OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES)
+        && request.validate().is_ok();
+    if !valid {
+        return Err(LocalOllamaManagedPreflightError::InvalidEvidenceBinding);
+    }
+    Ok(())
+}
+
+pub(super) fn validate_generation_model_binding(
+    package: &RuntimePackageManifest,
+    plan: &LocalOllamaBoundPreflightPlan,
+    static_model: &LocalOllamaModelBindingEvidence,
+    model: &OllamaModelBinding,
 ) -> Result<(), LocalOllamaManagedPreflightError> {
     let plan_digest = serde_json::to_vec(&plan.preflight)
         .map(|bytes| Digest::sha256(&bytes))
@@ -72,156 +132,334 @@ pub(super) fn validate_generation_binding(
         && static_model.runtime_reference_digest == Digest::sha256(model.reference().as_bytes())
         && static_model.inventory_digest == *model.inventory_digest()
         && static_model.model_artifact_id == *model.artifact_id()
-        && model.artifact_digest() == static_model.model_artifact_id.digest()
-        && request.artifact_id == *model.artifact_id()
-        && request.artifact_digest == *model.artifact_digest()
-        && u64::try_from(request.input.len()).unwrap_or(u64::MAX)
-            <= u64::from(OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES)
-        && request.validate().is_ok();
+        && model.artifact_digest() == static_model.model_artifact_id.digest();
     if !valid {
         return Err(LocalOllamaManagedPreflightError::InvalidEvidenceBinding);
     }
     Ok(())
 }
 
+pub(super) fn validate_managed_input_binding(
+    input: &VerifiedManagedOllamaLaunchPlan<'_>,
+    static_model: &LocalOllamaModelBindingEvidence,
+    model: &OllamaModelBinding,
+    plan: &LocalOllamaBoundPreflightPlan,
+) -> Result<(), LocalOllamaManagedPreflightError> {
+    let endpoint = rewrite_ollama::OllamaEndpoint::parse(&plan.preflight.endpoint)
+        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidInput)?;
+    let evidence = input.input_evidence();
+    let target = input.model_target();
+    if endpoint.socket_addr() != MANAGED_OLLAMA_V0_32_15_ENDPOINT
+        || evidence.model_package_manifest_id() != &static_model.model_package_manifest_id
+        || evidence.artifact_set_id() != &static_model.artifact_set_id
+        || evidence.installation_generation() != static_model.artifact_set_installation_generation
+        || evidence.runtime_reference_digest() != &static_model.runtime_reference_digest
+        || evidence.model_artifact_id() != &static_model.model_artifact_id
+        || evidence.model_artifact_id() != model.artifact_id()
+        || target.artifact_id() != evidence.model_artifact_id()
+        || target.target_digest() != evidence.model_target_digest()
+        || input.model_byte_size() != static_model.model_byte_size
+    {
+        return Err(LocalOllamaManagedPreflightError::InvalidEvidenceBinding);
+    }
+    Ok(())
+}
+
+pub(super) fn exact_retained_worker<'a>(
+    retained: &'a [RetainedNativePackageMember],
+    generation_path: &VerifiedManagedGenerationPath,
+) -> Result<&'a RetainedNativePackageMember, LocalOllamaManagedGenerationError> {
+    let mut matches = retained
+        .iter()
+        .filter(|member| member.artifact_id() == generation_path.worker_artifact_id());
+    let worker = matches
+        .next()
+        .ok_or(LocalOllamaManagedGenerationError::InvalidGenerationAuthority)?;
+    if matches.next().is_some() {
+        return Err(LocalOllamaManagedGenerationError::InvalidGenerationAuthority);
+    }
+    Ok(worker)
+}
+
+fn validate_worker_relationships(
+    initial: &ManagedGenerationWorkerEvidence,
+    model_mapping: &ManagedGenerationWorkerModelMappingEvidence,
+    retained_worker: &RetainedNativePackageMember,
+    managed_ollama: &ManagedOllamaIsolationLease<'_>,
+) -> Result<(), ManagedGenerationWorkerError> {
+    let target = managed_ollama.model_target().artifact_id();
+    if initial.worker_artifact_id() == retained_worker.artifact_id()
+        && initial.model_artifact_id() == target
+        && model_mapping.model_artifact_id() == target
+        && model_mapping.mapping_region_count() != 0
+    {
+        Ok(())
+    } else {
+        Err(ManagedGenerationWorkerError::InvalidRequest)
+    }
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the callback joins independent connection, package, model, and worker capabilities"
+)]
+pub(super) fn observe_response_and_worker<'a>(
+    state: &mut ManagedSessionObserver,
+    observation: OllamaResponseObservation,
+    worker_response_ordinal: usize,
+    package: &'a RuntimePackageManifest,
+    package_id: &'a RuntimePackageManifestId,
+    retained_worker: &'a RetainedNativePackageMember,
+    retained_package_code: &'a [RetainedNativePackageMember],
+    frozen: &'a VerifiedFrozenExternalNativeComponentSet,
+    managed_ollama: &'a ManagedOllamaIsolationLease<'a>,
+    limits: ManagedGenerationWorkerLimits,
+    operation_deadline: CandidateOperationDeadline,
+    cancellation: &CancellationToken,
+) -> Result<(), ManagedGenerationSessionObservationError> {
+    operation_deadline
+        .ensure_active(cancellation)
+        .map_err(ManagedGenerationSessionObservationError::Gate)?;
+    let phase = observation.phase();
+    let connection_result = match operation_deadline.instant() {
+        Some(deadline) => {
+            state
+                .connections
+                .observe_until(&mut state.process, cancellation, observation, deadline)
+        }
+        None => state
+            .connections
+            .observe(&mut state.process, cancellation, observation),
+    };
+    if let Some(error) = operation_deadline.terminal_override(cancellation) {
+        return Err(ManagedGenerationSessionObservationError::Gate(error));
+    }
+    connection_result?;
+    if phase
+        != (OllamaResponseObservationPhase::AfterResponse {
+            ordinal: worker_response_ordinal,
+        })
+    {
+        return Ok(());
+    }
+    if state.worker.is_some() {
+        return Err(LocalOllamaBoundPreflightError::InvalidObservationSequence.into());
+    }
+    operation_deadline
+        .ensure_active(cancellation)
+        .map_err(ManagedGenerationSessionObservationError::Gate)?;
+    let worker_request = ManagedGenerationWorkerObservationRequest {
+        package,
+        expected_package_id: package_id,
+        retained_worker,
+        retained_model_weight: managed_ollama.retained_model_weight(),
+        profile: ManagedGenerationWorkerProfile::OllamaV0_32_15Cpu,
+        limits,
+    };
+    let lease_result = match operation_deadline.instant() {
+        Some(deadline) => {
+            state
+                .process
+                .observe_generation_worker_until(&worker_request, cancellation, deadline)
+        }
+        None => state
+            .process
+            .observe_generation_worker(&worker_request, cancellation),
+    };
+    if let Some(error) = operation_deadline.terminal_override(cancellation) {
+        return Err(ManagedGenerationSessionObservationError::Gate(error));
+    }
+    let mut lease = lease_result?;
+    let initial = lease.initial_evidence().clone();
+    operation_deadline
+        .ensure_active(cancellation)
+        .map_err(ManagedGenerationSessionObservationError::Gate)?;
+    let native_load_request = ManagedGenerationWorkerNativeLoadRequest {
+        package,
+        expected_package_id: package_id,
+        retained_package_code,
+        expected_external_components: frozen.expected_components(),
+    };
+    let native_load_result = match operation_deadline.instant() {
+        Some(deadline) => {
+            lease.observe_native_load_until(&native_load_request, cancellation, deadline)
+        }
+        None => lease.observe_native_load(&native_load_request, cancellation),
+    };
+    if let Some(error) = operation_deadline.terminal_override(cancellation) {
+        return Err(ManagedGenerationSessionObservationError::Gate(error));
+    }
+    let native_load = native_load_result?;
+    operation_deadline
+        .ensure_active(cancellation)
+        .map_err(ManagedGenerationSessionObservationError::Gate)?;
+    let model_mapping_result = match operation_deadline.instant() {
+        Some(deadline) => lease.observe_model_mapping_until(cancellation, deadline),
+        None => lease.observe_model_mapping(cancellation),
+    };
+    if let Some(error) = operation_deadline.terminal_override(cancellation) {
+        return Err(ManagedGenerationSessionObservationError::Gate(error));
+    }
+    let model_mapping = model_mapping_result?;
+    let relationship_result =
+        validate_worker_relationships(&initial, &model_mapping, retained_worker, managed_ollama);
+    if let Some(error) = operation_deadline.terminal_override(cancellation) {
+        return Err(ManagedGenerationSessionObservationError::Gate(error));
+    }
+    relationship_result?;
+    state.worker = Some(ManagedGenerationWorkerObservation {
+        lease,
+        initial,
+        native_load,
+        model_mapping,
+    });
+    Ok(())
+}
+
+pub(super) fn reobserve_worker(
+    observer: &Rc<RefCell<ManagedSessionObserver>>,
+    operation_deadline: CandidateOperationDeadline,
+    cancellation: &CancellationToken,
+) -> Result<FinalManagedGenerationWorkerEvidence, LocalOllamaManagedGenerationError> {
+    operation_deadline.ensure_active(cancellation)?;
+    let mut state = observer
+        .try_borrow_mut()
+        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?;
+    let worker = state
+        .worker
+        .as_mut()
+        .ok_or(LocalOllamaManagedGenerationError::InvalidGenerationAuthority)?;
+    let result = match operation_deadline.instant() {
+        Some(deadline) => worker.lease.reobserve_until(cancellation, deadline),
+        None => worker.lease.reobserve(cancellation),
+    }
+    .map_err(LocalOllamaManagedGenerationError::from)
+    .map(|final_evidence| FinalManagedGenerationWorkerEvidence {
+        initial: worker.initial.clone(),
+        final_evidence,
+        native_load: worker.native_load.clone(),
+        model_mapping: worker.model_mapping.clone(),
+    });
+    operation_deadline.precedence(result, cancellation)
+}
+
+pub(super) fn observe_resource_and_reobserve_worker(
+    observer: &Rc<RefCell<ManagedSessionObserver>>,
+    operation_deadline: CandidateOperationDeadline,
+    cancellation: &CancellationToken,
+) -> Result<
+    (
+        ManagedGenerationWorkerResourceObservation,
+        ManagedGenerationWorkerEvidence,
+    ),
+    LocalOllamaManagedGenerationError,
+> {
+    operation_deadline.ensure_active(cancellation)?;
+    let mut state = observer
+        .try_borrow_mut()
+        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?;
+    let worker = state
+        .worker
+        .as_mut()
+        .ok_or(LocalOllamaManagedGenerationError::InvalidGenerationAuthority)?;
+    let observation_result = match operation_deadline.instant() {
+        Some(deadline) => worker.lease.observe_resource_until(cancellation, deadline),
+        None => worker.lease.observe_resource(cancellation),
+    }
+    .map_err(LocalOllamaManagedGenerationError::from);
+    let observation = operation_deadline.precedence(observation_result, cancellation)?;
+    operation_deadline.ensure_active(cancellation)?;
+    let evidence_result = match operation_deadline.instant() {
+        Some(deadline) => worker.lease.reobserve_until(cancellation, deadline),
+        None => worker.lease.reobserve(cancellation),
+    }
+    .map_err(LocalOllamaManagedGenerationError::from);
+    let evidence = operation_deadline.precedence(evidence_result, cancellation)?;
+    let result = if observation.worker_evidence_digest() == evidence.evidence_digest()
+        && evidence == worker.initial
+    {
+        Ok((observation, evidence))
+    } else {
+        Err(LocalOllamaManagedPreflightError::InvalidEvidenceBinding.into())
+    };
+    operation_deadline.precedence(result, cancellation)
+}
+
 pub(super) fn reobserve_process(
     observer: &Rc<RefCell<ManagedSessionObserver>>,
     package: &RuntimePackageManifest,
+    operation_deadline: CandidateOperationDeadline,
     cancellation: &CancellationToken,
-) -> Result<AttachedProcessEvidence, LocalOllamaManagedPreflightError> {
-    let evidence = observer
+) -> Result<AttachedProcessEvidence, LocalOllamaManagedGenerationError> {
+    operation_deadline.ensure_active(cancellation)?;
+    let mut state = observer
         .try_borrow_mut()
-        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?
-        .process
-        .reobserve(cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Witness)?;
-    validate_process_binding(&evidence, package)?;
-    Ok(evidence)
+        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?;
+    let result = match operation_deadline.instant() {
+        Some(deadline) => state.process.reobserve_until(cancellation, deadline),
+        None => state.process.reobserve(cancellation),
+    }
+    .map_err(LocalOllamaManagedPreflightError::Witness)
+    .map_err(LocalOllamaManagedGenerationError::from)
+    .and_then(|evidence| {
+        validate_process_binding(&evidence, package)
+            .map_err(LocalOllamaManagedGenerationError::from)?;
+        Ok(evidence)
+    });
+    operation_deadline.precedence(result, cancellation)
 }
 
 pub(super) fn observe_native_load(
     observer: &Rc<RefCell<ManagedSessionObserver>>,
     package: &RuntimePackageManifest,
-    package_id: &RuntimePackageManifestId,
     retained_members: &[RetainedNativePackageMember],
-    external_components: &[ExpectedExternalNativeComponent],
+    frozen_external_components: &VerifiedFrozenExternalNativeComponentSet,
     limits: LocalOllamaManagedPreflightLimits,
+    operation_deadline: CandidateOperationDeadline,
     cancellation: &CancellationToken,
-) -> Result<NativeLoadObservation, LocalOllamaManagedPreflightError> {
-    observer
+) -> Result<NativeLoadObservation, LocalOllamaManagedGenerationError> {
+    operation_deadline.ensure_active(cancellation)?;
+    let mut state = observer
         .try_borrow_mut()
-        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?
-        .process
-        .observe_native_load(
-            &NativeLoadObservationRequest {
-                package,
-                expected_package_id: package_id,
-                retained_package_members: retained_members,
-                expected_external_components: external_components,
-                limits: limits.native_load,
-            },
-            cancellation,
-        )
-        .map_err(LocalOllamaManagedPreflightError::NativeLoad)
+        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?;
+    let package_id = package.runtime_package_manifest_id();
+    let request = NativeLoadObservationRequest {
+        package,
+        expected_package_id: &package_id,
+        retained_package_members: retained_members,
+        expected_external_components: frozen_external_components.expected_components(),
+        limits: limits.native_load,
+    };
+    let result = match operation_deadline.instant() {
+        Some(deadline) => state
+            .process
+            .observe_native_load_until(&request, cancellation, deadline),
+        None => state.process.observe_native_load(&request, cancellation),
+    }
+    .map_err(LocalOllamaManagedPreflightError::NativeLoad)
+    .map_err(LocalOllamaManagedGenerationError::from);
+    operation_deadline.precedence(result, cancellation)
 }
 
 pub(super) fn map_session_error(
-    error: OllamaObservedSessionError<LocalOllamaBoundPreflightError>,
+    error: OllamaObservedSessionError<ManagedGenerationSessionObservationError>,
 ) -> LocalOllamaManagedGenerationError {
     match error {
         OllamaObservedSessionError::Session(error) => {
             LocalOllamaManagedGenerationError::Session(error)
         }
-        OllamaObservedSessionError::Observation(error) => {
-            LocalOllamaManagedPreflightError::BoundObservation(error).into()
-        }
+        OllamaObservedSessionError::Observation(
+            ManagedGenerationSessionObservationError::Connection(error),
+        ) => LocalOllamaManagedPreflightError::BoundObservation(error).into(),
+        OllamaObservedSessionError::Observation(
+            ManagedGenerationSessionObservationError::Worker(error),
+        ) => LocalOllamaManagedGenerationError::Worker(error),
+        OllamaObservedSessionError::Observation(
+            ManagedGenerationSessionObservationError::Gate(error),
+        ) => error,
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use rewrite_inference::{
-        ReasoningPolicy, STRUCTURED_COMPLETION_REQUEST_SCHEMA_VERSION, SamplingParameters,
-        StructuredCompletionRequest, candidate_output_contract,
-    };
-    use rewrite_ollama::OllamaModelBinding;
-    use rewrite_types::Digest;
-
-    use super::{validate_generation_admission, validate_generation_binding};
-    use crate::{
-        LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_SCHEMA_VERSION, LocalOllamaBoundPreflightPlan,
-        local_ollama_managed_preflight::test_support::package_for_version,
-        local_ollama_model_binding::{
-            LOCAL_OLLAMA_MODEL_BINDING_RUNTIME_VERSION, tests::exact_binding_fixture,
-        },
-    };
-
-    fn request(model: &OllamaModelBinding) -> StructuredCompletionRequest {
-        StructuredCompletionRequest {
-            schema_version: STRUCTURED_COMPLETION_REQUEST_SCHEMA_VERSION,
-            artifact_id: model.artifact_id().clone(),
-            artifact_digest: model.artifact_digest().clone(),
-            input: "bounded fixture".to_owned(),
-            output: candidate_output_contract(),
-            source_byte_count: 15,
-            source_byte_limit: 1024,
-            input_byte_limit: 2048,
-            context_token_limit: 2048,
-            output_token_limit: 256,
-            output_byte_limit: 4096,
-            sampling: SamplingParameters {
-                temperature: 0.0,
-                top_p: 1.0,
-                seed: Some(7),
-            },
-            reasoning: ReasoningPolicy::Disabled,
-        }
-    }
-
-    #[test]
-    fn exact_static_model_artifact_and_distinct_inventory_bind() {
-        let package = package_for_version(LOCAL_OLLAMA_MODEL_BINDING_RUNTIME_VERSION);
-        let (preflight, evidence, model) = exact_binding_fixture();
-        let plan = LocalOllamaBoundPreflightPlan {
-            schema_version: LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_SCHEMA_VERSION,
-            preflight,
-            maximum_entrypoint_bytes: 1024,
-            maximum_session_body_bytes: 4 * 1024 * 1024,
-            expected_entrypoint_digest: Some(package.entrypoint().artifact_id().digest().clone()),
-        };
-        let request = request(&model);
-
-        validate_generation_binding(&package, &plan, &evidence, &model, &request)
-            .expect("exact distinct identities bind");
-        assert_ne!(model.artifact_digest(), model.inventory_digest());
-
-        let wrong_inventory = Digest::sha256(b"wrong inventory");
-        let wrong_model = OllamaModelBinding::new_with_inventory(
-            model.reference(),
-            model.artifact_id().clone(),
-            model.artifact_digest().clone(),
-            wrong_inventory,
-        )
-        .expect("structurally valid wrong binding");
-        assert!(
-            validate_generation_binding(&package, &plan, &evidence, &wrong_model, &request)
-                .is_err()
-        );
-        assert!(matches!(
-            validate_generation_admission(&package, &plan),
-            Err(super::LocalOllamaManagedGenerationError::RuntimeNotAdmitted)
-        ));
-
-        let mut oversized = request;
-        oversized.input = "x".repeat(
-            usize::try_from(rewrite_ollama::OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES)
-                .expect("input limit")
-                + 1,
-        );
-        oversized.input_byte_limit = u64::try_from(oversized.input.len()).expect("input length");
-        assert!(oversized.validate().is_ok());
-        assert!(
-            validate_generation_binding(&package, &plan, &evidence, &model, &oversized).is_err()
-        );
-    }
-}
+#[path = "validation/tests.rs"]
+mod tests;

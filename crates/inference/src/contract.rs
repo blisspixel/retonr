@@ -224,7 +224,7 @@ pub struct GenerationRequest {
     pub output: OutputContract,
     /// Requested number of independent candidates.
     pub candidate_count: u8,
-    /// Observed source bytes represented inside the complete backend input.
+    /// Original source bytes associated with the complete backend input.
     pub source_byte_count: u64,
     /// Qualified source-byte envelope.
     pub source_byte_limit: u64,
@@ -256,13 +256,14 @@ impl GenerationRequest {
         if self.artifact_id.digest() != &self.artifact_digest {
             return Err(ContractError::ArtifactMismatch);
         }
+        let input_byte_count = u64::try_from(self.input.len()).unwrap_or(u64::MAX);
         if self.source_byte_count > self.source_byte_limit
             || self.source_byte_limit == 0
             || self.input_byte_limit == 0
             || self.context_token_limit == 0
             || self.output_token_limit == 0
             || self.candidate_byte_limit == 0
-            || u64::try_from(self.input.len()).unwrap_or(u64::MAX) > self.input_byte_limit
+            || input_byte_count > self.input_byte_limit
         {
             return Err(ContractError::InvalidLimits);
         }
@@ -386,6 +387,18 @@ mod tests {
             };
             assert_eq!(value.validate(), Err(ContractError::InvalidOutputContract));
         }
+    }
+
+    #[test]
+    fn request_allows_masked_input_shorter_than_original_source() {
+        let mut value = request();
+        value.source_byte_count = u64::try_from(value.input.len()).expect("input byte count") + 1;
+        value
+            .validate()
+            .expect("masked input may be shorter than the original source");
+
+        value.source_byte_count = value.source_byte_limit + 1;
+        assert_eq!(value.validate(), Err(ContractError::InvalidLimits));
     }
 
     #[test]

@@ -8,14 +8,37 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = []
+managed-launch-live-fixture = []
+test-support = [
+    "dep:rusqlite",
+    "dep:tempfile",
+    "rewrite-inference/test-support",
+    "rewrite-ollama/test-support",
+    "rewrite-runtime-attestor/test-support",
+    "rewrite-runtime-isolation/test-support",
+]
+
+[[bin]]
+name = "rewrite-app-managed-ollama-fixture"
+path = "tests/fixtures/managed_ollama_server.rs"
+required-features = ["managed-launch-live-fixture"]
+test = false
+bench = false
+doc = false
+
 [dependencies]
+cargo-lock.workspace = true
 rewrite-engine = { path = "../engine", version = "0.1.0" }
 rewrite-grounded = { path = "../grounded", version = "0.1.0" }
 rewrite-inference = { path = "../inference", version = "0.1.0" }
 rewrite-model = { path = "../model", version = "0.1.0" }
 rewrite-model-store = { path = "../model-store", version = "0.1.0" }
+rewrite-ollama = { path = "../ollama", version = "0.1.0" }
 rewrite-ollama-package = { path = "../ollama-package", version = "0.1.0" }
 rewrite-runtime-attestor = { path = "../runtime-attestor", version = "0.1.0" }
+rewrite-runtime-isolation = { path = "../runtime-isolation", version = "0.1.0" }
 rewrite-text-adapter = { path = "../text-adapter", version = "0.1.0" }
 rewrite-types = { path = "../types", version = "0.1.0" }
 getrandom.workspace = true
@@ -23,9 +46,11 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
+rusqlite = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
 
 [target.'cfg(unix)'.dependencies]
-rustix.workspace = true
+rustix = { workspace = true, features = ["system", "thread"] }
 
 [target.'cfg(windows)'.dependencies]
 cap-fs-ext.workspace = true
@@ -33,12 +58,17 @@ cap-primitives.workspace = true
 fs_at.workspace = true
 same-file.workspace = true
 winx.workspace = true
+winsafe.workspace = true
 
 [dev-dependencies]
 rewrite-inference = { path = "../inference", version = "0.1.0", features = ["test-support"] }
+rewrite-ollama = { path = "../ollama", version = "0.1.0", features = ["test-support"] }
+rewrite-runtime-attestor = { path = "../runtime-attestor", version = "0.1.0", features = ["test-support"] }
+rewrite-runtime-isolation = { path = "../runtime-isolation", version = "0.1.0", features = ["test-support"] }
 rusqlite.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

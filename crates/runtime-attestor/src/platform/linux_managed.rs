@@ -16,6 +16,8 @@ use super::{
     linux_proc_holders::{effective_uid_for_pid, visible_same_uid_holders},
     linux_sock_diag::SockDiagSession,
 };
+
+mod discovery;
 use crate::{
     AttachedProcessEvidence, AttachedProcessEvidenceClass, AttachedProcessEvidenceInput,
     AttachedProcessWitnessError, AttachedProcessWitnessLimits, ListenerEndpoint,
@@ -32,10 +34,10 @@ use retry::retry_incomplete_snapshot;
 pub(crate) struct Lease {
     endpoint: ListenerEndpoint,
     owner: ListenerOwner,
-    pidfd: OwnedFd,
+    pub(in crate::platform) pidfd: OwnedFd,
     entrypoint: File,
     network_namespace: File,
-    expected: ManagedLinuxProcessExpectation,
+    pub(in crate::platform) expected: ManagedLinuxProcessExpectation,
     outer_uid: u32,
     initial: AttachedProcessEvidence,
     sock_diag: SockDiagSession,

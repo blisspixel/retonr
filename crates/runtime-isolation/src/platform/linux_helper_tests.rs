@@ -10,6 +10,7 @@ fn helper_modes_reject_ambiguous_probe_arguments() {
     assert!(validate_mode_arguments(Mode::Probe, &[]).is_ok());
     assert!(validate_mode_arguments(Mode::Probe, &[std::ffi::OsString::from("extra")]).is_err());
     assert!(validate_mode_arguments(Mode::Launch, &[]).is_ok());
+    assert!(validate_mode_arguments(Mode::Bootstrap, &[]).is_ok());
 }
 
 #[test]

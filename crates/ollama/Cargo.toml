@@ -8,6 +8,10 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = []
+test-support = []
+
 [dependencies]
 bytes.workspace = true
 futures-util.workspace = true

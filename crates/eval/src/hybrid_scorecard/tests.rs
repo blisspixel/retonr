@@ -7,6 +7,7 @@ use crate::{
         HybridScorecardPlan, JudgeAuthority, JudgeCaseOutcome, JudgeChoice, JudgeExecution,
         JudgeObservation, JudgeObservationBatch, JudgeObservationEvidenceClass, JudgeOrderPolicy,
         JudgePresentation, LocalJudgePolicy, MAX_HYBRID_SCORECARD_BYTES, ReleaseReviewDisposition,
+        deterministic::run_exact_projection_scorecard,
         hybrid_scorecard_deterministic_policy_digest, hybrid_scorecard_plan_digest,
         hybrid_scorecard_suite_pair_digest, parse_hybrid_scorecard_plan,
         parse_judge_observation_batch, run_hybrid_scorecard,
@@ -188,6 +189,11 @@ fn runs_bound_hard_gates_and_normalizes_every_two_order_outcome() {
     let plan = plan(&candidate_a, &candidate_b);
     let result = run_hybrid_scorecard(&plan, &candidate_a, &candidate_b, &batch(&plan))
         .expect("scorecard runs");
+    assert_eq!(
+        run_exact_projection_scorecard(&plan, &candidate_a, &candidate_b, &batch(&plan))
+            .expect("exact projection scorecard runs"),
+        result
+    );
     assert_eq!(result.deterministic_total, 10);
     assert_eq!(result.deterministic_passed, 10);
     assert!(result.hard_gates_passed());
@@ -258,6 +264,11 @@ fn hard_gate_failure_blocks_judge_execution() {
     let blocked =
         run_hybrid_scorecard(&plan, &candidate_a, &candidate_b, &empty).expect("blocked report");
     assert_eq!(
+        run_exact_projection_scorecard(&plan, &candidate_a, &candidate_b, &empty)
+            .expect("exact projection blocks"),
+        blocked
+    );
+    assert_eq!(
         blocked.release_review,
         ReleaseReviewDisposition::BlockedByHardGate
     );
@@ -268,6 +279,10 @@ fn hard_gate_failure_blocks_judge_execution() {
 
     assert_eq!(
         run_hybrid_scorecard(&plan, &candidate_a, &candidate_b, &batch(&plan)),
+        Err(HybridScorecardError::JudgeAfterHardGateFailure)
+    );
+    assert_eq!(
+        run_exact_projection_scorecard(&plan, &candidate_a, &candidate_b, &batch(&plan)),
         Err(HybridScorecardError::JudgeAfterHardGateFailure)
     );
 }
@@ -298,6 +313,10 @@ fn rejects_replayed_batches_and_changed_corpus_or_policy() {
     changed_plan.judge.presentation_seed += 1;
     assert_eq!(
         run_hybrid_scorecard(&changed_plan, &candidate_a, &candidate_b, &original_batch),
+        Err(HybridScorecardError::PlanMismatch)
+    );
+    assert_eq!(
+        run_exact_projection_scorecard(&changed_plan, &candidate_a, &candidate_b, &original_batch),
         Err(HybridScorecardError::PlanMismatch)
     );
 

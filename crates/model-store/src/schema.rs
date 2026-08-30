@@ -4,89 +4,31 @@ use rusqlite::{Connection, TransactionBehavior};
 
 use crate::{StoreError, StoreResult};
 
+mod eight;
+mod nine;
+mod routing;
+mod seven;
 mod shape;
+mod ten;
+
+use eight::migrate_schema_seven;
+use nine::migrate_schema_eight;
+use seven::migrate_schema_six;
+use ten::migrate_schema_nine;
 
 pub(super) use shape::{
-    validate_schema_five, validate_schema_four, validate_schema_one, validate_schema_shape,
+    validate_schema_eight, validate_schema_five, validate_schema_four, validate_schema_nine,
+    validate_schema_one, validate_schema_seven, validate_schema_shape, validate_schema_six,
     validate_schema_three, validate_schema_two,
 };
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 6;
+pub(super) const STORE_SCHEMA_VERSION: i64 = 10;
 
 pub(super) fn migrate_existing_transaction(
     connection: &Connection,
     expected_version: i64,
 ) -> StoreResult<()> {
-    let observed: i64 = connection.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if observed != expected_version {
-        return Err(StoreError::CorruptRecord);
-    }
-    crate::integrity::validate_database_integrity(connection)?;
-    migrate_supported_schema(connection, observed)?;
-    validate_schema_shape(connection)?;
-    crate::integrity::validate_database_integrity(connection)
-}
-
-fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResult<()> {
-    match version {
-        0 => {
-            return Err(StoreError::MigrationRequired {
-                found: version,
-                current: STORE_SCHEMA_VERSION,
-            });
-        }
-        1 => {
-            validate_schema_one(connection)?;
-            migrate_schema_one(connection)?;
-            validate_schema_two(connection)?;
-            migrate_schema_two(connection)?;
-            validate_schema_three(connection)?;
-            migrate_schema_three(connection)?;
-            validate_schema_four(connection)?;
-            migrate_schema_four(connection)?;
-            validate_schema_five(connection)?;
-            migrate_schema_five(connection)?;
-        }
-        2 => {
-            validate_schema_two(connection)?;
-            migrate_schema_two(connection)?;
-            validate_schema_three(connection)?;
-            migrate_schema_three(connection)?;
-            validate_schema_four(connection)?;
-            migrate_schema_four(connection)?;
-            validate_schema_five(connection)?;
-            migrate_schema_five(connection)?;
-        }
-        3 => {
-            validate_schema_three(connection)?;
-            migrate_schema_three(connection)?;
-            validate_schema_four(connection)?;
-            migrate_schema_four(connection)?;
-            validate_schema_five(connection)?;
-            migrate_schema_five(connection)?;
-        }
-        4 => {
-            validate_schema_four(connection)?;
-            migrate_schema_four(connection)?;
-            validate_schema_five(connection)?;
-            migrate_schema_five(connection)?;
-        }
-        5 => {
-            validate_schema_five(connection)?;
-            migrate_schema_five(connection)?;
-        }
-        STORE_SCHEMA_VERSION => validate_schema_shape(connection)?,
-        value if !(0..=STORE_SCHEMA_VERSION).contains(&value) => {
-            return Err(StoreError::UnsupportedSchema(value));
-        }
-        value => {
-            return Err(StoreError::MigrationRequired {
-                found: value,
-                current: STORE_SCHEMA_VERSION,
-            });
-        }
-    }
-    Ok(())
+    routing::migrate_existing_transaction(connection, expected_version)
 }
 
 fn create_current_schema(connection: &Connection) -> StoreResult<()> {
@@ -94,7 +36,11 @@ fn create_current_schema(connection: &Connection) -> StoreResult<()> {
     migrate_schema_two(connection)?;
     migrate_schema_three(connection)?;
     migrate_schema_four(connection)?;
-    migrate_schema_five(connection)
+    migrate_schema_five(connection)?;
+    migrate_schema_six(connection)?;
+    migrate_schema_seven(connection)?;
+    migrate_schema_eight(connection)?;
+    migrate_schema_nine(connection)
 }
 
 fn create_schema_two(connection: &Connection) -> StoreResult<()> {
@@ -354,6 +300,33 @@ fn migrate_schema_five(connection: &Connection) -> StoreResult<()> {
          PRAGMA user_version = 6;",
     )?;
     Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_six_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_two(connection)?;
+    migrate_schema_two(connection)?;
+    migrate_schema_three(connection)?;
+    migrate_schema_four(connection)?;
+    migrate_schema_five(connection)
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_seven_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_six_fixture(connection)?;
+    migrate_schema_six(connection)
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_eight_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_seven_fixture(connection)?;
+    migrate_schema_seven(connection)
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_nine_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_eight_fixture(connection)?;
+    migrate_schema_eight(connection)
 }
 
 const SCHEMA_ONE_SQL: &str = "CREATE TABLE artifact_manifests (

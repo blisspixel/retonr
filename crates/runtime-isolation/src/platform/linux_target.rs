@@ -26,6 +26,7 @@ pub(super) fn observe_target(
     expected_network: NamespaceIdentity,
     expected_user: NamespaceIdentity,
     expected_process: NamespaceIdentity,
+    expected_mount: NamespaceIdentity,
 ) -> IsolationResult<TargetObservation> {
     let target_pid = direct_child(namespace_init_pid)?;
     let raw_pid = i32::try_from(target_pid)
@@ -59,6 +60,7 @@ pub(super) fn observe_target(
         expected_network,
         expected_user,
         expected_process,
+        expected_mount,
     )?;
     let namespace_pid = target_relationship(target_pid, namespace_init_pid)?;
     let process_start_token = process_start_token(target_pid)?;
@@ -92,6 +94,7 @@ pub(super) fn reobserve_target(
     expected_network: NamespaceIdentity,
     expected_user: NamespaceIdentity,
     expected_process: NamespaceIdentity,
+    expected_mount: NamespaceIdentity,
 ) -> IsolationResult<()> {
     let target_pid = expected.outer_pid();
     if direct_child(namespace_init_pid)? != target_pid
@@ -108,6 +111,7 @@ pub(super) fn reobserve_target(
         expected_network,
         expected_user,
         expected_process,
+        expected_mount,
     )?;
     let retained = retained_executable
         .metadata()
@@ -252,10 +256,12 @@ fn ensure_target_namespaces(
     network: NamespaceIdentity,
     user: NamespaceIdentity,
     process: NamespaceIdentity,
+    mount: NamespaceIdentity,
 ) -> IsolationResult<()> {
     if namespace_identity(&open_namespace(target_pid, "net")?)? != network
         || namespace_identity(&open_namespace(target_pid, "user")?)? != user
         || namespace_identity(&open_namespace(target_pid, "pid")?)? != process
+        || namespace_identity(&open_namespace(target_pid, "mnt")?)? != mount
     {
         return Err(IsolationError::EvidenceChanged);
     }

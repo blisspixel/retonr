@@ -26,6 +26,9 @@ pub enum IsolationError {
     /// The managed runtime launch description was invalid.
     #[error("invalid managed launch: {0}")]
     InvalidLaunch(&'static str),
+    /// The retained-program bootstrap description was incomplete or inconsistent.
+    #[error("invalid retained-program bootstrap: {0}")]
+    InvalidBootstrap(&'static str),
     /// Host policy denied creation of the required user or network namespace.
     #[error("host policy denied the required Linux namespaces")]
     HostPolicyDenied,
@@ -56,6 +59,57 @@ pub enum IsolationError {
     /// The installed target socket-family policy failed its behavioral checks.
     #[error("the target socket-family policy failed its behavioral checks")]
     SocketPolicyBehavior,
+    /// The host cannot establish the required private managed device mounts.
+    #[error("the required managed device boundary is unavailable")]
+    ManagedDeviceBoundaryUnavailable,
+    /// The private managed device boundary could not be constructed.
+    #[error("the managed device boundary could not be established")]
+    ManagedDeviceBoundarySetup,
+    /// The private managed device boundary failed an exact visibility check.
+    #[error("the managed device boundary failed its visibility checks")]
+    ManagedDeviceBoundaryBehavior,
+    /// The managed namespace and mount escape filter could not be compiled.
+    #[error("the managed containment policy could not be compiled")]
+    ManagedContainmentPolicyCompile,
+    /// The managed namespace and mount escape filter could not be installed.
+    #[error("the managed containment policy could not be installed")]
+    ManagedContainmentPolicyInstall,
+    /// The managed namespace and mount escape filter was not active.
+    #[error("the managed containment policy was not active")]
+    ManagedContainmentPolicyInactive,
+    /// The managed namespace and mount escape filter failed its behavioral checks.
+    #[error("the managed containment policy failed its behavioral checks")]
+    ManagedContainmentPolicyBehavior,
+    /// A managed runtime-input source violated the closed capability contract.
+    #[error("the retained runtime input capability was invalid")]
+    RuntimeInputObjectMismatch,
+    /// The host cannot establish the required private runtime-input mounts.
+    #[error("the required managed runtime input boundary is unavailable")]
+    RuntimeInputBoundaryUnavailable,
+    /// The private managed runtime-input tree could not be constructed.
+    #[error("the managed runtime input boundary could not be established")]
+    RuntimeInputBoundarySetup,
+    /// The private managed runtime-input tree failed exact reobservation.
+    #[error("the managed runtime input boundary failed its exact checks")]
+    RuntimeInputBoundaryBehavior,
+    /// The host kernel lacks the required Landlock filesystem ABI.
+    #[error("the required Linux filesystem-isolation ABI is unavailable")]
+    FilesystemIsolationUnavailable,
+    /// The controlled build filesystem policy could not be installed.
+    #[error("the controlled build filesystem policy could not be installed")]
+    FilesystemIsolationSetup,
+    /// A fixed controlled-build mount alias could not be established.
+    #[error("controlled build filesystem alias setup failed: {0}")]
+    FilesystemAliasSetup(&'static str),
+    /// The controlled build filesystem policy failed its behavioral checks.
+    #[error("the controlled build filesystem policy failed its behavioral checks")]
+    FilesystemIsolationBehavior,
+    /// A retained controlled-build object did not match its declared identity.
+    #[error("a retained controlled build object did not match its declaration")]
+    ControlledBuildObjectMismatch,
+    /// The controlled build output directory was not initially empty.
+    #[error("the controlled build output boundary was not initially empty")]
+    ControlledBuildOutputNotEmpty,
     /// The helper sent malformed, inconsistent, or oversized evidence.
     #[error("the isolation helper protocol was invalid")]
     HelperProtocol,
@@ -68,6 +122,21 @@ pub enum IsolationError {
     /// The helper did not produce launch evidence within the startup bound.
     #[error("managed runtime isolation startup timed out")]
     StartupTimeout,
+    /// The caller's already-captured operation deadline was reached.
+    #[error("managed runtime isolation operation deadline was exceeded")]
+    OperationDeadlineExceeded,
+    /// The controlled build process tree exceeded its wall-time bound.
+    #[error("the controlled build process tree timed out")]
+    ControlledBuildTimeout,
+    /// The retained input tree could not be snapshotted within its fixed bound.
+    #[error("the controlled build input snapshot timed out")]
+    ControlledBuildSnapshotTimeout,
+    /// The bootstrap root could not be prepared before privilege reduction.
+    #[error("the retained-program bootstrap root could not be prepared")]
+    BootstrapRootPreparation,
+    /// A required bootstrap root-transition postcondition was not observed.
+    #[error("the retained-program bootstrap root postconditions did not verify")]
+    BootstrapRootVerification,
     /// The retained guardian or runtime exited.
     #[error("the managed runtime process tree exited")]
     ProcessExited,
@@ -124,6 +193,7 @@ mod display_tests {
             IsolationError::InvalidPolicy("field"),
             IsolationError::InvalidHelper,
             IsolationError::InvalidLaunch("field"),
+            IsolationError::InvalidBootstrap("field"),
             IsolationError::HostPolicyDenied,
             IsolationError::NamespaceSetup,
             IsolationError::LoopbackSetup,
@@ -134,10 +204,32 @@ mod display_tests {
             IsolationError::SocketPolicyInstall,
             IsolationError::SocketPolicyInactive,
             IsolationError::SocketPolicyBehavior,
+            IsolationError::ManagedDeviceBoundaryUnavailable,
+            IsolationError::ManagedDeviceBoundarySetup,
+            IsolationError::ManagedDeviceBoundaryBehavior,
+            IsolationError::ManagedContainmentPolicyCompile,
+            IsolationError::ManagedContainmentPolicyInstall,
+            IsolationError::ManagedContainmentPolicyInactive,
+            IsolationError::ManagedContainmentPolicyBehavior,
+            IsolationError::RuntimeInputObjectMismatch,
+            IsolationError::RuntimeInputBoundaryUnavailable,
+            IsolationError::RuntimeInputBoundarySetup,
+            IsolationError::RuntimeInputBoundaryBehavior,
+            IsolationError::FilesystemIsolationUnavailable,
+            IsolationError::FilesystemIsolationSetup,
+            IsolationError::FilesystemAliasSetup("stage"),
+            IsolationError::FilesystemIsolationBehavior,
+            IsolationError::ControlledBuildObjectMismatch,
+            IsolationError::ControlledBuildOutputNotEmpty,
             IsolationError::HelperProtocol,
             IsolationError::InvalidChannelEndpoint,
             IsolationError::ChannelAlreadyRequested,
             IsolationError::StartupTimeout,
+            IsolationError::OperationDeadlineExceeded,
+            IsolationError::ControlledBuildTimeout,
+            IsolationError::ControlledBuildSnapshotTimeout,
+            IsolationError::BootstrapRootPreparation,
+            IsolationError::BootstrapRootVerification,
             IsolationError::ProcessExited,
             IsolationError::EvidenceChanged,
             IsolationError::ShutdownTimeout,

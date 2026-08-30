@@ -303,10 +303,11 @@ An opt-in managed outcome can now derive a package-declared typed
 native-load join. Only the exact package entrypoint is joined to live process and load
 evidence; target, revision, and other package semantics are not independently
 live-observed. This is not effective runtime state. Mandatory cleanup completes before
-the outcome returns. Generation-bound provider state, effective output configuration,
-platform and driver facts, compute placement, effective context, and a retained live
-runtime remain missing, while model use, handler execution, effective state, and
-qualification remain false.
+the outcome returns. A separate dual-gated managed generation bracket now binds
+generation-provider state, closed effective configuration, platform and driver facts,
+compute backend, effective context, retained runtime and model authorities, and final
+revalidation. Both production allowlists remain empty, so no production tuple is
+admitted or qualified.
 
 The version-gated v0.32.15 static model binding separately joins one canonical
 six-member installed-Ollama import to one exact verified idle inventory and details
@@ -315,8 +316,10 @@ size, GGUF identity, license, format, and a unique template relationship. The bi
 must consume the exact preflight runner's opaque, nonserializable, single-use receipt.
 This narrows the mutable inventory relationship but does not establish residency,
 load, use, handler execution, effective identity,
-or qualification. The next runtime operation must join that static evidence, an exact
-model-package lease, managed runtime build, and response receipts without drift.
+or qualification. The separate managed generation and managed-judge paths now consume
+this static relationship together with exact package leases, managed runtime
+authority, and response receipts. Those joins remain development-only and
+unqualified.
 
 The v0.32.15 retained-session residency profile is a separate opt-in relationship. It
 requests a five-minute keep-alive and requires two exact equal singleton `/api/ps`
@@ -324,7 +327,8 @@ reports around final version, inventory, and details checks after one completion
 receipt proves stable runtime-reported residency only. The reported byte size is
 runtime memory rather than package inventory size, and the receipt does not identify
 the handler, prove weight use or resident-page identity, construct effective state, or
-qualify the model. It is not yet joined to the managed runtime-build binding.
+qualify the model. It is joined only inside the dual-gated managed generation path and
+still proves only stable runtime-reported residency.
 
 The inert effective-package evidence record joins the exact artifact set, runtime
 build, and effective state; requires canonical purpose coverage for every member; and
@@ -338,8 +342,9 @@ evidence, runtime build, and effective state for exactly the claim-extraction ro
 also binds the claim-output and operation contracts and the complete qualification
 policy and result identity. Its relationship-aware bounded decoder reloads every exact
 subject record. It has a distinct identifier, no authorization operation, and no route
-into qualification v1 activation. The SQLite schema-6 tables persist and recursively
-revalidate the complete immutable subject without creating an active binding. A
+into qualification v1 activation. The schema-6 qualification-v2 tables remain
+unchanged inside the current schema-9 store and recursively revalidate the complete
+immutable subject without creating an active binding. A
 separate installed-set record binds a unique portable root key and generation to the
 exact artifact-set manifest, but does not verify member bytes or activate
 qualification v2. The application now creates that record only after an exact local

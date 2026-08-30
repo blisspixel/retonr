@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct VersionResponse {
     pub(crate) version: String,
 }
@@ -93,6 +94,8 @@ pub(crate) struct GenerateOptions {
     pub(crate) seed: Option<u64>,
     pub(crate) num_ctx: u32,
     pub(crate) num_predict: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) num_gpu: Option<i32>,
     pub(crate) stop: Vec<String>,
 }
 
@@ -112,16 +115,4 @@ pub(crate) struct GenerateResponse {
     pub(crate) prompt_eval_count: Option<u64>,
     pub(crate) eval_count: Option<u64>,
     pub(crate) eval_duration: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct CandidateEnvelope {
-    pub(crate) candidates: Vec<CandidateItem>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct CandidateItem {
-    pub(crate) text: String,
 }

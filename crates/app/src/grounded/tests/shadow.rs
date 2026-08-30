@@ -95,7 +95,7 @@ fn claim_response(
         schema_version: STRUCTURED_COMPLETION_REQUEST_SCHEMA_VERSION,
         artifact_id: policy.artifact_id.clone(),
         artifact_digest: policy.artifact_digest.clone(),
-        input: "placeholder".to_owned(),
+        input: text.to_owned(),
         output: claim_output_contract(),
         source_byte_count: u64::try_from(text.len()).expect("text size"),
         source_byte_limit: 1_024,

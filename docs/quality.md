@@ -190,6 +190,21 @@ tooling behavior. Once installable artifacts exist, release-stage continuous
 integration adds package installation and installed-binary smoke tests on each target
 platform before the corresponding milestone can close.
 
+Security-sensitive Linux paths also require native networkless proof. The controlled
+source-build gate executes the retained fixture under the required namespace and mount
+privileges. It requires the target to write only to the quota-bounded private tmpfs,
+waits for descendant-held streams, commits and verifies the helper tree, exports it to
+the host output, and independently rehashes it in the application. Its instrumented
+execution contributes to the same LLVM profile as the workspace suite. This gate
+proves the fixture path on that kernel and filesystem; it is not runtime admission
+evidence. A separate instrumented worker gate runs a statically linked musl fixture in
+a networkless container whose root process has only `CAP_SETPCAP`. The fixture drops
+that capability before `exec`, requires zero worker capability sets,
+no-new-privileges, seccomp mode 2, one exact descendant and parent chain, the reviewed
+CPU command, the exact native closure, a byte-identical distinct-inode private GGUF
+mapping, stable final reobservation, and rejection after worker exit. Its profile is
+merged before the repository line floor is enforced.
+
 Repository policy checks reject:
 
 - Prohibited dash characters

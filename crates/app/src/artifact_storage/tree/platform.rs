@@ -1,7 +1,30 @@
 use std::{ffi::OsStr, fs::File, io};
 
+#[cfg(test)]
+use std::cell::Cell;
+
 #[cfg(windows)]
 use std::path::Path;
+
+#[cfg(test)]
+thread_local! {
+    static FAIL_NO_REPLACE_RENAME_ONCE: Cell<bool> = const { Cell::new(false) };
+}
+
+#[cfg(test)]
+pub(in crate::artifact_storage::tree) fn inject_no_replace_rename_failure_once() {
+    FAIL_NO_REPLACE_RENAME_ONCE.with(|fail| fail.set(true));
+}
+
+#[cfg(test)]
+fn take_no_replace_rename_failure() -> bool {
+    FAIL_NO_REPLACE_RENAME_ONCE.with(|fail| fail.replace(false))
+}
+
+#[cfg(not(test))]
+const fn take_no_replace_rename_failure() -> bool {
+    false
+}
 
 #[cfg(unix)]
 pub(super) fn open_directory_for_publish(parent: &File, name: &OsStr) -> io::Result<File> {
@@ -76,6 +99,12 @@ pub(super) fn rename_directory_no_replace(
     destination_parent: &File,
     destination_name: &OsStr,
 ) -> io::Result<()> {
+    if take_no_replace_rename_failure() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "injected no-replace rename failure",
+        ));
+    }
     rustix::fs::renameat_with(
         source_parent,
         source_name,
@@ -96,6 +125,12 @@ pub(super) fn rename_directory_no_replace(
     _destination_parent: &File,
     _destination_name: &OsStr,
 ) -> io::Result<()> {
+    if take_no_replace_rename_failure() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "injected no-replace rename failure",
+        ));
+    }
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
         "atomic no-replace directory publication is unavailable",
@@ -109,10 +144,37 @@ pub(super) fn rename_directory_no_replace(
     destination_parent: &File,
     destination_name: &OsStr,
 ) -> io::Result<()> {
-    cap_primitives::fs::rename(
-        source_parent,
-        Path::new(source_name),
-        destination_parent,
-        Path::new(destination_name),
+    if take_no_replace_rename_failure() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "injected no-replace rename failure",
+        ));
+    }
+    let source_parent_path = winx::file::get_file_path(source_parent)?;
+    let destination_parent_path = winx::file::get_file_path(destination_parent)?;
+    let source_path = source_parent_path.join(source_name);
+    let destination_path = destination_parent_path.join(destination_name);
+    let source = source_path.to_str().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "source path is not valid Unicode",
+        )
+    })?;
+    let destination = destination_path.to_str().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "destination path is not valid Unicode",
+        )
+    })?;
+    // Omitting REPLACE_EXISTING is the Windows kernel's no-replace contract.
+    // COPY_ALLOWED is also omitted so a cross-volume move cannot become copy-and-delete.
+    winsafe::MoveFileEx(
+        source,
+        Some(destination),
+        winsafe::co::MOVEFILE::WRITE_THROUGH,
     )
+    .map_err(|error| {
+        let raw = i32::from_ne_bytes(u32::from(error).to_ne_bytes());
+        io::Error::from_raw_os_error(raw)
+    })
 }

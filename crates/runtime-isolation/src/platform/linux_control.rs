@@ -23,7 +23,7 @@ const HEADER_BYTES: usize = 16;
 const MAX_PAYLOAD_BYTES: usize = 64 * 1024 + 16;
 const MAX_FRAME_BYTES: usize = HEADER_BYTES + MAX_PAYLOAD_BYTES;
 const POLL_INTERVAL: Duration = Duration::from_millis(5);
-const MAX_RECEIVED_DESCRIPTORS: usize = 2;
+pub(super) const MAX_RECEIVED_DESCRIPTORS: usize = 3;
 const ENDPOINT_BYTES: usize = 19;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -38,6 +38,16 @@ pub(super) enum MessageKind {
     Capture = 7,
     Captured = 8,
     Error = 9,
+    BuildDescriptors = 10,
+    BuildArmed = 11,
+    BuildGo = 12,
+    BuildFinished = 13,
+    BuildInputFiles = 14,
+    BootstrapDescriptors = 15,
+    BootstrapArmed = 16,
+    BootstrapGo = 17,
+    BootstrapFinished = 18,
+    ManagedInputDescriptor = 19,
 }
 
 impl MessageKind {
@@ -52,6 +62,16 @@ impl MessageKind {
             7 => Ok(Self::Capture),
             8 => Ok(Self::Captured),
             9 => Ok(Self::Error),
+            10 => Ok(Self::BuildDescriptors),
+            11 => Ok(Self::BuildArmed),
+            12 => Ok(Self::BuildGo),
+            13 => Ok(Self::BuildFinished),
+            14 => Ok(Self::BuildInputFiles),
+            15 => Ok(Self::BootstrapDescriptors),
+            16 => Ok(Self::BootstrapArmed),
+            17 => Ok(Self::BootstrapGo),
+            18 => Ok(Self::BootstrapFinished),
+            19 => Ok(Self::ManagedInputDescriptor),
             _ => Err(ControlError::Invalid),
         }
     }

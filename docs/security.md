@@ -441,19 +441,46 @@ Controls:
   storage root, exact tree, and state relationships are rechecked. Never descend into
   stale staging roots or recursively delete unknown entries. A published tree without
   state is an inert orphan, not runtime authority.
+- Run an offline source build only through retained capabilities under controlled-build
+  ABI 2. Require a private mount namespace, recursively private propagation, a fresh
+  16 GiB and 262,144-inode tmpfs at `/tmp`, a normalized private input tree assembled
+  from exact retained-file mappings, read-only member binds, 4 GiB of bounded build
+  scratch beyond the input and output ceilings, and a distinct
+  private-output alias. Never pass the caller input root or mount or pass the retained
+  host output to the target. Grant only exact read and write access to `/dev/null`, not
+  broad `/dev` access. Require independent parent observation of the mount namespace
+  and matching descriptor, path, program, and working-directory object identities
+  before execution. Revalidate caller-held program, mapped file, and root objects after
+  execution. Treat the read-only binds as protection against path substitution and
+  target writes, not as protection against a non-cooperating same-user writer through
+  another mount. Require a digest-verified private byte snapshot before claiming that
+  transient source-inode mutation cannot affect consumed input. Wait for the
+  coordinator and descendant-held diagnostic streams before committing output. Bound
+  the committed tree to 4,096 entries and 8 GiB of regular-file bytes. Export from
+  retained private-file handles into a distinct empty host output, rehash while
+  copying, recommit the host tree, then independently enumerate and rehash it in the
+  application. Treat the application seal as drift detection, not write prevention;
+  a failed non-atomic export leaves only an inert partial tree. Treat raw failure
+  diagnostics as sensitive: drain streams completely, retain only the bounded child
+  tail and outer prefix, serialize only their digests, and fail closed on outer
+  truncation.
 - Verify checksums before activation.
 - Treat runtime model listings, templates, license text, and capabilities as untrusted
   discovery data rather than qualification evidence.
 - Accept loopback model endpoints only in the first adapter, disable system proxies
   and redirects, and recheck selected artifact identity before and after generation.
 - Keep attached listener and retained-connection evidence observation-only. Linux
-  managed qualification requires prelaunch user, network, and PID namespaces,
-  loopback as the only interface, retained process-tree lifecycle, namespace-local
-  SOCK_DIAG, retained package-object and native-load evidence, and an exact provider
-  declaration. Before target launch, require the inherited seccomp socket allowlist
-  that admits only `AF_INET` and `AF_INET6` through `socket()`, denies every other
-  socket family and `io_uring_setup`, and remains in mode 2 during target
-  reobservation. The current Linux-only read-only preflight composes those runtime-side
+  managed qualification requires prelaunch user, network, PID, and private mount
+  namespaces, loopback as the only interface, recursively private propagation,
+  private procfs, a reviewed device view exposing only retained `/dev/null`, retained
+  process-tree lifecycle, namespace-local SOCK_DIAG, retained package-object and
+  native-load evidence, and an exact provider declaration. Before target launch,
+  require the inherited containment filter that admits only `AF_INET` and `AF_INET6`
+  through `socket()` and denies every other socket family, `io_uring_setup`, namespace
+  and mount escape APIs, device creation, `bpf`, `clone3`, and namespace-bearing
+  `clone` flags. Require mode 2 and reobserve the mount, proc, device, and null-object
+  identities. These properties are bounded visibility evidence, not formal
+  CPU-placement proof. The current Linux-only read-only preflight composes those runtime-side
   observations but remains inert, unreviewed, and outside the CLI. It does not prove
   model use, effective-runtime identity, or qualification. The production
   cloud-disable allowlist remains empty until one runtime package passes review.
@@ -465,8 +492,10 @@ Controls:
   only when that pidfd confirms exit. Permission denial, resource exhaustion,
   malformed records, and incomplete visibility fail closed.
   Uncontrolled-host tests may accept only the typed access-denied compatibility
-  outcome; a mandatory networkless, dropped-capability, no-new-privileges native gate
-  must exercise success and contribute coverage before the line floor is enforced.
+  outcome. CI has two native proof gates: a networkless, dropped-capability,
+  no-new-privileges managed-attestor gate and a privileged, networkless controlled
+  source-build fixture gate. Both must exercise success and contribute coverage before
+  the line floor is enforced.
   Windows managed isolation and exact native-load binding are unsupported; macOS
   runtime trust observation is unsupported.
 - Treat the managed build binding as package-declared runtime-build evidence only. It
@@ -496,6 +525,12 @@ Controls:
   runtime-reported post-generation residency on one retained transport. It does not
   prove handler execution, model use, resident-page identity, effective identity, or
   qualification.
+- Keep the runtime-only Ollama probe constrained to one caller-supplied retained
+  loopback stream and one 1 KiB-capped `GET /api/version`. Require persistent HTTP/1
+  framing, a complete response drain, and exact typed version equality. Its
+  version-only evidence is non-authoritative and grants no package, model, generation,
+  runtime admission, or qualification authority. Treat its after-response callback as
+  a transport-drain observation, not semantic acceptance of the response.
 - Treat local-judge responses as untrusted typed input. Run deterministic gates before
   traffic, require both blinded orders, validate cited byte spans against exact UTF-8
   inputs, and invalidate the retained stream on any response or relationship failure.

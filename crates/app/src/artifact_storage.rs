@@ -27,8 +27,8 @@ pub(crate) use fingerprint::{MetadataFingerprint, StableMetadataFingerprint};
 pub(crate) use mutation::set_private_directory_permissions;
 pub(crate) use mutation::{ExactEntryCapacity, ManagedFile};
 pub(crate) use tree::{
-    ManagedTreeEntryKind, ManagedTreeLimits, ManagedTreeSnapshot, OwnedStagingTree,
-    remove_verified_managed_tree,
+    ManagedTreeEntryKind, ManagedTreeLimits, ManagedTreeSnapshot, NoReplacePublicationFailure,
+    OwnedStagingTree, remove_verified_managed_tree,
 };
 pub(crate) use verification::{
     ExactArtifactExpectation, ExactArtifactSync, ExactArtifactVerificationError,

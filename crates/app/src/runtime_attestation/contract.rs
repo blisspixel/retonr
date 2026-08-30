@@ -2,8 +2,8 @@ use std::{io, path::PathBuf};
 
 use rewrite_model::{
     ComputeBackend, EffectiveRuntimeState, EffectiveRuntimeStateError, ExecutionPlacement,
-    RuntimeArchitecture, RuntimeBuildIdentity, RuntimeBuildIdentityError, RuntimeOperatingSystem,
-    RuntimeTarget,
+    RuntimeAbi, RuntimeArchitecture, RuntimeBuildIdentity, RuntimeBuildIdentityError,
+    RuntimeOperatingSystem, RuntimeTarget,
 };
 use rewrite_model_store::WriteDisposition;
 use rewrite_types::Digest;
@@ -42,6 +42,10 @@ pub struct ManagedRuntimeIdentityFacts {
 }
 
 /// Effective-state facts that remain caller-owned during managed-process attestation.
+///
+/// These legacy facts produce only inert structural records. The app-observed
+/// generation leaf validators do not accept this type, and it cannot grant new
+/// generation qualification or live-use authority.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ManagedRuntimeStateFacts {
     /// Stable adapter-owned provider snapshot contract identifier.
@@ -78,6 +82,8 @@ pub struct RuntimeAttestationLimits {
 }
 
 /// Successful managed-process attestation.
+///
+/// This legacy result is inert and is not an app-observed generation authority.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RuntimeAttestationResult {
     /// Content-addressed runtime-build identity with a live entrypoint digest.
@@ -153,28 +159,110 @@ pub enum RuntimeAttestationError {
 /// Host native target used by tests and fixture-managed processes.
 #[must_use]
 pub fn host_runtime_target() -> Option<RuntimeTarget> {
-    let operating_system = if cfg!(windows) {
-        RuntimeOperatingSystem::Windows
-    } else if cfg!(target_os = "macos") {
-        RuntimeOperatingSystem::MacOs
-    } else if cfg!(target_os = "linux") {
-        RuntimeOperatingSystem::Linux
+    let target_environment = if cfg!(target_env = "msvc") {
+        "msvc"
+    } else if cfg!(target_env = "gnu") {
+        "gnu"
+    } else if cfg!(target_env = "musl") {
+        "musl"
+    } else if cfg!(target_env = "") {
+        ""
     } else {
         return None;
     };
-    let architecture = if cfg!(target_arch = "x86_64") {
-        RuntimeArchitecture::X86_64
-    } else if cfg!(target_arch = "aarch64") {
-        RuntimeArchitecture::Aarch64
-    } else {
-        return None;
+
+    runtime_target_for(
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        target_environment,
+    )
+}
+
+fn runtime_target_for(
+    target_os: &str,
+    target_architecture: &str,
+    target_environment: &str,
+) -> Option<RuntimeTarget> {
+    let (operating_system, abi) = match (target_os, target_environment) {
+        ("windows", "msvc") => (RuntimeOperatingSystem::Windows, RuntimeAbi::WindowsMsvc),
+        ("windows", "gnu") => (RuntimeOperatingSystem::Windows, RuntimeAbi::WindowsGnu),
+        ("macos", "") => (RuntimeOperatingSystem::MacOs, RuntimeAbi::Darwin),
+        ("linux", "gnu") => (RuntimeOperatingSystem::Linux, RuntimeAbi::LinuxGnuLibc),
+        ("linux", "musl") => (RuntimeOperatingSystem::Linux, RuntimeAbi::LinuxMusl),
+        _ => return None,
     };
-    let abi = if cfg!(windows) {
-        rewrite_model::RuntimeAbi::WindowsMsvc
-    } else if cfg!(target_os = "macos") {
-        rewrite_model::RuntimeAbi::Darwin
-    } else {
-        rewrite_model::RuntimeAbi::LinuxGnuLibc
+    let architecture = match target_architecture {
+        "x86_64" => RuntimeArchitecture::X86_64,
+        "aarch64" => RuntimeArchitecture::Aarch64,
+        _ => return None,
     };
+
     RuntimeTarget::new(operating_system, architecture, abi).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        RuntimeAbi, RuntimeArchitecture, RuntimeOperatingSystem, RuntimeTarget, runtime_target_for,
+    };
+
+    const ARCHITECTURES: [(&str, RuntimeArchitecture); 2] = [
+        ("x86_64", RuntimeArchitecture::X86_64),
+        ("aarch64", RuntimeArchitecture::Aarch64),
+    ];
+    const OPERATING_SYSTEMS: [(&str, RuntimeOperatingSystem); 3] = [
+        ("windows", RuntimeOperatingSystem::Windows),
+        ("macos", RuntimeOperatingSystem::MacOs),
+        ("linux", RuntimeOperatingSystem::Linux),
+    ];
+    const TARGET_ENVIRONMENTS: [&str; 5] = ["", "msvc", "gnu", "musl", "unsupported"];
+
+    #[test]
+    fn target_kernel_accepts_only_supported_os_environment_pairs() {
+        for (target_os, operating_system) in OPERATING_SYSTEMS {
+            for (target_architecture, architecture) in ARCHITECTURES {
+                for target_environment in TARGET_ENVIRONMENTS {
+                    let expected = expected_abi(target_os, target_environment).map(|abi| {
+                        RuntimeTarget::new(operating_system, architecture, abi)
+                            .expect("supported target fixture")
+                    });
+
+                    assert_eq!(
+                        runtime_target_for(target_os, target_architecture, target_environment),
+                        expected,
+                        "unexpected classification for {target_os}-{target_architecture}-{target_environment}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn target_kernel_rejects_unsupported_operating_systems_and_architectures() {
+        for target_environment in TARGET_ENVIRONMENTS {
+            assert_eq!(
+                runtime_target_for("freebsd", "x86_64", target_environment),
+                None
+            );
+        }
+        for (target_os, _) in OPERATING_SYSTEMS {
+            for target_environment in TARGET_ENVIRONMENTS {
+                assert_eq!(
+                    runtime_target_for(target_os, "x86", target_environment),
+                    None
+                );
+            }
+        }
+    }
+
+    fn expected_abi(target_os: &str, target_environment: &str) -> Option<RuntimeAbi> {
+        match (target_os, target_environment) {
+            ("windows", "msvc") => Some(RuntimeAbi::WindowsMsvc),
+            ("windows", "gnu") => Some(RuntimeAbi::WindowsGnu),
+            ("macos", "") => Some(RuntimeAbi::Darwin),
+            ("linux", "gnu") => Some(RuntimeAbi::LinuxGnuLibc),
+            ("linux", "musl") => Some(RuntimeAbi::LinuxMusl),
+            _ => None,
+        }
+    }
 }

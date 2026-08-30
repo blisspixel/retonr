@@ -39,7 +39,7 @@ fn bytes_survive_verified_backup_and_current_migration() {
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("retain verified schema-three backup");
-    session.migrate().expect("migrate schema three to six");
+    session.migrate().expect("migrate schema three to current");
 
     let backup_connection = Connection::open(&backup).expect("open retained schema-three backup");
     assert_eq!(schema_version(&backup), 3);
@@ -47,8 +47,8 @@ fn bytes_survive_verified_backup_and_current_migration() {
     assert!(!table_exists(&backup_connection, "installed_artifact_sets"));
     assert!(!table_exists(&backup_connection, "artifact_set_removals"));
 
-    let migrated = Connection::open(&source).expect("open migrated schema-six source");
-    assert_eq!(schema_version(&source), 6);
+    let migrated = Connection::open(&source).expect("open migrated current source");
+    assert_eq!(schema_version(&source), 10);
     assert_eq!(evidence_rows(&migrated), before);
     assert!(table_exists(&migrated, "installed_artifact_sets"));
     assert!(table_exists(&migrated, "artifact_set_removals"));
@@ -83,7 +83,31 @@ fn seed_schema_three_evidence(path: &Path) {
     Connection::open(path)
         .expect("open evidence store for schema-three fixture")
         .execute_batch(
-            "DROP TABLE native_load_observations;
+            "DROP TABLE candidate_generation_attempt_records;
+             DROP TABLE candidate_generation_receipts;
+             DROP TABLE generation_evidence_bundle_readbacks;
+             DROP TABLE generation_evidence_bundle_storage;
+             DROP TABLE generation_evidence_bundles;
+             DROP TABLE candidate_generation_cleanup_records;
+             DROP TABLE managed_candidate_generation_evidence;
+             DROP TABLE candidate_generation_attempt_precursors;
+             DROP TABLE generation_qualification_plan_attempts;
+             DROP TABLE generation_qualification_plan_systems;
+             DROP TABLE generation_qualification_plan_repetitions;
+             DROP TABLE generation_qualification_plans;
+             DROP TABLE candidate_selection_policies;
+             DROP TABLE planned_candidate_attempts;
+             DROP TABLE generation_repetition_records;
+             DROP TABLE generation_suite_cases;
+             DROP TABLE generation_suite_manifests;
+             DROP TABLE generation_case_manifests;
+             DROP TABLE generation_deterministic_case_contracts;
+             DROP TABLE generation_cluster_records;
+             DROP TABLE generation_system_records;
+             DROP TABLE effective_package_evidence_v2;
+             DROP TABLE generation_qualification_request_projections;
+             DROP TABLE generation_qualification_operation_policies;
+             DROP TABLE native_load_observations;
              DROP TABLE model_package_manifests;
              DROP TABLE runtime_package_manifests;
              DROP TABLE artifact_set_removals;

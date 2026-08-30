@@ -6,6 +6,26 @@ use rewrite_model::{
 };
 use thiserror::Error;
 
+mod discovery;
+mod frozen;
+mod review;
+pub use discovery::{
+    DiscoveredExternalNativeComponent, MAXIMUM_NATIVE_LOAD_DISCOVERY_JSON_BYTES,
+    NATIVE_LOAD_DISCOVERY_SCHEMA_VERSION, NativeLoadDiscovery, NativeLoadDiscoveryRequest,
+};
+pub use frozen::{
+    CompiledFrozenExternalNativeComponentSet, FROZEN_EXTERNAL_NATIVE_COMPONENT_SET_SCHEMA_VERSION,
+    FrozenExternalNativeComponentSetError, FrozenExternalNativeComponentSetId,
+    MAXIMUM_FROZEN_EXTERNAL_NATIVE_COMPONENT_SET_JSON_BYTES,
+    VerifiedFrozenExternalNativeComponentSet,
+};
+pub use review::{
+    EXTERNAL_NATIVE_COMPONENT_REVIEW_SCHEMA_VERSION, ExternalNativeComponentReview,
+    ExternalNativeComponentReviewDisposition, ExternalNativeComponentReviewError,
+    ExternalNativeComponentReviewMember, MAXIMUM_EXTERNAL_COMPONENT_REVIEW_EVIDENCE_BYTES,
+    MAXIMUM_EXTERNAL_NATIVE_COMPONENT_REVIEW_JSON_BYTES,
+};
+
 /// Hard maximum virtual-memory or proc-maps rows inspected in one snapshot.
 pub const MAXIMUM_NATIVE_MAPPING_REGIONS: usize = 65_536;
 /// Hard maximum metadata bytes admitted from one native mapping snapshot.
@@ -204,28 +224,13 @@ pub struct NativeLoadObservationRequest<'a> {
 
 impl NativeLoadObservationRequest<'_> {
     pub(crate) fn validate(&self) -> Result<NativeLoadObservationLimits, NativeLoadObserverError> {
-        let limits = self.limits.validate()?;
-        if &self.package.runtime_package_manifest_id() != self.expected_package_id
-            || self.retained_package_members.len() > limits.maximum_components
-            || self.expected_external_components.len() > limits.maximum_components
-        {
-            return Err(NativeLoadObserverError::InvalidRequest);
-        }
-        let packaged_code = self
-            .package
-            .members()
-            .iter()
-            .filter(|member| is_retained_package_member(member))
-            .collect::<Vec<_>>();
-        if packaged_code.len() != self.retained_package_members.len()
-            || packaged_code.iter().zip(self.retained_package_members).any(
-                |(declared, retained)| {
-                    declared.relative_path() != retained.relative_path()
-                        || declared.artifact_id() != retained.artifact_id()
-                        || declared.byte_size() != retained.byte_size()
-                },
-            )
-        {
+        let limits = validate_subject(
+            self.package,
+            self.expected_package_id,
+            self.retained_package_members,
+            self.limits,
+        )?;
+        if self.expected_external_components.len() > limits.maximum_components {
             return Err(NativeLoadObserverError::InvalidRequest);
         }
         let mut prior = None;
@@ -250,6 +255,38 @@ impl NativeLoadObservationRequest<'_> {
     }
 }
 
+fn validate_subject(
+    package: &RuntimePackageManifest,
+    expected_package_id: &RuntimePackageManifestId,
+    retained_package_members: &[RetainedNativePackageMember],
+    limits: NativeLoadObservationLimits,
+) -> Result<NativeLoadObservationLimits, NativeLoadObserverError> {
+    let limits = limits.validate()?;
+    if &package.runtime_package_manifest_id() != expected_package_id
+        || retained_package_members.len() > limits.maximum_components
+    {
+        return Err(NativeLoadObserverError::InvalidRequest);
+    }
+    let packaged_code = package
+        .members()
+        .iter()
+        .filter(|member| is_retained_package_member(member))
+        .collect::<Vec<_>>();
+    if packaged_code.len() != retained_package_members.len()
+        || packaged_code
+            .iter()
+            .zip(retained_package_members)
+            .any(|(declared, retained)| {
+                declared.relative_path() != retained.relative_path()
+                    || declared.artifact_id() != retained.artifact_id()
+                    || declared.byte_size() != retained.byte_size()
+            })
+    {
+        return Err(NativeLoadObserverError::InvalidRequest);
+    }
+    Ok(limits)
+}
+
 pub(crate) fn expected_key(expected: &ExpectedExternalNativeComponent) -> Vec<u8> {
     let mut key = Vec::with_capacity(80);
     key.extend_from_slice(expected.artifact_id.digest().as_str().as_bytes());
@@ -269,6 +306,7 @@ pub(crate) fn is_retained_package_member(member: &RuntimePackageMember) -> bool 
             RuntimePackageMemberRole::Entrypoint
                 | RuntimePackageMemberRole::NativeDependency
                 | RuntimePackageMemberRole::HelperExecutable
+                | RuntimePackageMemberRole::WorkerExecutable
         )
     })
 }

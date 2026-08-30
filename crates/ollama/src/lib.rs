@@ -9,6 +9,7 @@ mod backend_tests;
 mod cloud_disable;
 mod contract;
 mod endpoint;
+mod generation_admission;
 #[cfg(test)]
 mod preflight_tests;
 #[cfg(test)]
@@ -33,11 +34,18 @@ pub use contract::{
     OllamaPreflightBinding, OllamaPreflightTarget, OllamaRunningModel,
 };
 pub use endpoint::{OllamaEndpoint, OllamaEndpointError};
+pub use generation_admission::{
+    OllamaManagedGenerationAdmissionPolicy, OllamaManagedGenerationAdmissionStatus,
+};
 pub use single_connection::{
     OLLAMA_RESIDENT_COMPLETION_KEEP_ALIVE, OLLAMA_RESIDENT_COMPLETION_RUNTIME_VERSION,
     OLLAMA_RESIDENT_COMPLETION_SOURCE_REVISION, OLLAMA_RETAINED_SESSION_MAX_INPUT_BYTES,
-    OllamaConnectionAddresses, OllamaObservedPreflightError, OllamaObservedSessionError,
-    OllamaResidentSessionExecutionReceipt, OllamaResponseObservation,
-    OllamaResponseObservationPhase, OllamaRetainedStreamSession, OllamaRetainedStreamSessionConfig,
+    OLLAMA_RUNTIME_PROBE_MAX_BODY_BYTES, OllamaConnectionAddresses,
+    OllamaGenerateResourceObservation, OllamaGenerateResourceObservationError,
+    OllamaObservedPreflightError, OllamaObservedRuntimeProbeError, OllamaObservedSessionError,
+    OllamaResidentResourceObservedCompletion, OllamaResidentSessionExecutionReceipt,
+    OllamaResponseObservation, OllamaResponseObservationPhase, OllamaRetainedSessionSubjectToken,
+    OllamaRetainedStreamSession, OllamaRetainedStreamSessionConfig, OllamaRuntimeProbeEvidence,
     OllamaSessionExecutionReceipt, OllamaSingleConnectionPreflight,
+    OllamaSingleConnectionRuntimeProbe, derive_ollama_retained_session_response_id,
 };

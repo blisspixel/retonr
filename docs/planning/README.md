@@ -23,9 +23,21 @@ tests, repository policy, and already-installed artifacts.
 
 The current 0.2 build queue, in dependency order, is:
 
-1. Preserve the completed lifecycle, schema-6 persistence, leases, migration,
-   recovery, cancellation, extractor, pair-comparison, informational shadow, and
-   plain-text CLI boundaries.
+The active trust-boundary slice is the
+[0.2 runtime admission work package](0.2-runtime-admission.md). It replaces the
+blocked official binary root with a controlled source-build review without changing
+that historical disposition.
+
+The post-admission contracts are defined in the
+[0.2 generation qualification work package](0.2-generation-qualification.md). It
+keeps candidate generation, candidate-to-judge binding, qualification, activation,
+and live-use authority in distinct domains.
+
+1. Preserve the completed schema-10 store, its durable candidate closure, schema-9
+   portable plan and case foundation,
+   schema-8 generation-system foundation, schema-7 preregistration, and schema-6 lifecycle and evidence
+   contracts, atomic preregistration, leases, migration, recovery, cancellation,
+   extractor, pair-comparison, informational shadow, and plain-text CLI boundaries.
 2. Retain the versioned read-only Ollama preflight. It observes or verifies one
    existing user-managed loopback service without generation, runtime management,
    artifact authority, or qualification.
@@ -45,24 +57,89 @@ The current 0.2 build queue, in dependency order, is:
    Retain the opt-in managed binding that constructs only `RuntimeBuildIdentity` after
    those checks; cleanup completes before return and effective state remains false.
    Reconstruction of a reviewed layout is not a freeze of one exact upstream package.
-   The v0.32.15 Linux CPU x64 review candidate now freezes exact source bytes,
-   complete archive selection, the helper, native closure, and license evidence, but
-   remains machine-marked not admitted. Resolve its two blocked controls and run its
-   two execution controls before changing the empty production cloud-disable
-   allowlist.
-6. Retain the completed admission-gated one-shot managed generation bracket. The
-   empty reviewed-runtime allowlist currently blocks it before launch. Once admitted,
-   it keeps the process, runtime package lease, native observer, and direct connection
-   through generation,
+   Preserve the official v0.32.15 archive review as a blocked historical record. The
+   active root is the ADR 0010 controlled source build. Complete its frozen closure
+   and two-attempt publication and reacquisition, then separately adjudicate source
+   lineage, transformation, license, frozen native closure, managed startup, and
+   cloud disable from typed retained evidence. Only an all-pass schema-2 review may
+   change the empty production cloud-disable allowlist. That change does not populate
+   the separate generation-path allowlist.
+6. Retain the completed dual-gated one-shot managed generation bracket. The empty
+   cloud-disable and exact package-and-worker generation allowlists both block it
+   before launch. After both independent reviews pass, it keeps the process, runtime
+   package lease, native observer, and direct connection through generation,
    joins the static binding and runtime-reported residency, and records effective
-   context before cleanup. Add its four missing direct effective-state relationships,
-   then join the exact model-package lease and implemented local-judge transport
-   receipt. Add a distinct candidate-generation receipt afterward. The serializable
-   scorecard remains caller-declared and triage-only, and no receipt proves semantics
-   or qualification by itself.
-7. Project the existing eight-case smoke and 39-case editorial protocol into frozen
-   local generation plans backed by the 49 deterministic and 120 synthetic editorial
-   development cases, 169 total. Run smoke, locked evaluation, repeatability, and
+   context before cleanup. Preserve the distinct candidate-generation receipt,
+   exact deterministic compiler, paired candidate-judge authority, and the completed
+   single-entry managed judge chain. That entry point captures one absolute deadline
+   before configuration, executes the exact schedule, derives an eval-owned durable
+   receipt with resident response ordinals `8..(7 + 9 * N)`, compiles canonical
+   compatibility triage, and returns a nonforgeable opaque join that can freshly
+   rebuild and revalidate its full record. The serializable evidence remains
+   probabilistic, triage-only, and unqualified; neither a receipt nor a join proves
+   semantics, handler execution, or model use.
+7. Preserve the frozen attempt-ledger, repeatability-result,
+   repeatability-evidence, resource-evidence, and human-adjudication contracts.
+   These portable phase records are implemented. The following five portable
+   operation prerequisites are implemented too:
+   `GenerationQualificationOperationPolicyV1`,
+   `GenerationQualificationRequestProjectionV1`,
+   `GenerationQualificationPlatformEvidenceV1`,
+   `GenerationQualificationLicenseEvidenceV1`, and
+   `GenerationQualificationOperationReceiptV1`. Their bounded canonical decoders
+   require exact typed relationships and trusted independently supplied expected
+   inputs rather than trusting serialized facts. The receipt admits peak-zero
+   `NotRequired` for a pre-acquisition cancellation, deadline, or failure, and for
+   `Completed` only at an exact rejected platform or license gate. Peak one requires
+   passed or failed
+   live finalization, and `Completed` at peak one requires passed finalization. The
+   inert `GenerationQualificationPhaseInterruptionRecordV1` companion is implemented
+   too. It binds one noncompleted receipt to its exact policy and frozen scope plus a
+   closed phase, checkpoint, optional planned attempt, and terminal reason. It is not
+   a phase item or an authority. The
+   compact `GenerationQualificationRecordV1` is implemented with internally derived
+   status and full trusted portable-closure validation. The eval-owned ordered
+   live-join authority is implemented with exact result order, one distinct join
+   per passed result, aggregate failure accounting, and mandatory fresh final
+   validation. The canonical app assessment-policy authorities, assessment
+   compilers, empty production roots, structural model-license boundary,
+   deterministic one-at-a-time request builder, streaming projection authority,
+   staged Draft -> Projected -> Prepared compiler, schema-7 atomic
+   preregistration cohort, schema-8 effective-package V2 plus generation-system
+   foundation, schema-9 portable plan and case foundation, and schema-10 candidate
+   checkpoint and terminal closure are implemented.
+   Rejected pretraffic terminalization, strict
+   resource and human phase-policy verification, typed inert source-denial records,
+   app-owned denied-phase authorities, and fail-fast pretraffic phase-policy refusal
+   are implemented too. The inert positive resource-attempt result, exact verified
+   package payload sizes, pidfd-bound Linux worker high-water observation,
+   inseparable retained-session resource completion, and Approved-only app
+   measurement authority are the first positive resource foundations. The strict eval
+   runner, receipt-time portable result compiler, strict batch-set mode, A/B target
+   selection, repeatability resource collection, complete Passed closure, and
+   resource-manifest compiler are implemented too. Active-owned no-replace
+   publication, fresh readback, receipt compilation, failed-attempt derivation, and
+   exact in-memory operation interruption closure are implemented. The target ledger
+   retains every completed target receipt and rejects missing, extra, reordered, or
+   scope-mismatched receipt-to-record closures. Foundation-gated preregistration now
+   retains its recursively checked cold readback. Active requires a newly inserted
+   precursor checkpoint before traffic, owns pending completion, and atomically closes
+   completed or failed candidate execution around app-root-bound publication and fresh
+   reacquisition. Next add deterministic recovery and reconciliation for incomplete
+   candidate states. Then persist the interruption, operation receipt, phase manifests, and attempt
+   ledger atomically in a dependency-complete terminal-evidence cohort without
+   recreating live authority.
+   The crate-private strict candidate and judge routes now carry one
+   supplied absolute deadline through every traffic and finalization boundary.
+   Preserve the consuming Active operation owner that connects Prepared's retained
+   clock and exact request sequence to those routes. Positive human
+   authority requires a
+   reviewed V2 policy and explicit
+   reviewer-governance and evidence-retention decisions. Add later
+   dependency-complete schema cohorts
+   before compiling `VerifiedGenerationQualification`. After that, project the
+   existing smoke and editorial protocols into frozen local generation plans and run
+   smoke, locked evaluation, repeatability, human adjudication, and
    supported-platform qualification in that order.
 8. Complete the remaining CLI model-management, transaction, packaging, and release
    evidence only after one exact local runtime and artifact combination qualifies.
@@ -82,6 +159,8 @@ slice.
 | Plan | Primary outcome |
 | --- | --- |
 | [0.2 grounded engine and CLI](0.2-grounded-cli.md) | Qualify one local generation path through the common validation cascade and complete the plain-text CLI |
+| [0.2 runtime admission work package](0.2-runtime-admission.md) | Produce and admit one controlled source-built Linux runtime root before effective-state work |
+| [0.2 generation qualification work package](0.2-generation-qualification.md) | Bind exact generated candidates to deterministic and judge evidence, then qualify and activate one exact managed tuple |
 | [0.3 profile and CLI alpha](0.3-profile-cli.md) | Build an inspectable, reversible style profile and prove it beats simpler baselines |
 | [0.4 Markdown](0.4-markdown.md) | Add a deliberately bounded source-splice Markdown adapter |
 | [0.5 calibration and runtime breadth](0.5-calibration.md) | Calibrate semantic risk, add strategies safely, qualify a second runtime path, and keep language and partial atomicity evidence-gated |

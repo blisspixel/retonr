@@ -1,0 +1,31 @@
+diff --git a/ggml/src/ggml-cpu/CMakeLists.txt b/ggml/src/ggml-cpu/CMakeLists.txt
+--- a/ggml/src/ggml-cpu/CMakeLists.txt
++++ b/ggml/src/ggml-cpu/CMakeLists.txt
+@@ -240,8 +240,13 @@
+     elseif (GGML_SYSTEM_ARCH STREQUAL "x86")
+         message(STATUS "x86 detected")
+         list(APPEND GGML_CPU_SOURCES
+             ggml-cpu/arch/x86/quants.c
+             ggml-cpu/arch/x86/repack.cpp
+             )
++        if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
++            CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 20)
++            set_source_files_properties(ggml-cpu/arch/x86/repack.cpp PROPERTIES
++                COMPILE_OPTIONS "-O0;-fno-vectorize;-fno-slp-vectorize")
++        endif()
+ 
+         if (MSVC)
+@@ -336,9 +341,13 @@
+                 if (GGML_AVX512)
+                     list(APPEND ARCH_FLAGS -mavx512f)
+                     list(APPEND ARCH_FLAGS -mavx512cd)
+                     list(APPEND ARCH_FLAGS -mavx512vl)
+                     list(APPEND ARCH_FLAGS -mavx512dq)
+                     list(APPEND ARCH_FLAGS -mavx512bw)
++                    if (CMAKE_C_COMPILER_ID STREQUAL "Clang" AND
++                        CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 20)
++                        list(APPEND ARCH_FLAGS -mevex512)
++                    endif()
+                     list(APPEND ARCH_DEFINITIONS GGML_AVX512)
+                 endif()
+                 if (GGML_AVX512_VBMI)

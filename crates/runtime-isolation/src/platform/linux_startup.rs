@@ -17,7 +17,6 @@ struct StreamCapture {
 pub(super) struct StartupDrains {
     standard_output: Arc<Mutex<StreamCapture>>,
     standard_error: Arc<Mutex<StreamCapture>>,
-    #[cfg(test)]
     readers: Vec<JoinHandle<()>>,
 }
 
@@ -30,15 +29,9 @@ impl StartupDrains {
         let error = Arc::new(Mutex::new(StreamCapture::default()));
         let output_reader = spawn_drain(standard_output, Arc::clone(&output));
         let error_reader = spawn_drain(standard_error, Arc::clone(&error));
-        #[cfg(not(test))]
-        {
-            drop(output_reader);
-            drop(error_reader);
-        }
         Self {
             standard_output: output,
             standard_error: error,
-            #[cfg(test)]
             readers: vec![output_reader, error_reader],
         }
     }
@@ -49,7 +42,6 @@ impl StartupDrains {
         ManagedStartupOutput::new(output.0, error.0, output.1, error.1)
     }
 
-    #[cfg(test)]
     pub(super) fn finish(mut self) -> ManagedStartupOutput {
         for reader in self.readers.drain(..) {
             let _ = reader.join();

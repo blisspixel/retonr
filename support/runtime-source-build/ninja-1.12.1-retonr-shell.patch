@@ -1,0 +1,44 @@
+diff --git a/src/subprocess-posix.cc b/src/subprocess-posix.cc
+index 45b5c09..a996d6d 100644
+--- a/src/subprocess-posix.cc
++++ b/src/subprocess-posix.cc
+@@ -20,6 +20,7 @@
+ #include <string.h>
+ #include <sys/wait.h>
+ #include <spawn.h>
++#include <stdlib.h>
+ 
+ #if defined(USE_PPOLL)
+ #include <poll.h>
+@@ -87,13 +88,6 @@ bool Subprocess::Start(SubprocessSet* set, const string& command) {
+     flags |= POSIX_SPAWN_SETPGROUP;
+     // No need to posix_spawnattr_setpgroup(&attr, 0), it's the default.
+ 
+-    // Open /dev/null over stdin.
+-    err = posix_spawn_file_actions_addopen(&action, 0, "/dev/null", O_RDONLY,
+-          0);
+-    if (err != 0) {
+-      Fatal("posix_spawn_file_actions_addopen: %s", strerror(err));
+-    }
+-
+     err = posix_spawn_file_actions_adddup2(&action, output_pipe[1], 1);
+     if (err != 0)
+       Fatal("posix_spawn_file_actions_adddup2: %s", strerror(err));
+@@ -117,8 +111,17 @@ bool Subprocess::Start(SubprocessSet* set, const string& command) {
+   if (err != 0)
+     Fatal("posix_spawnattr_setflags: %s", strerror(err));
+ 
+-  const char* spawned_args[] = { "/bin/sh", "-c", command.c_str(), NULL };
+-  err = posix_spawn(&pid_, "/bin/sh", &action, &attr,
++  const char* shell = getenv("RETONR_NINJA_SHELL");
++  if (shell == NULL || strncmp(shell, "/proc/self/fd/", 14) != 0)
++    Fatal("RETONR_NINJA_SHELL is invalid");
++  char* shell_end = NULL;
++  long shell_fd = strtol(shell + 14, &shell_end, 10);
++  if (shell_fd < 3 || shell_end == shell + 14 || *shell_end != '\0')
++    Fatal("RETONR_NINJA_SHELL is invalid");
++  const char* spawned_args[] = { "sh", "-c", command.c_str(), NULL };
++  err = posix_spawn(&pid_, shell, &action, &attr,
+         const_cast<char**>(spawned_args), environ);
+   if (err != 0)
+     Fatal("posix_spawn: %s", strerror(err));

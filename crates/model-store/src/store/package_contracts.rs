@@ -8,7 +8,7 @@ use rewrite_model::{
 use super::{ArtifactStateStore, WriteDisposition};
 use crate::{StoreError, StoreResult, record::immutable_disposition};
 
-mod read;
+pub(super) mod read;
 
 use read::{load_model_package, load_native_load, load_runtime_package};
 

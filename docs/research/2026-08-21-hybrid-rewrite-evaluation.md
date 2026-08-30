@@ -210,11 +210,12 @@ failed mandatory gate blocks qualification.
    cleanup is complete before return. Also retain the separate v0.32.15 receipt for
    two equal runtime-reported post-generation residency observations. Neither
    constructs effective runtime state or proves model use.
-5. Next: review one exact runtime package, then extend the managed operation to retain
-   the process through generation and direct effective-state observation. Join the
-   runtime build, static model binding, model-package lease, residency receipt, and
-   judge receipt without drift. This is required because the current managed outcome
-   closes the process before return.
+5. Partially implemented after this research record: the admission-gated managed
+   operation now retains the process through one structured completion, static model
+   binding, runtime-reported residency, final native-load observation, and cleanup.
+   Runtime admission still blocks launch. Next add direct provider, output
+   configuration, platform, driver, compute-backend, and placement evidence, then
+   join the model-package lease and judge receipt without drift.
 6. Add a separate candidate-generation receipt, then project the existing smoke and
    editorial cases into generated-output plans without opening locked data.
 7. Extend the implemented two-order normalization with disagreement queues,

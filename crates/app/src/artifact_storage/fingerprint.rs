@@ -12,6 +12,8 @@ pub(crate) struct MetadataFingerprint {
     #[cfg(unix)]
     inode: u64,
     #[cfg(unix)]
+    mode: u32,
+    #[cfg(unix)]
     modified_seconds: i64,
     #[cfg(unix)]
     modified_nanoseconds: i64,
@@ -41,6 +43,8 @@ pub(crate) struct StableMetadataFingerprint {
     #[cfg(unix)]
     inode: u64,
     #[cfg(unix)]
+    mode: u32,
+    #[cfg(unix)]
     modified_seconds: i64,
     #[cfg(unix)]
     modified_nanoseconds: i64,
@@ -68,7 +72,7 @@ enum FileTypeFingerprint {
 }
 
 impl MetadataFingerprint {
-    pub(super) fn from_file(file: &File) -> io::Result<Self> {
+    pub(crate) fn from_file(file: &File) -> io::Result<Self> {
         let metadata = file.metadata()?;
         #[cfg(windows)]
         let windows_information = winx::winapi_util::file::information(file)?;
@@ -79,6 +83,8 @@ impl MetadataFingerprint {
             device: std::os::unix::fs::MetadataExt::dev(&metadata),
             #[cfg(unix)]
             inode: std::os::unix::fs::MetadataExt::ino(&metadata),
+            #[cfg(unix)]
+            mode: std::os::unix::fs::MetadataExt::mode(&metadata),
             #[cfg(unix)]
             modified_seconds: std::os::unix::fs::MetadataExt::mtime(&metadata),
             #[cfg(unix)]
@@ -106,6 +112,20 @@ impl MetadataFingerprint {
 
     pub(crate) fn has_single_link(&self) -> bool {
         self.link_count == 1
+    }
+
+    pub(crate) const fn byte_size(&self) -> u64 {
+        self.length
+    }
+
+    #[cfg(unix)]
+    pub(crate) const fn unix_mode(&self) -> u32 {
+        self.mode & 0o777
+    }
+
+    #[cfg(unix)]
+    pub(crate) const fn has_special_unix_mode_bits(&self) -> bool {
+        self.mode & 0o7_000 != 0
     }
 
     pub(crate) fn same_identity(&self, other: &Self) -> bool {
@@ -139,6 +159,8 @@ impl MetadataFingerprint {
             #[cfg(unix)]
             inode: self.inode,
             #[cfg(unix)]
+            mode: self.mode,
+            #[cfg(unix)]
             modified_seconds: self.modified_seconds,
             #[cfg(unix)]
             modified_nanoseconds: self.modified_nanoseconds,
@@ -158,7 +180,7 @@ impl MetadataFingerprint {
         }
     }
 
-    pub(super) fn release(self) {
+    pub(crate) fn release(self) {
         #[cfg(windows)]
         drop(self);
         #[cfg(not(windows))]

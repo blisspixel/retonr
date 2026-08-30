@@ -8,9 +8,91 @@ use crate::{
 };
 
 use super::{
-    PACKAGE_LIMITS, RUNTIME_FILES, SET_LIMITS, VerificationObserver, VerificationStage, lease_set,
-    runtime_fixture, set_root,
+    MODEL_FILES, MODEL_LIMITS, PACKAGE_LIMITS, RUNTIME_FILES, SET_LIMITS, VerificationObserver,
+    VerificationStage, attest_model, lease_set, model_fixture, runtime_fixture, set_root,
 };
+
+#[test]
+fn model_retention_limits_fail_before_opening_members() {
+    let cases = [
+        (
+            super::ModelPackageLeaseLimits {
+                maximum_members: 0,
+                ..MODEL_LIMITS
+            },
+            "invalid",
+        ),
+        (
+            super::ModelPackageLeaseLimits {
+                maximum_members: 65,
+                ..MODEL_LIMITS
+            },
+            "invalid",
+        ),
+        (
+            super::ModelPackageLeaseLimits {
+                maximum_members: 5,
+                ..MODEL_LIMITS
+            },
+            "count",
+        ),
+        (
+            super::ModelPackageLeaseLimits {
+                maximum_member_bytes: 1,
+                ..MODEL_LIMITS
+            },
+            "member",
+        ),
+        (
+            super::ModelPackageLeaseLimits {
+                maximum_bytes: 1,
+                ..MODEL_LIMITS
+            },
+            "total",
+        ),
+    ];
+    for (limits, expected) in cases {
+        let (directory, repository, set, package) = model_fixture();
+        let set_lease = lease_set(&repository, &set.artifact_set_id());
+        fs::remove_file(set_root(directory.path(), &set.artifact_set_id()).join(MODEL_FILES[0].0))
+            .expect("remove member after set lease");
+        let error = PackageAttestationService::attest_model_with_limits(
+            set_lease,
+            &package,
+            limits,
+            &CancellationToken::new(),
+        )
+        .expect_err("model retention limit must fail before member access");
+        assert!(matches!(
+            (&error, expected),
+            (PackageAttestationError::InvalidModelLimits, "invalid")
+                | (PackageAttestationError::TooManyModelMembers { .. }, "count")
+                | (
+                    PackageAttestationError::ModelMemberTooLarge { .. },
+                    "member"
+                )
+                | (PackageAttestationError::ModelBytesTooLarge { .. }, "total")
+        ));
+    }
+}
+
+#[test]
+fn default_model_retention_limits_cover_the_managed_ollama_profile() {
+    let limits = super::ModelPackageLeaseLimits::default();
+    assert_eq!(limits.maximum_members, 64);
+    assert_eq!(limits.maximum_member_bytes, 128 * 1_024 * 1_024 * 1_024);
+    assert_eq!(limits.maximum_bytes, 129 * 1_024 * 1_024 * 1_024);
+
+    let (_directory, repository, _set, package) = model_fixture();
+    let lease = PackageAttestationService::attest_model_with_limits(
+        lease_set(&repository, package.artifact_set_id()),
+        &package,
+        limits,
+        &CancellationToken::new(),
+    )
+    .expect("default limits retain the exact six-member managed Ollama package");
+    assert_eq!(lease.evidence().member_count(), 6);
+}
 
 fn lease_after_mutation(mutate: impl FnOnce(&Path)) -> ArtifactRepositoryError {
     let (directory, repository, set, _package) = runtime_fixture();
@@ -257,4 +339,135 @@ fn non_code_member_drift_is_rejected_on_explicit_revalidation() {
         .revalidate(&CancellationToken::new())
         .expect_err("whole package drift must fail");
     assert!(matches!(error, PackageAttestationError::ArtifactSet(_)));
+}
+
+#[test]
+fn model_missing_and_extra_members_after_set_lease_fail_attestation() {
+    let (missing_directory, missing_repository, missing_set, missing_package) = model_fixture();
+    let missing_lease = lease_set(&missing_repository, &missing_set.artifact_set_id());
+    fs::remove_file(
+        set_root(missing_directory.path(), &missing_set.artifact_set_id()).join(MODEL_FILES[0].0),
+    )
+    .expect("remove model member after set lease");
+    let missing = PackageAttestationService::attest_model(
+        missing_lease,
+        &missing_package,
+        &CancellationToken::new(),
+    )
+    .expect_err("missing model member must fail attestation");
+    assert!(matches!(missing, PackageAttestationError::ArtifactSet(_)));
+
+    let (extra_directory, extra_repository, extra_set, extra_package) = model_fixture();
+    let extra_lease = lease_set(&extra_repository, &extra_set.artifact_set_id());
+    fs::write(
+        set_root(extra_directory.path(), &extra_set.artifact_set_id()).join("unexpected-model"),
+        b"extra",
+    )
+    .expect("add model member after set lease");
+    let extra = PackageAttestationService::attest_model(
+        extra_lease,
+        &extra_package,
+        &CancellationToken::new(),
+    )
+    .expect_err("extra model member must fail attestation");
+    assert!(matches!(extra, PackageAttestationError::ArtifactSet(_)));
+}
+
+#[test]
+fn model_attestation_cancellation_between_member_hashes_fails_closed() {
+    let (_directory, repository, set, package) = model_fixture();
+    let cancellation = CancellationToken::new();
+    let observed_cancellation = cancellation.clone();
+    let mut callback = |stage| {
+        if stage == VerificationStage::AfterMemberHash(0) {
+            observed_cancellation.cancel();
+        }
+    };
+    let mut observer = VerificationObserver::new(&mut callback);
+    let error = PackageAttestationService::attest_model_with_observer(
+        lease_set(&repository, &set.artifact_set_id()),
+        &package,
+        &cancellation,
+        &mut observer,
+    )
+    .expect_err("cancelled model attestation must fail");
+    assert!(matches!(error, PackageAttestationError::Cancelled));
+}
+
+#[test]
+fn extra_model_member_during_handle_verification_is_rejected() {
+    let (directory, repository, set, package) = model_fixture();
+    let root = set_root(directory.path(), &set.artifact_set_id());
+    let mut callback = |stage| {
+        if stage == VerificationStage::BeforeFinalSetRevalidation {
+            fs::write(root.join("late-model-extra"), b"extra").expect("write late model extra");
+        }
+    };
+    let mut observer = VerificationObserver::new(&mut callback);
+    let error = PackageAttestationService::attest_model_with_observer(
+        lease_set(&repository, &set.artifact_set_id()),
+        &package,
+        &CancellationToken::new(),
+        &mut observer,
+    )
+    .expect_err("late model member must fail");
+    assert!(matches!(error, PackageAttestationError::ArtifactSet(_)));
+}
+
+#[cfg(unix)]
+#[test]
+fn model_replacement_after_member_hash_is_rejected() {
+    let (directory, repository, set, package) = model_fixture();
+    let root = set_root(directory.path(), &set.artifact_set_id());
+    let replacement = directory.path().join("replacement-model-member");
+    fs::write(&replacement, MODEL_FILES[0].1).expect("write replacement model member");
+    let mut callback = |stage| {
+        if stage == VerificationStage::AfterMemberHash(0) {
+            fs::rename(&replacement, root.join(MODEL_FILES[0].0))
+                .expect("replace named model member after hash");
+        }
+    };
+    let mut observer = VerificationObserver::new(&mut callback);
+    let error = PackageAttestationService::attest_model_with_observer(
+        lease_set(&repository, &set.artifact_set_id()),
+        &package,
+        &CancellationToken::new(),
+        &mut observer,
+    )
+    .expect_err("model replacement after hash must fail");
+    assert!(matches!(
+        error,
+        PackageAttestationError::MemberIdentityChanged | PackageAttestationError::ArtifactSet(_)
+    ));
+}
+
+#[cfg(unix)]
+#[test]
+fn retained_model_handle_revalidation_rejects_lifetime_content_drift() {
+    let (directory, repository, set, package) = model_fixture();
+    let root = set_root(directory.path(), &set.artifact_set_id());
+    let lease = attest_model(&repository, &package);
+    fs::write(root.join(MODEL_FILES[0].0), b"{\"model\":\"changed\"}")
+        .expect("drift retained model member");
+    let error = lease
+        .revalidate(&CancellationToken::new())
+        .expect_err("retained model drift must fail");
+    assert!(matches!(
+        error,
+        PackageAttestationError::MemberBytesConflict
+            | PackageAttestationError::MemberIdentityChanged
+            | PackageAttestationError::ArtifactSet(_)
+    ));
+}
+
+#[cfg(windows)]
+#[test]
+fn retained_windows_model_handles_deny_lifetime_content_drift() {
+    let (directory, repository, set, package) = model_fixture();
+    let root = set_root(directory.path(), &set.artifact_set_id());
+    let lease = attest_model(&repository, &package);
+    let target = root.join(MODEL_FILES[0].0);
+    assert!(fs::write(&target, b"{\"model\":\"changed\"}").is_err());
+    assert!(fs::remove_file(&target).is_err());
+    drop(lease);
 }

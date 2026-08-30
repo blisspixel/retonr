@@ -243,6 +243,12 @@ impl EffectiveRuntimeState {
         &self.loaded_components_digest
     }
 
+    /// Returns the exact isolation policy bound into this runtime state.
+    #[must_use]
+    pub const fn isolation_policy_digest(&self) -> &Digest {
+        &self.isolation_policy_digest
+    }
+
     /// Returns the effective context capacity in tokens.
     #[must_use]
     pub const fn effective_context_tokens(&self) -> u32 {

@@ -1,12 +1,18 @@
 use rusqlite::{Connection, OptionalExtension as _};
 
 use rewrite_model::{
+    MAX_MODEL_PACKAGE_MANIFEST_JSON_BYTES, MAX_RUNTIME_PACKAGE_MANIFEST_JSON_BYTES,
     ModelPackageManifest, NativeLoadObservation, PackageTransformation, RuntimePackageManifest,
 };
 
 use crate::{StoreError, StoreResult};
 
-pub(super) fn load_runtime_package(
+use super::super::bounded_text::{
+    BoundedTextCell, read_nullable_digest_text, read_required_bounded_text,
+    read_required_digest_text,
+};
+
+pub(in crate::store) fn load_runtime_package(
     connection: &Connection,
     key: &str,
 ) -> StoreResult<Option<RuntimePackageManifest>> {
@@ -15,6 +21,7 @@ pub(super) fn load_runtime_package(
         "runtime_package_manifests",
         "runtime_package_manifest_id",
         key,
+        MAX_RUNTIME_PACKAGE_MANIFEST_JSON_BYTES,
     )?
     else {
         return Ok(None);
@@ -40,7 +47,7 @@ pub(super) fn load_runtime_package(
     Ok(Some(record))
 }
 
-pub(super) fn load_model_package(
+pub(in crate::store) fn load_model_package(
     connection: &Connection,
     key: &str,
 ) -> StoreResult<Option<ModelPackageManifest>> {
@@ -49,6 +56,7 @@ pub(super) fn load_model_package(
         "model_package_manifests",
         "model_package_manifest_id",
         key,
+        MAX_MODEL_PACKAGE_MANIFEST_JSON_BYTES,
     )?
     else {
         return Ok(None);
@@ -79,17 +87,34 @@ fn load_package_row(
     table: &str,
     key_column: &str,
     key: &str,
+    maximum_json_bytes: usize,
 ) -> StoreResult<Option<(String, Option<String>, String)>> {
-    let sql = format!(
-        "SELECT artifact_set_id, source_artifact_set_id, record_json
-         FROM {table} WHERE {key_column} = ?1"
-    );
-    connection
-        .query_row(&sql, [key], |row| {
-            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-        })
-        .optional()
-        .map_err(StoreError::Database)
+    let Some(artifact_set_id) =
+        read_required_digest_text(connection, table, key_column, key, "artifact_set_id")?
+    else {
+        return Ok(None);
+    };
+    let source_artifact_set_id = match read_nullable_digest_text(
+        connection,
+        table,
+        key_column,
+        key,
+        "source_artifact_set_id",
+    )? {
+        BoundedTextCell::MissingRow => return Err(StoreError::CorruptRecord),
+        BoundedTextCell::Null => None,
+        BoundedTextCell::Text(value) => Some(value),
+    };
+    let encoded = read_required_bounded_text(
+        connection,
+        table,
+        key_column,
+        key,
+        "record_json",
+        maximum_json_bytes,
+    )?
+    .ok_or(StoreError::CorruptRecord)?;
+    Ok(Some((artifact_set_id, source_artifact_set_id, encoded)))
 }
 
 fn require_source_artifact_set(

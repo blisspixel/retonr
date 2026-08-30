@@ -4,7 +4,10 @@ use rewrite_types::{CancellationToken, Digest};
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::{NativeLoadObservationRequest, NativeLoadObserverError};
+use crate::{
+    NativeLoadDiscovery, NativeLoadDiscoveryRequest, NativeLoadObservationRequest,
+    NativeLoadObserverError,
+};
 use crate::{RetainedTcpConnection, RetainedTcpConnectionEvidence};
 use rewrite_model::NativeLoadObservation;
 
@@ -348,6 +351,25 @@ pub trait AttachedProcessLease {
         _request: &NativeLoadObservationRequest<'_>,
         _cancellation: &CancellationToken,
     ) -> Result<NativeLoadObservation, NativeLoadObserverError> {
+        Err(NativeLoadObserverError::Unsupported)
+    }
+
+    /// Discovers a bounded stable set of external executable objects.
+    ///
+    /// The result is an explicitly non-authoritative proposal and cannot be used as
+    /// the frozen external set accepted by [`Self::observe_native_load`]. Version 1
+    /// is implemented only on Linux.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`NativeLoadObserverError`] unless the retained process, exact
+    /// package, complete mapping view, and every mapped object remain stable through
+    /// the discovery bracket.
+    fn discover_external_native_components(
+        &mut self,
+        _request: &NativeLoadDiscoveryRequest<'_>,
+        _cancellation: &CancellationToken,
+    ) -> Result<NativeLoadDiscovery, NativeLoadObserverError> {
         Err(NativeLoadObserverError::Unsupported)
     }
 }

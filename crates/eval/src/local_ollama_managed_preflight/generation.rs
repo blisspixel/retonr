@@ -1,24 +1,22 @@
 use std::{cell::RefCell, rc::Rc};
 
-use rewrite_app::RuntimePackageLease;
-use rewrite_inference::{
-    InferenceError, OperationContext, StructuredCompletionRequest, StructuredCompletionResponse,
+use rewrite_app::{
+    MANAGED_OLLAMA_V0_32_15_ENDPOINT, ManagedOllamaIsolationLease, RuntimePackageLease,
+    VerifiedAdmittedRuntime, VerifiedManagedGenerationPath, managed_ollama_v0_32_15_launch_spec,
 };
+use rewrite_inference::{StructuredCompletionRequest, StructuredCompletionResponse};
 use rewrite_model::RuntimePackageManifest;
 use rewrite_ollama::{
-    OllamaCloudDisableFeaturePolicy, OllamaCloudDisableVersionStatus, OllamaEndpoint, OllamaLimits,
-    OllamaModelBinding, OllamaResidentSessionExecutionReceipt, OllamaRetainedStreamSessionConfig,
-    OllamaVersion,
+    OllamaCloudDisableVersionStatus, OllamaEndpoint, OllamaLimits, OllamaModelBinding,
+    OllamaResidentResourceObservedCompletion, OllamaResidentSessionExecutionReceipt,
+    OllamaRetainedStreamSessionConfig,
 };
 use rewrite_runtime_attestor::{
-    AttachedProcessLease, ExpectedExternalNativeComponent, ListenerEndpoint,
-    NativeManagedLinuxProcessObserver,
+    AttachedProcessLease, ListenerEndpoint, ManagedGenerationWorkerLimits,
+    NativeManagedLinuxProcessObserver, VerifiedFrozenExternalNativeComponentSet,
 };
-use rewrite_runtime_isolation::{
-    IsolationError, LaunchSpec, PreparedIsolation, RetainedIsolationLease,
-};
+use rewrite_runtime_isolation::PreparedIsolation;
 use rewrite_types::CancellationToken;
-use thiserror::Error;
 
 use crate::{
     LocalOllamaBoundPreflightError, LocalOllamaBoundPreflightPlan, LocalOllamaModelBindingEvidence,
@@ -27,235 +25,105 @@ use crate::{
 };
 
 use super::{
-    LocalOllamaManagedBuildBinding, LocalOllamaManagedPreflightError,
-    LocalOllamaManagedPreflightLimits, LocalOllamaManagedPreflightReport,
+    LocalOllamaManagedPreflightError, LocalOllamaManagedPreflightLimits,
     bind_successful_managed_preflight,
     report::{build_report, report_evidence_digests},
     validation::{
-        exact_helper_member, managed_expectation, validate_cloud_launch, validate_final_isolation,
-        validate_isolation_binding, validate_process_binding, validate_static_inputs,
+        managed_expectation, validate_cloud_launch, validate_final_isolation,
+        validate_isolation_binding, validate_process_binding,
     },
 };
 
+mod deadline;
+mod effective_state_join;
 mod evidence;
+mod final_observation;
+mod live_lifecycle;
+mod managed_attempt;
+mod managed_candidate_judge;
+mod managed_local_judge_receipt;
+mod managed_schedule_runner;
+mod runner;
+mod runner_configuration;
 mod validation;
+mod verified_candidate_judge_join;
+mod verified_repeatability_joins;
 
-use evidence::{GenerationEvidenceInput, build_generation_evidence};
+use deadline::CandidateOperationDeadline;
 pub use evidence::{
     LOCAL_OLLAMA_MANAGED_GENERATION_EVIDENCE_SCHEMA_VERSION, LocalOllamaManagedGenerationEvidence,
+    MANAGED_OLLAMA_GENERATION_BRACKET_OBSERVATION_SCHEMA_VERSION,
+    ManagedOllamaGenerationBracketObservationV1,
 };
+use final_observation::{FinalObservationInput, finish_final_observation};
+pub(crate) use live_lifecycle::GenerationQualificationLiveLifecycle;
+pub(crate) use managed_attempt::ResourceObservedManagedCandidateAttemptClosure;
+pub use managed_attempt::{
+    FailedManagedCandidateAttempt, ManagedCandidateAttemptCleanupFailures,
+    ManagedCandidateAttemptExecutionError, ManagedCandidateAttemptExecutionOutcome,
+    ManagedCandidateAttemptFailureRecordError, ManagedCandidateAttemptPrimaryFailure,
+    ManagedCandidateAttemptRunInput, VerifiedCompletedManagedCandidateAttempt,
+};
+pub(crate) use managed_attempt::{
+    ResourceObservedManagedCandidateAttemptRunInput,
+    run_resource_observed_verified_managed_candidate_attempt_until,
+    run_verified_managed_candidate_attempt_until,
+};
+pub(crate) use managed_candidate_judge::run_verified_managed_candidate_judge_until;
+pub use managed_candidate_judge::{
+    ManagedCandidateJudgeRunError, ManagedCandidateJudgeRunErrorKind,
+};
+pub use runner::run_local_ollama_managed_generation;
 use validation::{
-    ManagedSessionObserver, map_session_error, observe_native_load, reobserve_process,
-    validate_generation_admission, validate_generation_binding,
+    ManagedGenerationSessionObservationError, ManagedSessionObserver, exact_retained_worker,
+    map_session_error, observe_native_load, observe_response_and_worker, reobserve_process,
+};
+pub use verified_candidate_judge_join::{
+    VerifiedCandidateJudgeJoin, VerifiedCandidateJudgeJoinRevalidationError,
+    VerifiedCandidateJudgeJoinRevalidationErrorKind,
+};
+pub use verified_repeatability_joins::{
+    CompletePassedRepeatabilityRelations, GenerationQualificationResourcePhaseAuthorityError,
+    GenerationQualificationResourcePhaseCompilationError,
+    GenerationQualificationResourcePhaseCompiler,
+    GenerationQualificationResourcePhaseDerivationError, VerifiedCompletePassedRepeatabilityJoins,
+    VerifiedCompletePassedRepeatabilityJoinsError, VerifiedGenerationQualificationResourcePhase,
+    VerifiedPassedRepeatabilityJoins, VerifiedPassedRepeatabilityJoinsError,
+    VerifiedPassedRepeatabilityJoinsErrorKind, verify_complete_passed_repeatability_joins,
+    verify_passed_repeatability_joins,
 };
 
-const GENERATION_RESPONSE_COUNT: usize = 9;
+mod outcome;
+#[cfg(test)]
+use outcome::finalize_retained_bracket;
+pub use outcome::{LocalOllamaManagedGenerationError, LocalOllamaManagedGenerationOutcome};
+use outcome::{
+    PendingLocalOllamaManagedGenerationOutcome, PendingManagedGenerationCompletion,
+    PendingResourceObservedGenerationCompletion,
+};
 
-/// Failure from one retained managed-generation operation.
-#[derive(Debug, Error)]
-pub enum LocalOllamaManagedGenerationError {
-    /// Managed package, launch, preflight, observation, or report validation failed.
-    #[error("managed Ollama generation prerequisite failed: {0}")]
-    Managed(#[from] LocalOllamaManagedPreflightError),
-    /// The exact runtime package has not passed the production cloud-disable review.
-    #[error("managed Ollama runtime package is not admitted for generation")]
-    RuntimeNotAdmitted,
-    /// The retained Ollama session failed closed before completing its exact sequence.
-    #[error("managed Ollama retained generation session failed: {0}")]
-    Session(#[source] InferenceError),
-    /// The managed process tree could not be terminated and reaped.
-    #[error("managed Ollama generation cleanup failed: {0}")]
-    Cleanup(#[source] IsolationError),
-    /// The primary operation and independent cleanup both failed.
-    #[error("managed Ollama generation cleanup failed with {cleanup} after {operation}")]
-    CleanupAfterFailure {
-        /// Original operation failure retained without weakening cleanup reporting.
-        #[source]
-        operation: Box<LocalOllamaManagedGenerationError>,
-        /// Independent termination and reap failure.
-        cleanup: IsolationError,
+#[derive(Clone, Copy)]
+pub(super) enum ManagedGenerationObservationMode {
+    Compatibility,
+    ResourceObserved,
+}
+
+pub(super) enum LiveManagedGenerationCompletion {
+    Compatibility {
+        response: Box<StructuredCompletionResponse>,
+        receipt: Box<OllamaResidentSessionExecutionReceipt>,
     },
+    ResourceObserved(Box<OllamaResidentResourceObservedCompletion>),
 }
 
-/// One content response plus redacted evidence from its closed managed bracket.
-#[derive(Debug)]
-pub struct LocalOllamaManagedGenerationOutcome {
-    response: StructuredCompletionResponse,
-    residency_receipt: OllamaResidentSessionExecutionReceipt,
-    managed_preflight: LocalOllamaManagedPreflightReport,
-    managed_build: LocalOllamaManagedBuildBinding,
-    evidence: LocalOllamaManagedGenerationEvidence,
-}
-
-impl LocalOllamaManagedGenerationOutcome {
-    /// Returns the bounded untrusted structured response.
-    #[must_use]
-    pub const fn response(&self) -> &StructuredCompletionResponse {
-        &self.response
-    }
-
-    /// Returns the content-free runtime-reported residency receipt.
-    #[must_use]
-    pub const fn residency_receipt(&self) -> &OllamaResidentSessionExecutionReceipt {
-        &self.residency_receipt
-    }
-
-    /// Returns the completed inert managed preflight report.
-    #[must_use]
-    pub const fn managed_preflight(&self) -> &LocalOllamaManagedPreflightReport {
-        &self.managed_preflight
-    }
-
-    /// Returns the package-declared runtime-build binding.
-    #[must_use]
-    pub const fn managed_build(&self) -> &LocalOllamaManagedBuildBinding {
-        &self.managed_build
-    }
-
-    /// Returns the redacted retained-generation evidence.
-    #[must_use]
-    pub const fn evidence(&self) -> &LocalOllamaManagedGenerationEvidence {
-        &self.evidence
-    }
-
-    /// Splits the result into its content response and content-free evidence.
-    #[must_use]
-    pub fn into_parts(
-        self,
-    ) -> (
-        StructuredCompletionResponse,
-        OllamaResidentSessionExecutionReceipt,
-        LocalOllamaManagedPreflightReport,
-        LocalOllamaManagedBuildBinding,
-        LocalOllamaManagedGenerationEvidence,
-    ) {
-        (
-            self.response,
-            self.residency_receipt,
-            self.managed_preflight,
-            self.managed_build,
-            self.evidence,
-        )
-    }
-}
-
-/// Runs one structured completion inside one retained managed Linux operation.
-///
-/// Static package and model relationships, read-only preflight, native process and
-/// load evidence, every direct-connection response, generation, and two equal
-/// runtime-reported residency observations are joined before cleanup. The returned
-/// result is inert. It does not prove model weight use, handler execution, a complete
-/// effective runtime identity, semantic correctness, or qualification.
-///
-/// # Errors
-///
-/// Returns [`LocalOllamaManagedGenerationError`] for every invalid binding, drift,
-/// observation, transport, residency, package, isolation, or cleanup failure.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "each independently frozen trust-boundary input remains explicit"
-)]
-pub async fn run_local_ollama_managed_generation(
-    package: &RuntimePackageManifest,
-    package_lease: &mut RuntimePackageLease,
-    isolation: &PreparedIsolation,
-    launch: &LaunchSpec,
-    plan: &LocalOllamaBoundPreflightPlan,
-    external_components: &[ExpectedExternalNativeComponent],
-    limits: LocalOllamaManagedPreflightLimits,
-    static_model: &LocalOllamaModelBindingEvidence,
-    model: &OllamaModelBinding,
-    request: StructuredCompletionRequest,
-    cancellation: &CancellationToken,
-) -> Result<LocalOllamaManagedGenerationOutcome, LocalOllamaManagedGenerationError> {
-    validate_static_inputs(package, package_lease, plan, external_components, limits)?;
-    validate_generation_binding(package, plan, static_model, model, &request)?;
-    validate_generation_admission(package, plan)?;
-    package_lease
-        .revalidate(cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Package)?;
-    let preparation = isolation.preparation_evidence();
-    if !preparation.all_canaries_passed() {
-        return Err(LocalOllamaManagedPreflightError::InvalidHelperBinding.into());
-    }
-    let helper = exact_helper_member(
-        package,
-        preparation.helper_digest(),
-        preparation.helper_bytes(),
-    )?;
-    let executable = package_lease
-        .clone_entrypoint_for_launch(cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Package)?;
-    let isolation_lease = isolation
-        .launch_retained(launch, executable, cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Isolation)?;
-
-    run_retained_generation(
-        package,
-        package_lease,
-        isolation,
-        launch,
-        plan,
-        helper,
-        external_components,
-        limits,
-        static_model,
-        model,
-        request,
-        isolation_lease,
-        cancellation,
-    )
-    .await
-}
-
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the retained bracket keeps every authority input explicit"
-)]
-async fn run_retained_generation(
-    package: &RuntimePackageManifest,
-    package_lease: &mut RuntimePackageLease,
-    isolation: &PreparedIsolation,
-    launch: &LaunchSpec,
-    plan: &LocalOllamaBoundPreflightPlan,
-    helper: &rewrite_model::RuntimePackageMember,
-    external_components: &[ExpectedExternalNativeComponent],
-    limits: LocalOllamaManagedPreflightLimits,
-    static_model: &LocalOllamaModelBindingEvidence,
-    model: &OllamaModelBinding,
-    request: StructuredCompletionRequest,
-    mut isolation_lease: RetainedIsolationLease,
-    cancellation: &CancellationToken,
-) -> Result<LocalOllamaManagedGenerationOutcome, LocalOllamaManagedGenerationError> {
-    let operation = run_live_generation(
-        package,
-        package_lease,
-        isolation,
-        launch,
-        plan,
-        helper,
-        external_components,
-        limits,
-        static_model,
-        model,
-        request,
-        &mut isolation_lease,
-        cancellation,
-    )
-    .await;
-    let cleanup = isolation_lease.close(&CancellationToken::new());
-    match (operation, cleanup) {
-        (Err(operation), Err(cleanup)) => {
-            Err(LocalOllamaManagedGenerationError::CleanupAfterFailure {
-                operation: Box::new(operation),
-                cleanup,
-            })
+impl LiveManagedGenerationCompletion {
+    const fn receipt(&self) -> &OllamaResidentSessionExecutionReceipt {
+        match self {
+            Self::Compatibility { receipt, .. } => receipt,
+            Self::ResourceObserved(completion) => completion.resident_execution_receipt(),
         }
-        (Ok(_outcome), Err(cleanup)) => Err(LocalOllamaManagedGenerationError::Cleanup(cleanup)),
-        (operation, Ok(())) => operation,
     }
 }
-
 #[expect(
     clippy::too_many_arguments,
     reason = "the linear evidence join keeps all frozen capabilities visible"
@@ -268,216 +136,352 @@ async fn run_live_generation(
     package: &RuntimePackageManifest,
     package_lease: &mut RuntimePackageLease,
     isolation: &PreparedIsolation,
-    launch: &LaunchSpec,
     plan: &LocalOllamaBoundPreflightPlan,
     helper: &rewrite_model::RuntimePackageMember,
-    external_components: &[ExpectedExternalNativeComponent],
+    admitted_runtime: &VerifiedAdmittedRuntime,
+    generation_path: &VerifiedManagedGenerationPath,
+    frozen_external_components: &VerifiedFrozenExternalNativeComponentSet,
+    cloud_status: OllamaCloudDisableVersionStatus,
     limits: LocalOllamaManagedPreflightLimits,
+    worker_limits: ManagedGenerationWorkerLimits,
     static_model: &LocalOllamaModelBindingEvidence,
     model: &OllamaModelBinding,
     request: StructuredCompletionRequest,
-    isolation_lease: &mut RetainedIsolationLease,
+    isolation_lease: &ManagedOllamaIsolationLease<'_>,
+    observation_mode: ManagedGenerationObservationMode,
+    attempt_progress: &managed_attempt::ManagedCandidateAttemptProgress,
+    operation_deadline: CandidateOperationDeadline,
     cancellation: &CancellationToken,
-) -> Result<LocalOllamaManagedGenerationOutcome, LocalOllamaManagedGenerationError> {
-    let endpoint = OllamaEndpoint::parse(&plan.preflight.endpoint)
-        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidInput)?;
-    let initial_isolation = isolation_lease.initial_evidence();
-    validate_isolation_binding(&initial_isolation, package)?;
-    let channel = isolation_lease
-        .connect_loopback(endpoint.socket_addr(), cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Isolation)?;
-    let (stream, diagnostics, startup_output) = channel.into_parts();
-    validate_cloud_launch(launch, &startup_output)?;
+) -> Result<PendingLocalOllamaManagedGenerationOutcome, LocalOllamaManagedGenerationError> {
+    macro_rules! candidate_step {
+        ($result:expr) => {{
+            operation_deadline.ensure_active(cancellation)?;
+            let result = $result;
+            operation_deadline.precedence(result, cancellation)?
+        }};
+    }
+    macro_rules! candidate_value {
+        ($value:expr) => {{
+            operation_deadline.ensure_active(cancellation)?;
+            let value = $value;
+            operation_deadline.ensure_active(cancellation)?;
+            value
+        }};
+    }
 
-    let expectation = managed_expectation(&initial_isolation)?;
-    let listener = ListenerEndpoint::new(endpoint.socket_addr())
-        .map_err(LocalOllamaManagedPreflightError::Witness)?;
-    let process = NativeManagedLinuxProcessObserver
-        .attach(
+    let endpoint = candidate_step!(
+        OllamaEndpoint::parse(&plan.preflight.endpoint)
+            .map_err(|_error| LocalOllamaManagedPreflightError::InvalidInput)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    candidate_step!(
+        (endpoint.socket_addr() == MANAGED_OLLAMA_V0_32_15_ENDPOINT)
+            .then_some(())
+            .ok_or(LocalOllamaManagedPreflightError::InvalidInput)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    let launch = candidate_value!(managed_ollama_v0_32_15_launch_spec());
+    candidate_step!(
+        (&launch.redacted_digest() == isolation_lease.plain_launch_spec_digest())
+            .then_some(())
+            .ok_or(LocalOllamaManagedGenerationError::InvalidGenerationAuthority)
+    );
+    let initial_isolation = candidate_value!(isolation_lease.initial_evidence());
+    candidate_step!(
+        validate_isolation_binding(&initial_isolation, package)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    let channel_result = match operation_deadline.instant() {
+        Some(deadline) => isolation_lease.connect_loopback_until(cancellation, deadline),
+        None => isolation_lease.connect_loopback(cancellation),
+    }
+    .map_err(LocalOllamaManagedGenerationError::from);
+    let channel = candidate_step!(channel_result);
+    let (stream, diagnostics, startup_output) = channel.into_parts();
+    operation_deadline.ensure_active(cancellation)?;
+    candidate_step!(
+        validate_cloud_launch(&launch, &startup_output)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+
+    let expectation = candidate_step!(
+        managed_expectation(&initial_isolation).map_err(LocalOllamaManagedGenerationError::from)
+    );
+    let listener = candidate_step!(
+        ListenerEndpoint::new(endpoint.socket_addr())
+            .map_err(LocalOllamaManagedPreflightError::Witness)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    operation_deadline.ensure_active(cancellation)?;
+    let process_result = match operation_deadline.instant() {
+        Some(deadline) => NativeManagedLinuxProcessObserver.attach_until(
             listener,
             diagnostics.into_file(),
             expectation,
             limits.process,
             cancellation,
-        )
-        .map_err(LocalOllamaManagedPreflightError::Witness)?;
-    let initial_process = process.initial_evidence().clone();
-    validate_process_binding(&initial_process, package)?;
+            deadline,
+        ),
+        None => NativeManagedLinuxProcessObserver.attach(
+            listener,
+            diagnostics.into_file(),
+            expectation,
+            limits.process,
+            cancellation,
+        ),
+    }
+    .map_err(LocalOllamaManagedPreflightError::Witness)
+    .map_err(LocalOllamaManagedGenerationError::from);
+    let process = operation_deadline.precedence(process_result, cancellation)?;
+    let initial_process = candidate_value!(process.initial_evidence().clone());
+    candidate_step!(
+        validate_process_binding(&initial_process, package)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
 
-    let preflight_responses = plan.preflight.models.len().saturating_add(6);
-    let total_responses = preflight_responses.saturating_add(GENERATION_RESPONSE_COUNT);
-    let session_bytes = usize::try_from(plan.maximum_session_body_bytes)
-        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidInput)?;
-    let config = OllamaRetainedStreamSessionConfig::new(
-        endpoint,
-        vec![model.clone()],
-        OllamaLimits::default(),
-        session_bytes,
-    )
-    .map_err(LocalOllamaManagedGenerationError::Session)?;
-    let observer = Rc::new(RefCell::new(ManagedSessionObserver {
+    let package_id = candidate_value!(package.runtime_package_manifest_id());
+    let retained_members = candidate_step!(
+        package_lease
+            .clone_members_for_native_observation(cancellation)
+            .map_err(LocalOllamaManagedPreflightError::Package)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    let retained_worker =
+        candidate_step!(exact_retained_worker(&retained_members, generation_path));
+
+    let preflight_responses = candidate_value!(plan.preflight.models.len().saturating_add(6));
+    let total_responses = candidate_value!(preflight_responses.saturating_add(9));
+    let worker_response_ordinal = candidate_value!(preflight_responses.saturating_add(4));
+    let session_bytes = candidate_step!(
+        usize::try_from(plan.maximum_session_body_bytes)
+            .map_err(|_error| LocalOllamaManagedPreflightError::InvalidInput)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    let config = candidate_step!(
+        OllamaRetainedStreamSessionConfig::new(
+            endpoint,
+            vec![model.clone()],
+            OllamaLimits::default(),
+            session_bytes,
+        )
+        .map_err(LocalOllamaManagedGenerationError::Session)
+    );
+    let observer = candidate_value!(Rc::new(RefCell::new(ManagedSessionObserver {
         process,
         connections: ConnectionObservationSequence::new(total_responses),
-    }));
+        worker: None,
+    })));
     let callback_observer = Rc::clone(&observer);
-    let mut session = config
+    let callback_package_id = &package_id;
+    let callback_retained_members = &retained_members;
+    let callback_isolation_lease = isolation_lease;
+    let callback_attempt_progress = attempt_progress;
+    let callback_operation_deadline = operation_deadline;
+    operation_deadline.ensure_active(cancellation)?;
+    let session_result = config
         .open(
             stream,
-            OperationContext::new(cancellation, None),
+            operation_deadline.context(cancellation),
             move |observation| {
-                let mut state = callback_observer
-                    .try_borrow_mut()
-                    .map_err(|_error| LocalOllamaBoundPreflightError::InvalidObservationSequence)?;
-                let ManagedSessionObserver {
-                    process,
-                    connections,
-                } = &mut *state;
-                connections.observe(process, cancellation, observation)
+                callback_operation_deadline
+                    .ensure_active(cancellation)
+                    .map_err(ManagedGenerationSessionObservationError::Gate)?;
+                callback_attempt_progress.observe_response(
+                    observation.phase(),
+                    preflight_responses,
+                    worker_response_ordinal,
+                );
+                callback_operation_deadline
+                    .ensure_active(cancellation)
+                    .map_err(ManagedGenerationSessionObservationError::Gate)?;
+                let mut state = callback_observer.try_borrow_mut().map_err(|_error| {
+                    ManagedGenerationSessionObservationError::Connection(
+                        LocalOllamaBoundPreflightError::InvalidObservationSequence,
+                    )
+                })?;
+                observe_response_and_worker(
+                    &mut state,
+                    observation,
+                    worker_response_ordinal,
+                    package,
+                    callback_package_id,
+                    retained_worker,
+                    callback_retained_members,
+                    frozen_external_components,
+                    callback_isolation_lease,
+                    worker_limits,
+                    callback_operation_deadline,
+                    cancellation,
+                )
             },
         )
         .await
-        .map_err(map_session_error)?;
+        .map_err(map_session_error);
+    let mut session = operation_deadline.precedence(session_result, cancellation)?;
+    operation_deadline.ensure_active(cancellation)?;
     let api_preflight = session
-        .preflight(OperationContext::new(cancellation, None))
+        .preflight(operation_deadline.context(cancellation))
         .await
-        .map_err(map_session_error)?;
-    let post_preflight_process = reobserve_process(&observer, package, cancellation)?;
-    let preflight_connections = {
+        .map_err(map_session_error);
+    let api_preflight = operation_deadline.precedence(api_preflight, cancellation)?;
+    let post_preflight_process =
+        reobserve_process(&observer, package, operation_deadline, cancellation)?;
+    let preflight_connections = candidate_step!((|| {
         let state = observer
             .try_borrow()
-            .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?;
+            .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)
+            .map_err(LocalOllamaManagedGenerationError::from)?;
         state
             .connections
             .validate_progress(preflight_responses)
-            .map_err(LocalOllamaManagedPreflightError::BoundObservation)?;
-        state.connections.evidence().to_vec()
-    };
-    let preflight = local_ollama_preflight_report(&plan.preflight, api_preflight)
-        .map_err(LocalOllamaManagedPreflightError::Preflight)?;
+            .map_err(LocalOllamaManagedPreflightError::BoundObservation)
+            .map_err(LocalOllamaManagedGenerationError::from)?;
+        Ok(state.connections.evidence().to_vec())
+    })());
+    let preflight = candidate_step!(
+        local_ollama_preflight_report(&plan.preflight, api_preflight)
+            .map_err(LocalOllamaManagedPreflightError::Preflight)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
 
-    let runtime_version = plan
-        .preflight
-        .expected_runtime_version
-        .parse::<OllamaVersion>()
-        .map_err(|_error| LocalOllamaManagedPreflightError::InvalidInput)?;
-    let package_id = package.runtime_package_manifest_id();
-    let cloud_status = OllamaCloudDisableFeaturePolicy::assess(runtime_version, &package_id);
-    if cloud_status == OllamaCloudDisableVersionStatus::FeatureUnavailable {
-        return Err(LocalOllamaManagedPreflightError::CloudDisableFeatureUnavailable.into());
-    }
-    if OllamaCloudDisableFeaturePolicy::reviewed_runtime_count() == 0
-        && cloud_status != OllamaCloudDisableVersionStatus::Unreviewed
-    {
-        return Err(LocalOllamaManagedPreflightError::InvalidEvidenceBinding.into());
-    }
-
-    let retained_members = package_lease
-        .clone_members_for_native_observation(cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Package)?;
     let preflight_native_load = observe_native_load(
         &observer,
         package,
-        &package_id,
         &retained_members,
-        external_components,
+        frozen_external_components,
         limits,
+        operation_deadline,
         cancellation,
     )?;
-    let preflight_final_process = reobserve_process(&observer, package, cancellation)?;
-    let preflight_final_isolation = isolation_lease
-        .reobserve(cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Isolation)?;
-    validate_final_isolation(&initial_isolation, &preflight_final_isolation)?;
-    package_lease
-        .revalidate(cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Package)?;
-
-    let connection_witness = preflight_connections
-        .last()
-        .cloned()
-        .ok_or(LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?;
-    let report_digests = report_evidence_digests(
-        package_lease,
-        isolation,
-        launch,
-        &initial_isolation,
-        &preflight_final_isolation,
-        &startup_output,
-    )?;
-    let managed_preflight = build_report(
-        package,
-        plan,
-        helper,
-        external_components,
-        limits,
-        report_digests,
-        initial_process,
-        post_preflight_process,
-        preflight_final_process,
-        connection_witness,
-        preflight_connections,
-        cloud_status,
-        preflight,
-        preflight_native_load,
-    )?;
-    let managed_build = bind_successful_managed_preflight(package, plan, &managed_preflight)?;
-
-    let retained_request = request.clone();
-    let (response, residency_receipt) = session
-        .complete_structured_with_residency(request, OperationContext::new(cancellation, None))
-        .await
-        .map_err(map_session_error)?;
-    let post_generation_process = reobserve_process(&observer, package, cancellation)?;
-    let post_generation_native_load = observe_native_load(
-        &observer,
-        package,
-        &package_id,
-        &retained_members,
-        external_components,
-        limits,
-        cancellation,
-    )?;
-    let final_process = reobserve_process(&observer, package, cancellation)?;
-    if final_process != post_generation_process {
-        return Err(LocalOllamaManagedPreflightError::InvalidEvidenceBinding.into());
+    let preflight_final_process =
+        reobserve_process(&observer, package, operation_deadline, cancellation)?;
+    let isolation_result = match operation_deadline.instant() {
+        Some(deadline) => isolation_lease.reobserve_until(cancellation, deadline),
+        None => isolation_lease.reobserve(cancellation),
     }
-    let final_isolation = isolation_lease
-        .reobserve(cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Isolation)?;
-    validate_final_isolation(&initial_isolation, &final_isolation)?;
-    package_lease
-        .revalidate(cancellation)
-        .map_err(LocalOllamaManagedPreflightError::Package)?;
-    let connection_observations = {
-        let state = observer
-            .try_borrow()
-            .map_err(|_error| LocalOllamaManagedPreflightError::InvalidEvidenceBinding)?;
-        state
-            .connections
-            .validate_complete()
-            .map_err(LocalOllamaManagedPreflightError::BoundObservation)?;
-        state.connections.evidence().to_vec()
+    .map_err(LocalOllamaManagedGenerationError::from);
+    let preflight_final_isolation = candidate_step!(isolation_result);
+    candidate_step!(
+        validate_final_isolation(&initial_isolation, &preflight_final_isolation)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    candidate_step!(
+        package_lease
+            .revalidate(cancellation)
+            .map_err(LocalOllamaManagedPreflightError::Package)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+
+    let connection_witness = candidate_step!(
+        preflight_connections
+            .last()
+            .cloned()
+            .ok_or(LocalOllamaManagedPreflightError::InvalidEvidenceBinding)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    let report_digests = candidate_step!(
+        report_evidence_digests(
+            package_lease,
+            isolation,
+            &launch,
+            &initial_isolation,
+            &preflight_final_isolation,
+            &startup_output,
+        )
+        .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    let managed_preflight = candidate_step!(
+        build_report(
+            package,
+            plan,
+            helper,
+            frozen_external_components.expected_components(),
+            limits,
+            report_digests,
+            initial_process,
+            post_preflight_process,
+            preflight_final_process,
+            connection_witness,
+            preflight_connections,
+            cloud_status,
+            preflight,
+            preflight_native_load,
+        )
+        .map_err(LocalOllamaManagedGenerationError::from)
+    );
+    let managed_build = candidate_step!(
+        bind_successful_managed_preflight(package, plan, &managed_preflight)
+            .map_err(LocalOllamaManagedGenerationError::from)
+    );
+
+    let retained_request = candidate_value!(request.clone());
+    candidate_value!(
+        attempt_progress
+            .set_phase(rewrite_model::CandidateGenerationAttemptFailurePhaseV1::GenerationTraffic)
+    );
+    let completion = match observation_mode {
+        ManagedGenerationObservationMode::Compatibility => {
+            operation_deadline.ensure_active(cancellation)?;
+            let completion_result = session
+                .complete_structured_with_residency(
+                    request,
+                    operation_deadline.context(cancellation),
+                )
+                .await
+                .map_err(map_session_error);
+            let (response, receipt) =
+                operation_deadline.precedence(completion_result, cancellation)?;
+            LiveManagedGenerationCompletion::Compatibility {
+                response: Box::new(response),
+                receipt: Box::new(receipt),
+            }
+        }
+        ManagedGenerationObservationMode::ResourceObserved => {
+            operation_deadline.ensure_active(cancellation)?;
+            let completion = session
+                .complete_structured_with_residency_and_resource_observation_borrowed(
+                    &request,
+                    operation_deadline.context(cancellation),
+                )
+                .await
+                .map_err(map_session_error);
+            let completion = operation_deadline.precedence(completion, cancellation)?;
+            LiveManagedGenerationCompletion::ResourceObserved(Box::new(completion))
+        }
     };
-    let evidence = build_generation_evidence(&GenerationEvidenceInput {
-        managed_report: &managed_preflight,
-        build_binding: &managed_build,
+    operation_deadline.ensure_active(cancellation)?;
+    candidate_value!(
+        attempt_progress
+            .set_phase(rewrite_model::CandidateGenerationAttemptFailurePhaseV1::FinalObservation)
+    );
+    let pending = finish_final_observation(FinalObservationInput {
+        package,
+        package_lease,
+        admitted_runtime,
+        generation_path,
+        frozen_components: frozen_external_components,
+        limits,
         static_model,
         model,
-        request: &retained_request,
-        receipt: &residency_receipt,
-        post_generation_process: &final_process,
-        post_generation_native_load: &post_generation_native_load,
-        final_isolation: &final_isolation,
-        connection_observations: &connection_observations,
-    })?;
-    drop(session);
-    drop(observer);
-
-    Ok(LocalOllamaManagedGenerationOutcome {
-        response,
-        residency_receipt,
+        isolation_lease,
+        observer: &observer,
+        initial_isolation: &initial_isolation,
+        retained_members: &retained_members,
+        retained_request,
         managed_preflight,
         managed_build,
-        evidence,
-    })
+        completion,
+        operation_deadline,
+        cancellation,
+    })?;
+    operation_deadline.ensure_active(cancellation)?;
+    drop(session);
+    operation_deadline.ensure_active(cancellation)?;
+    drop(observer);
+    operation_deadline.ensure_active(cancellation)?;
+
+    operation_deadline.precedence(Ok(pending), cancellation)
 }
+
+#[cfg(test)]
+mod tests;

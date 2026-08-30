@@ -8,13 +8,22 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = ["retained-program-closure"]
+retained-program-closure = ["dep:cargo-lock", "dep:flate2", "dep:ring", "dep:tar", "dep:toml"]
+
 [dependencies]
+cargo-lock = { workspace = true, optional = true }
+flate2 = { workspace = true, optional = true }
 rewrite-model = { path = "../model", version = "0.1.0" }
 rewrite-types = { path = "../types", version = "0.1.0" }
+ring = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+tar = { workspace = true, optional = true }
 thiserror.workspace = true
+toml = { workspace = true, optional = true }
 
 [lints]
 workspace = true

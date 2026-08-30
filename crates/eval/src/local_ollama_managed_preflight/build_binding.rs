@@ -249,6 +249,21 @@ pub(super) fn bind_successful_managed_preflight(
     Ok(binding)
 }
 
+pub(super) fn revalidate_managed_preflight_outcome(
+    package: &RuntimePackageManifest,
+    plan: &LocalOllamaBoundPreflightPlan,
+    external_components: &[rewrite_runtime_attestor::ExpectedExternalNativeComponent],
+    limits: crate::LocalOllamaManagedPreflightLimits,
+    outcome: &LocalOllamaManagedPreflightOutcome,
+) -> Result<(), LocalOllamaManagedPreflightError> {
+    super::report::revalidate_report_binding(outcome.report(), external_components, limits)?;
+    let expected = bind_successful_managed_preflight(package, plan, outcome.report())?;
+    if &expected != outcome.build_binding() {
+        return Err(LocalOllamaManagedPreflightError::InvalidEvidenceBinding);
+    }
+    Ok(())
+}
+
 fn validate_relationships(
     package: &RuntimePackageManifest,
     plan: &LocalOllamaBoundPreflightPlan,

@@ -2,9 +2,7 @@ use std::{collections::BTreeSet, future::Future};
 
 use futures_util::StreamExt as _;
 use reqwest::{Response, StatusCode, header};
-use rewrite_inference::{
-    GenerationCandidate, GenerationRequest, InferenceError, InferenceErrorKind, OperationContext,
-};
+use rewrite_inference::{InferenceError, InferenceErrorKind, OperationContext};
 use rewrite_types::Digest;
 use serde::de::DeserializeOwned;
 
@@ -13,10 +11,15 @@ use crate::{
         MAX_METADATA_BYTES, MAX_REFERENCE_BYTES, OllamaInventoryEntry, OllamaModelBinding,
         OllamaModelDetails, OllamaRunningModel,
     },
-    wire::{CandidateEnvelope, GenerateResponse, PsResponse, ShowResponse, TagModel, TagsResponse},
+    wire::{GenerateResponse, PsResponse, ShowResponse, TagModel, TagsResponse},
 };
 
 const MAX_INVENTORY_ITEMS: usize = 512;
+
+mod candidate;
+pub(crate) use candidate::{
+    generation_candidate_output_policy, parse_candidates, single_candidate_output_policy,
+};
 
 pub(crate) fn parse_ollama_inventory(
     tags: &TagsResponse,
@@ -173,32 +176,6 @@ fn parse_ollama_digest(value: &str) -> Result<Digest, InferenceError> {
     let hex = value.strip_prefix("sha256:").unwrap_or(value);
     Digest::from_sha256_hex(hex.to_owned())
         .map_err(|_error| malformed_error("invalid_model_digest"))
-}
-
-pub(crate) fn parse_candidates(
-    envelope: CandidateEnvelope,
-    request: &GenerationRequest,
-) -> Result<Vec<GenerationCandidate>, InferenceError> {
-    if envelope.candidates.len() != usize::from(request.candidate_count) {
-        return Err(malformed_error("candidate_count_mismatch"));
-    }
-    envelope
-        .candidates
-        .into_iter()
-        .enumerate()
-        .map(|(ordinal, candidate)| {
-            if u64::try_from(candidate.text.len()).unwrap_or(u64::MAX)
-                > request.candidate_byte_limit
-            {
-                return Err(malformed_error("candidate_too_large"));
-            }
-            Ok(GenerationCandidate {
-                ordinal: u8::try_from(ordinal)
-                    .map_err(|_error| malformed_error("candidate_ordinal_overflow"))?,
-                text: candidate.text,
-            })
-        })
-        .collect()
 }
 
 pub(crate) async fn decode_response<T: DeserializeOwned>(

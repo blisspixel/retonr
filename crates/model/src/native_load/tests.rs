@@ -15,6 +15,9 @@ use super::{
     NativeLoadOrigin, NativeLoadVisibilityScope, NativeLoadedComponent, NativeMappingClass,
 };
 
+#[path = "tests/portable.rs"]
+mod portable;
+
 fn path(value: &str) -> ArtifactSetRelativePath {
     ArtifactSetRelativePath::new(value).expect("valid path")
 }

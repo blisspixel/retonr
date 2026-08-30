@@ -219,17 +219,75 @@ fn report_binding_digest(
     Ok(Digest::sha256(&bytes))
 }
 
+pub(super) fn revalidate_report_binding(
+    report: &LocalOllamaManagedPreflightReport,
+    external_components: &[ExpectedExternalNativeComponent],
+    limits: LocalOllamaManagedPreflightLimits,
+) -> Result<(), LocalOllamaManagedPreflightError> {
+    let external_components = external_components_digest(external_components)?;
+    let limits = limits_digest(limits);
+    if report_binding_digest(report, &external_components, &limits)? != report.binding_digest {
+        return Err(LocalOllamaManagedPreflightError::InvalidEvidenceBinding);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn managed_preflight_outcome_fixture() -> super::LocalOllamaManagedPreflightOutcome {
+    use rewrite_ollama::OllamaCloudDisableVersionStatus;
+
+    use super::test_support::{connection, native_load, package, plan, preflight, process};
+
+    let package = package();
+    let plan = plan(&package);
+    let process = process();
+    let connection = connection(&process);
+    let report = build_report(
+        &package,
+        &plan,
+        &package.members()[1],
+        &[],
+        super::LocalOllamaManagedPreflightLimits::default(),
+        ManagedReportEvidenceDigests {
+            package_attestation: Digest::sha256(b"receipt fixture package"),
+            isolation_policy: Digest::sha256(b"receipt fixture isolation policy"),
+            launch_spec: Digest::sha256(b"receipt fixture launch"),
+            initial_isolation: Digest::sha256(b"receipt fixture isolation"),
+            final_isolation: Digest::sha256(b"receipt fixture isolation"),
+            startup_standard_output: Digest::sha256(b""),
+            startup_standard_error: Digest::sha256(b"Ollama cloud disabled: true\n"),
+            startup_standard_output_bytes: 0,
+            startup_standard_error_bytes: 28,
+        },
+        process.clone(),
+        process.clone(),
+        process.clone(),
+        connection.clone(),
+        std::iter::repeat_n(connection, 8).collect(),
+        OllamaCloudDisableVersionStatus::Unreviewed,
+        preflight(&plan),
+        native_load(&package, &process),
+    )
+    .expect("managed preflight fixture report");
+    let binding = super::bind_successful_managed_preflight(&package, &plan, &report)
+        .expect("managed preflight fixture binding");
+    super::LocalOllamaManagedPreflightOutcome::new(report, binding)
+}
+
 #[cfg(test)]
 mod tests {
     use rewrite_ollama::OllamaCloudDisableVersionStatus;
     use rewrite_runtime_attestor::{AttachedProcessWitnessLimits, NativeLoadObservationLimits};
     use rewrite_types::Digest;
 
-    use super::{ManagedReportEvidenceDigests, build_report, limits_digest};
+    use super::{
+        ManagedReportEvidenceDigests, build_report, limits_digest, revalidate_report_binding,
+    };
     use crate::{
-        LocalOllamaManagedPreflightLimits,
-        local_ollama_managed_preflight::test_support::{
-            connection, native_load, package, plan, preflight, process,
+        LocalOllamaManagedPreflightLimits, LocalOllamaManagedPreflightOutcome,
+        local_ollama_managed_preflight::{
+            bind_successful_managed_preflight, revalidate_managed_preflight_outcome,
+            test_support::{connection, native_load, package, plan, preflight, process},
         },
     };
 
@@ -284,7 +342,7 @@ mod tests {
                 process.clone(),
                 process.clone(),
                 connection.clone(),
-                vec![connection.clone()],
+                std::iter::repeat_n(connection.clone(), 8).collect(),
                 OllamaCloudDisableVersionStatus::Unreviewed,
                 preflight(&plan),
                 native_load.clone(),
@@ -306,6 +364,40 @@ mod tests {
             "helper/isolation"
         );
         assert_ne!(report.binding_digest, build("two").binding_digest);
+        revalidate_report_binding(&report, &[], LocalOllamaManagedPreflightLimits::default())
+            .expect("owner inputs rederive the report binding");
+        let binding = bind_successful_managed_preflight(&package, &plan, &report)
+            .expect("managed build binding");
+        let outcome = LocalOllamaManagedPreflightOutcome::new(report.clone(), binding);
+        revalidate_managed_preflight_outcome(
+            &package,
+            &plan,
+            &[],
+            LocalOllamaManagedPreflightLimits::default(),
+            &outcome,
+        )
+        .expect("complete managed preflight outcome revalidation");
+        let other_report = build("two");
+        let wrong_binding = bind_successful_managed_preflight(&package, &plan, &other_report)
+            .expect("other build binding");
+        let mismatched = LocalOllamaManagedPreflightOutcome::new(report.clone(), wrong_binding);
+        assert!(
+            revalidate_managed_preflight_outcome(
+                &package,
+                &plan,
+                &[],
+                LocalOllamaManagedPreflightLimits::default(),
+                &mismatched,
+            )
+            .is_err(),
+            "a build binding from another report must not revalidate"
+        );
+        let mut substituted_limits = LocalOllamaManagedPreflightLimits::default();
+        substituted_limits.process.maximum_processes -= 1;
+        assert!(
+            revalidate_report_binding(&report, &[], substituted_limits).is_err(),
+            "a detached caller limit must not revalidate the report"
+        );
         let encoded = serde_json::to_string(&report).expect("serialized report");
         assert!(!encoded.contains("example.invalid"));
         assert!(!encoded.contains("Ollama cloud disabled"));

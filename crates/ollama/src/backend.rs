@@ -19,13 +19,14 @@ use crate::{
     },
     response::{
         await_context, check_context, compatibility_error, confirm_binding_in_tags,
-        decode_response, malformed_error, map_transport_error, parse_candidates,
-        parse_ollama_inventory, parse_running_models, parse_show_details, permanent_error,
-        policy_error, valid_text, validate_generate_response,
+        decode_response, generation_candidate_output_policy, malformed_error, map_transport_error,
+        parse_candidates, parse_ollama_inventory, parse_running_models, parse_show_details,
+        permanent_error, policy_error, single_candidate_output_policy, valid_text,
+        validate_generate_response,
     },
     wire::{
-        CandidateEnvelope, GenerateOptions, GenerateRequest as WireGenerateRequest,
-        GenerateResponse, PsResponse, ShowRequest, ShowResponse, TagsResponse, VersionResponse,
+        GenerateOptions, GenerateRequest as WireGenerateRequest, GenerateResponse, PsResponse,
+        ShowRequest, ShowResponse, TagsResponse, VersionResponse,
     },
 };
 
@@ -244,6 +245,7 @@ impl OllamaBackend {
                 seed: request.sampling.seed,
                 num_ctx: request.context_token_limit,
                 num_predict: request.output_token_limit,
+                num_gpu: None,
                 stop: Vec::new(),
             },
         };
@@ -261,9 +263,11 @@ impl OllamaBackend {
         }
         self.confirm_binding(binding, context).await?;
         validate_generate_response(&response, binding)?;
-        let envelope: CandidateEnvelope = serde_json::from_str(&response.response)
-            .map_err(|_error| malformed_error("invalid_candidate_envelope"))?;
-        let candidates = parse_candidates(envelope, &request)?;
+        let candidate_policy = generation_candidate_output_policy(
+            request.candidate_count,
+            request.candidate_byte_limit,
+        )?;
+        let candidates = parse_candidates(response.response.as_bytes(), candidate_policy)?;
         Ok(GenerationResponse {
             runtime: runtime_after,
             artifact_id: binding.artifact_id.clone(),
@@ -343,6 +347,7 @@ impl OllamaBackend {
                 seed: request.sampling.seed,
                 num_ctx: request.context_token_limit,
                 num_predict: request.output_token_limit,
+                num_gpu: None,
                 stop: Vec::new(),
             },
         };
@@ -360,6 +365,8 @@ impl OllamaBackend {
         }
         self.confirm_binding(binding, context).await?;
         validate_generate_response(&response, binding)?;
+        let candidate_policy = single_candidate_output_policy(request.output_byte_limit)?;
+        parse_candidates(response.response.as_bytes(), candidate_policy)?;
         let usage = usage_observation(&response);
         StructuredCompletionResponse::complete(
             &request,

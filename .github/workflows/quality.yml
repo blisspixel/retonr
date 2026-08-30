@@ -190,8 +190,16 @@ jobs:
         uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
         with:
           toolchain: 1.97.1
+          targets: x86_64-unknown-linux-musl
 
-      - name: Compile the native isolation and attestor tests
+      - name: Install static Linux build tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends musl-tools
+
+      - name: Compile the native isolation, source-build, attestor, and worker tests
         shell: bash
         run: |
           set -euo pipefail
@@ -203,6 +211,44 @@ jobs:
           test "${#isolation_tests[@]}" -eq 1
           test -x "${isolation_tests[0]}"
           printf '%s\n' "${isolation_tests[0]}" > "$RUNNER_TEMP/retonr-isolation-test-binary"
+          cargo build --locked -p rewrite-runtime-isolation \
+            --bin rewrite-runtime-isolation-helper \
+            --target x86_64-unknown-linux-musl \
+            --release
+          mapfile -t source_build_fixtures < <(
+            cargo test --locked -p rewrite-runtime-source-builder \
+              --test runtime_source_build_fixture \
+              --target x86_64-unknown-linux-musl \
+              --release --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "runtime_source_build_fixture"
+                  and (.target.kind | index("test"))
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#source_build_fixtures[@]}" -eq 1
+          test -x "${source_build_fixtures[0]}"
+          printf '%s\n' "${source_build_fixtures[0]}" > "$RUNNER_TEMP/retonr-source-build-fixture-binary"
+          mapfile -t source_build_tests < <(
+            cargo test --locked -p rewrite-app --lib \
+              --target x86_64-unknown-linux-musl \
+              --release --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "rewrite_app"
+                  and (.target.kind | index("lib"))
+                  and .profile.test
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#source_build_tests[@]}" -eq 1
+          test -x "${source_build_tests[0]}"
+          printf '%s\n' "${source_build_tests[0]}" > "$RUNNER_TEMP/retonr-source-build-test-binary"
           mapfile -t attestor_tests < <(
             cargo test --locked -p rewrite-runtime-attestor \
               --lib --no-run --message-format=json |
@@ -219,6 +265,30 @@ jobs:
           test "${#attestor_tests[@]}" -eq 1
           test -x "${attestor_tests[0]}"
           printf '%s\n' "${attestor_tests[0]}" > "$RUNNER_TEMP/retonr-attestor-test-binary"
+          cargo build --locked -p rewrite-runtime-attestor \
+            --bin rewrite-runtime-attestor-worker-fixture \
+            --features worker-live-fixture \
+            --target x86_64-unknown-linux-musl
+          mapfile -t worker_live_tests < <(
+            cargo test --locked -p rewrite-runtime-attestor \
+              --features worker-live-fixture \
+              --test linux_managed_worker_live \
+              --target x86_64-unknown-linux-musl \
+              --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "linux_managed_worker_live"
+                  and (.target.kind | index("test"))
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#worker_live_tests[@]}" -eq 1
+          test -x "${worker_live_tests[0]}"
+          worker_fixture="$(dirname "$(dirname "${worker_live_tests[0]}")")/rewrite-runtime-attestor-worker-fixture"
+          test -x "$worker_fixture"
+          printf '%s\n' "${worker_live_tests[0]}" > "$RUNNER_TEMP/retonr-worker-live-test-binary"
 
       - name: Build the admitted native isolation test environment
         shell: bash
@@ -245,6 +315,30 @@ jobs:
             --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
             retonr-native-isolation \
             "$isolation_test" --test-threads=1
+
+      - name: Run the forced controlled source-build evidence gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_build_test="$(cat "$RUNNER_TEMP/retonr-source-build-test-binary")"
+          source_build_fixture="$(cat "$RUNNER_TEMP/retonr-source-build-fixture-binary")"
+          helper="$PWD/target/x86_64-unknown-linux-musl/release/rewrite-runtime-isolation-helper"
+          test -x "$source_build_fixture"
+          test -x "$helper"
+          docker run --rm --privileged \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            --network none \
+            --tmpfs /tmp:rw,nosuid,nodev,size=512m \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            --env REWRITE_ISOLATION_TEST_HELPER="$helper" \
+            --env REWRITE_SOURCE_BUILD_TEST_PROGRAM="$source_build_fixture" \
+            retonr-native-isolation \
+            "$source_build_test" --exact \
+            runtime_source_build_report::linux_tests::retained_pair_compiles_and_reverifies_one_exact_report \
+            --nocapture
 
       - name: Run the forced native attestor gate
         shell: bash
@@ -282,6 +376,27 @@ jobs:
             retonr-native-isolation \
             "$attestor_test" 'platform::linux_managed::tests::' --test-threads=1
 
+      - name: Run the live managed worker fixture gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          worker_live_test="$(cat "$RUNNER_TEMP/retonr-worker-live-test-binary")"
+          docker run --rm \
+            --network none \
+            --cap-drop ALL \
+            --cap-add SETPCAP \
+            --security-opt no-new-privileges \
+            --user 0:0 \
+            --pids-limit 64 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m \
+            --mount "type=bind,source=$PWD,target=$PWD,readonly" \
+            --workdir "$PWD" \
+            --env REWRITE_ATTESTOR_REQUIRE_WORKER_LIVE=1 \
+            retonr-native-isolation \
+            "$worker_live_test" --ignored --exact \
+            live_managed_server_retains_exact_worker_native_closure_and_private_model_mapping \
+            --test-threads=1
+
   coverage:
     name: coverage
     runs-on: ubuntu-latest
@@ -304,12 +419,48 @@ jobs:
         uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
         with:
           toolchain: 1.97.1
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install static Linux build tooling
+        if: steps.rust_workspace.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends musl-tools
 
       - name: Install coverage tooling
         if: steps.rust_workspace.outputs.exists == 'true'
         uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518
         with:
           tool: cargo-llvm-cov@0.8.7
+
+      - name: Compile the static controlled-build fixture
+        if: steps.rust_workspace.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --locked -p rewrite-runtime-isolation \
+            --bin rewrite-runtime-isolation-helper \
+            --target x86_64-unknown-linux-musl \
+            --release
+          mapfile -t source_build_fixtures < <(
+            cargo test --locked -p rewrite-runtime-source-builder \
+              --test runtime_source_build_fixture \
+              --target x86_64-unknown-linux-musl \
+              --release --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "runtime_source_build_fixture"
+                  and (.target.kind | index("test"))
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#source_build_fixtures[@]}" -eq 1
+          test -x "${source_build_fixtures[0]}"
+          printf '%s\n' "${source_build_fixtures[0]}" > "$RUNNER_TEMP/retonr-source-build-fixture-binary"
 
       - name: Build the admitted native isolation test environment
         if: steps.rust_workspace.outputs.exists == 'true'
@@ -354,6 +505,43 @@ jobs:
           )
           test "${#attestor_tests[@]}" -eq 1
           test -x "${attestor_tests[0]}"
+          cargo build --locked -p rewrite-runtime-attestor \
+            --bin rewrite-runtime-attestor-worker-fixture \
+            --features worker-live-fixture \
+            --target x86_64-unknown-linux-musl
+          mapfile -t worker_live_tests < <(
+            cargo test --locked -p rewrite-runtime-attestor \
+              --features worker-live-fixture \
+              --test linux_managed_worker_live \
+              --target x86_64-unknown-linux-musl \
+              --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "linux_managed_worker_live"
+                  and (.target.kind | index("test"))
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#worker_live_tests[@]}" -eq 1
+          test -x "${worker_live_tests[0]}"
+          worker_fixture="$(dirname "$(dirname "${worker_live_tests[0]}")")/rewrite-runtime-attestor-worker-fixture"
+          test -x "$worker_fixture"
+          mapfile -t source_build_tests < <(
+            cargo test --locked -p rewrite-app --lib --no-run --message-format=json |
+              jq -r '
+                select(
+                  .reason == "compiler-artifact"
+                  and .target.name == "rewrite_app"
+                  and (.target.kind | index("lib"))
+                  and .profile.test
+                  and .executable != null
+                ) | .executable
+              '
+          )
+          test "${#source_build_tests[@]}" -eq 1
+          test -x "${source_build_tests[0]}"
           expected_attestor_tests=(
             'platform::linux_managed::tests::closed_diagnostics_number_cannot_authorize_a_reused_file'
             'platform::linux_managed::tests::descriptor_substitution_flags_binding_peer_and_consumption_fail_closed'
@@ -391,6 +579,23 @@ jobs:
             --env REWRITE_ATTESTOR_REQUIRE_NATIVE=1 \
             retonr-native-isolation \
             "${attestor_tests[0]}" 'platform::linux_managed::tests::' --test-threads=1
+          docker run --rm \
+            --network none \
+            --cap-drop ALL \
+            --cap-add SETPCAP \
+            --security-opt no-new-privileges \
+            --user 0:0 \
+            --pids-limit 64 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env CARGO_LLVM_COV=1 \
+            --env LLVM_PROFILE_FILE="$native_profile" \
+            --env REWRITE_ATTESTOR_REQUIRE_WORKER_LIVE=1 \
+            retonr-native-isolation \
+            "${worker_live_tests[0]}" --ignored --exact \
+            live_managed_server_retains_exact_worker_native_closure_and_private_model_mapping \
+            --test-threads=1
           docker run --rm --privileged \
             --security-opt seccomp=unconfined \
             --security-opt apparmor=unconfined \
@@ -402,6 +607,26 @@ jobs:
             --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
             retonr-native-isolation \
             "${isolation_tests[0]}" --test-threads=1
+          source_build_fixture="$(cat "$RUNNER_TEMP/retonr-source-build-fixture-binary")"
+          source_build_helper="$PWD/target/x86_64-unknown-linux-musl/release/rewrite-runtime-isolation-helper"
+          test -x "$source_build_fixture"
+          test -x "$source_build_helper"
+          docker run --rm --privileged \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            --network none \
+            --tmpfs /tmp:rw,nosuid,nodev,size=512m \
+            --mount "type=bind,source=$PWD,target=$PWD" \
+            --workdir "$PWD" \
+            --env CARGO_LLVM_COV=1 \
+            --env LLVM_PROFILE_FILE="$native_profile" \
+            --env REWRITE_ISOLATION_REQUIRE_NATIVE=1 \
+            --env REWRITE_ISOLATION_TEST_HELPER="$source_build_helper" \
+            --env REWRITE_SOURCE_BUILD_TEST_PROGRAM="$source_build_fixture" \
+            retonr-native-isolation \
+            "${source_build_tests[0]}" --exact \
+            runtime_source_build_report::linux_tests::retained_pair_compiles_and_reverifies_one_exact_report \
+            --nocapture
           profdata="$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | awk '/^host:/{print $2}')/bin/llvm-profdata"
           valid_native_profiles=0
           invalid_native_profiles=0
