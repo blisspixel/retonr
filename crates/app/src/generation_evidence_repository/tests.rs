@@ -233,8 +233,18 @@ fn link_and_fixed_component_case_substitutions_are_rejected() {
         CandidateGenerationEvidenceRepository::initialize(&canonical).expect("initialize root");
     let root_id = repository.root_id().clone();
     drop(repository);
-    fs::create_dir(canonical.join(STORAGE_DIRECTORY).join("Bundles"))
-        .expect("fixed component case alias");
+    let root = canonical.join(STORAGE_DIRECTORY);
+    match fs::create_dir(root.join("Bundles")) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            let intermediate = root.join("bundles-case-substitution");
+            fs::rename(root.join(BUNDLES_DIRECTORY), &intermediate)
+                .expect("move the fixed component through a distinct name");
+            fs::rename(intermediate, root.join("Bundles"))
+                .expect("replace fixed component with a case alias");
+        }
+        Err(error) => panic!("create fixed component case alias: {error}"),
+    }
     assert!(matches!(
         CandidateGenerationEvidenceRepository::open_existing(&canonical, &root_id),
         Err(CandidateGenerationEvidenceRepositoryError::UnsafeBoundary)
