@@ -19,6 +19,8 @@ use crate::{
     GenerationQualificationOperationDraft, GenerationQualificationPreregistrationRepository,
 };
 
+const TEST_MAXIMUM_ELAPSED_MILLISECONDS: u32 = 60_000;
+
 #[test]
 fn license_rejection_closes_exact_empty_phases_receipt_and_record() {
     with_finalized(
@@ -100,7 +102,6 @@ fn substituted_phase_policy_cannot_revalidate_the_receipt() {
 fn active_deadline_observes_cancellation() {
     with_prepared(
         SyntheticGenerationQualificationScenario::LicenseRejected,
-        None,
         |prepared| {
             let cancellation = CancellationToken::new();
             cancellation.cancel();
@@ -116,7 +117,6 @@ fn active_deadline_observes_cancellation() {
 fn prepared_bracket_preserves_callback_and_final_failures() {
     with_prepared(
         SyntheticGenerationQualificationScenario::LicenseRejected,
-        None,
         |mut prepared| {
             let cancellation = CancellationToken::new();
             let result = prepared.with_validated_view(&cancellation, |_view| {
@@ -140,7 +140,6 @@ fn prepared_bracket_preserves_callback_and_final_failures() {
 fn prepared_bracket_preserves_initial_and_final_failures() {
     with_prepared(
         SyntheticGenerationQualificationScenario::BothRejected,
-        None,
         |mut prepared| {
             let cancellation = CancellationToken::new();
             cancellation.cancel();
@@ -165,9 +164,8 @@ fn prepared_bracket_preserves_initial_and_final_failures() {
 fn elapsed_deadline_precedes_cancellation() {
     with_prepared(
         SyntheticGenerationQualificationScenario::BothRejected,
-        Some(2_000),
         |mut prepared| {
-            std::thread::sleep(Duration::from_millis(2_250));
+            prepared.expire_deadline_for_test();
             let cancellation = CancellationToken::new();
             cancellation.cancel();
             let result: Result<(), PreparedGenerationQualificationValidationError<()>> =
@@ -269,7 +267,7 @@ fn with_finalized(
         >,
     ),
 ) {
-    with_prepared(scenario, None, |prepared| {
+    with_prepared(scenario, |prepared| {
         let mut finalized = prepared
             .finalize_rejected_pretraffic(&CancellationToken::new())
             .expect("rejected pretraffic terminal");
@@ -279,7 +277,6 @@ fn with_finalized(
 
 fn with_prepared(
     scenario: SyntheticGenerationQualificationScenario,
-    elapsed_override: Option<u32>,
     use_prepared: impl for<'records, 'store, 'platform, 'proof, 'lease> FnOnce(
         PreparedGenerationQualificationOperation<'records, 'store, 'platform, 'proof, 'lease>,
     ),
@@ -287,10 +284,10 @@ fn with_prepared(
     with_synthetic_generation_qualification_fixture(
         scenario,
         |mut input, platform_owners, license_proof, license_policy, production_policy| {
-            if let Some(elapsed) = elapsed_override {
-                input.operation_policy_input.limits =
-                    limits_with_elapsed(input.operation_policy_input.limits, elapsed);
-            }
+            input.operation_policy_input.limits = limits_with_elapsed(
+                input.operation_policy_input.limits,
+                TEST_MAXIMUM_ELAPSED_MILLISECONDS,
+            );
             let cancellation = CancellationToken::new();
             let draft = GenerationQualificationOperationDraft::begin(
                 input.operation_policy_relations,

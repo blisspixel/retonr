@@ -60,7 +60,7 @@ const HUMAN_POLICY_DIGEST: &str =
 
 #[test]
 fn both_denied_sources_close_exact_failed_inert_terminal() {
-    with_prepared(None, |prepared, resource_policy, human_policy| {
+    with_prepared(|prepared, resource_policy, human_policy| {
         let mut finalized = prepared
             .finalize_phase_policy_refused_pretraffic(
                 resource_policy,
@@ -120,7 +120,7 @@ fn substituted_human_policy_authority_is_refused() {
 
 #[test]
 fn denial_records_refuse_policy_and_scope_substitution() {
-    with_prepared(None, |prepared, resource_policy, human_policy| {
+    with_prepared(|prepared, resource_policy, human_policy| {
         let mut finalized = prepared
             .finalize_phase_policy_refused_pretraffic(
                 resource_policy,
@@ -177,7 +177,7 @@ fn denial_records_refuse_policy_and_scope_substitution() {
 
 #[test]
 fn cancellation_is_aggregated_across_the_prepared_bracket() {
-    with_prepared(None, |prepared, resource_policy, human_policy| {
+    with_prepared(|prepared, resource_policy, human_policy| {
         let cancellation = CancellationToken::new();
         cancellation.cancel();
         assert!(matches!(
@@ -206,8 +206,8 @@ fn elapsed_gate_preserves_deadline_before_cancellation() {
 
 #[test]
 fn expired_prepared_refusal_aggregates_deadline_before_cancellation() {
-    with_prepared(Some(2_000), |prepared, resource_policy, human_policy| {
-        std::thread::sleep(Duration::from_millis(2_250));
+    with_prepared(|mut prepared, resource_policy, human_policy| {
+        prepared.expire_deadline_for_test();
         let cancellation = CancellationToken::new();
         cancellation.cancel();
         assert!(matches!(
@@ -233,7 +233,7 @@ fn checked_elapsed_refuses_reversed_monotonic_time() {
 
 #[test]
 fn debug_errors_and_denial_records_are_content_redacted() {
-    with_prepared(None, |prepared, resource_policy, human_policy| {
+    with_prepared(|prepared, resource_policy, human_policy| {
         let finalized = prepared
             .finalize_phase_policy_refused_pretraffic(
                 resource_policy,

@@ -26,15 +26,16 @@ use crate::{
     PreparedGenerationQualificationOperation,
 };
 
+const TEST_MAXIMUM_ELAPSED_MILLISECONDS: u32 = 60_000;
+
 pub(super) fn with_prepared(
-    elapsed_override: Option<u32>,
     use_prepared: impl for<'records, 'store, 'platform, 'proof, 'lease> FnOnce(
         PreparedGenerationQualificationOperation<'records, 'store, 'platform, 'proof, 'lease>,
         VerifiedGenerationQualificationResourcePolicy,
         VerifiedGenerationQualificationHumanAdjudicationPolicy,
     ),
 ) {
-    with_fixture(elapsed_override, |prepared, resource, human, _foreign| {
+    with_fixture(|prepared, resource, human, _foreign| {
         use_prepared(prepared, resource, human);
     });
 }
@@ -46,13 +47,12 @@ pub(super) fn with_prepared_and_foreign_human(
         VerifiedGenerationQualificationHumanAdjudicationPolicy,
     ),
 ) {
-    with_fixture(None, |prepared, resource, _human, foreign| {
+    with_fixture(|prepared, resource, _human, foreign| {
         use_prepared(prepared, resource, foreign);
     });
 }
 
 fn with_fixture(
-    elapsed_override: Option<u32>,
     use_prepared: impl for<'records, 'store, 'platform, 'proof, 'lease> FnOnce(
         PreparedGenerationQualificationOperation<'records, 'store, 'platform, 'proof, 'lease>,
         VerifiedGenerationQualificationResourcePolicy,
@@ -63,7 +63,7 @@ fn with_fixture(
     with_synthetic_generation_qualification_fixture(
         SyntheticGenerationQualificationScenario::LicenseRejected,
         |mut input, platform_owners, license_proof, license_policy, production_policy| {
-            bind_phase_policies(&mut input.operation_policy_input, elapsed_override);
+            bind_phase_policies(&mut input.operation_policy_input);
             let original_relations = input.operation_policy_relations;
             let systems = sorted_systems(original_relations);
             let qualification_plan = GenerationQualificationPlanV1::new(
@@ -155,13 +155,8 @@ fn with_fixture(
     );
 }
 
-fn bind_phase_policies(
-    input: &mut GenerationQualificationOperationPolicyV1Input,
-    elapsed_override: Option<u32>,
-) {
-    if let Some(maximum_elapsed_milliseconds) = elapsed_override {
-        input.limits = limits_with_elapsed(input.limits, maximum_elapsed_milliseconds);
-    }
+fn bind_phase_policies(input: &mut GenerationQualificationOperationPolicyV1Input) {
+    input.limits = limits_with_elapsed(input.limits, TEST_MAXIMUM_ELAPSED_MILLISECONDS);
     input.resource_policy_digest = digest(RESOURCE_POLICY_DIGEST);
     input.human_adjudication_policy_digest = digest(HUMAN_POLICY_DIGEST);
 }

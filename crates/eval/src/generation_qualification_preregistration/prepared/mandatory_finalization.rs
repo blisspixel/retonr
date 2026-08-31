@@ -203,7 +203,7 @@ impl PreparedGenerationQualificationOperation<'_, '_, '_, '_, '_> {
     }
 
     #[cfg(test)]
-    pub(crate) fn expire_deadline_for_mandatory_finalization_test(&mut self) {
+    pub(crate) fn expire_deadline_for_test(&mut self) {
         self.deadline = std::time::Instant::now();
     }
 }

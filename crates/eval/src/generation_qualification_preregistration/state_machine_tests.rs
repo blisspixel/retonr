@@ -268,7 +268,7 @@ fn mandatory_finalization_remains_available_after_deadline_and_cancellation() {
                 )
                 .expect("prepared operation");
 
-            prepared.expire_deadline_for_mandatory_finalization_test();
+            prepared.expire_deadline_for_test();
             cancellation.cancel();
             assert!(matches!(
                 prepared.revalidate(&cancellation),
