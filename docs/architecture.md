@@ -528,9 +528,11 @@ no-new-privileges set, and requires the native success path. A separate privileg
 networkless native gate executes the retained two-attempt source-build fixture and
 its durable publication and reacquisition path, then compiles and independently
 verifies the blocked schema-2 build-stage review. A third networkless gate gives only
-`CAP_SETPCAP` to the root test process, which removes it before executing a statically
-linked worker. That gate requires exact worker discovery, privilege and command state,
-native closure, private GGUF mapping, final reobservation, and post-exit rejection.
+`CAP_SETPCAP` and `CAP_CHECKPOINT_RESTORE` to the root test process. The latter is
+required to open exact `/proc/<pid>/map_files` objects. The root process removes both
+before executing a statically linked worker. That gate requires exact worker discovery,
+privilege and command state, native closure, private GGUF mapping, final reobservation,
+and post-exit rejection.
 The coverage job runs all three controlled paths with the workspace LLVM profile
 before applying the line floor, so these proof paths are included in coverage rather
 than hidden behind host skips.

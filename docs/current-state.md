@@ -319,8 +319,9 @@ fixtures. An uncontrolled hosted test may accept only the exact typed access-den
 result when proc policy blocks the required observation. A separate mandatory
 networkless container gate drops all capabilities, sets no-new-privileges, runs as the
 caller UID, and requires the managed attestor tests to exercise their native success
-path. A separate networkless live-worker gate starts as root with only `CAP_SETPCAP`,
-drops that last capability before worker execution, and requires the exact worker,
+path. A separate networkless live-worker gate starts as root with only `CAP_SETPCAP`
+and `CAP_CHECKPOINT_RESTORE`; the latter permits exact `/proc/<pid>/map_files`
+observation. It drops both capabilities before worker execution and requires the exact worker,
 static native closure, private GGUF mapping, stable reobservation, and post-exit
 rejection path. A privileged networkless gate also executes the retained two-attempt build,
 durable no-replace publication, independent reacquisition, blocked schema-2 review

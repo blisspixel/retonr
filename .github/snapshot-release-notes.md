@@ -23,8 +23,9 @@ Milestone 0.2 is still in progress, and no milestone has been released.
   canary around the one anonymous process-launch socket pair required by the pinned
   Rust launcher.
 - Adds forced native Linux CI coverage for managed launch and controlled build,
-  including the exact 64-descriptor boundary, and corrects cross-platform lint and
-  fixture line-ending failures.
+  including the exact 64-descriptor boundary. The live native-closure observer keeps
+  its narrow checkpoint-restore capability outside the zero-capability worker. The
+  same gate corrects cross-platform lint and fixture line-ending failures.
 - Updates current-state, planning, and roadmap documentation. The next implementation
   slice is bounded read-only reconciliation of durable candidate-attempt state before
   activation.

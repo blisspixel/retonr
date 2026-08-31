@@ -198,8 +198,9 @@ the host output, and independently rehashes it in the application. Its instrumen
 execution contributes to the same LLVM profile as the workspace suite. This gate
 proves the fixture path on that kernel and filesystem; it is not runtime admission
 evidence. A separate instrumented worker gate runs a statically linked musl fixture in
-a networkless container whose root process has only `CAP_SETPCAP`. The fixture drops
-that capability before `exec`, requires zero worker capability sets,
+a networkless container whose root process has only `CAP_SETPCAP` and
+`CAP_CHECKPOINT_RESTORE`; the latter permits exact `/proc/<pid>/map_files`
+observation. The fixture drops both capabilities before `exec`, requires zero worker capability sets,
 no-new-privileges, seccomp mode 2, one exact descendant and parent chain, the reviewed
 CPU command, the exact native closure, a byte-identical distinct-inode private GGUF
 mapping, stable final reobservation, and rejection after worker exit. Its profile is

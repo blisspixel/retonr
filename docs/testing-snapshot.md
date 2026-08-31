@@ -65,8 +65,9 @@ native boundary. Ordinary tests may accept only a typed access-denied compatibil
 outcome when host proc policy blocks observation. Linux CI uses three separate native
 proof gates. The managed attestor runs networkless as the caller UID with all
 capabilities dropped and no-new-privileges set. The statically linked worker fixture
-runs networkless with only `CAP_SETPCAP` on its root test process, drops that
-capability before worker execution, and requires the exact worker, native closure,
+runs networkless with only `CAP_SETPCAP` and `CAP_CHECKPOINT_RESTORE` on its root test
+process. The latter permits exact `/proc/<pid>/map_files` observation. The fixture
+drops both capabilities before worker execution and requires the exact worker, native closure,
 private GGUF mapping, stable reobservation, and post-exit rejection path. The
 controlled source-build fixture runs in a privileged, networkless container and requires native success for two
 namespace-private quota-bounded tmpfs attempts, descendant drain, helper tree

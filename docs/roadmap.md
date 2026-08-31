@@ -147,8 +147,9 @@ or any production Approved root can be added.
    result. Require a separate networkless, dropped-capability, no-new-privileges
    native attestor success gate and include that execution in the LLVM profile before
    enforcing the workspace line-coverage floor. Require the separate static-musl live
-   worker gate under a networkless root process with only `CAP_SETPCAP`, and merge its
-   exact descendant, privilege, command, native-closure, private-model-mapping,
+   worker gate under a networkless root process with only `CAP_SETPCAP` and
+   `CAP_CHECKPOINT_RESTORE`, then drop both before worker execution and merge its
+   exact descendant, zero-capability worker, command, native-closure, private-model-mapping,
    reobservation, and post-exit rejection profile into that same report. Also require the privileged,
    networkless controlled source-build fixture gate and include its execution in the
    same profile.

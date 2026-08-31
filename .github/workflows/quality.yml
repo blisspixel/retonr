@@ -398,6 +398,7 @@ jobs:
             --network none \
             --cap-drop ALL \
             --cap-add SETPCAP \
+            --cap-add CHECKPOINT_RESTORE \
             --security-opt no-new-privileges \
             --user 0:0 \
             --pids-limit 64 \
@@ -609,6 +610,7 @@ jobs:
             --network none \
             --cap-drop ALL \
             --cap-add SETPCAP \
+            --cap-add CHECKPOINT_RESTORE \
             --security-opt no-new-privileges \
             --user 0:0 \
             --pids-limit 64 \
