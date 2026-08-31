@@ -132,7 +132,21 @@ fn assert_legacy_execution_constraints(
     assert_eq!(execution.maximum_value_bytes(), 65_536);
     assert_eq!(execution.maximum_open_files(), 4_096);
     assert_eq!(execution.maximum_processes(), 4_096);
-    assert_eq!(execution.isolation_policy_digest().as_str().len(), 64);
+    let runtime_policy = rewrite_runtime_isolation::IsolationPolicy::new(
+        std::time::Duration::from_secs(execution.startup_timeout_seconds()),
+        std::time::Duration::from_secs(execution.shutdown_timeout_seconds()),
+        usize::try_from(execution.maximum_arguments()).expect("argument count fits usize"),
+        usize::try_from(execution.maximum_environment_variables())
+            .expect("environment count fits usize"),
+        usize::try_from(execution.maximum_value_bytes()).expect("value bytes fit usize"),
+        execution.maximum_open_files(),
+        execution.maximum_processes(),
+    )
+    .expect("controlled source-build isolation policy is valid");
+    assert_eq!(
+        execution.isolation_policy_digest(),
+        runtime_policy.redacted_digest()
+    );
     assert_eq!(
         plan.expected_launch_digest(),
         &plan::expected_launch_digest_for_test(manifest, 16 * 1024 * 1024 * 1024)

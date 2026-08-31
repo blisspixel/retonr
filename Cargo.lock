@@ -1571,6 +1571,7 @@ dependencies = [
  "cargo-lock",
  "flate2",
  "rewrite-model",
+ "rewrite-runtime-isolation",
  "rewrite-types",
  "ring",
  "serde",

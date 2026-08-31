@@ -127,10 +127,18 @@ fn assert_rejected_output_boundaries(
     let substituted_output = RuntimeSourceBuildOutputSource::new(substituted_root.path())
         .expect("select substituted handoff output");
     inject_controlled_build_output_substitution_once();
-    assert!(matches!(
-        RuntimeSourceBuildExecutor::execute(bundle, &substituted_output, cancellation,),
-        Err(RuntimeSourceBuildExecutionError::OutputChanged)
-    ));
+    let Err(substitution_error) =
+        RuntimeSourceBuildExecutor::execute(bundle, &substituted_output, cancellation)
+    else {
+        panic!("substituted output was accepted");
+    };
+    assert!(
+        matches!(
+            substitution_error,
+            RuntimeSourceBuildExecutionError::OutputChanged
+        ),
+        "unexpected substituted-output failure: {substitution_error:?}"
+    );
 }
 
 fn execute_fixture_pair(

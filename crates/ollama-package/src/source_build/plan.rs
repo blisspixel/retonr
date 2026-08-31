@@ -8,6 +8,7 @@ use super::{
 };
 
 const MAXIMUM_CONTROLLED_BUILD_WORKSPACE_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+const LINUX_CPU_ONLY_DEVICE_VISIBILITY_POLICY_CODE: u8 = 1;
 
 /// Content-free deterministic handoff from a verified input manifest to a build runner.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -107,7 +108,7 @@ impl RuntimeSourceBuildExecutionPolicy {
     /// Returns the runtime-isolation policy digest for these exact bounds.
     #[must_use]
     pub fn isolation_policy_digest(self) -> Digest {
-        let mut digest = RedactedDigest::new(b"runtime-isolation/policy/v1");
+        let mut digest = RedactedDigest::new(b"runtime-isolation/policy/v2");
         digest.push_u64(self.startup_timeout_seconds);
         digest.push_u32(0);
         digest.push_u64(self.shutdown_timeout_seconds);
@@ -117,6 +118,7 @@ impl RuntimeSourceBuildExecutionPolicy {
         digest.push_u64(self.maximum_value_bytes);
         digest.push_u64(self.maximum_open_files);
         digest.push_u64(self.maximum_processes);
+        digest.push_u8(LINUX_CPU_ONLY_DEVICE_VISIBILITY_POLICY_CODE);
         digest.finish()
     }
 }
@@ -433,6 +435,10 @@ impl RedactedDigest {
 
     fn push_u32(&mut self, value: u32) {
         self.bytes.extend_from_slice(&value.to_be_bytes());
+    }
+
+    fn push_u8(&mut self, value: u8) {
+        self.bytes.push(value);
     }
 
     fn push_u64(&mut self, value: u64) {

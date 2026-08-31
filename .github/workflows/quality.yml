@@ -401,7 +401,7 @@ jobs:
             --security-opt no-new-privileges \
             --user 0:0 \
             --pids-limit 64 \
-            --tmpfs /tmp:rw,nosuid,nodev,size=128m \
+            --tmpfs /tmp:rw,exec,nosuid,nodev,size=128m \
             --mount "type=bind,source=$PWD,target=$PWD,readonly" \
             --workdir "$PWD" \
             --env REWRITE_ATTESTOR_REQUIRE_WORKER_LIVE=1 \
@@ -589,6 +589,7 @@ jobs:
           profile_dir="$(dirname "$LLVM_PROFILE_FILE")"
           native_dir="$profile_dir/native"
           mkdir -p "$native_dir"
+          chmod 0733 "$native_dir"
           native_profile="$native_dir/native-%p-%m.profraw"
           isolation_target="$(cat "$RUNNER_TEMP/retonr-isolation-target-binary")"
           test -x "$isolation_target"
@@ -611,7 +612,7 @@ jobs:
             --security-opt no-new-privileges \
             --user 0:0 \
             --pids-limit 64 \
-            --tmpfs /tmp:rw,nosuid,nodev,size=128m \
+            --tmpfs /tmp:rw,exec,nosuid,nodev,size=128m \
             --mount "type=bind,source=$PWD,target=$PWD" \
             --workdir "$PWD" \
             --env CARGO_LLVM_COV=1 \

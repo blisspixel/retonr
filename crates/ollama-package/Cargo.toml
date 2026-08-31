@@ -25,5 +25,8 @@ tar = { workspace = true, optional = true }
 thiserror.workspace = true
 toml = { workspace = true, optional = true }
 
+[dev-dependencies]
+rewrite-runtime-isolation = { path = "../runtime-isolation", version = "0.1.0" }
+
 [lints]
 workspace = true
