@@ -222,11 +222,13 @@ Completed closure publishes under the app-owned evidence root, stores a canonica
 root-bound reference with only three read-side ceilings, performs bounded fresh
 readback, and reacquires the exact bundle inside the metadata transaction before
 Active advances. Failed closure persists the exact terminal attempt before the
-ordinal advances. The next seam is deterministic recovery and reconciliation for
-checkpoint-only attempts, published bundles without terminal metadata, and ambiguous
-terminal commits. Operation-level terminal evidence, exact per-repetition
-receipt-set-to-ledger matching, judge-result collection, and the final verifier
-follow. Production
+ordinal advances. The next seam is mandatory bounded read-only reconciliation before
+`Prepared` activation. It classifies checkpoint-only attempts, published bundles
+without terminal metadata, and ambiguous terminal commits, and permits activation
+only for an entirely pristine plan. It performs no retry, repair, promotion,
+deletion, or evidence fabrication. Operation-level terminal evidence, exact
+per-repetition receipt-set-to-ledger matching, judge-result collection, and the final
+verifier follow. Production
 Approved roots remain empty, no runtime has been admitted for this path, and the final
 `VerifiedGenerationQualification` compiler is not implemented.
 
@@ -366,8 +368,9 @@ The immediate runtime-dependent 0.2 work is:
    failed-attempt derivation, and exact in-memory interruption evidence. Preserve the
    foundation-gated preregistration boundary, newly inserted pretraffic checkpoint,
    app-root-bound bundle publication and reacquisition, and atomic completed-or-failed
-   candidate closure. Next add deterministic recovery and reconciliation for incomplete
-   durable states, then add the dependency-complete operation terminal-evidence cohort.
+   candidate closure. Next add mandatory bounded read-only activation reconciliation
+   for incomplete durable states, then add the dependency-complete operation
+   terminal-evidence cohort.
    Complete both remaining cohorts before populating any production Approved root.
    Positive human
    authority requires a reviewed V2 policy and explicit reviewer-governance and

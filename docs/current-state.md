@@ -679,9 +679,9 @@ semantics, nor qualification.
   attempt-ledger interruption, skipped later manifests, and noncompleted operation
   receipt. Schema 10 makes the precursor checkpoint and exact completed-or-failed
   candidate closure durable. Completed closure binds app-root publication, canonical
-  storage, bounded readback, receipt, and attempt metadata atomically. Deterministic
-  recovery and reconciliation for checkpoint-only attempts, publication orphans, and
-  ambiguous commits remains required before the dependency-complete operation
+  storage, bounded readback, receipt, and attempt metadata atomically. Mandatory
+  bounded read-only reconciliation of checkpoint-only attempts, publication orphans,
+  and ambiguous commits remains required before the dependency-complete operation
   terminal-evidence cohort. Both remain required before positive production execution
   can be enabled.
   Stored digests or caller-selected measurements cannot substitute for those typed
