@@ -93,13 +93,12 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
         .map_err(|_| RunFailure::operational(CommandName::Rewrite))?;
     let result = attached
         .rewrite(
-            GroundedRewriteRequest {
-                source: source.clone(),
-                protected_terms: request.protected_terms.clone(),
-                mode: RewriteMode::Literal,
-                style_context: String::new(),
-                claim_shadow: None,
-            },
+            GroundedRewriteRequest::new(
+                source.clone(),
+                request.protected_terms.clone(),
+                RewriteMode::Literal,
+                String::new(),
+            ),
             &cancellation,
             None,
         )

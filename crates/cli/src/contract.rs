@@ -136,6 +136,9 @@ pub enum CommandName {
     /// Generated section-1 manual page.
     #[serde(rename = "man")]
     Man,
+    /// Deterministic editorial lint and anti-slop inspection.
+    #[serde(rename = "lint")]
+    Lint,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]

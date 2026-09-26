@@ -26,7 +26,7 @@ $textFileNames = [System.Collections.Generic.HashSet[string]]::new(
 $ignoredDirectoryNames = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::OrdinalIgnoreCase
 )
-@('.git', 'node_modules', 'target') | ForEach-Object {
+@('.git', 'node_modules', 'scratch', 'target') | ForEach-Object {
     [void]$ignoredDirectoryNames.Add($_)
 }
 

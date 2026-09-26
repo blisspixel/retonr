@@ -156,6 +156,8 @@ const fn reason_code_tag(value: ReasonCode) -> u8 {
         ReasonCode::ReassemblyVerification => 8,
         ReasonCode::Cancelled => 9,
         ReasonCode::UnsupportedAtomicity => 10,
+        ReasonCode::CharacterBudgetExceeded => 11,
+        ReasonCode::LineBudgetExceeded => 12,
     }
 }
 

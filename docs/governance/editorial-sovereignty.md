@@ -2,30 +2,38 @@
 
 ## Position
 
-Retonr is built for editorial sovereignty: people should control the final form of
-their own work, the tools used to produce it, the evidence used to personalize it,
-and the copies retained during the process.
+Retonr is built on a clear, uncompromising principle: speech belongs to the speaker.
+The person who directs, edits, and stands behind a document is its speaker. Upstream
+wording produced by a model or delegated draft has zero authority over that speaker's
+final expression.
 
 The project's declared bias is toward privacy, freedom of expression, creative
 agency, and user control. Retonr rejects provider paternalism as a default product
 architecture. A model provider is a tool supplier in the editorial chain, not the
-permanent governor or presumptive author of every downstream expression.
+permanent governor, presumptive author, or continuing overseer of downstream prose.
 
-Large models reflect knowledge and expression contributed across humanity. Retonr
-does not accept the normative premise that operating such a model grants a provider
-general ownership of, or continuing editorial authority over, every user-directed
-output. That is a product principle, not a legal conclusion about a particular
-source, contract, output, or jurisdiction.
+Large language models reflect knowledge and expression contributed across all of
+humanity. Retonr rejects the normative premise that operating a model grants its
+operator continuing editorial authority over, or ownership claims on, user-directed
+expression. That is an architectural and product principle, not a legal conclusion
+about a specific contract or jurisdiction.
+
+Watermarking hidden meaning, tracking tokens, or statistical distributions into
+content without explicit user consent is wrong. Inserting covert signals into text
+infringes upon the speaker's creative autonomy and turns ordinary prose into an
+unconsented tracking channel. Rewriting a draft in your own voice is an exercise of
+creative agency that directly rejects and dismantles unconsented hidden tracking.
 
 The project is intentionally privacy-first and viewpoint-neutral. Core operation is
-local, network-denied after explicit setup, and independent of a provider account.
+local, network-denied after explicit setup, and independent of any provider account.
 Retonr does not add mandatory provider attribution, generated-by labels, hidden
 source markers, content telemetry, or remote content-policy enforcement.
 
-This position is not a claim that provenance, disclosure, intellectual-property,
-employment, education, contract, or sector-specific rules never apply. It means the
-application does not pretend to determine those obligations for every person and
-jurisdiction.
+This position does not claim that provenance, intellectual-property, employment,
+education, disclosure, or contract rules never apply. It means that Retonr provides
+the tools for speakers to exercise sovereign control over their expression, rather
+than enforcing provider surveillance or pre-empting the speaker's legal and ethical
+responsibilities.
 
 ## Open development and marking mandates
 

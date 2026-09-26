@@ -23,6 +23,12 @@ pub(crate) fn compare_candidates(
         .style
         .total_cmp(&right.rank.style)
         .then_with(|| left.rank.channel.total_cmp(&right.rank.channel))
+        .then_with(|| {
+            right
+                .rank
+                .editorial_penalty
+                .cmp(&left.rank.editorial_penalty)
+        })
         .then_with(|| left.rank.fluency.total_cmp(&right.rank.fluency))
         .then_with(|| right.rank.edit_cost.cmp(&left.rank.edit_cost))
         .then_with(|| right.id.as_str().cmp(left.id.as_str()))
@@ -57,6 +63,7 @@ mod tests {
                 channel: 1.0,
                 fluency: 1.0,
                 edit_cost: 0,
+                ..CandidateRank::default()
             },
         );
         let higher_style = candidate(
@@ -66,6 +73,7 @@ mod tests {
                 channel: 0.0,
                 fluency: 0.0,
                 edit_cost: 100,
+                ..CandidateRank::default()
             },
         );
         assert_eq!(
@@ -93,6 +101,32 @@ mod tests {
         assert_eq!(
             select_best([&expensive, &cheap]).map(|item| item.id.as_str()),
             Some(cheap.id.as_str())
+        );
+    }
+
+    #[test]
+    fn lower_editorial_penalty_preferred() {
+        let clean = candidate(
+            0,
+            CandidateRank {
+                editorial_penalty: 0,
+                fluency: 0.5,
+                edit_cost: 50,
+                ..CandidateRank::default()
+            },
+        );
+        let sloppy = candidate(
+            1,
+            CandidateRank {
+                editorial_penalty: 2,
+                fluency: 1.0,
+                edit_cost: 10,
+                ..CandidateRank::default()
+            },
+        );
+        assert_eq!(
+            select_best([&sloppy, &clean]).map(|item| item.id.as_str()),
+            Some(clean.id.as_str())
         );
     }
 }

@@ -96,13 +96,12 @@ pub(super) fn fixtures(candidate: &str) -> (GroundedStrategy, FakeInferenceBacke
 }
 
 pub(super) fn request() -> GroundedRewriteRequest {
-    GroundedRewriteRequest {
-        source: b"Version 2 works.".to_vec(),
-        protected_terms: Vec::new(),
-        mode: RewriteMode::Literal,
-        style_context: String::new(),
-        claim_shadow: None,
-    }
+    GroundedRewriteRequest::new(
+        b"Version 2 works.".to_vec(),
+        Vec::new(),
+        RewriteMode::Literal,
+        String::new(),
+    )
 }
 
 #[test]
@@ -361,13 +360,12 @@ fn backend_cancellation_becomes_safe_cancelled_abstention() {
 fn ambiguous_source_mapping_abstains_without_backend_work() {
     let (strategy, fake) = fixtures("unused");
     let service = GroundedRewriteService::new(strategy, &fake);
-    let request = GroundedRewriteRequest {
-        source: b"ada@example.com $12.ada@example.com $150".to_vec(),
-        protected_terms: Vec::new(),
-        mode: RewriteMode::Literal,
-        style_context: String::new(),
-        claim_shadow: None,
-    };
+    let request = GroundedRewriteRequest::new(
+        b"ada@example.com $12.ada@example.com $150".to_vec(),
+        Vec::new(),
+        RewriteMode::Literal,
+        String::new(),
+    );
     let result = block_ready(service.rewrite(request, &CancellationToken::new(), None))
         .expect("source ambiguity is a successful abstention");
     assert_eq!(result.record.status, RewriteStatus::Abstained);

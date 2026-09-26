@@ -25,6 +25,7 @@ mod doctor;
 mod failure;
 mod identity;
 mod inspect_source;
+mod lint;
 mod man;
 mod model;
 mod render;
@@ -40,6 +41,30 @@ Examples:
   retonr check original.txt candidate.txt --diff
   retonr -D .retonr model list
 ";
+
+/// Supported CLI edit levels.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, clap::ValueEnum)]
+pub enum EditLevelArg {
+    /// Surface cleanup, grammar, punctuation, and mechanical correction.
+    TouchUp,
+    /// Style, tone, and register tuning while strictly preserving layout and length bounds.
+    VoicePass,
+    /// Sentence-level and paragraph-level rewrites preserving all factual claims.
+    Rewrite,
+    /// Structural reformulations retaining core invariants and claims.
+    Reconstruct,
+}
+
+impl From<EditLevelArg> for rewrite_types::EditLevel {
+    fn from(arg: EditLevelArg) -> Self {
+        match arg {
+            EditLevelArg::TouchUp => Self::TouchUp,
+            EditLevelArg::VoicePass => Self::VoicePass,
+            EditLevelArg::Rewrite => Self::Rewrite,
+            EditLevelArg::Reconstruct => Self::Reconstruct,
+        }
+    }
+}
 
 /// Fidelity-gated rewriting prototype.
 #[derive(Debug, Parser)]
@@ -175,6 +200,24 @@ enum Command {
         /// Write the redacted rewrite record to a new file.
         #[arg(long, value_name = "PATH")]
         trace: Option<PathBuf>,
+        /// Degree of editorial freedom (touch-up, voice-pass, rewrite, reconstruct).
+        #[arg(long = "edit-level", value_enum, value_name = "LEVEL")]
+        edit_level: Option<EditLevelArg>,
+        /// Maximum allowed character count.
+        #[arg(long = "max-chars", value_name = "COUNT")]
+        max_chars: Option<usize>,
+        /// Minimum allowed character count.
+        #[arg(long = "min-chars", value_name = "COUNT")]
+        min_chars: Option<usize>,
+        /// Maximum allowable percentage expansion over source character count.
+        #[arg(long = "max-expansion-pct", value_name = "PERCENT")]
+        max_expansion_pct: Option<u8>,
+        /// Maximum allowed line count.
+        #[arg(long = "max-lines", value_name = "COUNT")]
+        max_lines: Option<usize>,
+        /// Enforce exact line count preservation.
+        #[arg(long = "preserve-line-count")]
+        preserve_line_count: bool,
     },
     /// Inventory one source document or directory before rewrite without mutation.
     ///
@@ -215,6 +258,18 @@ enum Command {
     /// JSON reports the name, section, and page. Text writes the raw manual
     /// page without a machine envelope.
     Man,
+    /// Inspect plain text for editorial style patterns, conversational residue, and AI slop.
+    Lint {
+        /// UTF-8 file to inspect, or - for standard input.
+        #[arg(value_name = "SOURCE")]
+        source: PathBuf,
+        /// Optional candidate file to compare against the source.
+        #[arg(long, value_name = "CANDIDATE")]
+        candidate: Option<PathBuf>,
+        /// Return exit code 3 when editorial defects are detected.
+        #[arg(long)]
+        fail_on_findings: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -317,28 +372,64 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             diff,
             dry_run,
             trace,
-        } => check::run(
-            check::CheckRequest {
-                source,
-                candidate,
-                protected_terms,
-                fail_on_abstain,
-                output,
-                in_place: check::replace::InPlaceFlags {
-                    requested: in_place,
-                    backup,
+            edit_level,
+            max_chars,
+            min_chars,
+            max_expansion_pct,
+            max_lines,
+            preserve_line_count,
+        } => {
+            let character_budget =
+                if max_chars.is_some() || min_chars.is_some() || max_expansion_pct.is_some() {
+                    Some(rewrite_types::CharacterBudget {
+                        min_characters: min_chars,
+                        max_characters: max_chars,
+                        max_expansion_percent: max_expansion_pct,
+                    })
+                } else {
+                    None
+                };
+            let line_budget = if max_lines.is_some() || preserve_line_count {
+                Some(rewrite_types::LineBudget {
+                    max_lines,
+                    preserve_line_count,
+                })
+            } else {
+                None
+            };
+            let layout = if character_budget.is_some() || line_budget.is_some() {
+                Some(rewrite_types::LayoutConstraints {
+                    character_budget,
+                    line_budget,
+                })
+            } else {
+                None
+            };
+            check::run(
+                check::CheckRequest {
+                    source,
+                    candidate,
+                    protected_terms,
+                    fail_on_abstain,
+                    output,
+                    in_place: check::replace::InPlaceFlags {
+                        requested: in_place,
+                        backup,
+                    },
+                    raw_terminal,
+                    confirmed: yes,
+                    inspection: check::CheckInspection {
+                        diff,
+                        dry_run,
+                        trace,
+                    },
+                    layout,
+                    edit_level: edit_level.map(Into::into),
                 },
-                raw_terminal,
-                confirmed: yes,
-                inspection: check::CheckInspection {
-                    diff,
-                    dry_run,
-                    trace,
-                },
-            },
-            format,
-        )
-        .map_err(|error| (error, format)),
+                format,
+            )
+            .map_err(|error| (error, format))
+        }
         Command::Inspect { source, recursive } => {
             let (command, output, exit_code) =
                 inspect_source::run(&source, recursive).map_err(|error| (error, format))?;
@@ -385,6 +476,19 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 .map_err(|_| (RunFailure::operational(command_name), format))?;
             Ok(ExitCode::SUCCESS)
         }
+        Command::Lint {
+            source,
+            candidate,
+            fail_on_findings,
+        } => lint::run(
+            &lint::LintRequest {
+                source,
+                candidate,
+                fail_on_findings,
+            },
+            format,
+        )
+        .map_err(|error| (error, format)),
     }
 }
 

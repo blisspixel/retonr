@@ -22,9 +22,9 @@ use rewrite_model::{
 };
 use rewrite_text_adapter::{ParsedTextDocument, TextAdapter};
 use rewrite_types::{
-    CancellationToken, GENERATION_PROVENANCE_SCHEMA_VERSION, GeneratedCandidate,
-    GenerationProvenance, GenerationRuntimeProvenance, GenerationUsageProvenance, RewriteMode,
-    RewriteOptions, RewriteRecord, RewriteUnitId,
+    CancellationToken, EditLevel, GENERATION_PROVENANCE_SCHEMA_VERSION, GeneratedCandidate,
+    GenerationProvenance, GenerationRuntimeProvenance, GenerationUsageProvenance,
+    LayoutConstraints, RewriteMode, RewriteOptions, RewriteRecord, RewriteUnitId,
 };
 
 use crate::{
@@ -49,6 +49,52 @@ pub struct GroundedRewriteRequest {
     /// Absence, backend unavailability, or incomplete extraction leaves the
     /// hard gates unchanged. A recorded conflict cannot reject a candidate.
     pub claim_shadow: Option<ClaimShadowJoinBinding>,
+    /// Optional layout constraints.
+    pub layout: Option<LayoutConstraints>,
+    /// Optional edit level.
+    pub edit_level: Option<EditLevel>,
+}
+
+impl GroundedRewriteRequest {
+    /// Creates a new grounded rewrite request with default layout and edit level.
+    #[must_use]
+    pub const fn new(
+        source: Vec<u8>,
+        protected_terms: Vec<String>,
+        mode: RewriteMode,
+        style_context: String,
+    ) -> Self {
+        Self {
+            source,
+            protected_terms,
+            mode,
+            style_context,
+            claim_shadow: None,
+            layout: None,
+            edit_level: None,
+        }
+    }
+
+    /// Attaches an informational claim-shadow extractor binding.
+    #[must_use]
+    pub fn with_claim_shadow(mut self, claim_shadow: Option<ClaimShadowJoinBinding>) -> Self {
+        self.claim_shadow = claim_shadow;
+        self
+    }
+
+    /// Attaches layout constraints.
+    #[must_use]
+    pub fn with_layout(mut self, layout: Option<LayoutConstraints>) -> Self {
+        self.layout = layout;
+        self
+    }
+
+    /// Attaches an edit level.
+    #[must_use]
+    pub const fn with_edit_level(mut self, edit_level: Option<EditLevel>) -> Self {
+        self.edit_level = edit_level;
+        self
+    }
 }
 
 /// Safe transaction result with any redacted generation provenance in its record.
@@ -271,6 +317,8 @@ impl<'a> GroundedRewriteService<'a> {
         let options = RewriteOptions {
             mode: request.mode,
             protected_terms: request.protected_terms,
+            layout: request.layout,
+            edit_level: request.edit_level,
             ..RewriteOptions::default()
         };
         validate_rewrite_options(&options)?;

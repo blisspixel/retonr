@@ -1,6 +1,7 @@
 use rewrite_types::{
     CandidateAssessment, GateEvidence, GateEvidenceDetails, GateResult, GateStatus,
-    GeneratedCandidate, InvariantEvidenceSummary, ReasonCode, RewriteUnit, RewriteUnitId, Severity,
+    GeneratedCandidate, InvariantEvidenceSummary, ReasonCode, RewriteOptions, RewriteUnit,
+    RewriteUnitId, Severity,
 };
 
 use crate::policy::candidate_contract_is_valid;
@@ -10,6 +11,7 @@ pub(super) const UNIT_GATE: &str = "candidate_unit";
 pub(super) const CANDIDATE_GATE: &str = "candidate_contract";
 pub(super) const SENTINEL_GATE: &str = "sentinel_integrity";
 pub(super) const PROTECTED_GATE: &str = "protected_values";
+pub(super) const LAYOUT_GATE: &str = "layout_constraints";
 pub(super) const SEMANTIC_GATE: &str = "semantic_fidelity";
 
 pub(super) struct UnitProgress {
@@ -212,4 +214,99 @@ pub(super) fn surface_edit_cost(source: &str, candidate: &str) -> u64 {
         .count();
     let length_delta = source.chars().count().abs_diff(candidate.chars().count());
     u64::try_from(substitutions.saturating_add(length_delta)).unwrap_or(u64::MAX)
+}
+
+fn count_lines(text: &str) -> usize {
+    if text.is_empty() {
+        0
+    } else {
+        text.matches('\n').count() + 1
+    }
+}
+
+pub(super) fn validate_layout_constraints(
+    unit: &RewriteUnit,
+    restored: &str,
+    options: &RewriteOptions,
+) -> Option<(GateResult, ReasonCode)> {
+    let layout = options.layout.as_ref()?;
+
+    if let Some(char_budget) = &layout.character_budget {
+        let restored_chars = restored.chars().count();
+        let source_chars = unit.text.chars().count();
+
+        if let Some(min) = char_budget.min_characters
+            && restored_chars < min
+        {
+            return Some((
+                GateResult::fail(
+                    LAYOUT_GATE,
+                    "character_budget_underflow",
+                    "candidate character count is below minimum budget",
+                ),
+                ReasonCode::CharacterBudgetExceeded,
+            ));
+        }
+
+        if let Some(max) = char_budget.max_characters
+            && restored_chars > max
+        {
+            return Some((
+                GateResult::fail(
+                    LAYOUT_GATE,
+                    "character_budget_exceeded",
+                    "candidate character count exceeds maximum budget",
+                ),
+                ReasonCode::CharacterBudgetExceeded,
+            ));
+        }
+
+        if let Some(expansion_pct) = char_budget.max_expansion_percent {
+            let max_allowed = source_chars.saturating_mul(100 + usize::from(expansion_pct)) / 100;
+            if restored_chars > max_allowed {
+                return Some((
+                    GateResult::fail(
+                        LAYOUT_GATE,
+                        "character_expansion_exceeded",
+                        "candidate character expansion exceeds allowed percentage",
+                    ),
+                    ReasonCode::CharacterBudgetExceeded,
+                ));
+            }
+        }
+    }
+
+    if let Some(line_budget) = &layout.line_budget {
+        let restored_lines = count_lines(restored);
+        let source_lines = count_lines(&unit.text);
+
+        if let Some(max_lines) = line_budget.max_lines
+            && restored_lines > max_lines
+        {
+            return Some((
+                GateResult::fail(
+                    LAYOUT_GATE,
+                    "line_budget_exceeded",
+                    "candidate line count exceeds maximum line budget",
+                ),
+                ReasonCode::LineBudgetExceeded,
+            ));
+        }
+
+        if line_budget.preserve_line_count && restored_lines != source_lines {
+            return Some((
+                GateResult::fail(
+                    LAYOUT_GATE,
+                    "line_count_mismatch",
+                    "candidate line count does not match source line count",
+                ),
+                ReasonCode::LineBudgetExceeded,
+            ));
+        }
+    }
+
+    Some((
+        GateResult::pass(LAYOUT_GATE),
+        ReasonCode::CharacterBudgetExceeded,
+    ))
 }

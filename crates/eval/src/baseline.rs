@@ -384,11 +384,11 @@ async fn run_generative_case(
     {
         return failed_case(case, source_digest, BaselineCaseError::MalformedResponse);
     }
-    match CandidateCheckService::check(CandidateCheckRequest {
-        source: case.source.as_bytes().to_vec(),
-        candidate: response.candidates[0].text.clone(),
-        protected_terms: case.protected_terms.clone(),
-    }) {
+    match CandidateCheckService::check(CandidateCheckRequest::new(
+        case.source.as_bytes().to_vec(),
+        response.candidates[0].text.clone(),
+        case.protected_terms.clone(),
+    )) {
         Ok(result) => BaselineCaseResult {
             id: case.id.clone(),
             category: case.category.clone(),

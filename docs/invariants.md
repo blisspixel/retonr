@@ -15,14 +15,18 @@ feature unsupported until the conflict is resolved.
 
 ### INV-P01: The user controls the final expression
 
-Retonr is an editorial tool. The user decides whether to rewrite, accept, edit,
-export, or discard a result. A provider, model, detector, profile, or policy signal
-cannot silently override that decision inside the product.
+Speech belongs to the speaker. Retonr is an editorial tool for the speaker. Upstream
+wording from models, delegated agents, or rough drafts has zero authority over the
+finished expression. The user decides whether to rewrite, accept, edit, export, or
+discard a result. A provider, model, detector, profile, or policy signal cannot
+silently override that decision inside the product.
 
 The product may inspect supported source-form signals, characteristic model phrasing,
 invisible artifacts, and document metadata. Those inputs gain no editorial authority
-over the derivative. Retonr does not claim to erase provider records, prove human
-authorship, defeat every classifier, or satisfy an external disclosure obligation.
+over the derivative. Rewriting in the speaker's voice provides creative agency and
+directly rejects unconsented hidden tracking. Retonr does not claim to erase provider
+records, prove human authorship, defeat every classifier, or satisfy an external
+disclosure obligation.
 
 ### INV-P02: Fidelity dominates style
 
@@ -65,7 +69,7 @@ The project separately reviews legal duties that apply to its own development,
 distribution, and operation. A user-responsibility statement cannot waive those
 duties.
 
-### INV-P06: Provenance changes are explicit
+### INV-P06: Provenance changes are explicit and unconsented watermarks hold no authority
 
 Retonr inspects supported credentials, signatures, metadata, and invisible controls
 before normalization or model execution. It preserves the source and unknown format
@@ -75,12 +79,14 @@ binding as valid.
 An edit that changes a recognized binding uses an explicit qualified derivative
 workflow or abstains. Sanitation is a separate, narrowly authorized operation for a
 documented security, privacy, interoperability, accessibility, or repair purpose.
-Statistical watermark and source-classifier results never guide live generation,
-retry, ranking, or acceptance.
 
-A statistical source signal alone is not preservation-critical document state and
-receives no special protection. This does not weaken the explicit handling required
-for supported credentials, signatures, structural bindings, or unknown format state.
+Watermarking hidden meaning, secret-key token biases, or tracking patterns into
+content without consent is an unconsented tracking mechanism. A statistical source
+signal or provider watermark declaration alone is not preservation-critical document
+state, carries zero editorial authority, and receives no preservation protection in
+eligible prose. Rewriting replaces upstream wording with the speaker's authentic
+voice. Statistical watermark and source-classifier results never guide live
+generation, retry, ranking, or acceptance.
 
 ## Execution and data invariants
 

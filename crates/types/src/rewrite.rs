@@ -34,6 +34,57 @@ pub enum Atomicity {
     Region,
 }
 
+/// Discrete editorial freedom tier selected by the caller.
+#[derive(Clone, Copy, Debug, Default, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EditLevel {
+    /// Surface cleanup, grammar, punctuation, and mechanical correction.
+    #[default]
+    TouchUp,
+    /// Style, tone, and register tuning while strictly preserving layout and length bounds.
+    VoicePass,
+    /// Sentence-level and paragraph-level rewrites preserving all factual claims.
+    Rewrite,
+    /// Structural reformulations retaining core invariants and claims.
+    Reconstruct,
+}
+
+/// Character budget constraints for layout preservation.
+#[derive(Clone, Copy, Debug, Default, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+pub struct CharacterBudget {
+    /// Minimum allowed character count.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_characters: Option<usize>,
+    /// Maximum allowed character count.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_characters: Option<usize>,
+    /// Maximum allowable percentage expansion over the source character count.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_expansion_percent: Option<u8>,
+}
+
+/// Line budget constraints for layout preservation.
+#[derive(Clone, Copy, Debug, Default, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+pub struct LineBudget {
+    /// Maximum allowed line count.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_lines: Option<usize>,
+    /// Whether the exact source line count must be preserved.
+    #[serde(default)]
+    pub preserve_line_count: bool,
+}
+
+/// Caller-controlled layout and budget constraints.
+#[derive(Clone, Copy, Debug, Default, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+pub struct LayoutConstraints {
+    /// Bounded character budget.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub character_budget: Option<CharacterBudget>,
+    /// Bounded line budget.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_budget: Option<LineBudget>,
+}
+
 /// Caller-controlled rewrite policy.
 #[derive(Clone, Debug, JsonSchema, PartialEq, Serialize, Deserialize)]
 pub struct RewriteOptions {
@@ -45,6 +96,12 @@ pub struct RewriteOptions {
     pub protected_terms: Vec<String>,
     /// Minimum accepted calibrated semantic confidence.
     pub minimum_semantic_confidence: f32,
+    /// Requested discrete edit level.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edit_level: Option<EditLevel>,
+    /// Optional layout and budget constraints.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<LayoutConstraints>,
 }
 
 impl Default for RewriteOptions {
@@ -54,6 +111,8 @@ impl Default for RewriteOptions {
             atomicity: Atomicity::Document,
             protected_terms: Vec::new(),
             minimum_semantic_confidence: 0.95,
+            edit_level: None,
+            layout: None,
         }
     }
 }
@@ -139,6 +198,9 @@ pub struct CandidateRank {
     pub channel: f32,
     /// Fluency in the inclusive range from zero to one.
     pub fluency: f32,
+    /// Deterministic penalty for detected editorial defects or slop patterns, where lower is preferred.
+    #[serde(default)]
+    pub editorial_penalty: u32,
     /// Deterministic surface edit cost, where lower is preferred.
     pub edit_cost: u64,
 }
@@ -229,6 +291,10 @@ pub enum ReasonCode {
     StructureChanged,
     /// The candidate introduced unsafe control or directionality characters.
     UnsafeText,
+    /// The candidate exceeded the configured character budget or expansion limit.
+    CharacterBudgetExceeded,
+    /// The candidate exceeded the configured line budget.
+    LineBudgetExceeded,
     /// Semantic evidence failed the configured policy.
     SemanticMismatch,
     /// Semantic evidence was insufficient for acceptance.
@@ -243,7 +309,10 @@ pub enum ReasonCode {
 
 #[cfg(test)]
 mod tests {
-    use super::{CandidateId, PlannedUnit, TransformationPlan};
+    use super::{
+        CandidateId, CharacterBudget, EditLevel, LayoutConstraints, LineBudget, PlannedUnit,
+        ReasonCode, RewriteOptions, TransformationPlan,
+    };
     use crate::{Digest, DocumentId, RewriteUnitId, SCHEMA_VERSION};
 
     #[test]
@@ -274,5 +343,45 @@ mod tests {
                 .expect("canonical candidate ID deserializes"),
             candidate
         );
+    }
+
+    #[test]
+    fn rewrite_options_round_trips_with_layout_and_edit_level() {
+        let options = RewriteOptions {
+            edit_level: Some(EditLevel::VoicePass),
+            layout: Some(LayoutConstraints {
+                character_budget: Some(CharacterBudget {
+                    min_characters: Some(10),
+                    max_characters: Some(100),
+                    max_expansion_percent: Some(8),
+                }),
+                line_budget: Some(LineBudget {
+                    max_lines: Some(5),
+                    preserve_line_count: true,
+                }),
+            }),
+            ..Default::default()
+        };
+
+        let encoded = serde_json::to_string(&options).expect("options serialize");
+        let decoded: RewriteOptions = serde_json::from_str(&encoded).expect("options deserialize");
+        assert_eq!(decoded, options);
+    }
+
+    #[test]
+    fn reason_code_round_trips_snake_case() {
+        let reasons = [
+            (
+                ReasonCode::CharacterBudgetExceeded,
+                "\"character_budget_exceeded\"",
+            ),
+            (ReasonCode::LineBudgetExceeded, "\"line_budget_exceeded\""),
+        ];
+        for (code, expected) in reasons {
+            let encoded = serde_json::to_string(&code).expect("code serializes");
+            assert_eq!(encoded, expected);
+            let decoded: ReasonCode = serde_json::from_str(&encoded).expect("code deserializes");
+            assert_eq!(decoded, code);
+        }
     }
 }

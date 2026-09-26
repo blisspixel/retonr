@@ -10,12 +10,16 @@ mod engine;
 #[path = "engine_cancellation_tests.rs"]
 mod engine_cancellation_tests;
 #[cfg(test)]
+#[path = "engine_layout_tests.rs"]
+mod engine_layout_tests;
+#[cfg(test)]
 #[path = "engine_test_support.rs"]
 mod engine_test_support;
 #[cfg(test)]
 #[path = "engine_tests.rs"]
 mod engine_tests;
 mod generator;
+pub mod lint;
 mod policy;
 mod protection;
 #[cfg(test)]

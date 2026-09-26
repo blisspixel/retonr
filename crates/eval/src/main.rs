@@ -7,7 +7,7 @@ use std::{
     error::Error,
     fs::File,
     io::{self, Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::ExitCode,
 };
 
@@ -17,8 +17,9 @@ use rewrite_eval::{
     MAX_EVALUATION_SUITE_BYTES, MAX_HYBRID_SCORECARD_BYTES,
     MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES, MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES,
     MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES, MAX_WATERMARK_RESEARCH_BYTES,
-    MAX_WRITING_SAMPLE_LIBRARY_BYTES, parse_baseline_definition, parse_claim_shadow_calibration,
-    parse_editorial_corpus, parse_hybrid_scorecard_plan, parse_judge_observation_batch,
+    MAX_WRITING_SAMPLE_LIBRARY_BYTES, evaluate_corpus_against_linter, lint_text,
+    parse_baseline_definition, parse_claim_shadow_calibration, parse_editorial_corpus,
+    parse_hybrid_scorecard_plan, parse_judge_observation_batch,
     parse_local_ollama_attested_preflight_plan, parse_local_ollama_bound_preflight_plan,
     parse_local_ollama_preflight_plan, parse_suite, parse_watermark_research_corpus,
     parse_writing_sample_library, run_attached_baseline, run_claim_shadow_calibration,
@@ -43,7 +44,9 @@ struct Cli {
             "hybrid_scorecard",
             "ollama_preflight",
             "ollama_attested_preflight",
-            "ollama_bound_preflight"
+            "ollama_bound_preflight",
+            "lint_corpus",
+            "lint"
         ],
         conflicts_with_all = [
             "editorial_corpus",
@@ -53,7 +56,9 @@ struct Cli {
             "hybrid_scorecard",
             "ollama_preflight",
             "ollama_attested_preflight",
-            "ollama_bound_preflight"
+            "ollama_bound_preflight",
+            "lint_corpus",
+            "lint"
         ]
     )]
     suite: Option<PathBuf>,
@@ -117,7 +122,9 @@ struct Cli {
             "baseline",
             "hybrid_scorecard",
             "ollama_attested_preflight",
-            "ollama_bound_preflight"
+            "ollama_bound_preflight",
+            "lint_corpus",
+            "lint"
         ]
     )]
     editorial_corpus: Option<PathBuf>,
@@ -231,6 +238,44 @@ struct Cli {
     /// Exact installed artifact that must match the active generation binding.
     #[arg(long, value_name = "ARTIFACT_ID", requires = "data_dir")]
     artifact_id: Option<String>,
+    /// Evaluate the deterministic anti-slop linter against an editorial corpus.
+    #[arg(
+        long,
+        value_name = "CORPUS",
+        conflicts_with_all = [
+            "suite",
+            "editorial_corpus",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration",
+            "baseline",
+            "hybrid_scorecard",
+            "ollama_preflight",
+            "ollama_attested_preflight",
+            "ollama_bound_preflight",
+            "lint"
+        ]
+    )]
+    lint_corpus: Option<PathBuf>,
+    /// Lint a plain-text document for editorial patterns and anti-slop defects.
+    #[arg(
+        long,
+        value_name = "FILE",
+        conflicts_with_all = [
+            "suite",
+            "editorial_corpus",
+            "writing_samples",
+            "watermark_research",
+            "claim_shadow_calibration",
+            "baseline",
+            "hybrid_scorecard",
+            "ollama_preflight",
+            "ollama_attested_preflight",
+            "ollama_bound_preflight",
+            "lint_corpus"
+        ]
+    )]
+    lint: Option<PathBuf>,
 }
 
 fn main() -> ExitCode {
@@ -250,69 +295,98 @@ fn run(mut cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
     if let Some(code) = run_requested_hybrid_scorecard(&mut cli)? {
         return Ok(code);
     }
-    if let Some(path) = cli.ollama_bound_preflight {
+    if let Some(path) = &cli.ollama_bound_preflight {
         return run_ollama_bound_preflight_command(path);
     }
-    if let Some(path) = cli.ollama_attested_preflight {
+    if let Some(path) = &cli.ollama_attested_preflight {
         return run_ollama_attested_preflight_command(path);
     }
-    if let Some(path) = cli.ollama_preflight {
-        let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES)?;
-        let plan = parse_local_ollama_preflight_plan(&input)?;
-        let cancellation = CancellationToken::new();
-        let signal_cancellation = cancellation.clone();
-        ctrlc::try_set_handler(move || signal_cancellation.cancel())?;
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
-        let report = runtime.block_on(run_local_ollama_preflight(&plan, &cancellation))?;
-        let mut stdout = io::stdout().lock();
-        serde_json::to_writer_pretty(&mut stdout, &report)?;
-        writeln!(stdout)?;
-        return Ok(ExitCode::SUCCESS);
+    if let Some(path) = &cli.ollama_preflight {
+        return run_ollama_preflight_command(path);
     }
-    if let Some(path) = cli.editorial_corpus {
+    if let Some(code) = run_corpus_commands(&cli)? {
+        return Ok(code);
+    }
+    if let Some(code) = run_lint_commands(&cli)? {
+        return Ok(code);
+    }
+    run_suite_and_baseline(cli)
+}
+
+fn run_ollama_preflight_command(path: &Path) -> Result<ExitCode, Box<dyn Error>> {
+    let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES)?;
+    let plan = parse_local_ollama_preflight_plan(&input)?;
+    let cancellation = CancellationToken::new();
+    let signal_cancellation = cancellation.clone();
+    ctrlc::try_set_handler(move || signal_cancellation.cancel())?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let report = runtime.block_on(run_local_ollama_preflight(&plan, &cancellation))?;
+    print_json(&report)?;
+    Ok(ExitCode::SUCCESS)
+}
+
+fn run_corpus_commands(cli: &Cli) -> Result<Option<ExitCode>, Box<dyn Error>> {
+    if let Some(path) = &cli.editorial_corpus {
         let input = read_bounded_utf8(path, MAX_EDITORIAL_CORPUS_BYTES)?;
         let corpus = parse_editorial_corpus(&input)?;
-        let mut stdout = io::stdout().lock();
-        serde_json::to_writer_pretty(&mut stdout, &corpus.summary())?;
-        writeln!(stdout)?;
-        return Ok(ExitCode::SUCCESS);
+        print_json(&corpus.summary())?;
+        return Ok(Some(ExitCode::SUCCESS));
     }
-    if let Some(path) = cli.writing_samples {
+    if let Some(path) = &cli.writing_samples {
         let input = read_bounded_utf8(path, MAX_WRITING_SAMPLE_LIBRARY_BYTES)?;
         let library = parse_writing_sample_library(&input)?;
-        let mut stdout = io::stdout().lock();
-        serde_json::to_writer_pretty(&mut stdout, &library.summary())?;
-        writeln!(stdout)?;
-        return Ok(ExitCode::SUCCESS);
+        print_json(&library.summary())?;
+        return Ok(Some(ExitCode::SUCCESS));
     }
-    if let Some(path) = cli.watermark_research {
+    if let Some(path) = &cli.watermark_research {
         let input = read_bounded_utf8(path, MAX_WATERMARK_RESEARCH_BYTES)?;
         let corpus = parse_watermark_research_corpus(&input)?;
-        let mut stdout = io::stdout().lock();
-        serde_json::to_writer_pretty(&mut stdout, &corpus.summary())?;
-        writeln!(stdout)?;
-        return Ok(ExitCode::SUCCESS);
+        print_json(&corpus.summary())?;
+        return Ok(Some(ExitCode::SUCCESS));
     }
-    if let Some(path) = cli.claim_shadow_calibration {
+    if let Some(path) = &cli.claim_shadow_calibration {
         let input = read_bounded_utf8(path, MAX_CLAIM_SHADOW_CALIBRATION_BYTES)?;
         let corpus = parse_claim_shadow_calibration(&input)?;
         let report = run_claim_shadow_calibration(&corpus);
-        let mut stdout = io::stdout().lock();
-        serde_json::to_writer_pretty(&mut stdout, &report)?;
-        writeln!(stdout)?;
-        return Ok(if report.is_success() {
+        print_json(&report)?;
+        return Ok(Some(if report.is_success() {
             ExitCode::SUCCESS
         } else {
             ExitCode::FAILURE
-        });
+        }));
     }
+    Ok(None)
+}
+
+fn run_lint_commands(cli: &Cli) -> Result<Option<ExitCode>, Box<dyn Error>> {
+    if let Some(path) = &cli.lint_corpus {
+        let input = read_bounded_utf8(path, MAX_EDITORIAL_CORPUS_BYTES)?;
+        let corpus = parse_editorial_corpus(&input)?;
+        let report = evaluate_corpus_against_linter(&corpus);
+        print_json(&report)?;
+        return Ok(Some(if report.is_success() {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        }));
+    }
+    if let Some(path) = &cli.lint {
+        let input = read_bounded_utf8(path, 64 * 1024)?;
+        let findings = lint_text(&input);
+        print_json(&findings)?;
+        return Ok(Some(ExitCode::SUCCESS));
+    }
+    Ok(None)
+}
+
+fn run_suite_and_baseline(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
     let path = cli.suite.ok_or("evaluation suite path is required")?;
-    let input = read_bounded_utf8(path, MAX_EVALUATION_SUITE_BYTES)?;
+    let input = read_bounded_utf8(&path, MAX_EVALUATION_SUITE_BYTES)?;
     let suite = parse_suite(&input)?;
     if let Some(definition_path) = cli.baseline {
-        let definition_input = read_bounded_utf8(definition_path, MAX_BASELINE_DEFINITION_BYTES)?;
+        let definition_input = read_bounded_utf8(&definition_path, MAX_BASELINE_DEFINITION_BYTES)?;
         let definition = parse_baseline_definition(&definition_input)?;
         let requested = cli
             .artifact_id
@@ -326,9 +400,7 @@ fn run(mut cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
             requested.as_ref(),
             &CancellationToken::new(),
         )?;
-        let mut stdout = io::stdout().lock();
-        serde_json::to_writer_pretty(&mut stdout, &report)?;
-        writeln!(stdout)?;
+        print_json(&report)?;
         return Ok(if report.is_success() {
             ExitCode::SUCCESS
         } else {
@@ -336,9 +408,7 @@ fn run(mut cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
         });
     }
     let report = run_suite(&suite);
-    let mut stdout = io::stdout().lock();
-    serde_json::to_writer_pretty(&mut stdout, &report)?;
-    writeln!(stdout)?;
+    print_json(&report)?;
     Ok(if report.is_success() {
         ExitCode::SUCCESS
     } else {
@@ -351,14 +421,14 @@ fn run_requested_hybrid_scorecard(cli: &mut Cli) -> Result<Option<ExitCode>, Box
         return Ok(None);
     };
     let code = run_hybrid_scorecard_command(
-        path,
-        cli.candidate_a_suite
+        &path,
+        &cli.candidate_a_suite
             .take()
             .ok_or("candidate A suite path is required")?,
-        cli.candidate_b_suite
+        &cli.candidate_b_suite
             .take()
             .ok_or("candidate B suite path is required")?,
-        cli.judge_observations
+        &cli.judge_observations
             .take()
             .ok_or("judge observation batch path is required")?,
     )?;
@@ -366,10 +436,10 @@ fn run_requested_hybrid_scorecard(cli: &mut Cli) -> Result<Option<ExitCode>, Box
 }
 
 fn run_hybrid_scorecard_command(
-    plan_path: PathBuf,
-    candidate_a_path: PathBuf,
-    candidate_b_path: PathBuf,
-    observations_path: PathBuf,
+    plan_path: &Path,
+    candidate_a_path: &Path,
+    candidate_b_path: &Path,
+    observations_path: &Path,
 ) -> Result<ExitCode, Box<dyn Error>> {
     let plan =
         parse_hybrid_scorecard_plan(&read_bounded_utf8(plan_path, MAX_HYBRID_SCORECARD_BYTES)?)?;
@@ -386,9 +456,7 @@ fn run_hybrid_scorecard_command(
         MAX_HYBRID_SCORECARD_BYTES,
     )?)?;
     let report = run_hybrid_scorecard(&plan, &candidate_a, &candidate_b, &observations)?;
-    let mut stdout = io::stdout().lock();
-    serde_json::to_writer_pretty(&mut stdout, &report)?;
-    writeln!(stdout)?;
+    print_json(&report)?;
     Ok(if report.hard_gates_passed() {
         ExitCode::SUCCESS
     } else {
@@ -396,7 +464,7 @@ fn run_hybrid_scorecard_command(
     })
 }
 
-fn run_ollama_attested_preflight_command(path: PathBuf) -> Result<ExitCode, Box<dyn Error>> {
+fn run_ollama_attested_preflight_command(path: &Path) -> Result<ExitCode, Box<dyn Error>> {
     let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES)?;
     let plan = parse_local_ollama_attested_preflight_plan(&input)?;
     let cancellation = CancellationToken::new();
@@ -406,13 +474,11 @@ fn run_ollama_attested_preflight_command(path: PathBuf) -> Result<ExitCode, Box<
         .enable_all()
         .build()?;
     let report = runtime.block_on(run_local_ollama_attested_preflight(&plan, &cancellation))?;
-    let mut stdout = io::stdout().lock();
-    serde_json::to_writer_pretty(&mut stdout, &report)?;
-    writeln!(stdout)?;
+    print_json(&report)?;
     Ok(ExitCode::SUCCESS)
 }
 
-fn run_ollama_bound_preflight_command(path: PathBuf) -> Result<ExitCode, Box<dyn Error>> {
+fn run_ollama_bound_preflight_command(path: &Path) -> Result<ExitCode, Box<dyn Error>> {
     let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES)?;
     let plan = parse_local_ollama_bound_preflight_plan(&input)?;
     let cancellation = CancellationToken::new();
@@ -422,9 +488,7 @@ fn run_ollama_bound_preflight_command(path: PathBuf) -> Result<ExitCode, Box<dyn
         .enable_all()
         .build()?;
     let report = runtime.block_on(run_local_ollama_bound_preflight(&plan, &cancellation))?;
-    let mut stdout = io::stdout().lock();
-    serde_json::to_writer_pretty(&mut stdout, &report)?;
-    writeln!(stdout)?;
+    print_json(&report)?;
     Ok(ExitCode::SUCCESS)
 }
 
@@ -433,13 +497,29 @@ fn parse_artifact_id(value: &str) -> Result<ArtifactId, Box<dyn Error>> {
     Ok(ArtifactId::from_digest(digest))
 }
 
-fn read_bounded_utf8(path: PathBuf, maximum: usize) -> Result<String, Box<dyn Error>> {
-    Ok(String::from_utf8(read_bounded_bytes(path, maximum)?)?)
+fn print_json<T: serde::Serialize>(value: &T) -> Result<(), Box<dyn Error>> {
+    let mut stdout = io::stdout().lock();
+    serde_json::to_writer_pretty(&mut stdout, value)?;
+    writeln!(stdout)?;
+    Ok(())
 }
 
-fn read_bounded_bytes(path: PathBuf, maximum: usize) -> Result<Vec<u8>, Box<dyn Error>> {
+fn read_bounded_utf8(
+    path: impl AsRef<std::path::Path>,
+    maximum: usize,
+) -> Result<String, Box<dyn Error>> {
+    Ok(String::from_utf8(read_bounded_bytes(
+        path.as_ref(),
+        maximum,
+    )?)?)
+}
+
+fn read_bounded_bytes(
+    path: impl AsRef<std::path::Path>,
+    maximum: usize,
+) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut bytes = Vec::with_capacity(64 * 1024);
-    File::open(path)?
+    File::open(path.as_ref())?
         .take(u64::try_from(maximum).unwrap_or(u64::MAX).saturating_add(1))
         .read_to_end(&mut bytes)?;
     if bytes.len() > maximum {

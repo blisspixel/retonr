@@ -100,6 +100,8 @@ pub(crate) const fn reason_name(reason: ReasonCode) -> &'static str {
         ReasonCode::ProtectedValueChanged => "protected_value_changed",
         ReasonCode::StructureChanged => "structure_changed",
         ReasonCode::UnsafeText => "unsafe_text",
+        ReasonCode::CharacterBudgetExceeded => "character_budget_exceeded",
+        ReasonCode::LineBudgetExceeded => "line_budget_exceeded",
         ReasonCode::SemanticMismatch => "semantic_mismatch",
         ReasonCode::SemanticUncertain => "semantic_uncertain",
         ReasonCode::ReassemblyVerification => "reassembly_verification",

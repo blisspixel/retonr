@@ -348,6 +348,8 @@ fn every_closed_expectation_variant_has_a_distinct_identity() {
         ReasonCode::ReassemblyVerification,
         ReasonCode::Cancelled,
         ReasonCode::UnsupportedAtomicity,
+        ReasonCode::CharacterBudgetExceeded,
+        ReasonCode::LineBudgetExceeded,
     ] {
         let mut value = input();
         value.expected_reason = Some(reason);

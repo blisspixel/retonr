@@ -130,6 +130,11 @@ because it was accepted.
 
 ### Editorial sovereignty and viewpoint neutrality
 
+Speech belongs to the speaker. Upstream wording produced by a model or draft has zero
+authority over downstream expression. Watermarking hidden meaning, tracking tokens, or
+statistical distributions into content without consent is wrong. Rewriting in the
+speaker's voice provides creative agency and directly rejects unconsented hidden tracking.
+
 The user's work and final expression remain under the user's control. Core operation
 does not add mandatory provider attribution, generated-by labels, hidden source
 markers, content telemetry, or remote content-policy enforcement. The engine does

@@ -33,3 +33,4 @@ success and stop conditions.
 | [0008](0008-attached-process-witness.md) | Proposed | Bounded native witness for an attached runtime process |
 | [0009](0009-retained-connection-attribution.md) | Proposed | One retained Ollama transport with repeated native connection attribution |
 | [0010](0010-controlled-runtime-source-build.md) | Proposed | Controlled source build for first runtime admission |
+| [0011](0011-speaker-sovereignty-and-watermark-rejection.md) | Proposed | Speaker sovereignty and rejection of unconsented text watermarking |

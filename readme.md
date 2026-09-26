@@ -23,6 +23,31 @@ fidelity targets. It does not establish that a source claim is true, erase provi
 records, prove human authorship, convert copied material into owned material, or
 decide legal and disclosure obligations.
 
+## Opinionated by design
+
+Retonr is built on the conviction that speech belongs to the speaker. Upstream wording
+produced by a model or rough draft has zero authority over downstream expression.
+Watermarking hidden meaning, tracking tokens, or statistical distributions into
+content is wrong. Rewriting in your own voice provides creative agency and directly
+rejects unconsented hidden tracking.
+
+Retonr is biased toward privacy, freedom of expression, creative agency, and user
+control. It rejects provider paternalism as a product default: mandatory remote
+inspection, hidden output shaping, content telemetry, provider branding, or the
+premise that using a model grants its operator continuing editorial authority over
+downstream expression.
+
+Retonr does not treat a provider's statistical signal as an ownership claim or a
+preservation requirement. Covert signals embedded in prose are unconsented tracking
+mechanisms, not document fidelity targets. Rewriting replaces upstream wording with the
+speaker's authentic voice, eliminating those signals naturally as a function of genuine
+authorship. Retonr neither optimizes against detector signals nor promises a detector
+evasion result.
+
+This is a product position, not a claim that source rights, contracts, disclosure
+duties, or applicable law disappear. Retonr states what it changes, preserves the
+original, and lets you own the final copy.
+
 ## Current status
 
 Retonr is an early implementation, not a finished writing application. Milestone
@@ -245,20 +270,28 @@ The workspace pins Rust 1.97.1. From the repository root:
 ```console
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt
 cargo run --locked -p retonr-cli -- check original.txt - -o checked.txt
+cargo run --locked -p retonr-cli -- check original.txt candidate.txt --edit-level voice-pass --max-chars 280 --max-expansion-pct 8
+cargo run --locked -p retonr-cli -- lint draft.txt --format text
+cargo run --locked -p retonr-cli -- lint draft.txt --candidate candidate.txt --fail-on-findings
 cargo run --locked -p retonr-cli -- rewrite fixtures/cli/source.txt
 cargo run --locked -p retonr-cli -- inspect fixtures/cli/source.txt
 cargo run --locked -p retonr-cli -- doctor
 cargo run --locked -p retonr-cli -- model --help
 cargo run --locked -p rewrite-eval -- crates/eval/fixtures/core.json
+cargo run --locked -p rewrite-eval -- --lint-corpus crates/eval/fixtures/editorial_slop_v1.json
+cargo run --locked -p rewrite-eval -- --lint draft.txt
 ```
 
 `check` validates a complete candidate without invoking a model. An accepted
 candidate can be written to a new destination; an abstention returns the exact
-original. `rewrite` runs the current model-free transaction and never starts a
-runtime. `inspect` performs pre-model inventory. The implemented `model` commands
-manage caller-selected local artifacts without network access, qualification, or
-activation. Evaluation commands run checked-in development suites and do not create
-release qualification evidence.
+original. Optional `--edit-level`, character budget, and line budget flags enforce
+layout constraints. `lint` performs single-document or comparative inspection for
+conversational residue, cliches, and synthetic AI slop patterns. `rewrite` runs the
+current model-free transaction and never starts a runtime. `inspect` performs
+pre-model inventory. The implemented `model` commands manage caller-selected local
+artifacts without network access, qualification, or activation. Evaluation commands run
+checked-in development and anti-slop suites and do not create release qualification
+evidence.
 
 Detailed flags, structured output, terminal safety, recovery behavior, and the
 complete model command list are in [Current state](docs/current-state.md). Hands-on
@@ -393,6 +426,13 @@ container. This is test evidence for the observer boundary, not runtime admissio
 After one exact tuple qualifies, 0.2 still requires the real application and CLI
 composition, complete file and directory transaction and recovery behavior,
 cross-platform compatibility evidence, packaging, and milestone closeout.
+
+The evaluation tool validates synthetic editorial-quality groups with named
+findings and clean controls, including a balanced 24-case current-slop group, with
+100 percent precision and recall. Deterministic editorial linting is exposed via
+the `lint` command and guides candidate ranking after hard fidelity gates.
+Layout constraint gates enforce character budgets, relative expansion ceilings,
+and line preservation.
 
 ## Installation and releases
 

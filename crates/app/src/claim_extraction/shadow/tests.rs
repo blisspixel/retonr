@@ -218,11 +218,7 @@ fn admitting_backend(
 }
 
 fn check_request(source: &str, candidate: &str) -> CandidateCheckRequest {
-    CandidateCheckRequest {
-        source: source.as_bytes().to_vec(),
-        candidate: candidate.to_owned(),
-        protected_terms: Vec::new(),
-    }
+    CandidateCheckRequest::new(source.as_bytes().to_vec(), candidate.to_owned(), Vec::new())
 }
 
 fn shadow_gate_of(result: &crate::CandidateCheckResult) -> Option<&rewrite_types::GateResult> {

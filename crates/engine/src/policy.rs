@@ -20,6 +20,13 @@ pub fn validate_rewrite_options(options: &RewriteOptions) -> Result<(), EngineEr
     if !protected_terms_are_valid(&options.protected_terms) {
         return Err(EngineError::InvalidProtectedTerms);
     }
+    if let Some(layout) = &options.layout
+        && let Some(char_budget) = &layout.character_budget
+        && let (Some(min), Some(max)) = (char_budget.min_characters, char_budget.max_characters)
+        && min > max
+    {
+        return Err(EngineError::InvalidLayoutBudget);
+    }
     Ok(())
 }
 
@@ -83,12 +90,14 @@ pub(crate) const fn reason_priority(reason: ReasonCode) -> u8 {
         ReasonCode::ProtectedValueChanged => 1,
         ReasonCode::UnsafeText => 2,
         ReasonCode::StructureChanged => 3,
-        ReasonCode::SemanticMismatch => 4,
-        ReasonCode::SemanticUncertain => 5,
-        ReasonCode::InvalidCandidate => 6,
-        ReasonCode::NoCandidate => 7,
-        ReasonCode::ReassemblyVerification => 8,
-        ReasonCode::Cancelled => 9,
-        ReasonCode::UnsupportedAtomicity => 10,
+        ReasonCode::CharacterBudgetExceeded => 4,
+        ReasonCode::LineBudgetExceeded => 5,
+        ReasonCode::SemanticMismatch => 6,
+        ReasonCode::SemanticUncertain => 7,
+        ReasonCode::InvalidCandidate => 8,
+        ReasonCode::NoCandidate => 9,
+        ReasonCode::ReassemblyVerification => 10,
+        ReasonCode::Cancelled => 11,
+        ReasonCode::UnsupportedAtomicity => 12,
     }
 }

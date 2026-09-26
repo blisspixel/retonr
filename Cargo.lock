@@ -1475,6 +1475,7 @@ dependencies = [
  "ctrlc",
  "predicates",
  "rewrite-app",
+ "rewrite-engine",
  "rewrite-inference",
  "rewrite-model",
  "rewrite-model-store",

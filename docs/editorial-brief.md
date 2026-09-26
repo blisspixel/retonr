@@ -65,6 +65,82 @@ Document observations and model inferences remain provisional. Only user-confirm
 answers or approved defaults become active brief instructions. A brief cannot expand
 adapter eligibility, weaken fidelity, authorize new files, or grant profile mutation.
 
+## Edit levels
+
+Retonr formalizes four discrete edit levels. Each level defines an explicit boundary
+for token churn, structural transformation, and permissible divergence from the
+source draft.
+
+| Edit level | Objective | Structural boundary | Upstream wording authority |
+| --- | --- | --- | --- |
+| `Touch up` | Surface cleanup and mechanical correction | Sentence and clause boundaries are frozen. Only punctuation, typos, formatting, and glaring conversational residue are altered. | High retention: changes are localized to targeted defects. |
+| `Voice pass` | Stylistic alignment with speaker voice | Clause structure and paragraph flow are preserved. Phrasing, idioms, rhythm, and vocabulary are updated to match the speaker's profile. | Moderate retention: sentence frameworks remain, but generic phrasing is replaced. |
+| `Rewrite` | Substantial restructuring for clarity and tone | Sentences may be split, merged, or reordered within paragraph units. Argument cadence is reshaped to meet the brief. | Low retention: upstream syntax is discarded where necessary; meaning is preserved. |
+| `Reconstruct` | Propositional re-expression from core claims | Document is broken down into typed source claims and constraints. Entirely new prose is synthesized in the speaker's voice. | Zero retention: upstream wording has zero claim to persist. Output is built fresh from facts. |
+
+Selection of an edit level sets the change budget and configures candidate generation
+strategies:
+
+- `Touch up` utilizes deterministic and narrow constrained strategies.
+- `Voice pass` employs constrained grounded strategies with strict structural sentinels.
+- `Rewrite` enables grounded restructuring across whole paragraph units.
+- `Reconstruct` decomposes the source into extracted claims and synthesizes a fresh
+  expression, completely eliminating upstream phrasing and any unconsented tracking
+  artifacts.
+
+Regardless of the edit level selected, INV-P02 holds: fidelity dominates style. A higher
+edit level increases stylistic divergence, but never permits alteration of protected
+facts, dates, quantities, names, or non-negotiable commitments.
+
+## Profile separation: personal voice vs brand constraints
+
+Writing is shaped both by who is speaking and by the institutional or situational
+environment of the communication. Retonr enforces a strict architectural separation
+between two distinct profile classes:
+
+### 1. Personal Voice Profile
+
+A Personal Voice Profile belongs exclusively to the human speaker. It is compiled
+from authorized samples of the user's authentic writing and captures:
+
+- Intrinsic vocabulary preferences and idiomatic distributions
+- Sentence length variance and rhythmic cadence
+- Punctuation habits and rhetorical tendencies
+- Formality ranges, directness, and conversational warmth
+- Characteristic transitional patterns and discourse structure
+
+A Personal Voice Profile is never shared with third parties, contains no corporate
+mandates, and cannot be dictated by an employer or upstream provider. It provides
+the creative generative prior for how the speaker naturally writes.
+
+### 2. Artifact and Brand Constraint Profile
+
+An Artifact and Brand Constraint Profile encapsulates extrinsic requirements
+governing the document or channel. It defines:
+
+- House style guides (such as Chicago, AP, corporate style sheets)
+- Terminology requirements, canonical naming, and approved glossaries
+- Prohibited phrases, regulatory guardrails, and compliance requirements
+- Mandatory boilerplate, licensing notices, and disclosure covenants
+- Formatting invariants, heading depth limits, and structural outlines
+- Character and line budgets, text-box dimension bounds, and maximum expansion ceilings (e.g. expansion under 8 percent)
+
+### Precedence and composition
+
+When executing an editorial brief, Personal Voice and Brand Constraints are composed
+under a strict boundary model:
+
+1. Brand constraints act as the boundary box: They set invariant constraints,
+   prohibited vocabulary, and mandatory inclusions. They define what is permissible.
+2. Personal voice acts as the generative engine: Within the permissible boundary
+   box, all phrasing, rhythm, cadence, and tone choices are driven by the speaker's
+   personal voice profile.
+3. Document brief resolves conflicts: The situational brief sets the specific
+   mission, audience, and edit level for the current document. Where a personal habit
+   conflicts with an explicit brand constraint or brief instruction, the brief and
+   brand boundary prevail, but the engine abstains rather than synthesizing an
+   unauthorized compromise.
+
 ## Question selection
 
 Retonr asks a question only when all of these conditions hold:

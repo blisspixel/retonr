@@ -10,6 +10,8 @@ mod claim_comparison;
 mod digest;
 mod document;
 mod extractor;
+mod lint;
+pub mod profile;
 mod record;
 mod rewrite;
 mod validation;
@@ -33,14 +35,21 @@ pub use extractor::{
     EXTRACTOR_MANIFEST_SCHEMA_VERSION, ExtractorManifest, ExtractorManifestError,
     MAX_EXTRACTOR_MANIFEST_JSON_BYTES,
 };
+pub use lint::{EditorialComparison, EditorialFinding};
+pub use profile::{
+    BRAND_CONSTRAINT_PROFILE_SCHEMA_VERSION, BrandConstraintProfile, CopyRules, DirectnessLevel,
+    EDITORIAL_BRIEF_SCHEMA_VERSION, EditorialBrief, FormalityLevel,
+    PERSONAL_VOICE_PROFILE_SCHEMA_VERSION, PersonalVoiceProfile, ProfileValidationError,
+    VocabularyPreference,
+};
 pub use record::{
     GENERATION_PROVENANCE_SCHEMA_VERSION, GenerationProvenance, GenerationRuntimeProvenance,
     GenerationUsageProvenance, REWRITE_RECORD_SCHEMA_VERSION, RewriteRecord,
 };
 pub use rewrite::{
     AcceptedEdit, Atomicity, CandidateId, CandidateIdError, CandidateRank, CandidateTextKind,
-    GeneratedCandidate, PlannedUnit, ReasonCode, RewriteMode, RewriteOptions, RewriteStatus,
-    TransformationPlan,
+    CharacterBudget, EditLevel, GeneratedCandidate, LayoutConstraints, LineBudget, PlannedUnit,
+    ReasonCode, RewriteMode, RewriteOptions, RewriteStatus, TransformationPlan,
 };
 pub use validation::{
     CandidateAssessment, EvidenceContractError, GateEvidence, GateEvidenceDetails, GateResult,

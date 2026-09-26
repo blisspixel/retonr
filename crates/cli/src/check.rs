@@ -45,6 +45,8 @@ pub(crate) struct CheckRequest {
     pub(crate) raw_terminal: bool,
     pub(crate) confirmed: bool,
     pub(crate) inspection: CheckInspection,
+    pub(crate) layout: Option<rewrite_types::LayoutConstraints>,
+    pub(crate) edit_level: Option<rewrite_types::EditLevel>,
 }
 
 /// Optional inspection views that do not change acceptance.
@@ -93,6 +95,8 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
             source: source_bytes.clone(),
             candidate,
             protected_terms: request.protected_terms,
+            layout: request.layout,
+            edit_level: request.edit_level,
         },
         &cancellation,
     )

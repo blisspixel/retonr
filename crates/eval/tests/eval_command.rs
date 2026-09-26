@@ -608,3 +608,51 @@ fn generative_baseline_runs_through_recovered_fake_conformance() {
         .stdout(predicate::str::contains("\"failed\": 0"))
         .stdout(predicate::str::contains("Hello world").not());
 }
+
+#[test]
+fn checked_in_corpora_pass_linter_evaluation_as_a_process() {
+    let slop_corpus =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures/editorial_slop_v1.json");
+    Command::cargo_bin("rewrite-eval")
+        .expect("compiled evaluation runner")
+        .args(["--lint-corpus"])
+        .arg(slop_corpus)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total_cases\": 24"))
+        .stdout(predicate::str::contains("\"passed_cases\": 24"))
+        .stdout(predicate::str::contains("\"failed_cases\": 0"));
+
+    let quality_corpus =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures/editorial_quality_v1.json");
+    Command::cargo_bin("rewrite-eval")
+        .expect("compiled evaluation runner")
+        .args(["--lint-corpus"])
+        .arg(quality_corpus)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total_cases\": 20"))
+        .stdout(predicate::str::contains("\"passed_cases\": 20"))
+        .stdout(predicate::str::contains("\"failed_cases\": 0"));
+}
+
+#[test]
+fn lint_file_detects_slop_patterns_as_a_process() {
+    let directory = tempdir().expect("temporary directory");
+    let test_file = directory.path().join("draft.txt");
+    fs::write(
+        &test_file,
+        "Certainly! In today's rapidly evolving digital landscape, it is not merely a formatting tool; it is a catalyst for change.",
+    )
+    .expect("write draft");
+
+    Command::cargo_bin("rewrite-eval")
+        .expect("compiled evaluation runner")
+        .args(["--lint"])
+        .arg(test_file)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("conversational_residue"))
+        .stdout(predicate::str::contains("prefabricated_scene_setting"))
+        .stdout(predicate::str::contains("contrastive_reframe"));
+}

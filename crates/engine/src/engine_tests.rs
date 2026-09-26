@@ -293,6 +293,7 @@ fn protected_gate_reports_redacted_typed_counts() {
         atomicity: Atomicity::Document,
         protected_terms: vec!["Ada".to_owned()],
         minimum_semantic_confidence: 0.95,
+        ..RewriteOptions::default()
     };
     let outcome = RewriteEngine::new(&generator, &LiteralSemanticEvaluator, &PassStructure)
         .run(&document(source), &options, &CancellationToken::new())
@@ -467,6 +468,8 @@ fn abstention_reason_priority_is_order_independent() {
         rewrite_types::ReasonCode::ProtectedValueChanged,
         rewrite_types::ReasonCode::UnsafeText,
         rewrite_types::ReasonCode::StructureChanged,
+        rewrite_types::ReasonCode::CharacterBudgetExceeded,
+        rewrite_types::ReasonCode::LineBudgetExceeded,
         rewrite_types::ReasonCode::SemanticMismatch,
         rewrite_types::ReasonCode::SemanticUncertain,
         rewrite_types::ReasonCode::InvalidCandidate,

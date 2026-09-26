@@ -207,7 +207,6 @@ fn invalid_utf8_source_is_usage() {
         .stderr(predicate::str::contains("\"category\": \"usage\""))
         .stderr(predicate::str::contains("\"code\": \"input_unreadable\""));
 }
-
 /// The checked-in fixtures back the documented reproduction and the retained
 /// screenshots, so their bytes are a contract. Line-ending normalization on
 /// checkout silently changed these digests once; `.gitattributes` now pins
@@ -367,4 +366,72 @@ fn trace_cannot_share_a_primary_output_path() {
         .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
 
     assert!(!output.exists(), "a conflicting path must not be created");
+}
+
+#[test]
+fn layout_max_chars_abstains_with_character_budget_exceeded() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, "Short headline\n").expect("write source fixture");
+    fs::write(&candidate, "A considerably longer candidate headline\n")
+        .expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(source)
+        .arg(candidate)
+        .args(["--max-chars", "20", "--fail-on-abstain"])
+        .assert()
+        .code(3)
+        .stdout(predicate::str::contains("\"status\": \"abstained\""))
+        .stdout(predicate::str::contains(
+            "\"reason\": \"character_budget_exceeded\"",
+        ));
+}
+
+#[test]
+fn layout_max_expansion_pct_abstains_when_expansion_exceeds_ceiling() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, "Source text with thirty-five chars\n").expect("write source fixture");
+    fs::write(
+        &candidate,
+        "Source text with significantly expanded candidate copy\n",
+    )
+    .expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(source)
+        .arg(candidate)
+        .args(["--max-expansion-pct", "8", "--fail-on-abstain"])
+        .assert()
+        .code(3)
+        .stdout(predicate::str::contains("\"status\": \"abstained\""))
+        .stdout(predicate::str::contains(
+            "\"reason\": \"character_budget_exceeded\"",
+        ));
+}
+
+#[test]
+fn edit_level_argument_is_accepted_by_cli() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, "Hello world\n").expect("write source fixture");
+    fs::write(&candidate, "Hello, world!\n").expect("write candidate fixture");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(source)
+        .arg(candidate)
+        .args(["--edit-level", "voice-pass"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"rewritten\""));
 }

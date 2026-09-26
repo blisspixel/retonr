@@ -193,6 +193,20 @@ impl RunFailure {
         }
     }
 
+    pub fn lint_read(error: &io::Error) -> Self {
+        let mut failure = Self::check_read(error);
+        failure.command = CommandName::Lint;
+        failure
+    }
+
+    pub fn lint_invalid_utf8() -> Self {
+        Self {
+            command: CommandName::Lint,
+            body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InputUnreadable, false),
+            exit_code: ExitCode::from(EXIT_USAGE),
+            message: "input text is not a supported UTF-8 document",
+        }
+    }
     /// Refuses to replace an existing destination file.
     pub fn output_exists_for(command: CommandName) -> Self {
         Self {

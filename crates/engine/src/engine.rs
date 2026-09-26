@@ -18,6 +18,7 @@ use support::{
     EligibleCandidate, EvaluatedCandidate, PROTECTED_GATE, SEMANTIC_GATE, SENTINEL_GATE,
     UnitProgress, ineligible, invalid_semantic_gate, protected_values_pass, protection_failure,
     protection_reason, semantic_evidence, surface_edit_cost, validate_candidate_metadata,
+    validate_layout_constraints,
 };
 
 /// Maximum candidates accepted from one generation request.
@@ -60,6 +61,9 @@ pub enum EngineError {
     /// Protected-term configuration is empty, oversized, or too numerous.
     #[error("protected terms violate count or byte limits")]
     InvalidProtectedTerms,
+    /// Layout budget bounds are invalid.
+    #[error("layout budget bounds must be valid")]
+    InvalidLayoutBudget,
     /// Document IR violates its versioned structural contract.
     #[error(transparent)]
     InvalidDocument(#[from] DocumentError),
@@ -339,6 +343,16 @@ impl<'a> RewriteEngine<'a> {
             );
         }
 
+        if let Some((layout_gate, layout_reason)) =
+            validate_layout_constraints(unit, &restored, options)
+        {
+            let layout_passed = layout_gate.status == GateStatus::Pass;
+            gates.push(layout_gate);
+            if !layout_passed {
+                return ineligible(candidate, unit.id.clone(), restored, gates, layout_reason);
+            }
+        }
+
         let (semantic_gate, semantic_passed, semantic_reason) =
             self.semantic_gate(&unit.id, &unit.text, &restored, options);
         gates.push(semantic_gate);
@@ -348,6 +362,8 @@ impl<'a> RewriteEngine<'a> {
         }
 
         candidate.rank.edit_cost = surface_edit_cost(&unit.text, &restored);
+        candidate.rank.editorial_penalty =
+            u32::try_from(crate::lint::lint_text(&restored).len()).unwrap_or(u32::MAX);
         EvaluatedCandidate {
             assessment: CandidateAssessment {
                 candidate_id: candidate.id.clone(),

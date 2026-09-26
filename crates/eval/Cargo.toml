@@ -16,6 +16,7 @@ path = "src/main.rs"
 clap.workspace = true
 ctrlc.workspace = true
 rewrite-app = { path = "../app", version = "0.1.0" }
+rewrite-engine = { path = "../engine", version = "0.1.0" }
 rewrite-inference = { path = "../inference", version = "0.1.0" }
 rewrite-model = { path = "../model", version = "0.1.0" }
 rewrite-model-store = { path = "../model-store", version = "0.1.0" }

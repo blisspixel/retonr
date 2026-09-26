@@ -258,11 +258,11 @@ fn valid_case(case: &ClaimShadowCalibrationCase) -> bool {
 fn evaluate_case(
     case: &ClaimShadowCalibrationCase,
 ) -> Result<Option<ClaimShadowCalibrationFailure>, &'static str> {
-    let request = CandidateCheckRequest {
-        source: case.source.as_bytes().to_vec(),
-        candidate: case.candidate.clone(),
-        protected_terms: Vec::new(),
-    };
+    let request = CandidateCheckRequest::new(
+        case.source.as_bytes().to_vec(),
+        case.candidate.clone(),
+        Vec::new(),
+    );
     let without =
         CandidateCheckService::check(request.clone()).map_err(|error| map_app_error(&error))?;
     let observer = match case.expected_shadow {

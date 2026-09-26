@@ -18,6 +18,7 @@ mod editorial_corpus;
 mod generation_case_material;
 mod generation_qualification_preregistration;
 mod hybrid_scorecard;
+pub mod lint;
 mod local_judge_execution;
 mod local_ollama_attested_preflight;
 mod local_ollama_bound_preflight;
@@ -108,6 +109,10 @@ pub use hybrid_scorecard::{
     ReleaseReviewDisposition, hybrid_scorecard_deterministic_policy_digest,
     hybrid_scorecard_plan_digest, hybrid_scorecard_suite_pair_digest, parse_hybrid_scorecard_plan,
     parse_judge_observation_batch, run_hybrid_scorecard,
+};
+pub use lint::{
+    EditorialFinding, EditorialLintEvaluationReport, EditorialLintFailure, RuleCatalog,
+    evaluate_corpus_against_linter, lint_text,
 };
 pub use local_judge_execution::{
     LOCAL_JUDGE_RUBRIC_SCHEMA_VERSION, LocalJudgeExecution, LocalJudgeExecutionError,
@@ -363,11 +368,11 @@ pub fn run_suite(suite: &EvaluationSuite) -> EvaluationReport {
             });
         category.total += 1;
 
-        let result = CandidateCheckService::check(CandidateCheckRequest {
-            source: case.source.as_bytes().to_vec(),
-            candidate: case.candidate.clone(),
-            protected_terms: case.protected_terms.clone(),
-        });
+        let result = CandidateCheckService::check(CandidateCheckRequest::new(
+            case.source.as_bytes().to_vec(),
+            case.candidate.clone(),
+            case.protected_terms.clone(),
+        ));
         match result {
             Ok(result) => {
                 if case.reference_judgment == ReferenceJudgment::Acceptable
