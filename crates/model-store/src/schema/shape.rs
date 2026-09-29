@@ -6,7 +6,7 @@ use super::{
     create_current_schema, create_schema_one, create_schema_two, migrate_schema_eight,
     migrate_schema_eleven, migrate_schema_five, migrate_schema_four, migrate_schema_nine,
     migrate_schema_one, migrate_schema_seven, migrate_schema_six, migrate_schema_ten,
-    migrate_schema_three, migrate_schema_two,
+    migrate_schema_three, migrate_schema_twelve, migrate_schema_two,
 };
 
 pub(crate) fn validate_schema_shape(connection: &Connection) -> StoreResult<()> {
@@ -78,6 +78,17 @@ pub(crate) fn validate_schema_ten(connection: &Connection) -> StoreResult<()> {
     let actual = schema_objects(connection)?;
     if actual == canonical_schema_ten_objects()?
         || actual == canonical_migrated_schema_ten_objects()?
+    {
+        Ok(())
+    } else {
+        Err(StoreError::CorruptRecord)
+    }
+}
+
+pub(crate) fn validate_schema_twelve(connection: &Connection) -> StoreResult<()> {
+    let actual = schema_objects(connection)?;
+    if actual == canonical_schema_twelve_objects()?
+        || actual == canonical_migrated_schema_twelve_objects()?
     {
         Ok(())
     } else {
@@ -236,6 +247,22 @@ fn canonical_schema_ten_objects() -> StoreResult<Vec<SchemaObject>> {
     schema_objects(&connection)
 }
 
+fn canonical_schema_twelve_objects() -> StoreResult<Vec<SchemaObject>> {
+    let connection = Connection::open_in_memory()?;
+    create_schema_two(&connection)?;
+    migrate_schema_two(&connection)?;
+    migrate_schema_three(&connection)?;
+    migrate_schema_four(&connection)?;
+    migrate_schema_five(&connection)?;
+    migrate_schema_six(&connection)?;
+    migrate_schema_seven(&connection)?;
+    migrate_schema_eight(&connection)?;
+    migrate_schema_nine(&connection)?;
+    migrate_schema_ten(&connection)?;
+    migrate_schema_eleven(&connection)?;
+    schema_objects(&connection)
+}
+
 fn canonical_schema_eleven_objects() -> StoreResult<Vec<SchemaObject>> {
     let connection = Connection::open_in_memory()?;
     create_schema_two(&connection)?;
@@ -308,6 +335,24 @@ fn canonical_migrated_schema_four_objects() -> StoreResult<Vec<SchemaObject>> {
 }
 
 fn canonical_migrated_current_objects() -> StoreResult<Vec<SchemaObject>> {
+    let connection = Connection::open_in_memory()?;
+    create_schema_one(&connection)?;
+    migrate_schema_one(&connection)?;
+    migrate_schema_two(&connection)?;
+    migrate_schema_three(&connection)?;
+    migrate_schema_four(&connection)?;
+    migrate_schema_five(&connection)?;
+    migrate_schema_six(&connection)?;
+    migrate_schema_seven(&connection)?;
+    migrate_schema_eight(&connection)?;
+    migrate_schema_nine(&connection)?;
+    migrate_schema_ten(&connection)?;
+    migrate_schema_eleven(&connection)?;
+    migrate_schema_twelve(&connection)?;
+    schema_objects(&connection)
+}
+
+fn canonical_migrated_schema_twelve_objects() -> StoreResult<Vec<SchemaObject>> {
     let connection = Connection::open_in_memory()?;
     create_schema_one(&connection)?;
     migrate_schema_one(&connection)?;

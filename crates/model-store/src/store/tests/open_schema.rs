@@ -25,7 +25,7 @@ fn compatibility_open_refuses_corrupt_older_schema_without_inspecting_its_shape(
         ArtifactStateStore::open_existing_and_migrate(&path),
         Err(StoreError::MigrationRequired {
             found: 2,
-            current: 12
+            current: 13
         })
     ));
     let connection = Connection::open(&path).expect("reopen rejected schema");
@@ -51,7 +51,7 @@ fn current_version_with_missing_or_altered_schema_is_corrupt() {
     let missing = directory.path().join("missing-schema.db");
     let connection = Connection::open(&missing).expect("create database");
     connection
-        .pragma_update(None, "user_version", 12)
+        .pragma_update(None, "user_version", 13)
         .expect("set current version");
     drop(connection);
     assert!(matches!(
@@ -95,7 +95,7 @@ fn current_version_with_missing_or_altered_schema_is_corrupt() {
                  artifact_id TEXT,
                  record_json TEXT
              );
-             PRAGMA user_version = 12;",
+             PRAGMA user_version = 13;",
         )
         .expect("create lax current-version state");
     drop(connection);

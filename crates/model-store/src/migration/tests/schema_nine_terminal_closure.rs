@@ -276,7 +276,7 @@ fn populated_schema_nine_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (9, 12)
+        (9, 13)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -299,7 +299,7 @@ fn populated_schema_nine_migrates_after_verified_byte_preserving_backup() {
         assert!(!table_exists(&backup_connection, table));
     }
 
-    assert_eq!(schema_version(&source), 12);
+    assert_eq!(schema_version(&source), 13);
     let migrated = Connection::open(&source).expect("open migrated source");
     let retained: Vec<u8> = migrated
         .query_row(

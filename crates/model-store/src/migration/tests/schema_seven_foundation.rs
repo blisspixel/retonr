@@ -21,6 +21,11 @@ const PLAN_FOUNDATION_TABLES: [&str; 12] = [
     "generation_suite_manifests",
     "planned_candidate_attempts",
 ];
+const PHASE_EVIDENCE_TABLES: [&str; 3] = [
+    "generation_human_adjudication_policy_denial_records",
+    "generation_resource_attempt_result_records",
+    "generation_resource_policy_denial_records",
+];
 const JUDGE_EXECUTION_TABLES: [&str; 7] = [
     "candidate_judge_join_records",
     "managed_local_judge_receipts",
@@ -74,7 +79,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (7, 12)
+        (7, 13)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -99,7 +104,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 12);
+    assert_eq!(schema_version(&source), 13);
     assert_eq!(all_rows(&migrated), before);
     for table in FOUNDATION_TABLES
         .iter()
@@ -219,6 +224,7 @@ fn all_rows(connection: &Connection) -> BTreeMap<String, Vec<Vec<Vec<u8>>>> {
                 && !TERMINAL_CLOSURE_TABLES.contains(&table.as_str())
                 && !TERMINAL_EVIDENCE_TABLES.contains(&table.as_str())
                 && !JUDGE_EXECUTION_TABLES.contains(&table.as_str())
+                && !PHASE_EVIDENCE_TABLES.contains(&table.as_str())
         })
         .map(|table| {
             let rows = schema_five_packages::table_rows(connection, &table);

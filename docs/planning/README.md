@@ -138,6 +138,10 @@ and live-use authority in distinct domains.
    and candidate judge joins. The store writes that seven-row cohort in one immediate
    transaction. The cohort grants no qualification, activation, or live-use authority.
    Repeatability results remain limited to candidate-generation failure.
+   Schema 13 adds three inert tables for resource-attempt results, resource-policy
+   denials, and human-adjudication-policy denials. No phase-evidence writer exists yet.
+   The tables grant no qualification, activation, or live-use authority. Repeatability
+   results remain limited to candidate-generation failure.
    The crate-private strict candidate and judge routes now carry one
    supplied absolute deadline through every traffic and finalization boundary.
    Preserve the consuming Active operation owner that connects Prepared's retained

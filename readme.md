@@ -260,7 +260,7 @@ authority. Schema 12 adds seven judge-execution tables for plans, schedules,
 request aggregates, response aggregates, observation batches, managed local judge
 receipts, and candidate judge joins. The store writes that seven-row cohort in one
 immediate transaction. The cohort grants no qualification, activation, or live-use
-authority. Repeatability results remain limited to candidate-generation failure. Exact per-repetition receipt-set-to-ledger
+authority. Repeatability results remain limited to candidate-generation failure. Schema 13 adds three inert tables for resource-attempt results, resource-policy denials, and human-adjudication-policy denials. No phase-evidence writer exists yet. The tables grant no qualification, activation, or live-use authority. Repeatability results remain limited to candidate-generation failure. Exact per-repetition receipt-set-to-ledger
 matching, judge-result collection, and the final verifier follow. Production
 Approved roots remain empty, no runtime has been admitted for this path, and the final
 `VerifiedGenerationQualification` compiler is not implemented.
@@ -421,6 +421,10 @@ The immediate runtime-dependent 0.2 work is:
    and candidate judge joins. The store writes that seven-row cohort in one immediate
    transaction. The cohort grants no qualification, activation, or live-use authority.
    Repeatability results remain limited to candidate-generation failure.
+   Schema 13 adds three inert tables for resource-attempt results, resource-policy
+   denials, and human-adjudication-policy denials. No phase-evidence writer exists yet.
+   The tables grant no qualification, activation, or live-use authority. Repeatability
+   results remain limited to candidate-generation failure.
    Complete that cohort before populating any production Approved root.
    Positive human
    authority requires a reviewed V2 policy and explicit reviewer-governance and

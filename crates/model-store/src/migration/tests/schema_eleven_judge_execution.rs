@@ -39,12 +39,22 @@ const ABSENT_AUTHORITY_TABLES: [&str; 4] = [
 
 #[test]
 fn schema_twelve_fresh_database_is_inert_and_keeps_schema_eleven_tables() {
-    let mut connection = Connection::open_in_memory().expect("open memory database");
-    crate::schema::initialize_empty(&mut connection).expect("initialize current schema");
+    let connection = Connection::open_in_memory().expect("open memory database");
+    crate::schema::create_schema_twelve_fixture(&connection).expect("create schema twelve");
     let version: i64 = connection
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .expect("read schema version");
     assert_eq!(version, 12);
+    for table in [
+        "generation_resource_attempt_result_records",
+        "generation_resource_policy_denial_records",
+        "generation_human_adjudication_policy_denial_records",
+    ] {
+        assert!(
+            !table_exists(&connection, table),
+            "{table} must stay absent"
+        );
+    }
     for table in JUDGE_EXECUTION_TABLES
         .iter()
         .chain(TERMINAL_EVIDENCE_TABLES.iter())
@@ -76,14 +86,14 @@ fn populated_schema_eleven_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (11, 12)
+        (11, 13)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("write verified backup");
     let result = session.migrate().expect("migrate schema eleven");
     assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
-    assert_eq!((result.from_schema, result.to_schema), (11, 12));
+    assert_eq!((result.from_schema, result.to_schema), (11, 13));
 
     assert_eq!(schema_version(&backup), 11);
     let backup_connection = Connection::open(&backup).expect("open backup");
@@ -92,7 +102,7 @@ fn populated_schema_eleven_migrates_after_verified_byte_preserving_backup() {
         assert!(!table_exists(&backup_connection, table));
     }
 
-    assert_eq!(schema_version(&source), 12);
+    assert_eq!(schema_version(&source), 13);
     let migrated = Connection::open(&source).expect("open migrated source");
     assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
     for table in JUDGE_EXECUTION_TABLES {
@@ -141,7 +151,7 @@ fn inspection_rejects_altered_schema_twelve_and_schema_eleven_shapes() {
         ArtifactStateStore::inspect_existing_schema(&current),
         Err(StoreError::CorruptRecord)
     ));
-    assert_eq!(schema_version(&current), 12);
+    assert_eq!(schema_version(&current), 13);
 
     let schema_eleven = directory.path().join("altered-schema-eleven.db");
     let connection = Connection::open(&schema_eleven).expect("create schema eleven");
