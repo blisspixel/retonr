@@ -12,9 +12,10 @@ use rewrite_model::{
     GenerationQualificationOperationFinalizationStatusV1,
     GenerationQualificationOperationReceiptV1, GenerationQualificationOperationReceiptV1Input,
     GenerationQualificationOperationReceiptV1Relations,
-    GenerationQualificationOperationTerminalStatusV1, GenerationRepeatabilityEvidenceManifestV1,
-    GenerationResourceEvidenceManifestV1, GenerationResourcePolicyDenialRecordV1,
-    GenerationResourcePolicyDenialRecordV1Relations,
+    GenerationQualificationOperationTerminalStatusV1, GenerationQualificationTerminalSetPlan,
+    GenerationRepeatabilityEvidenceManifestV1, GenerationResourceEvidenceManifestV1,
+    GenerationResourcePolicyDenialRecordV1, GenerationResourcePolicyDenialRecordV1Relations,
+    PlannedGenerationQualificationTerminalSet,
 };
 use rewrite_types::CancellationToken;
 
@@ -62,11 +63,17 @@ pub(super) fn derive_refusal_evidence(
         view.deadline,
         cancellation,
     )?);
-    let receipt = GenerationQualificationOperationReceiptV1::new(
-        receipt_relations(view, &manifests),
-        receipt_input,
-    )
-    .map_err(|_| GenerationQualificationPhasePolicyRefusalError::ReceiptMismatch)?;
+    let (receipt, None) =
+        PlannedGenerationQualificationTerminalSet::plan(GenerationQualificationTerminalSetPlan {
+            receipt_relations: receipt_relations(view, &manifests),
+            receipt_input,
+            interruption: None,
+        })
+        .map_err(|_| GenerationQualificationPhasePolicyRefusalError::ReceiptMismatch)?
+        .into_parts()
+    else {
+        return Err(GenerationQualificationPhasePolicyRefusalError::ReceiptMismatch);
+    };
     check_refusal_gate(view.deadline, cancellation)?;
     Ok(evidence_from_parts(
         manifests,

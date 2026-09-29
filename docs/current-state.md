@@ -730,10 +730,12 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-The next implementation slice inside operation 7 is an in-memory terminal-evidence
-set planner. Schema stays 10. It does not acquire live authority. The following
-slice rederives the attempt ledger read-only. Schema 11 then persists the
-operation-level terminal-evidence cohort atomically, still without live authority.
+An in-memory terminal-evidence planner now derives one operation receipt and binds
+a phase interruption only when interruption facts are supplied for a noncompleted
+receipt. It does not persist, change schema 10, construct a qualification record,
+or acquire live authority. The next implementation slice inside operation 7
+rederives the attempt ledger read-only. Schema 11 then persists the operation-level
+terminal-evidence cohort atomically, still without live authority.
 Bounded read-only candidate-attempt reconciliation now runs before `Prepared`
 activation. It inspects at most the plan's 1,024 attempts in plan order, classifies
 each as not started, checkpoint-only, terminal failed, or terminal completed, and
@@ -850,9 +852,11 @@ checkpoint remains the concurrency barrier after this read-only admission check.
    publication and reacquisition, and atomic completed-or-failed terminal persistence.
    Bounded activation reconciliation now runs before Prepared activation and allows
    only an entirely pristine plan. It does not retry, repair, promote, delete, or
-   fabricate evidence. Next add atomic operation-level terminal-evidence persistence
-   (schema 11) without live authority. The first slice plans that set in memory and
-   leaves the schema at 10.
+   fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
+   when interruption facts are supplied for a noncompleted receipt. It does not
+   persist, change schema 10, construct a qualification record, or acquire live
+   authority. The next slice rederives the attempt ledger read-only. Schema 11 then
+   persists that terminal evidence without live authority.
    A positive human authority requires a reviewed V2
    policy and explicit reviewer-governance and evidence-retention decisions. Add each
    later dependency-complete schema cohort in order, then compile

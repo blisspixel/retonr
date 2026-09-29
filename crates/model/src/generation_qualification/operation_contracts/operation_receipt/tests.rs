@@ -520,3 +520,5 @@ fn reorder_first_two_fields(bytes: &[u8]) -> Vec<u8> {
 mod construction;
 #[path = "tests/terminal.rs"]
 mod terminal;
+#[path = "tests/terminal_set.rs"]
+mod terminal_set;

@@ -12,11 +12,12 @@ use rewrite_model::{
     GenerationQualificationOperationTerminalStatusV1, GenerationQualificationPhaseCheckpointV1,
     GenerationQualificationPhaseEvidenceError, GenerationQualificationPhaseInterruptionReasonV1,
     GenerationQualificationPhaseInterruptionRecordV1,
-    GenerationQualificationPhaseInterruptionRecordV1Input,
-    GenerationQualificationPhaseInterruptionRecordV1Relations, GenerationQualificationPhaseScopeV1,
-    GenerationQualificationPhaseStatusV1, GenerationRepeatabilityEvidenceManifestV1,
+    GenerationQualificationPhaseInterruptionRecordV1Input, GenerationQualificationPhaseScopeV1,
+    GenerationQualificationPhaseStatusV1, GenerationQualificationTerminalInterruptionPlan,
+    GenerationQualificationTerminalSetPlan, GenerationRepeatabilityEvidenceManifestV1,
     GenerationRepeatabilityEvidenceManifestV1Relations, GenerationResourceEvidenceManifestV1,
     GenerationResourceEvidenceManifestV1Relations, PlannedCandidateAttemptId,
+    PlannedGenerationQualificationTerminalSet,
 };
 use thiserror::Error;
 
@@ -388,21 +389,23 @@ fn derive_interruption_evidence(
         &resource_manifest,
         &human_adjudication_manifest,
     );
-    let receipt = GenerationQualificationOperationReceiptV1::new(receipt_relations, receipt_input)
-        .map_err(InterruptionEvidenceError::Operation)?;
-    let interruption_relations = GenerationQualificationPhaseInterruptionRecordV1Relations {
-        operation_policy: view.operation_policy,
-        operation_policy_relations: view.operation_policy_relations,
-        operation_policy_input: view.operation_policy_input,
-        operation_receipt: &receipt,
-        operation_receipt_relations: receipt_relations,
-        operation_receipt_input: receipt_input,
+    let (receipt, interruption) =
+        PlannedGenerationQualificationTerminalSet::plan(GenerationQualificationTerminalSetPlan {
+            receipt_relations,
+            receipt_input,
+            interruption: Some(GenerationQualificationTerminalInterruptionPlan {
+                operation_policy_relations: view.operation_policy_relations,
+                operation_policy_input: view.operation_policy_input,
+                input: interruption_input.clone(),
+            }),
+        })
+        .map_err(InterruptionEvidenceError::Operation)?
+        .into_parts();
+    let Some(interruption) = interruption else {
+        return Err(InterruptionEvidenceError::Operation(
+            GenerationQualificationOperationContractError::InvalidInterruptionClosure,
+        ));
     };
-    let interruption = GenerationQualificationPhaseInterruptionRecordV1::new(
-        &interruption_relations,
-        interruption_input.clone(),
-    )
-    .map_err(InterruptionEvidenceError::Operation)?;
     Ok(InterruptionEvidence {
         attempt_ledger_manifest,
         repeatability_manifest,

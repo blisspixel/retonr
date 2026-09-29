@@ -60,10 +60,12 @@ classifies every plan-order attempt as not started, checkpoint-only, terminal
 failed, or terminal completed; compares durable metadata with the canonical
 application evidence root; and refuses traffic for every state except an entirely
 pristine plan. It does not retry an attempt, fabricate terminal evidence, promote
-staging, delete an orphan, or grant live authority. The next seam is atomic
-operation-level terminal-evidence persistence (schema 11), without live authority.
-The first slice plans that set in memory and leaves the schema at 10. No production
-Approved root is added by that seam.
+staging, delete an orphan, or grant live authority. An in-memory planner now derives that receipt and binds a phase interruption only
+when interruption facts are supplied for a noncompleted receipt. It does not
+persist, change schema 10, construct a qualification record, or acquire live
+authority. The next slice rederives the attempt ledger read-only. Schema 11 then
+persists the operation-level terminal-evidence cohort atomically, without live
+authority. No production Approved root is added by that seam.
 
 1. With offline import, read-only inventory, selected reconciliation, inactive
    removal, exact removal recovery, non-mutating pending-operation inspection,
@@ -298,9 +300,12 @@ Approved root is added by that seam.
     app-root-bound publication and reacquisition, and atomic completed-or-failed
     candidate closure. Bounded activation reconciliation now runs before Prepared
     activation and allows only an entirely pristine plan. It does not retry, repair,
-    promote, delete, or fabricate evidence. Next add operation-level terminal
-    evidence (schema 11) without live authority. The first slice plans that set in
-    memory and leaves the schema at 10. Complete that dependency chain before
+    promote, delete, or fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
+    when interruption facts are supplied for a noncompleted receipt. It does not
+    persist, change schema 10, construct a qualification record, or acquire live
+    authority. The next slice rederives the attempt ledger read-only. Schema 11 then
+    persists that terminal evidence without live authority. Complete that dependency
+    chain before
     populating a production Approved root. Positive
     human authority
     requires a reviewed V2 policy and explicit reviewer-governance and

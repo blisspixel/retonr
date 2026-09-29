@@ -9,9 +9,10 @@ use rewrite_model::{
     GenerationQualificationOperationFinalizationStatusV1,
     GenerationQualificationOperationReceiptV1, GenerationQualificationOperationReceiptV1Input,
     GenerationQualificationOperationTerminalStatusV1, GenerationQualificationPhaseStatusV1,
-    GenerationQualificationRecordV1, GenerationRepeatabilityEvidenceManifestV1,
-    GenerationRepeatabilityEvidenceManifestV1Relations, GenerationResourceEvidenceManifestV1,
-    GenerationResourceEvidenceManifestV1Relations,
+    GenerationQualificationRecordV1, GenerationQualificationTerminalSetPlan,
+    GenerationRepeatabilityEvidenceManifestV1, GenerationRepeatabilityEvidenceManifestV1Relations,
+    GenerationResourceEvidenceManifestV1, GenerationResourceEvidenceManifestV1Relations,
+    PlannedGenerationQualificationTerminalSet,
 };
 use rewrite_types::CancellationToken;
 use thiserror::Error;
@@ -251,11 +252,17 @@ fn derive_rejected_pretraffic_evidence(
         view.deadline,
         cancellation,
     )?);
-    let receipt = GenerationQualificationOperationReceiptV1::new(
-        receipt_relations(view, &manifests),
-        receipt_input,
-    )
-    .map_err(|_| GenerationQualificationPretrafficTerminalizationError::ReceiptMismatch)?;
+    let (receipt, None) =
+        PlannedGenerationQualificationTerminalSet::plan(GenerationQualificationTerminalSetPlan {
+            receipt_relations: receipt_relations(view, &manifests),
+            receipt_input,
+            interruption: None,
+        })
+        .map_err(|_| GenerationQualificationPretrafficTerminalizationError::ReceiptMismatch)?
+        .into_parts()
+    else {
+        return Err(GenerationQualificationPretrafficTerminalizationError::ReceiptMismatch);
+    };
     let record = GenerationQualificationRecordV1::new(&record_relations(
         view,
         &manifests,

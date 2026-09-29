@@ -232,6 +232,7 @@ pub use generation_qualification::{
     GenerationQualificationRequestProjectionEntryV1Input,
     GenerationQualificationRequestProjectionId, GenerationQualificationRequestProjectionV1,
     GenerationQualificationRequestProjectionV1Relations,
+    GenerationQualificationTerminalInterruptionPlan, GenerationQualificationTerminalSetPlan,
     MAX_GENERATION_QUALIFICATION_LICENSE_EVIDENCE_CANONICAL_BYTES,
     MAX_GENERATION_QUALIFICATION_LICENSE_EVIDENCE_JSON_BYTES,
     MAX_GENERATION_QUALIFICATION_OPERATION_CONTEXT_TOKENS,
@@ -249,7 +250,7 @@ pub use generation_qualification::{
     MAX_GENERATION_QUALIFICATION_POLICY_BYTES,
     MAX_GENERATION_QUALIFICATION_REQUEST_PROJECTION_CANONICAL_BYTES,
     MAX_GENERATION_QUALIFICATION_REQUEST_PROJECTION_JSON_BYTES,
-    generation_qualification_plan_failure_policy_digest,
+    PlannedGenerationQualificationTerminalSet, generation_qualification_plan_failure_policy_digest,
 };
 pub use generation_qualification::{
     GENERATION_QUALIFICATION_RECORD_ID_DOMAIN, GenerationQualificationId,

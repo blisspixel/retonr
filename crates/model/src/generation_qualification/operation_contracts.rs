@@ -9,6 +9,7 @@ mod operation_receipt;
 mod phase_interruption;
 mod platform_evidence;
 mod request_projection;
+mod terminal_set;
 
 pub use common::{
     GenerationQualificationLicensePermissionV1, MAX_GENERATION_QUALIFICATION_POLICY_BYTES,
@@ -35,6 +36,10 @@ pub use operation_receipt::*;
 pub use phase_interruption::*;
 pub use platform_evidence::*;
 pub use request_projection::*;
+pub use terminal_set::{
+    GenerationQualificationTerminalInterruptionPlan, GenerationQualificationTerminalSetPlan,
+    PlannedGenerationQualificationTerminalSet,
+};
 
 #[cfg(test)]
 pub(crate) use operation_policy::test_support as operation_policy_test_support;
