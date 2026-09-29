@@ -75,7 +75,12 @@ fn traffic_eligible_prepared_operation_has_one_active_owner() {
                 prepared.plan_foundation().plan(),
                 input.foundation.plan_foundation.plan
             );
-            let mut active = prepared.activate(&cancellation).expect("active owner");
+            let evidence =
+                rewrite_app::CandidateGenerationEvidenceRepository::initialize(directory.path())
+                    .expect("evidence root");
+            let mut active = prepared
+                .activate(&repository, &evidence, &cancellation)
+                .expect("active owner");
             assert_eq!(
                 active.request_projection().operation_policy_id(),
                 active.operation_policy().operation_policy_id()
@@ -147,10 +152,30 @@ fn rejected_prepared_operation_cannot_become_active() {
                 )
                 .expect("prepared operation");
 
+            let evidence =
+                rewrite_app::CandidateGenerationEvidenceRepository::initialize(directory.path())
+                    .expect("evidence root");
+            std::fs::write(
+                directory
+                    .path()
+                    .join("generation-evidence")
+                    .join(".staging")
+                    .join("leftover"),
+                b"x",
+            )
+            .expect("stage leftover");
             assert!(matches!(
-                prepared.activate(&cancellation),
+                prepared.activate(&repository, &evidence, &cancellation),
                 Err(GenerationQualificationActivationError::LicenseRejected)
             ));
+            assert!(
+                directory
+                    .path()
+                    .join("generation-evidence")
+                    .join(".staging")
+                    .join("leftover")
+                    .is_file()
+            );
         },
     );
 }

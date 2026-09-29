@@ -680,11 +680,12 @@ semantics, nor qualification.
   attempt-ledger interruption, skipped later manifests, and noncompleted operation
   receipt. Schema 10 makes the precursor checkpoint and exact completed-or-failed
   candidate closure durable. Completed closure binds app-root publication, canonical
-  storage, bounded readback, receipt, and attempt metadata atomically. Mandatory
-  bounded read-only reconciliation of checkpoint-only attempts, publication orphans,
-  and ambiguous commits remains required before the dependency-complete operation
-  terminal-evidence cohort. Both remain required before positive production execution
-  can be enabled.
+  storage, bounded readback, receipt, and attempt metadata atomically. Bounded
+  read-only reconciliation now runs before Prepared activation and allows only an
+  entirely pristine plan. It does not retry, repair, promote, delete, or fabricate
+  evidence. Atomic operation-level terminal-evidence persistence (schema 11) remains
+  required, without live authority, before positive production execution can be
+  enabled.
   Stored digests or caller-selected measurements cannot substitute for those typed
   observations.
 - The model-free evaluator does not assess open-domain paraphrases and must abstain
@@ -729,16 +730,19 @@ The detailed handoff is in the
 [0.2 grounded engine and CLI plan](planning/0.2-grounded-cli.md). The immediate order
 is:
 
-The next implementation slice inside operation 7 is a mandatory, bounded, read-only
-candidate-attempt reconciliation before `Prepared` can activate. It must inspect at
-most the plan's 1,024 attempts in plan order, classify each as not started,
-checkpoint-only, terminal failed, or terminal completed, and compare durable metadata
-with the canonical application evidence root. Activation may proceed only when every
-attempt is pristine. Checkpoints, published bundles without terminal metadata,
-terminal metadata without matching storage, ambiguous terminal commits, unexpected
-staging, corruption, or an exceeded bound must fail closed without retry, repair,
-promotion, deletion, or fabricated evidence. The existing pretraffic checkpoint
-remains the concurrency barrier after this read-only admission check.
+The next implementation slice inside operation 7 is an in-memory terminal-evidence
+set planner. Schema stays 10. It does not acquire live authority. The following
+slice rederives the attempt ledger read-only. Schema 11 then persists the
+operation-level terminal-evidence cohort atomically, still without live authority.
+Bounded read-only candidate-attempt reconciliation now runs before `Prepared`
+activation. It inspects at most the plan's 1,024 attempts in plan order, classifies
+each as not started, checkpoint-only, terminal failed, or terminal completed, and
+compares durable metadata with the canonical application evidence root. Activation
+proceeds only when every attempt is pristine. Checkpoints, published bundles without
+terminal metadata, terminal metadata without matching storage, ambiguous terminal
+commits, unexpected staging, corruption, or an exceeded bound fail closed without
+retry, repair, promotion, deletion, or fabricated evidence. The existing pretraffic
+checkpoint remains the concurrency barrier after this read-only admission check.
 
 1. Preserve the schema-10 store, including the durable candidate execution closure,
    the schema-9 portable plan and case foundation,
@@ -844,9 +848,11 @@ remains the concurrency barrier after this read-only admission check.
    foundation-gated preregistration with its retained recursively checked readback,
    newly inserted precursor checkpoint, Active-owned pending completion, app-root-bound
    publication and reacquisition, and atomic completed-or-failed terminal persistence.
-   Next add the bounded activation reconciliation specified above for incomplete
-   durable candidate states, then add atomic operation-level terminal-evidence
-   persistence.
+   Bounded activation reconciliation now runs before Prepared activation and allows
+   only an entirely pristine plan. It does not retry, repair, promote, delete, or
+   fabricate evidence. Next add atomic operation-level terminal-evidence persistence
+   (schema 11) without live authority. The first slice plans that set in memory and
+   leaves the schema at 10.
    A positive human authority requires a reviewed V2
    policy and explicit reviewer-governance and evidence-retention decisions. Add each
    later dependency-complete schema cohort in order, then compile

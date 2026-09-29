@@ -125,10 +125,12 @@ and live-use authority in distinct domains.
    retains its recursively checked cold readback. Active requires a newly inserted
    precursor checkpoint before traffic, owns pending completion, and atomically closes
    completed or failed candidate execution around app-root-bound publication and fresh
-   reacquisition. Next add mandatory bounded read-only activation reconciliation for
-   incomplete candidate states. Then persist the interruption, operation receipt,
-   phase manifests, and attempt ledger atomically in a dependency-complete
-   terminal-evidence cohort without recreating live authority.
+   reacquisition. Bounded read-only activation reconciliation now runs before
+   Prepared activation and allows only an entirely pristine plan. It does not retry,
+   repair, promote, delete, or fabricate evidence. Next persist the interruption,
+   operation receipt, phase manifests, and attempt ledger atomically in a
+   dependency-complete terminal-evidence cohort (schema 11) without recreating live
+   authority. The first slice plans that set in memory and leaves the schema at 10.
    The crate-private strict candidate and judge routes now carry one
    supplied absolute deadline through every traffic and finalization boundary.
    Preserve the consuming Active operation owner that connects Prepared's retained

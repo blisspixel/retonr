@@ -14,8 +14,11 @@ use crate::artifact_storage::{
     ManagedFile, MetadataFingerprint, PinnedDirectory, fingerprint_std_file, lock_shared,
 };
 
+#[path = "generation_evidence_repository/admission.rs"]
+mod admission;
 #[path = "generation_evidence_repository/contract.rs"]
 mod contract;
+pub use admission::CandidateActivationAdmissionError;
 #[path = "generation_evidence_repository/layout.rs"]
 mod layout;
 #[path = "generation_evidence_repository/marker.rs"]

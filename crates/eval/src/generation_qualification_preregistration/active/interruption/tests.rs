@@ -87,7 +87,12 @@ fn active_compiles_and_freshly_revalidates_exact_interruption_closure() {
                     &cancellation,
                 )
                 .expect("prepared operation");
-            let mut active = prepared.activate(&cancellation).expect("active operation");
+            let evidence =
+                rewrite_app::CandidateGenerationEvidenceRepository::initialize(directory.path())
+                    .expect("evidence root");
+            let mut active = prepared
+                .activate(&repository, &evidence, &cancellation)
+                .expect("active operation");
             let planned_attempt_id = input.operation_policy_relations.planned_attempts[0]
                 .planned_attempt_id()
                 .clone();

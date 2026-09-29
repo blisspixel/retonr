@@ -30,6 +30,9 @@ pub use removal::{
     ArtifactInstallationEpoch, ArtifactRemovalPhase, StoredArtifactInstallation,
     StoredArtifactRemoval,
 };
+pub use store::candidate_generation_attempt_admission::{
+    CandidateGenerationAttemptAdmissionClassV1, CandidateGenerationAttemptAdmissionV1,
+};
 pub use store::candidate_generation_attempt_precursor::{
     CandidateGenerationAttemptPrecursorCheckpointV1Input,
     CandidateGenerationAttemptPrecursorCheckpointV1Readback,

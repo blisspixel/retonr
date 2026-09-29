@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use rewrite_app::CandidateGenerationEvidenceRepository;
 use rewrite_model::{
     CandidateGenerationAttemptRecordV1, CandidateGenerationReceiptV1,
     GenerationQualificationOperationPolicyV1, GenerationQualificationRequestProjectionV1,
@@ -11,7 +12,7 @@ use thiserror::Error;
 
 use super::{
     GenerationQualificationPreparationDisposition, GenerationQualificationPreparationError,
-    PreparedGenerationQualificationOperation,
+    GenerationQualificationPreregistrationRepository, PreparedGenerationQualificationOperation,
     prepared::{
         PreparedGenerationQualificationMandatoryFinalizationError,
         PreparedGenerationQualificationValidationError,
@@ -20,6 +21,7 @@ use super::{
 use crate::active_generation_qualification_subject::ActiveGenerationQualificationSubject;
 use crate::local_ollama_managed_preflight::GenerationQualificationLiveLifecycle;
 
+mod admission;
 mod attempt_ledger;
 mod candidate;
 mod candidate_closeout;
@@ -81,6 +83,36 @@ pub enum GenerationQualificationActivationError {
     /// Independent activation validation stages failed differently.
     #[error("generation qualification activation validation failures were aggregated")]
     ValidationAggregation,
+    /// A precursor checkpoint exists and activation cannot continue.
+    #[error("generation qualification candidate attempt is checkpoint-only")]
+    CandidateCheckpointOnly,
+    /// A failed candidate attempt exists and activation cannot continue.
+    #[error("generation qualification candidate attempt failed")]
+    CandidateTerminalFailed,
+    /// A completed candidate attempt exists and activation cannot continue.
+    #[error("generation qualification candidate attempt is already completed")]
+    CandidateTerminalCompleted,
+    /// A bundle directory exists without matching terminal metadata.
+    #[error("generation qualification candidate evidence publication is orphaned")]
+    CandidatePublicationOrphan,
+    /// Completed metadata does not match a bundle directory on this evidence root.
+    #[error("generation qualification candidate evidence storage does not match")]
+    CandidateEvidenceStorageMismatch,
+    /// Indexed metadata and the evidence root do not form one legal class.
+    #[error("generation qualification candidate commit is ambiguous")]
+    CandidateAmbiguousCommit,
+    /// Evidence staging contains an unexpected direct child.
+    #[error("generation qualification candidate evidence staging is unexpected")]
+    CandidateUnexpectedStaging,
+    /// Candidate metadata or evidence layout is not trustworthy.
+    #[error("generation qualification candidate evidence is corrupt")]
+    CandidateEvidenceCorrupt,
+    /// Candidate inspection exceeded a fixed bound.
+    #[error("generation qualification candidate inspection bound was exceeded")]
+    CandidateInspectionBoundExceeded,
+    /// Candidate metadata or the evidence root could not be read.
+    #[error("generation qualification candidate inspection is unavailable")]
+    CandidateInspectionUnavailable,
 }
 
 /// Noncloneable, nonserializable owner of one traffic-eligible operation.
@@ -128,19 +160,27 @@ impl<'records, 'store, 'platform, 'proof, 'lease>
     /// Normal validation observes the original deadline and caller cancellation.
     /// Independent mandatory validation then uses fresh uncancelled authority and
     /// checks every retained finalizer even when normal validation failed.
+    /// A read-only candidate admission check then runs. Activation continues only
+    /// when every planned attempt is not started, staging is empty, and this plan
+    /// has no bundle directory. The check does not retry, repair, promote, delete,
+    /// or fabricate evidence, and it does not insert the traffic precursor.
     ///
     /// # Errors
     ///
     /// Returns a content-redacted error for expiry, cancellation, rejected traffic,
-    /// retained-authority drift, or independently observed finalization failure.
+    /// retained-authority drift, independently observed finalization failure, or any
+    /// candidate attempt that is not pristine.
     pub fn activate(
         mut self,
+        repository: &GenerationQualificationPreregistrationRepository,
+        evidence: &CandidateGenerationEvidenceRepository,
         cancellation: &CancellationToken,
     ) -> Result<
         ActiveGenerationQualificationOperation<'records, 'store, 'platform, 'proof, 'lease>,
         GenerationQualificationActivationError,
     > {
         validate_activation(&mut self, cancellation)?;
+        admission::reconcile(&self, repository, evidence, cancellation)?;
         Ok(ActiveGenerationQualificationOperation {
             prepared: self,
             subject: ActiveGenerationQualificationSubject::new(),

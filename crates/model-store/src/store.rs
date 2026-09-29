@@ -42,6 +42,7 @@ pub struct InstallationWriteDisposition {
 mod activation_write;
 mod artifact_set;
 mod bounded_text;
+pub mod candidate_generation_attempt_admission;
 pub mod candidate_generation_attempt_precursor;
 pub mod candidate_generation_evidence_storage;
 pub mod candidate_generation_execution;

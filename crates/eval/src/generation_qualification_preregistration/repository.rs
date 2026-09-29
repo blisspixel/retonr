@@ -23,6 +23,7 @@ use thiserror::Error;
 
 use super::{GenerationQualificationPreparationError, check_gate};
 
+mod activation_admission;
 mod candidate_execution;
 
 /// Failure to open the durable qualification preregistration repository.
