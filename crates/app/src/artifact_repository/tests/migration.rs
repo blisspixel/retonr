@@ -32,7 +32,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         Err(ArtifactRepositoryError::State(
             rewrite_model_store::StoreError::MigrationRequired {
                 found: 2,
-                current: 10
+                current: 11
             }
         ))
     ));
@@ -44,7 +44,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (2, 10));
+    assert_eq!((result.from_schema, result.to_schema), (2, 11));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -74,7 +74,7 @@ fn schema_three_migration_retains_a_verified_backup() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (3, 10));
+    assert_eq!((result.from_schema, result.to_schema), (3, 11));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -287,6 +287,15 @@ fn drop_current_generation_tables(connection: &rusqlite::Connection) {
     connection
         .execute_batch(
             "PRAGMA foreign_keys = OFF;
+             DROP TABLE generation_qualification_phase_interruption_records;
+             DROP TABLE generation_qualification_operation_receipts;
+             DROP TABLE generation_repeatability_result_records;
+             DROP TABLE generation_human_adjudication_evidence_manifests;
+             DROP TABLE generation_resource_evidence_manifests;
+             DROP TABLE generation_repeatability_evidence_manifests;
+             DROP TABLE generation_attempt_ledger_manifests;
+             DROP TABLE generation_qualification_license_evidence;
+             DROP TABLE generation_qualification_platform_evidence;
              DROP TABLE candidate_generation_attempt_records;
              DROP TABLE candidate_generation_receipts;
              DROP TABLE generation_evidence_bundle_readbacks;

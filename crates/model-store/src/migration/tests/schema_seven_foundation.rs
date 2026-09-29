@@ -21,6 +21,17 @@ const PLAN_FOUNDATION_TABLES: [&str; 12] = [
     "generation_suite_manifests",
     "planned_candidate_attempts",
 ];
+const TERMINAL_EVIDENCE_TABLES: [&str; 9] = [
+    "generation_qualification_phase_interruption_records",
+    "generation_qualification_operation_receipts",
+    "generation_repeatability_result_records",
+    "generation_human_adjudication_evidence_manifests",
+    "generation_resource_evidence_manifests",
+    "generation_repeatability_evidence_manifests",
+    "generation_attempt_ledger_manifests",
+    "generation_qualification_license_evidence",
+    "generation_qualification_platform_evidence",
+];
 const TERMINAL_CLOSURE_TABLES: [&str; 8] = [
     "candidate_generation_attempt_precursors",
     "managed_candidate_generation_evidence",
@@ -54,7 +65,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (7, 10)
+        (7, 11)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -69,6 +80,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
         .iter()
         .chain(PLAN_FOUNDATION_TABLES.iter())
         .chain(TERMINAL_CLOSURE_TABLES.iter())
+        .chain(TERMINAL_EVIDENCE_TABLES.iter())
     {
         assert!(!schema_five_packages::table_exists(
             &backup_connection,
@@ -77,12 +89,13 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 10);
+    assert_eq!(schema_version(&source), 11);
     assert_eq!(all_rows(&migrated), before);
     for table in FOUNDATION_TABLES
         .iter()
         .chain(PLAN_FOUNDATION_TABLES.iter())
         .chain(TERMINAL_CLOSURE_TABLES.iter())
+        .chain(TERMINAL_EVIDENCE_TABLES.iter())
     {
         let count: i64 = migrated
             .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
@@ -193,6 +206,7 @@ fn all_rows(connection: &Connection) -> BTreeMap<String, Vec<Vec<Vec<u8>>>> {
             !FOUNDATION_TABLES.contains(&table.as_str())
                 && !PLAN_FOUNDATION_TABLES.contains(&table.as_str())
                 && !TERMINAL_CLOSURE_TABLES.contains(&table.as_str())
+                && !TERMINAL_EVIDENCE_TABLES.contains(&table.as_str())
         })
         .map(|table| {
             let rows = schema_five_packages::table_rows(connection, &table);

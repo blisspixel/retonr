@@ -129,10 +129,10 @@ and live-use authority in distinct domains.
    Prepared activation and allows only an entirely pristine plan. It does not retry,
    repair, promote, delete, or fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
    when interruption facts are supplied for a noncompleted receipt. It does not
-   persist, change schema 10, construct a qualification record, or acquire live
-   authority. Read-only attempt-ledger rederive now rebuilds the target manifest from schema-10 rows and does not write. Schema 11 then
-   persists the interruption, operation receipt, phase manifests, and attempt ledger
-   atomically, without recreating live authority.
+   persist, construct a qualification record, or acquire live
+   authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
+   the interruption, operation receipt, phase manifest, and attempt-ledger tables.
+   No cohort writer exists yet, and the tables grant no live authority.
    The crate-private strict candidate and judge routes now carry one
    supplied absolute deadline through every traffic and finalization boundary.
    Preserve the consuming Active operation owner that connects Prepared's retained

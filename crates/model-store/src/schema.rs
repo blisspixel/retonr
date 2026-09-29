@@ -5,6 +5,7 @@ use rusqlite::{Connection, TransactionBehavior};
 use crate::{StoreError, StoreResult};
 
 mod eight;
+mod eleven;
 mod nine;
 mod routing;
 mod seven;
@@ -12,6 +13,7 @@ mod shape;
 mod ten;
 
 use eight::migrate_schema_seven;
+use eleven::migrate_schema_ten;
 use nine::migrate_schema_eight;
 use seven::migrate_schema_six;
 use ten::migrate_schema_nine;
@@ -19,10 +21,10 @@ use ten::migrate_schema_nine;
 pub(super) use shape::{
     validate_schema_eight, validate_schema_five, validate_schema_four, validate_schema_nine,
     validate_schema_one, validate_schema_seven, validate_schema_shape, validate_schema_six,
-    validate_schema_three, validate_schema_two,
+    validate_schema_ten, validate_schema_three, validate_schema_two,
 };
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 10;
+pub(super) const STORE_SCHEMA_VERSION: i64 = 11;
 
 pub(super) fn migrate_existing_transaction(
     connection: &Connection,
@@ -40,7 +42,8 @@ fn create_current_schema(connection: &Connection) -> StoreResult<()> {
     migrate_schema_six(connection)?;
     migrate_schema_seven(connection)?;
     migrate_schema_eight(connection)?;
-    migrate_schema_nine(connection)
+    migrate_schema_nine(connection)?;
+    migrate_schema_ten(connection)
 }
 
 fn create_schema_two(connection: &Connection) -> StoreResult<()> {
@@ -327,6 +330,12 @@ pub(super) fn create_schema_eight_fixture(connection: &Connection) -> StoreResul
 pub(super) fn create_schema_nine_fixture(connection: &Connection) -> StoreResult<()> {
     create_schema_eight_fixture(connection)?;
     migrate_schema_eight(connection)
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_ten_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_nine_fixture(connection)?;
+    migrate_schema_nine(connection)
 }
 
 const SCHEMA_ONE_SQL: &str = "CREATE TABLE artifact_manifests (

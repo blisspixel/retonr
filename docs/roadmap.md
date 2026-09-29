@@ -62,9 +62,9 @@ application evidence root; and refuses traffic for every state except an entirel
 pristine plan. It does not retry an attempt, fabricate terminal evidence, promote
 staging, delete an orphan, or grant live authority. An in-memory planner now derives that receipt and binds a phase interruption only
 when interruption facts are supplied for a noncompleted receipt. It does not
-persist, change schema 10, construct a qualification record, or acquire live
-authority. Read-only attempt-ledger rederive now rebuilds the target manifest from schema-10 rows and does not write. Schema 11 then
-persists the operation-level terminal-evidence cohort atomically, without live
+persist, construct a qualification record, or acquire live
+authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
+the operation-level terminal-evidence tables. No cohort writer exists yet, and the tables grant no live
 authority. No production Approved root is added by that seam.
 
 1. With offline import, read-only inventory, selected reconciliation, inactive
@@ -302,9 +302,9 @@ authority. No production Approved root is added by that seam.
     activation and allows only an entirely pristine plan. It does not retry, repair,
     promote, delete, or fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
     when interruption facts are supplied for a noncompleted receipt. It does not
-    persist, change schema 10, construct a qualification record, or acquire live
-    authority. Read-only attempt-ledger rederive now rebuilds the target manifest from schema-10 rows and does not write. Schema 11 then
-    persists that terminal evidence without live authority. Complete that dependency
+    persist, construct a qualification record, or acquire live
+    authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
+    the terminal-evidence tables. No cohort writer exists yet, and the tables grant no live authority. Complete that dependency
     chain before
     populating a production Approved root. Positive
     human authority

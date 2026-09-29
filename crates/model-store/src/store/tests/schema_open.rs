@@ -10,11 +10,11 @@ fn newer_schema_is_rejected_without_migration() {
     let path = directory.path().join("future.db");
     let connection = Connection::open(&path).expect("create database");
     connection
-        .pragma_update(None, "user_version", 11)
+        .pragma_update(None, "user_version", 12)
         .expect("set future version");
     drop(connection);
     assert!(matches!(
         ArtifactStateStore::open(&path),
-        Err(StoreError::UnsupportedSchema(11))
+        Err(StoreError::UnsupportedSchema(12))
     ));
 }

@@ -64,7 +64,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 1,
-                    current: 10
+                    current: 11
                 }
             )
         },
@@ -77,7 +77,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 2,
-                    current: 10
+                    current: 11
                 }
             )
         },
@@ -90,7 +90,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 3,
-                    current: 10
+                    current: 11
                 }
             )
         },
@@ -103,7 +103,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 4,
-                    current: 10
+                    current: 11
                 }
             )
         },
@@ -116,7 +116,7 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
                 error,
                 StoreError::MigrationRequired {
                     found: 5,
-                    current: 10
+                    current: 11
                 }
             )
         },
@@ -127,8 +127,8 @@ fn read_only_open_rejects_legacy_schema_without_mutation() {
 #[test]
 fn read_only_open_rejects_future_schema_without_mutation() {
     assert_read_only_schema_rejection(
-        11,
-        |error| matches!(error, StoreError::UnsupportedSchema(11)),
+        12,
+        |error| matches!(error, StoreError::UnsupportedSchema(12)),
         "future-read-only.db",
     );
 }
@@ -171,7 +171,7 @@ fn exact_schema_writable_open_never_migrates_legacy_state() {
         ArtifactStateStore::open_existing_writable_exact(&path),
         Err(StoreError::MigrationRequired {
             found: 1,
-            current: 10
+            current: 11
         })
     ));
     assert_eq!(fs::read(&path).expect("reread legacy state"), before);
@@ -179,7 +179,7 @@ fn exact_schema_writable_open_never_migrates_legacy_state() {
         ArtifactStateStore::open_existing_and_migrate(&path),
         Err(StoreError::MigrationRequired {
             found: 1,
-            current: 10
+            current: 11
         })
     ));
     assert_eq!(fs::read(&path).expect("reread rejected state"), before);
@@ -263,7 +263,7 @@ fn compatibility_opens_reject_schema_two_without_rewriting_v1_records() {
             result,
             Err(StoreError::MigrationRequired {
                 found: 2,
-                current: 10
+                current: 11
             })
         ));
         assert_eq!(fs::read(&path).expect("reread rejected schema two"), before);
