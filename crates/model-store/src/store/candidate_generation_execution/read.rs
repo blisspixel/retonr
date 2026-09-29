@@ -27,8 +27,11 @@ use crate::store::generation_qualification_preregistration::load_preregistration
 use crate::store::generation_system_foundation::load_foundation as load_system_foundation;
 use crate::{StoreError, StoreResult};
 
+mod ledger;
 mod rows;
 mod validation;
+
+pub(super) use ledger::rederive_attempt_ledger;
 
 use validation::{
     require_exact_json, require_id, require_indexes, required_json_row, validate_managed_row,

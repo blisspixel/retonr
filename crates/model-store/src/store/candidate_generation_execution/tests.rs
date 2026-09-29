@@ -317,6 +317,9 @@ fn assert_terminal_tables_empty(store: &ArtifactStateStore) {
     }
 }
 
+#[path = "tests/ledger.rs"]
+mod ledger;
+
 fn row_count(store: &ArtifactStateStore, table: &str) -> i64 {
     let sql = format!("SELECT COUNT(*) FROM {table}");
     store

@@ -6,8 +6,8 @@ use rewrite_model::{
     CandidateGenerationAttemptPrecursorV1, CandidateGenerationAttemptRecordV1,
     CandidateGenerationCleanupRecordV1, CandidateGenerationEvidenceBundleManifestV1,
     CandidateGenerationEvidenceBundleReadbackV1, CandidateGenerationReceiptV1,
-    ManagedOllamaCandidateGenerationEvidenceV2, ManagedOllamaCandidateGenerationEvidenceV2Input,
-    PlannedCandidateAttemptId,
+    GenerationAttemptLedgerManifestV1, ManagedOllamaCandidateGenerationEvidenceV2,
+    ManagedOllamaCandidateGenerationEvidenceV2Input, PlannedCandidateAttemptId,
 };
 use rusqlite::TransactionBehavior;
 
@@ -297,6 +297,29 @@ impl ArtifactStateStore {
         let stored = read::load_execution(&transaction, input)?;
         transaction.commit()?;
         Ok(stored)
+    }
+
+    /// Rebuilds the target attempt-ledger manifest from durable attempt rows.
+    ///
+    /// The read does not insert, update, or delete. A completed attempt requires
+    /// the same independently retained managed-evidence facts as its cold read.
+    /// The manifest comes from the model constructor and grants no live authority.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when preregistration is missing, a stored attempt is
+    /// outside the target prefix, a completed attempt lacks its managed-evidence
+    /// input, or the derived manifest is inconsistent.
+    pub fn rederive_attempt_ledger_manifest_v1(
+        &self,
+        preregistration: GenerationQualificationPreregistrationReadInput<'_>,
+        managed_evidence_inputs: &[ManagedOllamaCandidateGenerationEvidenceV2Input],
+    ) -> StoreResult<GenerationAttemptLedgerManifestV1> {
+        let transaction = self.connection.unchecked_transaction()?;
+        let manifest =
+            read::rederive_attempt_ledger(&transaction, preregistration, managed_evidence_inputs)?;
+        transaction.commit()?;
+        Ok(manifest)
     }
 }
 

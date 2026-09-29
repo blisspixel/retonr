@@ -63,7 +63,7 @@ pristine plan. It does not retry an attempt, fabricate terminal evidence, promot
 staging, delete an orphan, or grant live authority. An in-memory planner now derives that receipt and binds a phase interruption only
 when interruption facts are supplied for a noncompleted receipt. It does not
 persist, change schema 10, construct a qualification record, or acquire live
-authority. The next slice rederives the attempt ledger read-only. Schema 11 then
+authority. Read-only attempt-ledger rederive now rebuilds the target manifest from schema-10 rows and does not write. Schema 11 then
 persists the operation-level terminal-evidence cohort atomically, without live
 authority. No production Approved root is added by that seam.
 
@@ -303,7 +303,7 @@ authority. No production Approved root is added by that seam.
     promote, delete, or fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
     when interruption facts are supplied for a noncompleted receipt. It does not
     persist, change schema 10, construct a qualification record, or acquire live
-    authority. The next slice rederives the attempt ledger read-only. Schema 11 then
+    authority. Read-only attempt-ledger rederive now rebuilds the target manifest from schema-10 rows and does not write. Schema 11 then
     persists that terminal evidence without live authority. Complete that dependency
     chain before
     populating a production Approved root. Positive

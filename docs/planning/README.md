@@ -130,7 +130,7 @@ and live-use authority in distinct domains.
    repair, promote, delete, or fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
    when interruption facts are supplied for a noncompleted receipt. It does not
    persist, change schema 10, construct a qualification record, or acquire live
-   authority. The next slice rederives the attempt ledger read-only. Schema 11 then
+   authority. Read-only attempt-ledger rederive now rebuilds the target manifest from schema-10 rows and does not write. Schema 11 then
    persists the interruption, operation receipt, phase manifests, and attempt ledger
    atomically, without recreating live authority.
    The crate-private strict candidate and judge routes now carry one

@@ -254,7 +254,7 @@ an entirely pristine plan. It performs no retry, repair, promotion, deletion, or
 evidence fabrication. An in-memory planner now derives that receipt and binds a phase interruption only
 when interruption facts are supplied for a noncompleted receipt. It does not
 persist, change schema 10, construct a qualification record, or acquire live
-authority. The next slice rederives the attempt ledger read-only. Schema 11 then
+authority. Read-only attempt-ledger rederive now rebuilds the target manifest from schema-10 rows and does not write. Schema 11 then
 persists the operation-level terminal-evidence cohort atomically, without live
 authority. Exact per-repetition receipt-set-to-ledger
 matching, judge-result collection, and the final verifier follow. Production
@@ -410,7 +410,7 @@ The immediate runtime-dependent 0.2 work is:
    repair, promote, delete, or fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
    when interruption facts are supplied for a noncompleted receipt. It does not
    persist, change schema 10, construct a qualification record, or acquire live
-   authority. The next slice rederives the attempt ledger read-only. Schema 11 then
+   authority. Read-only attempt-ledger rederive now rebuilds the target manifest from schema-10 rows and does not write. Schema 11 then
    persists that terminal evidence without live authority.
    Complete that cohort before populating any production Approved root.
    Positive human
