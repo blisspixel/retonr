@@ -1,4 +1,7 @@
-use std::{path::Path, time::Instant};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use rewrite_app::{
     SyntheticGenerationQualificationScenario, with_synthetic_generation_qualification_fixture,
@@ -227,10 +230,18 @@ fn cancellation_after_typed_readback_rolls_back_before_commit() {
         let path = directory.path().join("precommit-cancel.db");
         let cancellation = CancellationToken::new();
         let mut repository = open(&path);
-        let result = transact_exact(
+        // The synthetic policy budget is 10 seconds. Foundation writes on a
+        // loaded runner can exceed it before this callback cancels, and a
+        // reached deadline outranks cancellation. The gate stays open so this
+        // test observes the cancellation rollback.
+        let deadline = Instant::now()
+            .checked_add(Duration::from_secs(120))
+            .expect("cancellation gate deadline");
+        let result = transact_at_deadline(
             &mut repository,
             &projected,
             foundation,
+            deadline,
             &cancellation,
             |readback| {
                 assert_eq!(
