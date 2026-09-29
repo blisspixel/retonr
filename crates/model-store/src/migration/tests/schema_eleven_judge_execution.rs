@@ -86,14 +86,14 @@ fn populated_schema_eleven_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (11, 13)
+        (11, 14)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("write verified backup");
     let result = session.migrate().expect("migrate schema eleven");
     assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
-    assert_eq!((result.from_schema, result.to_schema), (11, 13));
+    assert_eq!((result.from_schema, result.to_schema), (11, 14));
 
     assert_eq!(schema_version(&backup), 11);
     let backup_connection = Connection::open(&backup).expect("open backup");
@@ -102,7 +102,7 @@ fn populated_schema_eleven_migrates_after_verified_byte_preserving_backup() {
         assert!(!table_exists(&backup_connection, table));
     }
 
-    assert_eq!(schema_version(&source), 13);
+    assert_eq!(schema_version(&source), 14);
     let migrated = Connection::open(&source).expect("open migrated source");
     assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
     for table in JUDGE_EXECUTION_TABLES {
@@ -151,7 +151,7 @@ fn inspection_rejects_altered_schema_twelve_and_schema_eleven_shapes() {
         ArtifactStateStore::inspect_existing_schema(&current),
         Err(StoreError::CorruptRecord)
     ));
-    assert_eq!(schema_version(&current), 13);
+    assert_eq!(schema_version(&current), 14);
 
     let schema_eleven = directory.path().join("altered-schema-eleven.db");
     let connection = Connection::open(&schema_eleven).expect("create schema eleven");

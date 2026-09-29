@@ -32,7 +32,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         Err(ArtifactRepositoryError::State(
             rewrite_model_store::StoreError::MigrationRequired {
                 found: 2,
-                current: 13
+                current: 14
             }
         ))
     ));
@@ -44,7 +44,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (2, 13));
+    assert_eq!((result.from_schema, result.to_schema), (2, 14));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -74,7 +74,7 @@ fn schema_three_migration_retains_a_verified_backup() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (3, 13));
+    assert_eq!((result.from_schema, result.to_schema), (3, 14));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -287,6 +287,7 @@ fn drop_current_generation_tables(connection: &rusqlite::Connection) {
     connection
         .execute_batch(
             "PRAGMA foreign_keys = OFF;
+             DROP TABLE candidate_generation_receipt_sets;
              DROP TABLE generation_human_adjudication_policy_denial_records;
              DROP TABLE generation_resource_policy_denial_records;
              DROP TABLE generation_resource_attempt_result_records;

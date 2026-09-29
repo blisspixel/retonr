@@ -26,6 +26,7 @@ const PHASE_EVIDENCE_TABLES: [&str; 3] = [
     "generation_resource_attempt_result_records",
     "generation_resource_policy_denial_records",
 ];
+const RECEIPT_SET_TABLES: [&str; 1] = ["candidate_generation_receipt_sets"];
 const JUDGE_EXECUTION_TABLES: [&str; 7] = [
     "candidate_judge_join_records",
     "managed_local_judge_receipts",
@@ -79,7 +80,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (7, 13)
+        (7, 14)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -96,6 +97,8 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
         .chain(TERMINAL_CLOSURE_TABLES.iter())
         .chain(TERMINAL_EVIDENCE_TABLES.iter())
         .chain(JUDGE_EXECUTION_TABLES.iter())
+        .chain(PHASE_EVIDENCE_TABLES.iter())
+        .chain(RECEIPT_SET_TABLES.iter())
     {
         assert!(!schema_five_packages::table_exists(
             &backup_connection,
@@ -104,7 +107,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 13);
+    assert_eq!(schema_version(&source), 14);
     assert_eq!(all_rows(&migrated), before);
     for table in FOUNDATION_TABLES
         .iter()
@@ -112,6 +115,8 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
         .chain(TERMINAL_CLOSURE_TABLES.iter())
         .chain(TERMINAL_EVIDENCE_TABLES.iter())
         .chain(JUDGE_EXECUTION_TABLES.iter())
+        .chain(PHASE_EVIDENCE_TABLES.iter())
+        .chain(RECEIPT_SET_TABLES.iter())
     {
         let count: i64 = migrated
             .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
@@ -225,6 +230,7 @@ fn all_rows(connection: &Connection) -> BTreeMap<String, Vec<Vec<Vec<u8>>>> {
                 && !TERMINAL_EVIDENCE_TABLES.contains(&table.as_str())
                 && !JUDGE_EXECUTION_TABLES.contains(&table.as_str())
                 && !PHASE_EVIDENCE_TABLES.contains(&table.as_str())
+                && !RECEIPT_SET_TABLES.contains(&table.as_str())
         })
         .map(|table| {
             let rows = schema_five_packages::table_rows(connection, &table);

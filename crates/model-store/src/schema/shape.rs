@@ -6,8 +6,12 @@ use super::{
     create_current_schema, create_schema_one, create_schema_two, migrate_schema_eight,
     migrate_schema_eleven, migrate_schema_five, migrate_schema_four, migrate_schema_nine,
     migrate_schema_one, migrate_schema_seven, migrate_schema_six, migrate_schema_ten,
-    migrate_schema_three, migrate_schema_twelve, migrate_schema_two,
+    migrate_schema_thirteen, migrate_schema_three, migrate_schema_twelve, migrate_schema_two,
 };
+
+mod receipt_sets;
+
+pub(crate) use receipt_sets::validate_schema_thirteen;
 
 pub(crate) fn validate_schema_shape(connection: &Connection) -> StoreResult<()> {
     let actual = schema_objects(connection)?;
@@ -349,6 +353,7 @@ fn canonical_migrated_current_objects() -> StoreResult<Vec<SchemaObject>> {
     migrate_schema_ten(&connection)?;
     migrate_schema_eleven(&connection)?;
     migrate_schema_twelve(&connection)?;
+    migrate_schema_thirteen(&connection)?;
     schema_objects(&connection)
 }
 
