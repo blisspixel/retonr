@@ -57,7 +57,7 @@ fn verified_wal_backup_and_schema_five_migration_preserve_all_legacy_rows() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (5, 14)
+        (5, 15)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -74,7 +74,7 @@ fn verified_wal_backup_and_schema_five_migration_preserve_all_legacy_rows() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 14);
+    assert_eq!(schema_version(&source), 15);
     assert_eq!(all_legacy_rows(&migrated), before);
     for table in NEW_TABLES {
         let count: i64 = migrated
@@ -129,7 +129,7 @@ fn compatibility_opens_require_explicit_schema_five_migration_without_mutation()
             result,
             Err(crate::StoreError::MigrationRequired {
                 found: 5,
-                current: 14
+                current: 15
             })
         ));
         let unchanged = Connection::open(&source).expect("reopen unchanged schema five");
