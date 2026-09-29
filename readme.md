@@ -255,7 +255,7 @@ evidence fabrication. An in-memory planner now derives that receipt and binds a 
 when interruption facts are supplied for a noncompleted receipt. It does not
 persist, construct a qualification record, or acquire live
 authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
-the operation-level terminal-evidence tables. No cohort writer exists yet, and the tables grant no live
+the operation-level terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live
 authority. Exact per-repetition receipt-set-to-ledger
 matching, judge-result collection, and the final verifier follow. Production
 Approved roots remain empty, no runtime has been admitted for this path, and the final
@@ -411,7 +411,7 @@ The immediate runtime-dependent 0.2 work is:
    when interruption facts are supplied for a noncompleted receipt. It does not
    persist, construct a qualification record, or acquire live
    authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
-   the terminal-evidence tables. No cohort writer exists yet, and the tables grant no live authority.
+   the terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live authority.
    Complete that cohort before populating any production Approved root.
    Positive human
    authority requires a reviewed V2 policy and explicit reviewer-governance and

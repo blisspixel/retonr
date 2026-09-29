@@ -64,7 +64,7 @@ staging, delete an orphan, or grant live authority. An in-memory planner now der
 when interruption facts are supplied for a noncompleted receipt. It does not
 persist, construct a qualification record, or acquire live
 authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
-the operation-level terminal-evidence tables. No cohort writer exists yet, and the tables grant no live
+the operation-level terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live
 authority. No production Approved root is added by that seam.
 
 1. With offline import, read-only inventory, selected reconciliation, inactive
@@ -304,7 +304,7 @@ authority. No production Approved root is added by that seam.
     when interruption facts are supplied for a noncompleted receipt. It does not
     persist, construct a qualification record, or acquire live
     authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
-    the terminal-evidence tables. No cohort writer exists yet, and the tables grant no live authority. Complete that dependency
+    the terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live authority. Complete that dependency
     chain before
     populating a production Approved root. Positive
     human authority
