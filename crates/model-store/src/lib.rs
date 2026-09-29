@@ -52,6 +52,11 @@ pub use store::candidate_generation_execution::{
     CandidateGenerationExecutionV1WriteDisposition, StoredCandidateGenerationExecutionV1,
 };
 pub use store::candidate_generation_execution_state::CandidateGenerationExecutionV1State;
+pub use store::candidate_judge_execution::{
+    CandidateJudgeExecutionV1Input, CandidateJudgeExecutionV1ReadInput,
+    CandidateJudgeExecutionV1TransactionError, CandidateJudgeExecutionV1WriteDisposition,
+    CandidateJudgeObservationFactV1, StoredCandidateJudgeExecutionV1,
+};
 pub use store::generation_qualification_plan_foundation::{
     GenerationQualificationPlanFoundationV1, GenerationQualificationPlanFoundationV1Input,
     GenerationQualificationPlanFoundationV1Readback,

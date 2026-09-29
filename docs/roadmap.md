@@ -65,11 +65,11 @@ when interruption facts are supplied for a noncompleted receipt. It does not
 persist, construct a qualification record, or acquire live
 authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
 the operation-level terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live
-authority. Schema 12 adds seven inert judge-execution tables for plans, schedules,
+authority. Schema 12 adds seven judge-execution tables for plans, schedules,
 request aggregates, response aggregates, observation batches, managed local judge
-receipts, and candidate judge joins. No judge-execution writer exists yet, and the
-tables grant no qualification, activation, or live-use authority. Repeatability
-results remain limited to candidate-generation failure. No production Approved root is added by that seam.
+receipts, and candidate judge joins. The store writes that seven-row cohort in one
+immediate transaction. The cohort grants no qualification, activation, or live-use
+authority. Repeatability results remain limited to candidate-generation failure. No production Approved root is added by that seam.
 
 1. With offline import, read-only inventory, selected reconciliation, inactive
    removal, exact removal recovery, non-mutating pending-operation inspection,
@@ -309,11 +309,11 @@ results remain limited to candidate-generation failure. No production Approved r
     persist, construct a qualification record, or acquire live
     authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
     the terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live authority.
-    Schema 12 adds seven inert judge-execution tables for plans, schedules, request
+    Schema 12 adds seven judge-execution tables for plans, schedules, request
     aggregates, response aggregates, observation batches, managed local judge receipts,
-    and candidate judge joins. No judge-execution writer exists yet, and the tables
-    grant no qualification, activation, or live-use authority. Repeatability results
-    remain limited to candidate-generation failure. Complete that dependency
+    and candidate judge joins. The store writes that seven-row cohort in one immediate
+    transaction. The cohort grants no qualification, activation, or live-use authority.
+    Repeatability results remain limited to candidate-generation failure. Complete that dependency
     chain before
     populating a production Approved root. Positive
     human authority

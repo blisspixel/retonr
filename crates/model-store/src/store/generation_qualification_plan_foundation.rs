@@ -18,7 +18,7 @@ pub(crate) mod read;
 mod write;
 
 use codec::canonical_input;
-use read::load_foundation;
+pub(crate) use read::load_foundation;
 use write::insert_foundation;
 
 /// Exact typed records needed to persist one portable plan foundation.

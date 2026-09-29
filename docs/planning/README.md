@@ -133,11 +133,11 @@ and live-use authority in distinct domains.
    authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
    the interruption, operation receipt, phase manifest, and attempt-ledger tables.
    The cohort writer stores those rows in one transaction and grants no live authority.
-   Schema 12 adds seven inert judge-execution tables for plans, schedules, request
+   Schema 12 adds seven judge-execution tables for plans, schedules, request
    aggregates, response aggregates, observation batches, managed local judge receipts,
-   and candidate judge joins. No judge-execution writer exists yet, and the tables
-   grant no qualification, activation, or live-use authority. Repeatability results
-   remain limited to candidate-generation failure.
+   and candidate judge joins. The store writes that seven-row cohort in one immediate
+   transaction. The cohort grants no qualification, activation, or live-use authority.
+   Repeatability results remain limited to candidate-generation failure.
    The crate-private strict candidate and judge routes now carry one
    supplied absolute deadline through every traffic and finalization boundary.
    Preserve the consuming Active operation owner that connects Prepared's retained
