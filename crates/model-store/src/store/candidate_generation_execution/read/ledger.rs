@@ -14,20 +14,31 @@ use super::{StoredCandidateGenerationExecutionV1, load_completed, load_failed};
 use crate::store::generation_qualification_preregistration::load_preregistration;
 use crate::{StoreError, StoreResult};
 
+/// Attempt-ledger manifest and the recovered records that derive it.
+pub(crate) struct RederivedAttemptLedger {
+    /// Manifest returned by the model constructor.
+    pub(crate) manifest: GenerationAttemptLedgerManifestV1,
+    /// Target-prefix attempt records in plan order.
+    pub(crate) attempt_records: Vec<CandidateGenerationAttemptRecordV1>,
+}
+
 pub(crate) fn rederive_attempt_ledger(
     connection: &Connection,
     preregistration: GenerationQualificationPreregistrationReadInput<'_>,
     managed_evidence_inputs: &[ManagedOllamaCandidateGenerationEvidenceV2Input],
-) -> StoreResult<GenerationAttemptLedgerManifestV1> {
+) -> StoreResult<RederivedAttemptLedger> {
     let before = connection.total_changes();
     let stored =
         load_preregistration(connection, preregistration)?.ok_or(StoreError::MissingRecord)?;
-    let records = target_prefix(connection, &stored, managed_evidence_inputs)?;
-    let manifest = manifest_for(&stored, &records)?;
+    let attempt_records = target_prefix(connection, &stored, managed_evidence_inputs)?;
+    let manifest = manifest_for(&stored, &attempt_records)?;
     if connection.total_changes() != before {
         return Err(StoreError::CorruptRecord);
     }
-    Ok(manifest)
+    Ok(RederivedAttemptLedger {
+        manifest,
+        attempt_records,
+    })
 }
 
 fn target_prefix(

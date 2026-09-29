@@ -50,6 +50,7 @@ pub mod candidate_generation_execution_state;
 mod evidence;
 pub mod generation_qualification_plan_foundation;
 pub mod generation_qualification_preregistration;
+pub mod generation_qualification_terminal_evidence;
 pub mod generation_system_foundation;
 mod inventory;
 mod open;

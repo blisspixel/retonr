@@ -22,6 +22,8 @@ mod codec;
 mod read;
 mod write;
 
+pub(crate) use read::{RederivedAttemptLedger, rederive_attempt_ledger};
+
 /// Exact inert records for one terminal candidate-generation outcome.
 #[derive(Clone, Copy)]
 pub enum CandidateGenerationExecutionV1Input<'a> {
@@ -316,13 +318,13 @@ impl ArtifactStateStore {
         managed_evidence_inputs: &[ManagedOllamaCandidateGenerationEvidenceV2Input],
     ) -> StoreResult<GenerationAttemptLedgerManifestV1> {
         let transaction = self.connection.unchecked_transaction()?;
-        let manifest =
+        let rederived =
             read::rederive_attempt_ledger(&transaction, preregistration, managed_evidence_inputs)?;
         transaction.commit()?;
-        Ok(manifest)
+        Ok(rederived.manifest)
     }
 }
 
 #[cfg(test)]
 #[path = "candidate_generation_execution/tests.rs"]
-mod tests;
+pub(crate) mod tests;

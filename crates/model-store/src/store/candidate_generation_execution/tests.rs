@@ -11,7 +11,7 @@ use super::*;
 use crate::store::generation_qualification_preregistration::tests::support as prereg_support;
 
 #[path = "tests/support.rs"]
-mod support;
+pub(crate) mod support;
 
 #[test]
 fn completed_execution_is_atomic_cold_readable_and_exactly_idempotent() {

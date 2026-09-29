@@ -31,7 +31,7 @@ mod ledger;
 mod rows;
 mod validation;
 
-pub(super) use ledger::rederive_attempt_ledger;
+pub(crate) use ledger::{RederivedAttemptLedger, rederive_attempt_ledger};
 
 use validation::{
     require_exact_json, require_id, require_indexes, required_json_row, validate_managed_row,

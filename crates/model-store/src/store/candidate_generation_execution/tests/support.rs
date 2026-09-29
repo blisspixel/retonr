@@ -38,7 +38,7 @@ pub(super) fn preregistration_input(
     }
 }
 
-pub(super) fn read_input(fixture: &Fixture) -> GenerationQualificationPreregistrationReadInput<'_> {
+pub(crate) fn read_input(fixture: &Fixture) -> GenerationQualificationPreregistrationReadInput<'_> {
     GenerationQualificationPreregistrationReadInput {
         operation_policy_id: fixture.policy.operation_policy_id(),
         request_projection_id: fixture.projection.request_projection_id(),
@@ -48,7 +48,7 @@ pub(super) fn read_input(fixture: &Fixture) -> GenerationQualificationPreregistr
     }
 }
 
-pub(super) fn prepared_store(path: &std::path::Path, fixture: &Fixture) -> ArtifactStateStore {
+pub(crate) fn prepared_store(path: &std::path::Path, fixture: &Fixture) -> ArtifactStateStore {
     let mut store = ArtifactStateStore::open(path).expect("open store");
     prereg_support::persist_plan_foundation(&mut store, fixture);
     store
@@ -77,7 +77,7 @@ pub(super) fn precursor(fixture: &Fixture) -> CandidateGenerationAttemptPrecurso
     .expect("candidate precursor")
 }
 
-pub(super) fn checkpoint_precursor(
+pub(crate) fn checkpoint_precursor(
     store: &mut ArtifactStateStore,
     fixture: &Fixture,
     precursor: &CandidateGenerationAttemptPrecursorV1,
@@ -95,23 +95,26 @@ pub(super) fn checkpoint_precursor(
     assert_eq!(disposition.precursor, WriteDisposition::Inserted);
 }
 
-pub(super) struct CompletedFixture {
-    pub(super) precursor: CandidateGenerationAttemptPrecursorV1,
-    pub(super) managed_input: ManagedOllamaCandidateGenerationEvidenceV2Input,
+pub(crate) struct CompletedFixture {
+    /// Checkpointed precursor required by the completed attempt.
+    pub(crate) precursor: CandidateGenerationAttemptPrecursorV1,
+    /// Managed-evidence facts consumed while rederiving the attempt ledger.
+    pub(crate) managed_input: ManagedOllamaCandidateGenerationEvidenceV2Input,
     pub(super) managed: ManagedOllamaCandidateGenerationEvidenceV2,
     pub(super) cleanup: CandidateGenerationCleanupRecordV1,
     pub(super) bundle: CandidateGenerationEvidenceBundleManifestV1,
     pub(super) storage: CandidateGenerationEvidenceBundleStorageV1,
     pub(super) readback: CandidateGenerationEvidenceBundleReadbackV1,
     pub(super) receipt: CandidateGenerationReceiptV1,
-    pub(super) attempt: rewrite_model::CandidateGenerationAttemptRecordV1,
+    /// Exact completed terminal record.
+    pub(crate) attempt: rewrite_model::CandidateGenerationAttemptRecordV1,
 }
 
 #[expect(
     clippy::too_many_lines,
     reason = "complete successful execution fixture"
 )]
-pub(super) fn completed(fixture: &Fixture) -> CompletedFixture {
+pub(crate) fn completed(fixture: &Fixture) -> CompletedFixture {
     let planned = &fixture.attempts[0];
     let precursor = precursor(fixture);
     let managed_input = ManagedOllamaCandidateGenerationEvidenceV2Input {
@@ -252,7 +255,7 @@ pub(super) fn completed(fixture: &Fixture) -> CompletedFixture {
     }
 }
 
-pub(super) fn completed_input<'a>(
+pub(crate) fn completed_input<'a>(
     fixture: &'a Fixture,
     completed: &'a CompletedFixture,
 ) -> CandidateGenerationExecutionV1Input<'a> {

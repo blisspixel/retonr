@@ -67,6 +67,13 @@ pub use store::generation_qualification_preregistration::{
     GenerationQualificationPreregistrationWriteDisposition,
     StoredGenerationQualificationPreregistration,
 };
+pub use store::generation_qualification_terminal_evidence::{
+    GenerationQualificationTerminalEvidenceV1Input,
+    GenerationQualificationTerminalEvidenceV1ReadInput,
+    GenerationQualificationTerminalEvidenceV1TransactionError,
+    GenerationQualificationTerminalEvidenceV1WriteDisposition,
+    StoredGenerationQualificationTerminalEvidenceV1,
+};
 pub use store::generation_system_foundation::{
     GenerationSystemFoundationV1, GenerationSystemFoundationV1Input,
     GenerationSystemFoundationV1Readback, GenerationSystemFoundationV1TransactionError,
