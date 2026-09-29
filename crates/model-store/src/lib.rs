@@ -84,6 +84,11 @@ pub use store::generation_system_foundation::{
     GenerationSystemFoundationV1Readback, GenerationSystemFoundationV1TransactionError,
     GenerationSystemFoundationV1WriteDisposition,
 };
+pub use store::phase_policy_denial::{
+    GenerationHumanAdjudicationPolicyDenialV1Input,
+    GenerationHumanAdjudicationPolicyDenialV1ReadInput, GenerationResourcePolicyDenialV1Input,
+    GenerationResourcePolicyDenialV1ReadInput, PhasePolicyDenialV1TransactionError,
+};
 pub use store::{
     ArtifactStateStore, InstallationWriteDisposition, RemovalCompletionDisposition,
     RemovalPreparationDisposition, StoredArtifactSetState, StoredArtifactState, WriteDisposition,

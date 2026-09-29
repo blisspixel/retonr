@@ -56,6 +56,7 @@ pub mod generation_system_foundation;
 mod inventory;
 mod open;
 mod package_contracts;
+pub mod phase_policy_denial;
 mod removal;
 mod set_inventory;
 mod set_removal;
