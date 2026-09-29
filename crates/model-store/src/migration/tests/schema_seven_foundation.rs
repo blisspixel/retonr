@@ -21,6 +21,15 @@ const PLAN_FOUNDATION_TABLES: [&str; 12] = [
     "generation_suite_manifests",
     "planned_candidate_attempts",
 ];
+const JUDGE_EXECUTION_TABLES: [&str; 7] = [
+    "candidate_judge_join_records",
+    "managed_local_judge_receipts",
+    "candidate_judge_observation_batches",
+    "candidate_judge_response_aggregates",
+    "candidate_judge_request_aggregates",
+    "candidate_judge_schedules",
+    "candidate_judge_plans",
+];
 const TERMINAL_EVIDENCE_TABLES: [&str; 9] = [
     "generation_qualification_phase_interruption_records",
     "generation_qualification_operation_receipts",
@@ -65,7 +74,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (7, 11)
+        (7, 12)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -81,6 +90,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
         .chain(PLAN_FOUNDATION_TABLES.iter())
         .chain(TERMINAL_CLOSURE_TABLES.iter())
         .chain(TERMINAL_EVIDENCE_TABLES.iter())
+        .chain(JUDGE_EXECUTION_TABLES.iter())
     {
         assert!(!schema_five_packages::table_exists(
             &backup_connection,
@@ -89,13 +99,14 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 11);
+    assert_eq!(schema_version(&source), 12);
     assert_eq!(all_rows(&migrated), before);
     for table in FOUNDATION_TABLES
         .iter()
         .chain(PLAN_FOUNDATION_TABLES.iter())
         .chain(TERMINAL_CLOSURE_TABLES.iter())
         .chain(TERMINAL_EVIDENCE_TABLES.iter())
+        .chain(JUDGE_EXECUTION_TABLES.iter())
     {
         let count: i64 = migrated
             .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
@@ -207,6 +218,7 @@ fn all_rows(connection: &Connection) -> BTreeMap<String, Vec<Vec<Vec<u8>>>> {
                 && !PLAN_FOUNDATION_TABLES.contains(&table.as_str())
                 && !TERMINAL_CLOSURE_TABLES.contains(&table.as_str())
                 && !TERMINAL_EVIDENCE_TABLES.contains(&table.as_str())
+                && !JUDGE_EXECUTION_TABLES.contains(&table.as_str())
         })
         .map(|table| {
             let rows = schema_five_packages::table_rows(connection, &table);

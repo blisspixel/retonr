@@ -32,7 +32,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         Err(ArtifactRepositoryError::State(
             rewrite_model_store::StoreError::MigrationRequired {
                 found: 2,
-                current: 11
+                current: 12
             }
         ))
     ));
@@ -44,7 +44,7 @@ fn schema_two_migration_retains_a_verified_backup_and_restores_commands() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (2, 11));
+    assert_eq!((result.from_schema, result.to_schema), (2, 12));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -74,7 +74,7 @@ fn schema_three_migration_retains_a_verified_backup() {
         result.disposition,
         ArtifactRepositoryMigrationDisposition::Migrated
     );
-    assert_eq!((result.from_schema, result.to_schema), (3, 11));
+    assert_eq!((result.from_schema, result.to_schema), (3, 12));
     let backup_key = result.backup_key.expect("migration retains backup");
     let backup = repository.data_directory.join(backup_key.as_str());
     assert_eq!(
@@ -287,6 +287,13 @@ fn drop_current_generation_tables(connection: &rusqlite::Connection) {
     connection
         .execute_batch(
             "PRAGMA foreign_keys = OFF;
+             DROP TABLE candidate_judge_join_records;
+             DROP TABLE managed_local_judge_receipts;
+             DROP TABLE candidate_judge_observation_batches;
+             DROP TABLE candidate_judge_response_aggregates;
+             DROP TABLE candidate_judge_request_aggregates;
+             DROP TABLE candidate_judge_schedules;
+             DROP TABLE candidate_judge_plans;
              DROP TABLE generation_qualification_phase_interruption_records;
              DROP TABLE generation_qualification_operation_receipts;
              DROP TABLE generation_repeatability_result_records;

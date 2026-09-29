@@ -30,8 +30,7 @@ const TERMINAL_EVIDENCE_TABLES: [&str; 9] = [
 #[test]
 fn schema_eleven_fresh_database_is_version_11_and_keeps_schema_ten_tables() {
     let connection = Connection::open_in_memory().expect("open memory database");
-    let mut connection = connection;
-    crate::schema::initialize_empty(&mut connection).expect("initialize current schema");
+    crate::schema::create_schema_eleven_fixture(&connection).expect("create schema eleven");
     let version: i64 = connection
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .expect("read schema version");
@@ -69,14 +68,14 @@ fn populated_schema_ten_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (10, 11)
+        (10, 12)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("write verified backup");
     let result = session.migrate().expect("migrate schema ten");
     assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
-    assert_eq!((result.from_schema, result.to_schema), (10, 11));
+    assert_eq!((result.from_schema, result.to_schema), (10, 12));
 
     assert_eq!(schema_version(&backup), 10);
     let backup_connection = Connection::open(&backup).expect("open backup");
@@ -85,7 +84,7 @@ fn populated_schema_ten_migrates_after_verified_byte_preserving_backup() {
         assert!(!table_exists(&backup_connection, table));
     }
 
-    assert_eq!(schema_version(&source), 11);
+    assert_eq!(schema_version(&source), 12);
     let migrated = Connection::open(&source).expect("open migrated source");
     assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
     for table in TERMINAL_EVIDENCE_TABLES {

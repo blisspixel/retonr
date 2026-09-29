@@ -48,7 +48,7 @@ fn bytes_survive_verified_backup_and_current_migration() {
     assert!(!table_exists(&backup_connection, "artifact_set_removals"));
 
     let migrated = Connection::open(&source).expect("open migrated current source");
-    assert_eq!(schema_version(&source), 11);
+    assert_eq!(schema_version(&source), 12);
     assert_eq!(evidence_rows(&migrated), before);
     assert!(table_exists(&migrated, "installed_artifact_sets"));
     assert!(table_exists(&migrated, "artifact_set_removals"));
@@ -83,7 +83,14 @@ fn seed_schema_three_evidence(path: &Path) {
     Connection::open(path)
         .expect("open evidence store for schema-three fixture")
         .execute_batch(
-            "DROP TABLE generation_qualification_phase_interruption_records;
+            "DROP TABLE candidate_judge_join_records;
+             DROP TABLE managed_local_judge_receipts;
+             DROP TABLE candidate_judge_observation_batches;
+             DROP TABLE candidate_judge_response_aggregates;
+             DROP TABLE candidate_judge_request_aggregates;
+             DROP TABLE candidate_judge_schedules;
+             DROP TABLE candidate_judge_plans;
+             DROP TABLE generation_qualification_phase_interruption_records;
              DROP TABLE generation_qualification_operation_receipts;
              DROP TABLE generation_repeatability_result_records;
              DROP TABLE generation_human_adjudication_evidence_manifests;

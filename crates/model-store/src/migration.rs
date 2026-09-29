@@ -32,7 +32,7 @@ impl StoreSchemaStatus {
     }
 }
 
-const REQUIRED_STORE_SCHEMA_VERSION: u32 = 11;
+const REQUIRED_STORE_SCHEMA_VERSION: u32 = 12;
 const _: () = assert!(schema::STORE_SCHEMA_VERSION == REQUIRED_STORE_SCHEMA_VERSION as i64);
 
 /// Exact schema version required by this adapter.
@@ -243,6 +243,7 @@ fn inspect_connection(connection: &Connection) -> StoreResult<StoreSchemaStatus>
         8 => schema::validate_schema_eight(connection)?,
         9 => schema::validate_schema_nine(connection)?,
         10 => schema::validate_schema_ten(connection)?,
+        11 => schema::validate_schema_eleven(connection)?,
         schema::STORE_SCHEMA_VERSION => schema::validate_schema_shape(connection)?,
         0 => {
             return Err(StoreError::MigrationRequired {
