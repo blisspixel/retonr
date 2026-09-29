@@ -105,7 +105,7 @@ pub(crate) struct CompletedFixture {
     pub(super) bundle: CandidateGenerationEvidenceBundleManifestV1,
     pub(super) storage: CandidateGenerationEvidenceBundleStorageV1,
     pub(super) readback: CandidateGenerationEvidenceBundleReadbackV1,
-    pub(super) receipt: CandidateGenerationReceiptV1,
+    pub(crate) receipt: CandidateGenerationReceiptV1,
     /// Exact completed terminal record.
     pub(crate) attempt: rewrite_model::CandidateGenerationAttemptRecordV1,
 }

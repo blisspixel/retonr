@@ -89,6 +89,10 @@ pub use store::phase_policy_denial::{
     GenerationHumanAdjudicationPolicyDenialV1ReadInput, GenerationResourcePolicyDenialV1Input,
     GenerationResourcePolicyDenialV1ReadInput, PhasePolicyDenialV1TransactionError,
 };
+pub use store::resource_attempt_result::{
+    GenerationResourceAttemptResultV1Input, GenerationResourceAttemptResultV1ReadInput,
+    GenerationResourceAttemptResultV1TransactionError,
+};
 pub use store::{
     ArtifactStateStore, InstallationWriteDisposition, RemovalCompletionDisposition,
     RemovalPreparationDisposition, StoredArtifactSetState, StoredArtifactState, WriteDisposition,

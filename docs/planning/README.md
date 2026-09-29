@@ -141,8 +141,8 @@ and live-use authority in distinct domains.
    Schema 13 adds three inert tables for resource-attempt results, resource-policy
    denials, and human-adjudication-policy denials. The store writes one
    resource-policy denial or one human-adjudication-policy denial in its own
-   immediate transaction. The resource-attempt result table still has no writer.
-   A denial grants no qualification, activation, or live-use authority. Repeatability
+   immediate transaction. The store writes one resource-attempt result in its own immediate transaction.
+   A stored result or denial grants no qualification, activation, or live-use authority. Repeatability
    results remain limited to candidate-generation failure.
    The crate-private strict candidate and judge routes now carry one
    supplied absolute deadline through every traffic and finalization boundary.

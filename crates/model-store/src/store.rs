@@ -58,6 +58,7 @@ mod open;
 mod package_contracts;
 pub mod phase_policy_denial;
 mod removal;
+pub mod resource_attempt_result;
 mod set_inventory;
 mod set_removal;
 

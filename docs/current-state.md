@@ -691,8 +691,8 @@ semantics, nor qualification.
   Schema 13 adds three inert tables for resource-attempt results, resource-policy
   denials, and human-adjudication-policy denials. The store writes one
   resource-policy denial or one human-adjudication-policy denial in its own
-  immediate transaction. The resource-attempt result table still has no writer.
-  A denial grants no qualification, activation, or live-use authority. Repeatability
+  immediate transaction. The store writes one resource-attempt result in its own immediate transaction.
+  A stored result or denial grants no qualification, activation, or live-use authority. Repeatability
   results remain limited to candidate-generation failure.
   Stored digests or caller-selected measurements cannot substitute for those typed
   observations.
@@ -748,7 +748,7 @@ authority. Schema 12 adds seven judge-execution tables for plans, schedules,
 request aggregates, response aggregates, observation batches, managed local judge
 receipts, and candidate judge joins. The store writes that seven-row cohort in one
 immediate transaction. The cohort grants no qualification, activation, or live-use
-authority. Repeatability results remain limited to candidate-generation failure. Schema 13 adds three inert tables for resource-attempt results, resource-policy denials, and human-adjudication-policy denials. The store writes one resource-policy denial or one human-adjudication-policy denial in its own immediate transaction. The resource-attempt result table still has no writer. A denial grants no qualification, activation, or live-use authority. Repeatability results remain limited to candidate-generation failure.
+authority. Repeatability results remain limited to candidate-generation failure. Schema 13 adds three inert tables for resource-attempt results, resource-policy denials, and human-adjudication-policy denials. The store writes one resource-policy denial or one human-adjudication-policy denial in its own immediate transaction. The store writes one resource-attempt result in its own immediate transaction. A stored result or denial grants no qualification, activation, or live-use authority. Repeatability results remain limited to candidate-generation failure.
 Bounded read-only candidate-attempt reconciliation now runs before `Prepared`
 activation. It inspects at most the plan's 1,024 attempts in plan order, classifies
 each as not started, checkpoint-only, terminal failed, or terminal completed, and
@@ -878,8 +878,8 @@ checkpoint remains the concurrency barrier after this read-only admission check.
    Schema 13 adds three inert tables for resource-attempt results, resource-policy
    denials, and human-adjudication-policy denials. The store writes one
    resource-policy denial or one human-adjudication-policy denial in its own
-   immediate transaction. The resource-attempt result table still has no writer.
-   A denial grants no qualification, activation, or live-use authority. Repeatability
+   immediate transaction. The store writes one resource-attempt result in its own immediate transaction.
+   A stored result or denial grants no qualification, activation, or live-use authority. Repeatability
    results remain limited to candidate-generation failure.
    A positive human authority requires a reviewed V2
    policy and explicit reviewer-governance and evidence-retention decisions. Add each
