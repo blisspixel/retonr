@@ -232,10 +232,10 @@ fn cancellation_after_typed_readback_rolls_back_before_commit() {
         let mut repository = open(&path);
         // The synthetic policy budget is 10 seconds. Foundation writes on a
         // loaded runner can exceed it before this callback cancels, and a
-        // reached deadline outranks cancellation. The gate stays open so this
-        // test observes the cancellation rollback.
+        // reached deadline outranks cancellation. A two-minute gate stays
+        // open so this test observes the cancellation rollback.
         let deadline = Instant::now()
-            .checked_add(Duration::from_secs(120))
+            .checked_add(Duration::from_mins(2))
             .expect("cancellation gate deadline");
         let result = transact_at_deadline(
             &mut repository,
