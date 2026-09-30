@@ -22,6 +22,7 @@ mod phase_evidence;
 mod plan;
 mod planned_attempt;
 mod precursor;
+mod qualification_invalidation;
 mod qualification_record;
 mod readback;
 mod receipt;
@@ -195,6 +196,13 @@ pub use planned_attempt::{
 pub use precursor::{
     CandidateGenerationAttemptPrecursorV1, CandidateGenerationAttemptPrecursorV1Input,
     MAX_CANDIDATE_GENERATION_ATTEMPT_PRECURSOR_JSON_BYTES,
+};
+pub use qualification_invalidation::{
+    GENERATION_QUALIFICATION_INVALIDATION_ID_DOMAIN, GenerationQualificationInvalidationId,
+    GenerationQualificationInvalidationV1, GenerationQualificationInvalidationV1Error,
+    GenerationQualificationInvalidationV1Relations,
+    MAX_GENERATION_QUALIFICATION_INVALIDATION_CANONICAL_BYTES,
+    MAX_GENERATION_QUALIFICATION_INVALIDATION_JSON_BYTES,
 };
 pub use qualification_record::{
     GENERATION_QUALIFICATION_RECORD_ID_DOMAIN, GenerationQualificationId,

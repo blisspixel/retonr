@@ -196,6 +196,17 @@ pub use generation_qualification::{
     candidate_deterministic_policy_digest,
 };
 pub use generation_qualification::{
+    GENERATION_QUALIFICATION_INVALIDATION_ID_DOMAIN, GENERATION_QUALIFICATION_RECORD_ID_DOMAIN,
+    GenerationQualificationId, GenerationQualificationInvalidationId,
+    GenerationQualificationInvalidationV1, GenerationQualificationInvalidationV1Error,
+    GenerationQualificationInvalidationV1Relations, GenerationQualificationRecordV1,
+    GenerationQualificationRecordV1Error, GenerationQualificationRecordV1Relations,
+    GenerationQualificationStatusV1, MAX_GENERATION_QUALIFICATION_INVALIDATION_CANONICAL_BYTES,
+    MAX_GENERATION_QUALIFICATION_INVALIDATION_JSON_BYTES,
+    MAX_GENERATION_QUALIFICATION_RECORD_CANONICAL_BYTES,
+    MAX_GENERATION_QUALIFICATION_RECORD_JSON_BYTES,
+};
+pub use generation_qualification::{
     GENERATION_QUALIFICATION_LICENSE_ASSESSMENT_POLICY_ID_DOMAIN,
     GENERATION_QUALIFICATION_LICENSE_EVIDENCE_ID_DOMAIN,
     GENERATION_QUALIFICATION_OPERATION_CANDIDATES_PER_COMPLETION,
@@ -251,13 +262,6 @@ pub use generation_qualification::{
     MAX_GENERATION_QUALIFICATION_REQUEST_PROJECTION_CANONICAL_BYTES,
     MAX_GENERATION_QUALIFICATION_REQUEST_PROJECTION_JSON_BYTES,
     PlannedGenerationQualificationTerminalSet, generation_qualification_plan_failure_policy_digest,
-};
-pub use generation_qualification::{
-    GENERATION_QUALIFICATION_RECORD_ID_DOMAIN, GenerationQualificationId,
-    GenerationQualificationRecordV1, GenerationQualificationRecordV1Error,
-    GenerationQualificationRecordV1Relations, GenerationQualificationStatusV1,
-    MAX_GENERATION_QUALIFICATION_RECORD_CANONICAL_BYTES,
-    MAX_GENERATION_QUALIFICATION_RECORD_JSON_BYTES,
 };
 pub use host_environment::{
     HOST_ENVIRONMENT_ARCHITECTURE_DIGEST_DOMAIN, HOST_ENVIRONMENT_EXECUTION_CLASS_DIGEST_DOMAIN,

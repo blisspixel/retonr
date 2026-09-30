@@ -63,6 +63,7 @@ fn initialize_repository(root: &Path, data: &Path, fixture_name: &str) {
 fn downgrade_to_schema_two(data: &Path) {
     let connection =
         Connection::open(data.join("artifact-state.sqlite3")).expect("open current state fixture");
+    drop_schema_eighteen(&connection);
     drop_schema_seventeen(&connection);
     drop_schema_sixteen(&connection);
     drop_schema_fifteen(&connection);
@@ -96,6 +97,7 @@ fn downgrade_to_schema_two(data: &Path) {
 fn downgrade_to_schema_three(data: &Path) {
     let connection =
         Connection::open(data.join("artifact-state.sqlite3")).expect("open current state fixture");
+    drop_schema_eighteen(&connection);
     drop_schema_seventeen(&connection);
     drop_schema_sixteen(&connection);
     drop_schema_fifteen(&connection);
@@ -119,6 +121,12 @@ fn downgrade_to_schema_three(data: &Path) {
              PRAGMA user_version = 3;",
         )
         .expect("restore canonical schema three shape");
+}
+
+fn drop_schema_eighteen(connection: &Connection) {
+    connection
+        .execute_batch("DROP TABLE generation_qualification_invalidations;")
+        .expect("drop schema-eighteen table");
 }
 
 fn drop_schema_seventeen(connection: &Connection) {
@@ -262,7 +270,7 @@ fn migration_requires_confirmation_and_reports_current_state() {
         .success()
         .stderr(predicate::str::is_empty())
         .stdout(predicate::eq(
-            "disposition: already_current\nfrom_schema: 17\nto_schema: 17\n",
+            "disposition: already_current\nfrom_schema: 18\nto_schema: 18\n",
         ));
 }
 
@@ -304,7 +312,7 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
     assert_eq!(output["command"], "model.migrate");
     assert_eq!(output["result"]["disposition"], "migrated");
     assert_eq!(output["result"]["from_schema"], 2);
-    assert_eq!(output["result"]["to_schema"], 17);
+    assert_eq!(output["result"]["to_schema"], 18);
     let backup_key = output["result"]["backup_key"]
         .as_str()
         .expect("opaque backup key");
@@ -339,7 +347,7 @@ fn migrates_schema_three_with_a_schema_three_backup() {
     assert!(output.stderr.is_empty());
     let output: Value = serde_json::from_slice(&output.stdout).expect("parse migration JSON");
     assert_eq!(output["result"]["from_schema"], 3);
-    assert_eq!(output["result"]["to_schema"], 17);
+    assert_eq!(output["result"]["to_schema"], 18);
     let backup_key = output["result"]["backup_key"]
         .as_str()
         .expect("opaque backup key");

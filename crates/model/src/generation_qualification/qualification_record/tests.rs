@@ -8,6 +8,8 @@ use crate::{ModelLicenseControlId, ModelPackageFoundationId};
 
 #[path = "tests/decision.rs"]
 mod decision;
+#[path = "tests/invalidation.rs"]
+mod invalidation;
 
 struct RejectedFixture {
     base: test_support::Fixture,

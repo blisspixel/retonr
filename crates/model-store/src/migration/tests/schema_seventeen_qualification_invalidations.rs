@@ -3,116 +3,120 @@ use std::path::Path;
 use rusqlite::{Connection, params};
 use tempfile::tempdir;
 
-use super::{reserve_file, schema_version};
+use super::super::{reserve_file, schema_version};
 use crate::{ArtifactStateStore, StoreError, StoreMigrationDisposition};
 
-const RECEIPT_SET_TABLE: &str = "candidate_generation_receipt_sets";
+const INVALIDATION_TABLE: &str = "generation_qualification_invalidations";
 
-const ABSENT_AUTHORITY_TABLES: [&str; 4] = [
-    "generation_qualification_records",
-    "generation_qualification_invalidations",
+const ABSENT_AUTHORITY_TABLES: [&str; 2] = [
     "generation_activation_decisions",
     "active_generation_bindings",
 ];
 
 #[test]
-fn schema_fourteen_fresh_database_is_inert_and_adds_only_the_receipt_set_table() {
-    let current = Connection::open_in_memory().expect("open schema fourteen");
-    crate::schema::create_schema_fourteen_fixture(&current).expect("create schema fourteen");
+fn schema_eighteen_fresh_database_is_inert_and_adds_only_the_invalidation_table() {
+    let mut current = Connection::open_in_memory().expect("open memory database");
+    crate::schema::initialize_empty(&mut current).expect("initialize current schema");
     let version: i64 = current
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .expect("read schema version");
-    assert_eq!(version, 14);
+    assert_eq!(version, 18);
 
-    let prior = Connection::open_in_memory().expect("open schema thirteen");
-    crate::schema::create_schema_thirteen_fixture(&prior).expect("create schema thirteen");
+    let prior = Connection::open_in_memory().expect("open schema seventeen");
+    crate::schema::create_schema_seventeen_fixture(&prior).expect("create schema seventeen");
     let mut added = table_names(&current);
     let prior_names = table_names(&prior);
     added.retain(|name| !prior_names.contains(name));
-    assert_eq!(added, vec![RECEIPT_SET_TABLE.to_owned()]);
+    assert_eq!(added, vec![INVALIDATION_TABLE.to_owned()]);
 
-    let sql = table_sql(&current, RECEIPT_SET_TABLE);
+    let sql = table_sql(&current, INVALIDATION_TABLE);
     assert!(sql.contains("STRICT"));
-    assert!(sql.contains("CHECK(schema_version = 1)"));
-    assert!(sql.contains("CHECK(entry_count BETWEEN 1 AND 256)"));
-    assert!(sql.contains("CHECK(length(canonical_json) BETWEEN 1 AND 4194304)"));
+    assert!(!sql.contains("schema_version"));
+    assert!(!sql.contains("reason_code"));
+    assert!(!sql.contains("sequence"));
+    assert!(!sql.contains("status"));
+    assert!(!sql.contains("qualified"));
+    assert!(sql.contains("CHECK(length(canonical_json) BETWEEN 1 AND 16384)"));
+    assert!(sql.contains("UNIQUE (generation_qualification_id)"));
+    assert_eq!(sql.matches("UNIQUE (").count(), 1);
     assert_eq!(
         sql.matches("ON UPDATE RESTRICT ON DELETE RESTRICT").count(),
-        7
+        1
     );
-    let compact = sql.split_whitespace().collect::<Vec<_>>().join(" ");
-    assert!(compact.contains(
-        "UNIQUE ( generation_qualification_plan_id, generation_repetition_id, generation_system_id )"
-    ));
-    assert_eq!(explicit_index_count(&current, RECEIPT_SET_TABLE), 0);
-    assert_eq!(row_count(&current, RECEIPT_SET_TABLE), 0);
+    assert!(sql.contains("generation_qualification_records"));
+    for absent in [
+        "target_generation_system_id",
+        "operation_policy_id",
+        "generation_qualification_plan_id",
+        "generation_attempt_ledger_manifest_id",
+        "candidate_judge_join_id",
+    ] {
+        assert!(!sql.contains(absent), "{absent}");
+    }
+    assert_eq!(explicit_index_count(&current, INVALIDATION_TABLE), 0);
+    assert_eq!(row_count(&current, INVALIDATION_TABLE), 0);
     for table in ABSENT_AUTHORITY_TABLES {
         assert!(!table_exists(&current, table), "{table} must stay absent");
     }
     let repeatability = table_sql(&current, "generation_repeatability_result_records");
     assert!(repeatability.contains("terminal_stage = 'candidate_generation_failed'"));
-    assert!(repeatability.contains("candidate_generation_receipt_set_id IS NULL"));
-    let join = table_sql(&current, "candidate_judge_join_records");
-    assert!(!join.contains(RECEIPT_SET_TABLE));
-    assert!(!table_exists(
-        &current,
-        "candidate_deterministic_evaluation_records"
-    ));
+    assert!(!table_sql(&current, "generation_qualification_records").contains(INVALIDATION_TABLE));
     assert_eq!(foreign_key_violations(&current), 0);
 }
 
 #[test]
-fn populated_schema_thirteen_migrates_after_verified_byte_preserving_backup() {
+fn populated_schema_seventeen_migrates_after_verified_byte_preserving_backup() {
     let directory = tempdir().expect("temporary directory");
-    let source = directory.path().join("schema-thirteen.db");
-    let backup = directory.path().join("schema-thirteen-backup.db");
-    seed_schema_thirteen(&source);
+    let source = directory.path().join("schema-seventeen.db");
+    let backup = directory.path().join("schema-seventeen-backup.db");
+    seed_schema_seventeen(&source);
     let mut backup_file = reserve_file(&backup);
     let mut session = ArtifactStateStore::begin_existing_migration(&source)
-        .expect("begin schema-thirteen migration");
+        .expect("begin schema-seventeen migration");
     assert_eq!(
         (
             session.schema_status().found,
             session.schema_status().current
         ),
-        (13, 18)
+        (17, 18)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("write verified backup");
-    let result = session.migrate().expect("migrate schema thirteen");
-    assert_eq!((result.from_schema, result.to_schema), (13, 18));
+    let result = session.migrate().expect("migrate schema seventeen");
+    assert_eq!((result.from_schema, result.to_schema), (17, 18));
     assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
     assert_eq!(schema_version(&source), 18);
-    assert_eq!(schema_version(&backup), 13);
+    assert_eq!(schema_version(&backup), 17);
     let migrated = Connection::open(&source).expect("reopen migrated source");
     assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
-    assert!(table_exists(&migrated, RECEIPT_SET_TABLE));
-    assert_eq!(row_count(&migrated, RECEIPT_SET_TABLE), 0);
+    assert!(table_exists(&migrated, INVALIDATION_TABLE));
+    assert_eq!(row_count(&migrated, INVALIDATION_TABLE), 0);
+    assert!(table_exists(&migrated, "generation_qualification_records"));
     let repeatability = table_sql(&migrated, "generation_repeatability_result_records");
-    assert!(repeatability.contains("candidate_generation_receipt_set_id IS NULL"));
+    assert!(repeatability.contains("candidate_generation_failed"));
     assert_eq!(foreign_key_violations(&migrated), 0);
-    let retained = Connection::open(&backup).expect("reopen schema-thirteen backup");
-    assert!(!table_exists(&retained, RECEIPT_SET_TABLE));
+    let retained = Connection::open(&backup).expect("reopen schema-seventeen backup");
+    assert!(!table_exists(&retained, INVALIDATION_TABLE));
 }
 
 #[test]
-fn schema_thirteen_migration_requires_backup_and_rolls_back() {
+fn schema_seventeen_migration_requires_backup_and_rolls_back() {
     let directory = tempdir().expect("temporary directory");
-    let source = directory.path().join("schema-thirteen-unbacked.db");
-    seed_schema_thirteen(&source);
+    let source = directory.path().join("schema-seventeen-unbacked.db");
+    seed_schema_seventeen(&source);
     let session =
         ArtifactStateStore::begin_existing_migration(&source).expect("begin unbacked migration");
     assert!(matches!(session.migrate(), Err(StoreError::BackupRequired)));
-    assert_eq!(schema_version(&source), 13);
+    assert_eq!(schema_version(&source), 17);
     let connection = Connection::open(&source).expect("reopen unmigrated source");
-    assert!(!table_exists(&connection, RECEIPT_SET_TABLE));
+    assert!(!table_exists(&connection, INVALIDATION_TABLE));
 }
 
 #[test]
-fn inspection_rejects_altered_schema_fourteen_shape() {
+fn inspection_rejects_altered_schema_eighteen_shape() {
     let directory = tempdir().expect("temporary directory");
-    let current = directory.path().join("altered-schema-fourteen.db");
+    let current = directory.path().join("altered-schema-eighteen.db");
     drop(Connection::open(&current).expect("create empty database"));
     drop(
         ArtifactStateStore::open_existing_or_initialize_empty(&current)
@@ -120,9 +124,9 @@ fn inspection_rejects_altered_schema_fourteen_shape() {
     );
     rewrite_table_sql(
         &current,
-        RECEIPT_SET_TABLE,
-        "CHECK(entry_count BETWEEN 1 AND 256)",
-        "CHECK(entry_count BETWEEN 1 AND 16)",
+        INVALIDATION_TABLE,
+        "CHECK(length(canonical_json) BETWEEN 1 AND 16384)",
+        "CHECK(length(canonical_json) BETWEEN 1 AND 16383)",
     );
     assert!(matches!(
         ArtifactStateStore::inspect_existing_schema(&current),
@@ -132,63 +136,79 @@ fn inspection_rejects_altered_schema_fourteen_shape() {
 }
 
 #[test]
-fn receipt_set_checks_reject_bad_identity_counts_and_bounds() {
+fn invalidation_checks_reject_illegal_identity_and_qualification_reuse() {
     let connection = open_unchecked();
-    assert!(insert_receipt_set(&connection, &digest('a', 0), 'a', 1, 1, 1).is_ok());
-    assert!(insert_receipt_set(&connection, &digest('b', 0), 'b', 1, 256, 1).is_ok());
-    assert!(insert_receipt_set(&connection, &digest('c', 0), 'c', 2, 1, 1).is_err());
-    assert!(insert_receipt_set(&connection, &digest('d', 0), 'd', 1, 0, 1).is_err());
-    assert!(insert_receipt_set(&connection, &digest('e', 0), 'e', 1, 257, 1).is_err());
-    assert!(insert_receipt_set(&connection, &digest('f', 0), 'f', 1, 1, 0).is_err());
-    assert!(insert_receipt_set(&connection, &digest('0', 0), '0', 1, 1, 4_194_305).is_err());
-    let mut uppercase = digest('1', 0);
-    uppercase.replace_range(0..1, "A");
-    assert!(insert_receipt_set(&connection, &uppercase, '1', 1, 1, 1).is_err());
-    let short = digest('2', 0);
-    assert!(insert_receipt_set(&connection, &short[..63], '2', 1, 1, 1).is_err());
-    assert!(insert_receipt_set(&connection, &digest('3', 0), '3', 1, 1, 1).is_ok());
-    assert!(insert_receipt_set(&connection, &digest('4', 0), '3', 1, 1, 1).is_err());
+    assert!(insert(&connection, &row(1, 1)).is_ok());
+    assert!(insert(&connection, &row(2, 16_384)).is_ok());
+    assert!(insert(&connection, &row(3, 4_096)).is_ok());
+    let mut checked = Connection::open_in_memory().expect("open checked database");
+    crate::schema::initialize_empty(&mut checked).expect("initialize checked schema");
+    assert!(insert(&checked, &row(20, 1)).is_err());
+    assert_rejections(&connection);
 }
 
-fn insert_receipt_set(
-    connection: &Connection,
-    id: &str,
-    scope: char,
-    schema_version_value: i64,
-    entry_count: i64,
+fn assert_rejections(connection: &Connection) {
+    assert!(insert(connection, &row(7, 0)).is_err());
+    assert!(insert(connection, &row(8, 16_385)).is_err());
+    let mut missing = row(9, 1);
+    missing.qualification_id = None;
+    assert!(insert(connection, &missing).is_err());
+    assert_identity_rejections(connection);
+}
+
+fn assert_identity_rejections(connection: &Connection) {
+    let mut uppercase = digest('c', 10);
+    uppercase.replace_range(0..1, "A");
+    let mut rejected = row(10, 1);
+    rejected.id = uppercase;
+    assert!(insert(connection, &rejected).is_err());
+    let mut short = row(11, 1);
+    short.id.truncate(63);
+    assert!(insert(connection, &short).is_err());
+    let mut non_hex = row(12, 1);
+    non_hex.qualification_id = Some(digest('a', 12).replacen('a', "g", 1));
+    assert!(insert(connection, &non_hex).is_err());
+    let mut duplicate = row(13, 1);
+    duplicate.id = digest('c', 1);
+    assert!(insert(connection, &duplicate).is_err());
+    let mut same_qualification = row(14, 1);
+    same_qualification.qualification_id = Some(digest('a', 1));
+    assert!(insert(connection, &same_qualification).is_err());
+}
+
+struct InvalidationRow {
+    id: String,
+    qualification_id: Option<String>,
     json_len: usize,
-) -> rusqlite::Result<usize> {
+}
+
+fn row(slot: u8, json_len: usize) -> InvalidationRow {
+    InvalidationRow {
+        id: digest('c', slot),
+        qualification_id: Some(digest('a', slot)),
+        json_len,
+    }
+}
+
+fn insert(connection: &Connection, row: &InvalidationRow) -> rusqlite::Result<usize> {
     connection.execute(
-        "INSERT INTO candidate_generation_receipt_sets (
-             candidate_generation_receipt_set_id, schema_version,
-             generation_qualification_plan_id, generation_suite_manifest_id,
-             generation_repetition_id, generation_system_id, candidate_selection_policy_id,
-             entry_count, canonical_json
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        params![
-            id,
-            schema_version_value,
-            digest(scope, 1),
-            digest(scope, 2),
-            digest(scope, 3),
-            digest(scope, 4),
-            digest(scope, 5),
-            entry_count,
-            vec![b'x'; json_len],
-        ],
+        "INSERT INTO generation_qualification_invalidations (
+             generation_qualification_invalidation_id, generation_qualification_id, canonical_json
+         ) VALUES (?1, ?2, ?3)",
+        params![row.id, row.qualification_id, vec![b'x'; row.json_len]],
     )
 }
 
-fn seed_schema_thirteen(path: &Path) {
-    let connection = Connection::open(path).expect("create schema thirteen");
-    crate::schema::create_schema_thirteen_fixture(&connection).expect("create schema thirteen");
+fn seed_schema_seventeen(path: &Path) {
+    let connection = Connection::open(path).expect("create schema seventeen");
+    crate::schema::create_schema_seventeen_fixture(&connection).expect("create schema seventeen");
     connection
         .execute(
             "INSERT INTO generation_cluster_records
                  (generation_cluster_id, canonical_json) VALUES (?1, ?2)",
             params![digest('a', 0), b"{\"schema_version\":1}"],
         )
-        .expect("insert retained schema-thirteen row");
+        .expect("insert retained schema-seventeen row");
 }
 
 fn cluster_json(connection: &Connection) -> Vec<u8> {

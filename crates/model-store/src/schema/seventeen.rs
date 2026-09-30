@@ -15,6 +15,12 @@ pub(super) fn migrate_schema_sixteen(connection: &Connection) -> StoreResult<()>
     Ok(())
 }
 
+#[cfg(test)]
+pub(crate) fn create_schema_sixteen_fixture(connection: &Connection) -> StoreResult<()> {
+    super::create_schema_fifteen_fixture(connection)?;
+    super::migrate_schema_fifteen(connection)
+}
+
 fn create(connection: &Connection) -> StoreResult<()> {
     let id = primary_key("generation_qualification_id");
     let target = hex_column("target_generation_system_id");

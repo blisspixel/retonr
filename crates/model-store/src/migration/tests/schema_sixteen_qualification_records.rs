@@ -3,6 +3,9 @@ use std::path::Path;
 use rusqlite::{Connection, params};
 use tempfile::tempdir;
 
+#[path = "schema_seventeen_qualification_invalidations.rs"]
+mod schema_seventeen_qualification_invalidations;
+
 use super::{reserve_file, schema_version};
 use crate::{ArtifactStateStore, StoreError, StoreMigrationDisposition};
 
@@ -16,8 +19,8 @@ const ABSENT_AUTHORITY_TABLES: [&str; 3] = [
 
 #[test]
 fn schema_seventeen_fresh_database_is_inert_and_adds_only_the_qualification_table() {
-    let mut current = Connection::open_in_memory().expect("open memory database");
-    crate::schema::initialize_empty(&mut current).expect("initialize current schema");
+    let current = Connection::open_in_memory().expect("open memory database");
+    crate::schema::create_schema_seventeen_fixture(&current).expect("create schema seventeen");
     let version: i64 = current
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .expect("read schema version");
@@ -87,15 +90,15 @@ fn populated_schema_sixteen_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (16, 17)
+        (16, 18)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("write verified backup");
     let result = session.migrate().expect("migrate schema sixteen");
-    assert_eq!((result.from_schema, result.to_schema), (16, 17));
+    assert_eq!((result.from_schema, result.to_schema), (16, 18));
     assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
-    assert_eq!(schema_version(&source), 17);
+    assert_eq!(schema_version(&source), 18);
     assert_eq!(schema_version(&backup), 16);
     let migrated = Connection::open(&source).expect("reopen migrated source");
     assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
@@ -144,7 +147,7 @@ fn inspection_rejects_altered_schema_seventeen_shape() {
         ArtifactStateStore::inspect_existing_schema(&current),
         Err(StoreError::CorruptRecord)
     ));
-    assert_eq!(schema_version(&current), 17);
+    assert_eq!(schema_version(&current), 18);
 }
 
 #[test]

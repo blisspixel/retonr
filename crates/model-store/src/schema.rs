@@ -5,6 +5,7 @@ use rusqlite::{Connection, TransactionBehavior};
 use crate::{StoreError, StoreResult};
 
 mod eight;
+mod eighteen;
 mod eleven;
 mod fifteen;
 mod fourteen;
@@ -19,6 +20,7 @@ mod thirteen;
 mod twelve;
 
 use eight::migrate_schema_seven;
+use eighteen::migrate_schema_seventeen;
 use eleven::migrate_schema_ten;
 use fifteen::migrate_schema_fourteen;
 use fourteen::migrate_schema_thirteen;
@@ -33,12 +35,12 @@ use twelve::migrate_schema_eleven;
 pub(super) use shape::{
     validate_schema_eight, validate_schema_eleven, validate_schema_fifteen, validate_schema_five,
     validate_schema_four, validate_schema_fourteen, validate_schema_nine, validate_schema_one,
-    validate_schema_seven, validate_schema_shape, validate_schema_six, validate_schema_sixteen,
-    validate_schema_ten, validate_schema_thirteen, validate_schema_three, validate_schema_twelve,
-    validate_schema_two,
+    validate_schema_seven, validate_schema_seventeen, validate_schema_shape, validate_schema_six,
+    validate_schema_sixteen, validate_schema_ten, validate_schema_thirteen, validate_schema_three,
+    validate_schema_twelve, validate_schema_two,
 };
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 17;
+pub(super) const STORE_SCHEMA_VERSION: i64 = 18;
 
 pub(super) fn migrate_existing_transaction(
     connection: &Connection,
@@ -63,7 +65,8 @@ fn create_current_schema(connection: &Connection) -> StoreResult<()> {
     migrate_schema_thirteen(connection)?;
     migrate_schema_fourteen(connection)?;
     migrate_schema_fifteen(connection)?;
-    migrate_schema_sixteen(connection)
+    migrate_schema_sixteen(connection)?;
+    migrate_schema_seventeen(connection)
 }
 
 fn create_schema_two(connection: &Connection) -> StoreResult<()> {
@@ -389,10 +392,10 @@ pub(super) fn create_schema_fifteen_fixture(connection: &Connection) -> StoreRes
 }
 
 #[cfg(test)]
-pub(super) fn create_schema_sixteen_fixture(connection: &Connection) -> StoreResult<()> {
-    create_schema_fifteen_fixture(connection)?;
-    migrate_schema_fifteen(connection)
-}
+pub(super) use seventeen::create_schema_sixteen_fixture;
+
+#[cfg(test)]
+pub(super) use eighteen::create_schema_seventeen_fixture;
 
 const SCHEMA_ONE_SQL: &str = "CREATE TABLE artifact_manifests (
          artifact_id TEXT PRIMARY KEY NOT NULL CHECK(length(artifact_id) = 64),
