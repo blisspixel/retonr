@@ -30,6 +30,10 @@ pub use removal::{
     ArtifactInstallationEpoch, ArtifactRemovalPhase, StoredArtifactInstallation,
     StoredArtifactRemoval,
 };
+pub use store::candidate_deterministic_evaluation::{
+    CandidateDeterministicEvaluationV1Input, CandidateDeterministicEvaluationV1ReadInput,
+    CandidateDeterministicEvaluationV1TransactionError,
+};
 pub use store::candidate_generation_attempt_admission::{
     CandidateGenerationAttemptAdmissionClassV1, CandidateGenerationAttemptAdmissionV1,
 };

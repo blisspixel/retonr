@@ -62,14 +62,18 @@ pub(crate) fn prepared_store(path: &std::path::Path, fixture: &Fixture) -> Artif
 }
 
 pub(super) fn precursor(fixture: &Fixture) -> CandidateGenerationAttemptPrecursorV1 {
+    precursor_at(fixture, 0)
+}
+
+fn precursor_at(fixture: &Fixture, index: usize) -> CandidateGenerationAttemptPrecursorV1 {
     CandidateGenerationAttemptPrecursorV1::new(
         &fixture.plan,
-        &fixture.attempts[0],
-        &fixture.systems[0],
+        &fixture.attempts[index],
+        &fixture.systems[index],
         CandidateGenerationAttemptPrecursorV1Input {
             runtime_installation_generation: 1,
             model_installation_generation: 1,
-            structured_request_binding_id: fixture.entry_inputs[0]
+            structured_request_binding_id: fixture.entry_inputs[index]
                 .structured_completion_request_binding_id
                 .clone(),
         },
@@ -110,25 +114,37 @@ pub(crate) struct CompletedFixture {
     pub(crate) attempt: rewrite_model::CandidateGenerationAttemptRecordV1,
 }
 
+pub(crate) fn completed(fixture: &Fixture) -> CompletedFixture {
+    completed_at(fixture, 0)
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "complete successful execution fixture"
 )]
-pub(crate) fn completed(fixture: &Fixture) -> CompletedFixture {
-    let planned = &fixture.attempts[0];
-    let precursor = precursor(fixture);
+pub(crate) fn completed_at(fixture: &Fixture, index: usize) -> CompletedFixture {
+    let planned = &fixture.attempts[index];
+    let generation_system = &fixture.systems[index];
+    let suffix = attempt_suffix(index);
+    let precursor = precursor_at(fixture, index);
     let managed_input = ManagedOllamaCandidateGenerationEvidenceV2Input {
         bracket_observation_v1_id:
-            ManagedOllamaGenerationBracketObservationV1Id::from_derived_digest(digest("bracket")),
+            ManagedOllamaGenerationBracketObservationV1Id::from_derived_digest(digest(&format!(
+                "bracket{suffix}"
+            ))),
         effective_runtime_state_join_id:
-            ManagedOllamaEffectiveRuntimeStateJoinId::from_derived_digest(digest("runtime join")),
-        response_id: OllamaRetainedSessionResponseId::from_derived_digest(digest("response")),
+            ManagedOllamaEffectiveRuntimeStateJoinId::from_derived_digest(digest(&format!(
+                "runtime join{suffix}"
+            ))),
+        response_id: OllamaRetainedSessionResponseId::from_derived_digest(digest(&format!(
+            "response{suffix}"
+        ))),
     };
     let managed = ManagedOllamaCandidateGenerationEvidenceV2::new(
         ManagedOllamaCandidateGenerationEvidenceV2Relations {
             precursor: &precursor,
             planned_attempt: planned,
-            generation_system: &fixture.systems[0],
+            generation_system,
             effective_package_evidence_v2: &fixture.system.effective_package,
         },
         managed_input.clone(),
@@ -146,20 +162,20 @@ pub(crate) fn completed(fixture: &Fixture) -> CompletedFixture {
         },
     )
     .expect("cleanup");
-    let response = b"structured response";
+    let response = format!("structured response{suffix}");
     let response_artifact = StructuredResponseArtifactV1Input::new(
-        ArtifactId::from_digest(Digest::sha256(response)),
+        ArtifactId::from_digest(Digest::sha256(response.as_bytes())),
         u64::try_from(response.len()).expect("response length"),
     )
     .expect("response artifact");
-    let candidate_bytes = b"candidate";
+    let candidate_bytes = format!("candidate{suffix}");
     let candidate = CandidateArtifactEntryV1::new(
         &precursor,
         planned,
         &fixture.cases[0],
         0,
         path("candidates/000.txt"),
-        candidate_bytes,
+        candidate_bytes.as_bytes(),
     )
     .expect("candidate");
     let mut entries = vec![
@@ -230,7 +246,7 @@ pub(crate) fn completed(fixture: &Fixture) -> CompletedFixture {
             repetition: &fixture.repetitions[0],
             planned_attempt: planned,
             precursor: &precursor,
-            generation_system: &fixture.systems[0],
+            generation_system,
             managed_evidence: &managed,
             cleanup: &cleanup,
             bundle: &bundle,
@@ -322,4 +338,12 @@ fn path(value: &str) -> ArtifactSetRelativePath {
 
 fn digest(value: &str) -> Digest {
     Digest::sha256(value.as_bytes())
+}
+
+fn attempt_suffix(index: usize) -> String {
+    if index == 0 {
+        String::new()
+    } else {
+        format!(" {index}")
+    }
 }
