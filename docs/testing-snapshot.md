@@ -10,8 +10,9 @@ behavior. This guide summarizes it for a hands-on session and does not extend it
 ## What you are testing
 
 Retonr is a local-first editorial engine. The snapshot's primary useful workflow is
-**fidelity checking**. It also exposes pre-model source inspection, a provisional
-`rewrite` command that does not start a runtime, and offline artifact administration.
+**fidelity checking**. It also exposes pre-model source inspection, deterministic
+editorial lint, a provisional `rewrite` command that does not start a runtime, and
+offline artifact administration.
 
 You bring two documents. The first is your original. The second is a complete
 rewritten version of it, produced by any tool or by hand. Retonr answers one

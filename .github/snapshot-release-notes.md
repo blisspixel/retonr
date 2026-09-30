@@ -7,28 +7,24 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 
 ## Changes in this snapshot
 
-- Adds the schema-10 durable candidate-execution foundation: pretraffic checkpoints,
-  atomic completed-or-failed persistence at trustworthy closeout boundaries,
-  application-root evidence publication, bounded cold readback, and in-transaction
-  reacquisition.
-- Makes the Active generation-qualification operation own candidate publication,
-  readback, receipt closeout, failed-attempt derivation, exact attempt-ledger closure,
-  and the candidate-before-judge gate. These remain internal development boundaries
-  and grant no qualification or model-use authority.
-- Runs retained Linux executables by descriptor, including when `/proc` is private or
-  mounted `noexec`, while preserving logical argument identity and deterministic
-  environment validation.
-- Tightens Linux managed and controlled-build isolation with inherited seccomp policy,
-  namespace-bearing clone denial, bounded file-descriptor behavior, and an active
-  canary around the one anonymous process-launch socket pair required by the pinned
-  Rust launcher.
-- Adds forced native Linux CI coverage for managed launch and controlled build,
-  including the exact 64-descriptor boundary. The live native-closure observer keeps
-  its narrow checkpoint-restore capability outside the zero-capability worker. The
-  same gate corrects cross-platform lint and fixture line-ending failures.
-- Updates current-state, planning, and roadmap documentation. The next implementation
-  slice is bounded read-only reconciliation of durable candidate-attempt state before
-  activation.
+- Adds optional layout bounds on `retonr check`: an edit level, a character budget,
+  and an expansion ceiling. These gates decide acceptance before a candidate is
+  written. They do not qualify a model.
+- Adds `retonr lint` for single-document or comparative inspection of conversational
+  residue, cliches, and synthetic patterns. Findings do not create release
+  qualification evidence.
+- Reconciles stored candidate attempts before Prepared activation. Only an entirely
+  pristine plan may activate. The check does not repair, delete, or fabricate
+  evidence.
+- Persists the local generation-qualification store through schema 19. The store
+  writes terminal evidence, one judge-execution cohort, one phase-policy denial,
+  one resource-attempt result, one receipt set, one deterministic evaluation, one
+  repeatability terminal result, one qualification record, one invalidation, and
+  one selection. Each write is its own immediate transaction. A stored row grants
+  no qualification, activation, or live-use authority.
+- Updates current-state, planning, roadmap, and readme documentation. The final
+  qualification compiler, activation decisions, and active generation bindings are
+  not implemented. No model and runtime combination is qualified.
 
 ## What these artifacts are
 
@@ -62,12 +58,14 @@ before running it.
 `retonr check` validates a complete candidate rewrite against a source document
 without using a model. It reports whether the candidate preserved protected
 values, structure, and literal token content, and it can write the accepted
-bytes, or the exact original after an abstention, to a new file.
+bytes, or the exact original after an abstention, to a new file. Optional edit
+level, character budget, and expansion ceiling flags enforce layout bounds.
 
-`retonr rewrite` runs the current model-free rewrite transaction. `retonr inspect`
-performs pre-model source inventory. `retonr model` administers exact local model
-artifacts offline. These commands do not download, qualify, activate, or run a
-model.
+`retonr lint` inspects one document, or compares it with a candidate, for
+conversational residue, cliches, and synthetic patterns. `retonr rewrite` runs
+the current model-free rewrite transaction. `retonr inspect` performs pre-model
+source inventory. `retonr model` administers exact local model artifacts offline.
+These commands do not download, qualify, activate, or run a model.
 
 Model-backed rewrite, managed runtime execution, profiles, agents, and the desktop
 application are not exposed by this binary. See
