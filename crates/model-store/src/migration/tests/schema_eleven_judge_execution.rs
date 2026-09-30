@@ -30,8 +30,7 @@ const TERMINAL_EVIDENCE_TABLES: [&str; 9] = [
     "generation_qualification_phase_interruption_records",
 ];
 
-const ABSENT_AUTHORITY_TABLES: [&str; 4] = [
-    "generation_qualification_records",
+const ABSENT_AUTHORITY_TABLES: [&str; 3] = [
     "generation_qualification_invalidations",
     "generation_activation_decisions",
     "active_generation_bindings",
@@ -86,14 +85,14 @@ fn populated_schema_eleven_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (11, 16)
+        (11, 17)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("write verified backup");
     let result = session.migrate().expect("migrate schema eleven");
     assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
-    assert_eq!((result.from_schema, result.to_schema), (11, 16));
+    assert_eq!((result.from_schema, result.to_schema), (11, 17));
 
     assert_eq!(schema_version(&backup), 11);
     let backup_connection = Connection::open(&backup).expect("open backup");
@@ -102,7 +101,7 @@ fn populated_schema_eleven_migrates_after_verified_byte_preserving_backup() {
         assert!(!table_exists(&backup_connection, table));
     }
 
-    assert_eq!(schema_version(&source), 16);
+    assert_eq!(schema_version(&source), 17);
     let migrated = Connection::open(&source).expect("open migrated source");
     assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
     for table in JUDGE_EXECUTION_TABLES {
@@ -110,6 +109,7 @@ fn populated_schema_eleven_migrates_after_verified_byte_preserving_backup() {
     }
     assert_eq!(row_count(&migrated, "qualification_records"), 0);
     assert_eq!(row_count(&migrated, "qualification_v2_records"), 0);
+    assert_eq!(row_count(&migrated, "generation_qualification_records"), 0);
     for table in ABSENT_AUTHORITY_TABLES {
         assert!(!table_exists(&migrated, table), "{table} must stay absent");
     }
@@ -151,7 +151,7 @@ fn inspection_rejects_altered_schema_twelve_and_schema_eleven_shapes() {
         ArtifactStateStore::inspect_existing_schema(&current),
         Err(StoreError::CorruptRecord)
     ));
-    assert_eq!(schema_version(&current), 16);
+    assert_eq!(schema_version(&current), 17);
 
     let schema_eleven = directory.path().join("altered-schema-eleven.db");
     let connection = Connection::open(&schema_eleven).expect("create schema eleven");

@@ -158,11 +158,14 @@ fn assert_indexed_closure(session: &Session) {
 
 fn assert_inert(session: &Session) {
     let connection = session.store.connection();
-    for table in ["qualification_records", "qualification_v2_records"] {
+    for table in [
+        "qualification_records",
+        "qualification_v2_records",
+        "generation_qualification_records",
+    ] {
         assert_eq!(count(session, table), 0, "{table}");
     }
     for table in [
-        "generation_qualification_records",
         "generation_qualification_invalidations",
         "generation_activation_decisions",
         "active_generation_bindings",

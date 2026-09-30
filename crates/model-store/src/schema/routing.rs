@@ -5,12 +5,13 @@ use crate::{StoreError, StoreResult};
 use super::{
     STORE_SCHEMA_VERSION, migrate_schema_eight, migrate_schema_eleven, migrate_schema_fifteen,
     migrate_schema_five, migrate_schema_four, migrate_schema_fourteen, migrate_schema_nine,
-    migrate_schema_one, migrate_schema_seven, migrate_schema_six, migrate_schema_ten,
-    migrate_schema_thirteen, migrate_schema_three, migrate_schema_twelve, migrate_schema_two,
-    validate_schema_eight, validate_schema_eleven, validate_schema_fifteen, validate_schema_five,
-    validate_schema_four, validate_schema_fourteen, validate_schema_nine, validate_schema_one,
-    validate_schema_seven, validate_schema_shape, validate_schema_six, validate_schema_ten,
-    validate_schema_thirteen, validate_schema_three, validate_schema_twelve, validate_schema_two,
+    migrate_schema_one, migrate_schema_seven, migrate_schema_six, migrate_schema_sixteen,
+    migrate_schema_ten, migrate_schema_thirteen, migrate_schema_three, migrate_schema_twelve,
+    migrate_schema_two, validate_schema_eight, validate_schema_eleven, validate_schema_fifteen,
+    validate_schema_five, validate_schema_four, validate_schema_fourteen, validate_schema_nine,
+    validate_schema_one, validate_schema_seven, validate_schema_shape, validate_schema_six,
+    validate_schema_sixteen, validate_schema_ten, validate_schema_thirteen, validate_schema_three,
+    validate_schema_twelve, validate_schema_two,
 };
 
 pub(super) fn migrate_existing_transaction(
@@ -70,6 +71,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         2 => {
             validate_schema_two(connection)?;
@@ -100,6 +103,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         3 => {
             validate_schema_three(connection)?;
@@ -128,6 +133,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         4 => {
             validate_schema_four(connection)?;
@@ -154,6 +161,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         5 => {
             validate_schema_five(connection)?;
@@ -178,6 +187,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         6 => {
             validate_schema_six(connection)?;
@@ -200,6 +211,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         7 => {
             validate_schema_seven(connection)?;
@@ -220,6 +233,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         8 => {
             validate_schema_eight(connection)?;
@@ -238,6 +253,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         9 => {
             validate_schema_nine(connection)?;
@@ -254,6 +271,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         10 => {
             validate_schema_ten(connection)?;
@@ -268,6 +287,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         11 => {
             validate_schema_eleven(connection)?;
@@ -280,6 +301,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         12 => {
             validate_schema_twelve(connection)?;
@@ -290,6 +313,8 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         13 => {
             validate_schema_thirteen(connection)?;
@@ -298,16 +323,26 @@ fn migrate_supported_schema(connection: &Connection, version: i64) -> StoreResul
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         14 => {
             validate_schema_fourteen(connection)?;
             migrate_schema_fourteen(connection)?;
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         15 => {
             validate_schema_fifteen(connection)?;
             migrate_schema_fifteen(connection)?;
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
+        }
+        16 => {
+            validate_schema_sixteen(connection)?;
+            migrate_schema_sixteen(connection)?;
         }
         STORE_SCHEMA_VERSION => validate_schema_shape(connection)?,
         value if !(0..=STORE_SCHEMA_VERSION).contains(&value) => {

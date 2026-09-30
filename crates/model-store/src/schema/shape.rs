@@ -6,15 +6,17 @@ use super::{
     create_current_schema, create_schema_one, create_schema_two, migrate_schema_eight,
     migrate_schema_eleven, migrate_schema_fifteen, migrate_schema_five, migrate_schema_four,
     migrate_schema_fourteen, migrate_schema_nine, migrate_schema_one, migrate_schema_seven,
-    migrate_schema_six, migrate_schema_ten, migrate_schema_thirteen, migrate_schema_three,
-    migrate_schema_twelve, migrate_schema_two,
+    migrate_schema_six, migrate_schema_sixteen, migrate_schema_ten, migrate_schema_thirteen,
+    migrate_schema_three, migrate_schema_twelve, migrate_schema_two,
 };
 
 mod evaluations;
+mod qualification_records;
 mod receipt_sets;
 mod terminal_results;
 
 pub(crate) use evaluations::validate_schema_fourteen;
+pub(crate) use qualification_records::validate_schema_sixteen;
 pub(crate) use receipt_sets::validate_schema_thirteen;
 pub(crate) use terminal_results::validate_schema_fifteen;
 
@@ -361,6 +363,7 @@ fn canonical_migrated_current_objects() -> StoreResult<Vec<SchemaObject>> {
     migrate_schema_thirteen(&connection)?;
     migrate_schema_fourteen(&connection)?;
     migrate_schema_fifteen(&connection)?;
+    migrate_schema_sixteen(&connection)?;
     schema_objects(&connection)
 }
 

@@ -37,7 +37,7 @@ fn schema_six_migration_preserves_every_legacy_value_byte_for_byte() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (6, 16)
+        (6, 17)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -56,7 +56,7 @@ fn schema_six_migration_preserves_every_legacy_value_byte_for_byte() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 16);
+    assert_eq!(schema_version(&source), 17);
     assert_eq!(all_schema_six_rows(&migrated), before);
     for table in PREREGISTRATION_TABLES {
         let count: i64 = migrated

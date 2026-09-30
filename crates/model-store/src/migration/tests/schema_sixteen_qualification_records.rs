@@ -1,0 +1,389 @@
+use std::path::Path;
+
+use rusqlite::{Connection, params};
+use tempfile::tempdir;
+
+use super::{reserve_file, schema_version};
+use crate::{ArtifactStateStore, StoreError, StoreMigrationDisposition};
+
+const QUALIFICATION_TABLE: &str = "generation_qualification_records";
+
+const ABSENT_AUTHORITY_TABLES: [&str; 3] = [
+    "generation_qualification_invalidations",
+    "generation_activation_decisions",
+    "active_generation_bindings",
+];
+
+#[test]
+fn schema_seventeen_fresh_database_is_inert_and_adds_only_the_qualification_table() {
+    let mut current = Connection::open_in_memory().expect("open memory database");
+    crate::schema::initialize_empty(&mut current).expect("initialize current schema");
+    let version: i64 = current
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .expect("read schema version");
+    assert_eq!(version, 17);
+
+    let prior = Connection::open_in_memory().expect("open schema sixteen");
+    crate::schema::create_schema_sixteen_fixture(&prior).expect("create schema sixteen");
+    let mut added = table_names(&current);
+    let prior_names = table_names(&prior);
+    added.retain(|name| !prior_names.contains(name));
+    assert_eq!(added, vec![QUALIFICATION_TABLE.to_owned()]);
+
+    let sql = table_sql(&current, QUALIFICATION_TABLE);
+    assert!(sql.contains("STRICT"));
+    assert!(!sql.contains("schema_version"));
+    assert!(sql.contains("CHECK(length(canonical_json) BETWEEN 1 AND 16384)"));
+    assert!(sql.contains("'qualified', 'rejected'"));
+    assert!(sql.contains("CHECK(target_generation_system_id <> baseline_generation_system_id)"));
+    assert!(sql.contains("UNIQUE (generation_qualification_operation_receipt_id)"));
+    assert_eq!(sql.matches("UNIQUE (").count(), 1);
+    assert_eq!(
+        sql.matches("ON UPDATE RESTRICT ON DELETE RESTRICT").count(),
+        7
+    );
+    for parent in [
+        "generation_system_records",
+        "generation_qualification_operation_policies",
+        "generation_qualification_request_projections",
+        "generation_qualification_platform_evidence",
+        "generation_qualification_license_evidence",
+        "generation_qualification_operation_receipts",
+    ] {
+        assert!(sql.contains(parent), "{parent} must be referenced");
+    }
+    assert!(!sql.contains("generation_qualification_plan_id"));
+    assert!(!sql.contains("generation_attempt_ledger_manifest_id"));
+    assert!(!sql.contains("candidate_judge_join_id"));
+    assert_eq!(explicit_index_count(&current, QUALIFICATION_TABLE), 0);
+    assert_eq!(row_count(&current, QUALIFICATION_TABLE), 0);
+    for table in ABSENT_AUTHORITY_TABLES {
+        assert!(!table_exists(&current, table), "{table} must stay absent");
+    }
+    let repeatability = table_sql(&current, "generation_repeatability_result_records");
+    assert!(repeatability.contains("terminal_stage = 'candidate_generation_failed'"));
+    for parent in [
+        "generation_qualification_operation_receipts",
+        "generation_qualification_platform_evidence",
+        "generation_qualification_license_evidence",
+        "generation_repeatability_terminal_result_records",
+    ] {
+        assert!(!table_sql(&current, parent).contains(QUALIFICATION_TABLE));
+    }
+    assert_eq!(foreign_key_violations(&current), 0);
+}
+
+#[test]
+fn populated_schema_sixteen_migrates_after_verified_byte_preserving_backup() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("schema-sixteen.db");
+    let backup = directory.path().join("schema-sixteen-backup.db");
+    seed_schema_sixteen(&source);
+    let mut backup_file = reserve_file(&backup);
+    let mut session = ArtifactStateStore::begin_existing_migration(&source)
+        .expect("begin schema-sixteen migration");
+    assert_eq!(
+        (
+            session.schema_status().found,
+            session.schema_status().current
+        ),
+        (16, 17)
+    );
+    session
+        .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
+        .expect("write verified backup");
+    let result = session.migrate().expect("migrate schema sixteen");
+    assert_eq!((result.from_schema, result.to_schema), (16, 17));
+    assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
+    assert_eq!(schema_version(&source), 17);
+    assert_eq!(schema_version(&backup), 16);
+    let migrated = Connection::open(&source).expect("reopen migrated source");
+    assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
+    assert!(table_exists(&migrated, QUALIFICATION_TABLE));
+    assert_eq!(row_count(&migrated, QUALIFICATION_TABLE), 0);
+    assert!(table_exists(
+        &migrated,
+        "generation_repeatability_terminal_result_records"
+    ));
+    let repeatability = table_sql(&migrated, "generation_repeatability_result_records");
+    assert!(repeatability.contains("candidate_generation_failed"));
+    assert_eq!(foreign_key_violations(&migrated), 0);
+    let retained = Connection::open(&backup).expect("reopen schema-sixteen backup");
+    assert!(!table_exists(&retained, QUALIFICATION_TABLE));
+}
+
+#[test]
+fn schema_sixteen_migration_requires_backup_and_rolls_back() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("schema-sixteen-unbacked.db");
+    seed_schema_sixteen(&source);
+    let session =
+        ArtifactStateStore::begin_existing_migration(&source).expect("begin unbacked migration");
+    assert!(matches!(session.migrate(), Err(StoreError::BackupRequired)));
+    assert_eq!(schema_version(&source), 16);
+    let connection = Connection::open(&source).expect("reopen unmigrated source");
+    assert!(!table_exists(&connection, QUALIFICATION_TABLE));
+}
+
+#[test]
+fn inspection_rejects_altered_schema_seventeen_shape() {
+    let directory = tempdir().expect("temporary directory");
+    let current = directory.path().join("altered-schema-seventeen.db");
+    drop(Connection::open(&current).expect("create empty database"));
+    drop(
+        ArtifactStateStore::open_existing_or_initialize_empty(&current)
+            .expect("create current schema"),
+    );
+    rewrite_table_sql(
+        &current,
+        QUALIFICATION_TABLE,
+        "'qualified', 'rejected'",
+        "'rejected'",
+    );
+    assert!(matches!(
+        ArtifactStateStore::inspect_existing_schema(&current),
+        Err(StoreError::CorruptRecord)
+    ));
+    assert_eq!(schema_version(&current), 17);
+}
+
+#[test]
+fn qualification_record_checks_reject_illegal_status_identity_and_receipt_reuse() {
+    let connection = open_unchecked();
+    assert!(insert(&connection, &row(1, "qualified", 1)).is_ok());
+    assert!(insert(&connection, &row(2, "rejected", 16_384)).is_ok());
+    let mut shared_parents = row(3, "rejected", 4_096);
+    shared_parents.policy = digest('d', 1);
+    shared_parents.projection = digest('e', 1);
+    shared_parents.platform = digest('4', 1);
+    shared_parents.license = digest('5', 1);
+    shared_parents.target = digest('a', 1);
+    shared_parents.baseline = digest('b', 1);
+    assert!(insert(&connection, &shared_parents).is_ok());
+    let mut checked = Connection::open_in_memory().expect("open checked database");
+    crate::schema::initialize_empty(&mut checked).expect("initialize checked schema");
+    assert!(insert(&checked, &row(20, "qualified", 1)).is_err());
+    assert_rejections(&connection);
+}
+
+fn assert_rejections(connection: &Connection) {
+    assert!(insert(connection, &row(5, "passed", 1)).is_err());
+    let mut equal = row(6, "qualified", 1);
+    equal.baseline = equal.target.clone();
+    assert!(insert(connection, &equal).is_err());
+    assert!(insert(connection, &row(7, "qualified", 0)).is_err());
+    assert!(insert(connection, &row(8, "rejected", 16_385)).is_err());
+    let mut missing = row(9, "qualified", 1);
+    missing.receipt = None;
+    assert!(insert(connection, &missing).is_err());
+    assert!(
+        connection
+            .execute(
+                "INSERT INTO generation_qualification_records (
+                     generation_qualification_id, target_generation_system_id,
+                     baseline_generation_system_id, operation_policy_id, request_projection_id,
+                     generation_qualification_platform_evidence_id,
+                     generation_qualification_license_evidence_id,
+                     generation_qualification_operation_receipt_id, status, canonical_json
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9)",
+                params![
+                    digest('c', 14),
+                    digest('a', 14),
+                    digest('b', 14),
+                    digest('d', 14),
+                    digest('e', 14),
+                    digest('4', 14),
+                    digest('5', 14),
+                    digest('6', 14),
+                    vec![b'x'; 1],
+                ],
+            )
+            .is_err()
+    );
+    assert_identity_rejections(connection);
+}
+
+fn assert_identity_rejections(connection: &Connection) {
+    let mut uppercase = digest('c', 10);
+    uppercase.replace_range(0..1, "A");
+    let mut rejected = row(10, "qualified", 1);
+    rejected.id = uppercase;
+    assert!(insert(connection, &rejected).is_err());
+    let mut short = row(11, "qualified", 1);
+    short.id.truncate(63);
+    assert!(insert(connection, &short).is_err());
+    let mut duplicate = row(12, "rejected", 1);
+    duplicate.id = digest('c', 1);
+    assert!(insert(connection, &duplicate).is_err());
+    let mut same_receipt = row(13, "qualified", 1);
+    same_receipt.receipt = Some(digest('6', 1));
+    assert!(insert(connection, &same_receipt).is_err());
+}
+
+struct QualificationRow {
+    id: String,
+    target: String,
+    baseline: String,
+    policy: String,
+    projection: String,
+    platform: String,
+    license: String,
+    receipt: Option<String>,
+    status: &'static str,
+    json_len: usize,
+}
+
+fn row(slot: u8, status: &'static str, json_len: usize) -> QualificationRow {
+    QualificationRow {
+        id: digest('c', slot),
+        target: digest('a', slot),
+        baseline: digest('b', slot),
+        policy: digest('d', slot),
+        projection: digest('e', slot),
+        platform: digest('4', slot),
+        license: digest('5', slot),
+        receipt: Some(digest('6', slot)),
+        status,
+        json_len,
+    }
+}
+
+fn insert(connection: &Connection, row: &QualificationRow) -> rusqlite::Result<usize> {
+    connection.execute(
+        "INSERT INTO generation_qualification_records (
+             generation_qualification_id, target_generation_system_id,
+             baseline_generation_system_id, operation_policy_id, request_projection_id,
+             generation_qualification_platform_evidence_id,
+             generation_qualification_license_evidence_id,
+             generation_qualification_operation_receipt_id, status, canonical_json
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            row.id,
+            row.target,
+            row.baseline,
+            row.policy,
+            row.projection,
+            row.platform,
+            row.license,
+            row.receipt,
+            row.status,
+            vec![b'x'; row.json_len],
+        ],
+    )
+}
+
+fn seed_schema_sixteen(path: &Path) {
+    let connection = Connection::open(path).expect("create schema sixteen");
+    crate::schema::create_schema_sixteen_fixture(&connection).expect("create schema sixteen");
+    connection
+        .execute(
+            "INSERT INTO generation_cluster_records
+                 (generation_cluster_id, canonical_json) VALUES (?1, ?2)",
+            params![digest('a', 0), b"{\"schema_version\":1}"],
+        )
+        .expect("insert retained schema-sixteen row");
+}
+
+fn cluster_json(connection: &Connection) -> Vec<u8> {
+    connection
+        .query_row(
+            "SELECT canonical_json FROM generation_cluster_records
+             WHERE generation_cluster_id = ?1",
+            [digest('a', 0)],
+            |row| row.get(0),
+        )
+        .expect("read retained cluster row")
+}
+
+fn open_unchecked() -> Connection {
+    let mut connection = Connection::open_in_memory().expect("open memory database");
+    crate::schema::initialize_empty(&mut connection).expect("initialize current schema");
+    connection
+        .execute_batch("PRAGMA foreign_keys = OFF;")
+        .expect("disable foreign keys");
+    connection
+}
+
+fn rewrite_table_sql(path: &Path, table: &str, from: &str, to: &str) {
+    let connection = Connection::open(path).expect("reopen schema");
+    connection
+        .execute_batch("PRAGMA writable_schema = ON;")
+        .expect("enable shape mutation");
+    let changed = connection
+        .execute(
+            "UPDATE sqlite_schema SET sql = replace(sql, ?1, ?2) WHERE name = ?3",
+            params![from, to, table],
+        )
+        .expect("alter table shape");
+    assert_eq!(changed, 1);
+    connection
+        .execute_batch("PRAGMA writable_schema = OFF;")
+        .expect("disable shape mutation");
+}
+
+fn row_count(connection: &Connection, table: &str) -> i64 {
+    connection
+        .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+            row.get(0)
+        })
+        .expect("count table")
+}
+
+fn foreign_key_violations(connection: &Connection) -> i64 {
+    connection
+        .query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| {
+            row.get(0)
+        })
+        .expect("check foreign keys")
+}
+
+fn explicit_index_count(connection: &Connection, table: &str) -> i64 {
+    connection
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_schema
+             WHERE type = 'index' AND tbl_name = ?1 AND sql IS NOT NULL",
+            [table],
+            |row| row.get(0),
+        )
+        .expect("count explicit indexes")
+}
+
+fn table_names(connection: &Connection) -> Vec<String> {
+    let mut statement = connection
+        .prepare(
+            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+             ORDER BY name",
+        )
+        .expect("prepare table names");
+    statement
+        .query_map([], |row| row.get(0))
+        .expect("query table names")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("read table names")
+}
+
+fn table_sql(connection: &Connection, table: &str) -> String {
+    connection
+        .query_row(
+            "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?1",
+            [table],
+            |row| row.get(0),
+        )
+        .expect("read table SQL")
+}
+
+fn table_exists(connection: &Connection, table: &str) -> bool {
+    connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = ?1)",
+            [table],
+            |row| row.get(0),
+        )
+        .expect("inspect table existence")
+}
+
+fn digest(label: char, slot: u8) -> String {
+    let mut value = format!("{slot:02x}{label}").repeat(21);
+    value.push('0');
+    value
+}

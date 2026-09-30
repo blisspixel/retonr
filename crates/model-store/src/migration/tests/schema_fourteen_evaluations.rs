@@ -75,15 +75,15 @@ fn populated_schema_fourteen_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (14, 16)
+        (14, 17)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("write verified backup");
     let result = session.migrate().expect("migrate schema fourteen");
-    assert_eq!((result.from_schema, result.to_schema), (14, 16));
+    assert_eq!((result.from_schema, result.to_schema), (14, 17));
     assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
-    assert_eq!(schema_version(&source), 16);
+    assert_eq!(schema_version(&source), 17);
     assert_eq!(schema_version(&backup), 14);
     let migrated = Connection::open(&source).expect("reopen migrated source");
     assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
@@ -129,7 +129,7 @@ fn inspection_rejects_altered_schema_fifteen_shape() {
         ArtifactStateStore::inspect_existing_schema(&current),
         Err(StoreError::CorruptRecord)
     ));
-    assert_eq!(schema_version(&current), 16);
+    assert_eq!(schema_version(&current), 17);
 }
 
 #[test]
