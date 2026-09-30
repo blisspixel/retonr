@@ -52,6 +52,10 @@ pub use store::candidate_generation_execution::{
     CandidateGenerationExecutionV1WriteDisposition, StoredCandidateGenerationExecutionV1,
 };
 pub use store::candidate_generation_execution_state::CandidateGenerationExecutionV1State;
+pub use store::candidate_generation_receipt_set::{
+    CandidateGenerationReceiptSetV1Input, CandidateGenerationReceiptSetV1ReadInput,
+    CandidateGenerationReceiptSetV1TransactionError,
+};
 pub use store::candidate_judge_execution::{
     CandidateJudgeExecutionV1Input, CandidateJudgeExecutionV1ReadInput,
     CandidateJudgeExecutionV1TransactionError, CandidateJudgeExecutionV1WriteDisposition,

@@ -47,6 +47,7 @@ pub mod candidate_generation_attempt_precursor;
 pub mod candidate_generation_evidence_storage;
 pub mod candidate_generation_execution;
 pub mod candidate_generation_execution_state;
+pub mod candidate_generation_receipt_set;
 pub mod candidate_judge_execution;
 mod evidence;
 pub mod generation_qualification_plan_foundation;
