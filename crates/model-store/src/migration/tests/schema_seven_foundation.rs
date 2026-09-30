@@ -28,6 +28,7 @@ const PHASE_EVIDENCE_TABLES: [&str; 3] = [
 ];
 const RECEIPT_SET_TABLES: [&str; 1] = ["candidate_generation_receipt_sets"];
 const TERMINAL_RESULT_TABLES: [&str; 1] = ["generation_repeatability_terminal_result_records"];
+const QUALIFICATION_SELECTION_TABLES: [&str; 1] = ["generation_qualification_selections"];
 const QUALIFICATION_INVALIDATION_TABLES: [&str; 1] = ["generation_qualification_invalidations"];
 const QUALIFICATION_RECORD_TABLES: [&str; 1] = ["generation_qualification_records"];
 const EVALUATION_TABLES: [&str; 1] = ["candidate_deterministic_evaluation_records"];
@@ -84,7 +85,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (7, 18)
+        (7, 19)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -105,6 +106,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
         .chain(RECEIPT_SET_TABLES.iter())
         .chain(EVALUATION_TABLES.iter())
         .chain(TERMINAL_RESULT_TABLES.iter())
+        .chain(QUALIFICATION_SELECTION_TABLES.iter())
         .chain(QUALIFICATION_INVALIDATION_TABLES.iter())
         .chain(QUALIFICATION_RECORD_TABLES.iter())
     {
@@ -115,7 +117,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 18);
+    assert_eq!(schema_version(&source), 19);
     assert_eq!(all_rows(&migrated), before);
     for table in FOUNDATION_TABLES
         .iter()
@@ -127,6 +129,7 @@ fn schema_seven_migration_preserves_every_legacy_value_and_verified_backup() {
         .chain(RECEIPT_SET_TABLES.iter())
         .chain(EVALUATION_TABLES.iter())
         .chain(TERMINAL_RESULT_TABLES.iter())
+        .chain(QUALIFICATION_SELECTION_TABLES.iter())
         .chain(QUALIFICATION_INVALIDATION_TABLES.iter())
         .chain(QUALIFICATION_RECORD_TABLES.iter())
     {
@@ -245,6 +248,7 @@ fn all_rows(connection: &Connection) -> BTreeMap<String, Vec<Vec<Vec<u8>>>> {
                 && !RECEIPT_SET_TABLES.contains(&table.as_str())
                 && !EVALUATION_TABLES.contains(&table.as_str())
                 && !TERMINAL_RESULT_TABLES.contains(&table.as_str())
+                && !QUALIFICATION_SELECTION_TABLES.contains(&table.as_str())
                 && !QUALIFICATION_INVALIDATION_TABLES.contains(&table.as_str())
                 && !QUALIFICATION_RECORD_TABLES.contains(&table.as_str())
         })

@@ -157,6 +157,7 @@ fn stored_denials_grant_no_authority_and_leave_repeatability_unchanged() {
         "generation_repeatability_result_records",
         "generation_qualification_records",
         "generation_qualification_invalidations",
+        "generation_qualification_selections",
     ] {
         assert_eq!(support::count(&session.store, table), 0, "{table}");
     }

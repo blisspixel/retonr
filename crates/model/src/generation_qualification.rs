@@ -24,6 +24,7 @@ mod planned_attempt;
 mod precursor;
 mod qualification_invalidation;
 mod qualification_record;
+mod qualification_selection;
 mod readback;
 mod receipt;
 mod receipt_set;
@@ -210,6 +211,13 @@ pub use qualification_record::{
     GenerationQualificationRecordV1Relations, GenerationQualificationStatusV1,
     MAX_GENERATION_QUALIFICATION_RECORD_CANONICAL_BYTES,
     MAX_GENERATION_QUALIFICATION_RECORD_JSON_BYTES,
+};
+pub use qualification_selection::{
+    GENERATION_QUALIFICATION_SELECTION_ID_DOMAIN, GenerationQualificationSelectionId,
+    GenerationQualificationSelectionV1, GenerationQualificationSelectionV1Error,
+    GenerationQualificationSelectionV1Relations,
+    MAX_GENERATION_QUALIFICATION_SELECTION_CANONICAL_BYTES,
+    MAX_GENERATION_QUALIFICATION_SELECTION_JSON_BYTES,
 };
 pub use readback::{
     CandidateGenerationEvidenceBundlePublicationModeV1,

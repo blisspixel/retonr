@@ -197,14 +197,19 @@ pub use generation_qualification::{
 };
 pub use generation_qualification::{
     GENERATION_QUALIFICATION_INVALIDATION_ID_DOMAIN, GENERATION_QUALIFICATION_RECORD_ID_DOMAIN,
-    GenerationQualificationId, GenerationQualificationInvalidationId,
-    GenerationQualificationInvalidationV1, GenerationQualificationInvalidationV1Error,
-    GenerationQualificationInvalidationV1Relations, GenerationQualificationRecordV1,
-    GenerationQualificationRecordV1Error, GenerationQualificationRecordV1Relations,
-    GenerationQualificationStatusV1, MAX_GENERATION_QUALIFICATION_INVALIDATION_CANONICAL_BYTES,
+    GENERATION_QUALIFICATION_SELECTION_ID_DOMAIN, GenerationQualificationId,
+    GenerationQualificationInvalidationId, GenerationQualificationInvalidationV1,
+    GenerationQualificationInvalidationV1Error, GenerationQualificationInvalidationV1Relations,
+    GenerationQualificationRecordV1, GenerationQualificationRecordV1Error,
+    GenerationQualificationRecordV1Relations, GenerationQualificationSelectionId,
+    GenerationQualificationSelectionV1, GenerationQualificationSelectionV1Error,
+    GenerationQualificationSelectionV1Relations, GenerationQualificationStatusV1,
+    MAX_GENERATION_QUALIFICATION_INVALIDATION_CANONICAL_BYTES,
     MAX_GENERATION_QUALIFICATION_INVALIDATION_JSON_BYTES,
     MAX_GENERATION_QUALIFICATION_RECORD_CANONICAL_BYTES,
     MAX_GENERATION_QUALIFICATION_RECORD_JSON_BYTES,
+    MAX_GENERATION_QUALIFICATION_SELECTION_CANONICAL_BYTES,
+    MAX_GENERATION_QUALIFICATION_SELECTION_JSON_BYTES,
 };
 pub use generation_qualification::{
     GENERATION_QUALIFICATION_LICENSE_ASSESSMENT_POLICY_ID_DOMAIN,

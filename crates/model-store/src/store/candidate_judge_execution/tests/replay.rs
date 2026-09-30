@@ -163,6 +163,7 @@ fn assert_inert(session: &Session) {
         "qualification_v2_records",
         "generation_qualification_records",
         "generation_qualification_invalidations",
+        "generation_qualification_selections",
     ] {
         assert_eq!(count(session, table), 0, "{table}");
     }

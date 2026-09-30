@@ -10,6 +10,8 @@ use crate::{ModelLicenseControlId, ModelPackageFoundationId};
 mod decision;
 #[path = "tests/invalidation.rs"]
 mod invalidation;
+#[path = "tests/selection.rs"]
+mod selection;
 
 struct RejectedFixture {
     base: test_support::Fixture,

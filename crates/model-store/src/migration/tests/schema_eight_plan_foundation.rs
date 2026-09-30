@@ -75,7 +75,7 @@ fn populated_schema_eight_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (8, 18)
+        (8, 19)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
@@ -94,7 +94,7 @@ fn populated_schema_eight_migrates_after_verified_byte_preserving_backup() {
     }
 
     let migrated = Connection::open(&source).expect("open migrated source");
-    assert_eq!(schema_version(&source), 18);
+    assert_eq!(schema_version(&source), 19);
     for (table, expected) in before {
         assert_eq!(
             schema_five_packages::table_rows(&migrated, &table),
@@ -147,7 +147,8 @@ fn restore_schema_eight_shape(path: &std::path::Path) {
     Connection::open(path)
         .expect("open current store for fixture downgrade")
         .execute_batch(
-            "DROP TABLE generation_qualification_invalidations;
+            "DROP TABLE generation_qualification_selections;
+             DROP TABLE generation_qualification_invalidations;
              DROP TABLE generation_qualification_records;
              DROP TABLE generation_repeatability_terminal_result_records;
              DROP TABLE candidate_deterministic_evaluation_records;
