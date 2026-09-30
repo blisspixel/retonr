@@ -88,6 +88,10 @@ pub use store::generation_qualification_record::{
     GenerationQualificationRecordV1Input, GenerationQualificationRecordV1ReadInput,
     GenerationQualificationRecordV1TransactionError,
 };
+pub use store::generation_qualification_selection::{
+    GenerationQualificationSelectionV1Input, GenerationQualificationSelectionV1ReadInput,
+    GenerationQualificationSelectionV1TransactionError,
+};
 pub use store::generation_qualification_terminal_evidence::{
     GenerationQualificationTerminalEvidenceV1Input,
     GenerationQualificationTerminalEvidenceV1ReadInput,
