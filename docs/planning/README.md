@@ -137,13 +137,13 @@ and live-use authority in distinct domains.
    aggregates, response aggregates, observation batches, managed local judge receipts,
    and candidate judge joins. The store writes that seven-row cohort in one immediate
    transaction. The cohort grants no qualification, activation, or live-use authority.
-   Repeatability results remain limited to candidate-generation failure.
+   Schema 11 repeatability results remain limited to candidate-generation failure.
    Schema 13 adds three inert tables for resource-attempt results, resource-policy
    denials, and human-adjudication-policy denials. The store writes one
    resource-policy denial or one human-adjudication-policy denial in its own
-   immediate transaction. The store writes one resource-attempt result in its own immediate transaction. Schema 14 adds one inert candidate-generation receipt-set table and no writer. A stored receipt set grants no qualification, activation, or live-use authority. Schema 15 adds one inert candidate-deterministic-evaluation table and no writer. A stored deterministic evaluation grants no qualification, activation, or live-use authority.
-   A stored result or denial grants no qualification, activation, or live-use authority. Repeatability
-   results remain limited to candidate-generation failure.
+   immediate transaction. The store writes one resource-attempt result in its own immediate transaction. Schema 14 adds one inert candidate-generation receipt-set table and no writer. A stored receipt set grants no qualification, activation, or live-use authority. Schema 15 adds one inert candidate-deterministic-evaluation table and no writer. A stored deterministic evaluation grants no qualification, activation, or live-use authority. Schema 16 adds one inert repeatability terminal-result table and no writer. A stored repeatability result grants no qualification, activation, or live-use authority.
+   A stored result or denial grants no qualification, activation, or live-use authority. Schema 11
+   repeatability results remain limited to candidate-generation failure.
    The crate-private strict candidate and judge routes now carry one
    supplied absolute deadline through every traffic and finalization boundary.
    Preserve the consuming Active operation owner that connects Prepared's retained

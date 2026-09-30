@@ -12,6 +12,7 @@ mod nine;
 mod routing;
 mod seven;
 mod shape;
+mod sixteen;
 mod ten;
 mod thirteen;
 mod twelve;
@@ -22,18 +23,19 @@ use fifteen::migrate_schema_fourteen;
 use fourteen::migrate_schema_thirteen;
 use nine::migrate_schema_eight;
 use seven::migrate_schema_six;
+use sixteen::migrate_schema_fifteen;
 use ten::migrate_schema_nine;
 use thirteen::migrate_schema_twelve;
 use twelve::migrate_schema_eleven;
 
 pub(super) use shape::{
-    validate_schema_eight, validate_schema_eleven, validate_schema_five, validate_schema_four,
-    validate_schema_fourteen, validate_schema_nine, validate_schema_one, validate_schema_seven,
-    validate_schema_shape, validate_schema_six, validate_schema_ten, validate_schema_thirteen,
-    validate_schema_three, validate_schema_twelve, validate_schema_two,
+    validate_schema_eight, validate_schema_eleven, validate_schema_fifteen, validate_schema_five,
+    validate_schema_four, validate_schema_fourteen, validate_schema_nine, validate_schema_one,
+    validate_schema_seven, validate_schema_shape, validate_schema_six, validate_schema_ten,
+    validate_schema_thirteen, validate_schema_three, validate_schema_twelve, validate_schema_two,
 };
 
-pub(super) const STORE_SCHEMA_VERSION: i64 = 15;
+pub(super) const STORE_SCHEMA_VERSION: i64 = 16;
 
 pub(super) fn migrate_existing_transaction(
     connection: &Connection,
@@ -56,7 +58,8 @@ fn create_current_schema(connection: &Connection) -> StoreResult<()> {
     migrate_schema_eleven(connection)?;
     migrate_schema_twelve(connection)?;
     migrate_schema_thirteen(connection)?;
-    migrate_schema_fourteen(connection)
+    migrate_schema_fourteen(connection)?;
+    migrate_schema_fifteen(connection)
 }
 
 fn create_schema_two(connection: &Connection) -> StoreResult<()> {
@@ -373,6 +376,12 @@ pub(super) fn create_schema_thirteen_fixture(connection: &Connection) -> StoreRe
 pub(super) fn create_schema_fourteen_fixture(connection: &Connection) -> StoreResult<()> {
     create_schema_thirteen_fixture(connection)?;
     migrate_schema_thirteen(connection)
+}
+
+#[cfg(test)]
+pub(super) fn create_schema_fifteen_fixture(connection: &Connection) -> StoreResult<()> {
+    create_schema_fourteen_fixture(connection)?;
+    migrate_schema_fourteen(connection)
 }
 
 const SCHEMA_ONE_SQL: &str = "CREATE TABLE artifact_manifests (

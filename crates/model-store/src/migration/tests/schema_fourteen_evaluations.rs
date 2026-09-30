@@ -17,8 +17,8 @@ const ABSENT_AUTHORITY_TABLES: [&str; 4] = [
 
 #[test]
 fn schema_fifteen_fresh_database_is_inert_and_adds_only_the_evaluation_table() {
-    let mut current = Connection::open_in_memory().expect("open memory database");
-    crate::schema::initialize_empty(&mut current).expect("initialize current schema");
+    let current = Connection::open_in_memory().expect("open schema fifteen");
+    crate::schema::create_schema_fifteen_fixture(&current).expect("create schema fifteen");
     let version: i64 = current
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .expect("read schema version");
@@ -54,6 +54,10 @@ fn schema_fifteen_fresh_database_is_inert_and_adds_only_the_evaluation_table() {
     assert!(!receipt_sets.contains(EVALUATION_TABLE));
     let join = table_sql(&current, "candidate_judge_join_records");
     assert!(!join.contains(EVALUATION_TABLE));
+    assert!(!table_exists(
+        &current,
+        "generation_repeatability_terminal_result_records"
+    ));
     assert_eq!(foreign_key_violations(&current), 0);
 }
 
@@ -71,15 +75,15 @@ fn populated_schema_fourteen_migrates_after_verified_byte_preserving_backup() {
             session.schema_status().found,
             session.schema_status().current
         ),
-        (14, 15)
+        (14, 16)
     );
     session
         .backup_to(&mut backup_file, 16 * 1024 * 1024, || false)
         .expect("write verified backup");
     let result = session.migrate().expect("migrate schema fourteen");
-    assert_eq!((result.from_schema, result.to_schema), (14, 15));
+    assert_eq!((result.from_schema, result.to_schema), (14, 16));
     assert_eq!(result.disposition, StoreMigrationDisposition::Migrated);
-    assert_eq!(schema_version(&source), 15);
+    assert_eq!(schema_version(&source), 16);
     assert_eq!(schema_version(&backup), 14);
     let migrated = Connection::open(&source).expect("reopen migrated source");
     assert_eq!(cluster_json(&migrated), b"{\"schema_version\":1}");
@@ -125,7 +129,7 @@ fn inspection_rejects_altered_schema_fifteen_shape() {
         ArtifactStateStore::inspect_existing_schema(&current),
         Err(StoreError::CorruptRecord)
     ));
-    assert_eq!(schema_version(&current), 15);
+    assert_eq!(schema_version(&current), 16);
 }
 
 #[test]
