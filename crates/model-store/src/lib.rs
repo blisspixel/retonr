@@ -87,6 +87,10 @@ pub use store::generation_qualification_terminal_evidence::{
     GenerationQualificationTerminalEvidenceV1WriteDisposition,
     StoredGenerationQualificationTerminalEvidenceV1,
 };
+pub use store::generation_repeatability_terminal_result::{
+    GenerationRepeatabilityTerminalResultV1Input, GenerationRepeatabilityTerminalResultV1ReadInput,
+    GenerationRepeatabilityTerminalResultV1TransactionError,
+};
 pub use store::generation_system_foundation::{
     GenerationSystemFoundationV1, GenerationSystemFoundationV1Input,
     GenerationSystemFoundationV1Readback, GenerationSystemFoundationV1TransactionError,

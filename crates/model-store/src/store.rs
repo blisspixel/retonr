@@ -54,6 +54,7 @@ mod evidence;
 pub mod generation_qualification_plan_foundation;
 pub mod generation_qualification_preregistration;
 pub mod generation_qualification_terminal_evidence;
+pub mod generation_repeatability_terminal_result;
 pub mod generation_system_foundation;
 mod inventory;
 mod open;
