@@ -5,4 +5,4 @@ mod refusal;
 #[path = "tests/replay.rs"]
 mod replay;
 #[path = "tests/support.rs"]
-pub(crate) mod support;
+mod support;

@@ -65,6 +65,10 @@ pub use store::candidate_judge_execution::{
     CandidateJudgeExecutionV1TransactionError, CandidateJudgeExecutionV1WriteDisposition,
     CandidateJudgeObservationFactV1, StoredCandidateJudgeExecutionV1,
 };
+pub use store::generation_qualification_invalidation::{
+    GenerationQualificationInvalidationV1Input, GenerationQualificationInvalidationV1ReadInput,
+    GenerationQualificationInvalidationV1TransactionError,
+};
 pub use store::generation_qualification_plan_foundation::{
     GenerationQualificationPlanFoundationV1, GenerationQualificationPlanFoundationV1Input,
     GenerationQualificationPlanFoundationV1Readback,

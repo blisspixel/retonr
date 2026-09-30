@@ -150,4 +150,4 @@ impl ArtifactStateStore {
 
 #[cfg(test)]
 #[path = "generation_qualification_record/tests.rs"]
-mod tests;
+pub(crate) mod tests;

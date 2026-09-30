@@ -17,13 +17,13 @@ use crate::{ArtifactStateStore, StoreError, WriteDisposition};
 
 pub(super) const TABLE: &str = "generation_qualification_records";
 
-pub(super) struct Session {
+pub(crate) struct Session {
     pub(super) _directory: tempfile::TempDir,
-    pub(super) store: ArtifactStateStore,
-    pub(super) record: GenerationQualificationRecordV1,
+    pub(crate) store: ArtifactStateStore,
+    pub(crate) record: GenerationQualificationRecordV1,
 }
 
-pub(super) fn session() -> Session {
+pub(crate) fn session() -> Session {
     open(true, true)
 }
 
@@ -41,7 +41,7 @@ pub(super) fn read_input(session: &Session) -> GenerationQualificationRecordV1Re
     }
 }
 
-pub(super) fn commit(session: &mut Session) -> WriteDisposition {
+pub(crate) fn commit(session: &mut Session) -> WriteDisposition {
     session
         .store
         .transact_generation_qualification_record_v1(
