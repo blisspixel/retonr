@@ -33,17 +33,20 @@ use crate::store::generation_qualification_terminal_evidence::{
     GenerationQualificationTerminalEvidenceV1ReadInput,
 };
 
+#[path = "record.rs"]
+pub(crate) mod record;
+
 #[derive(Clone, Copy)]
-pub(super) struct CohortSpec<'a> {
-    pub(super) attempts: &'a [CandidateGenerationAttemptRecordV1],
-    pub(super) managed: &'a [ManagedOllamaCandidateGenerationEvidenceV2Input],
-    pub(super) include_failed_result: bool,
-    pub(super) receipt_input: GenerationQualificationOperationReceiptV1Input,
-    pub(super) interruption_input:
+pub(crate) struct CohortSpec<'a> {
+    pub(crate) attempts: &'a [CandidateGenerationAttemptRecordV1],
+    pub(crate) managed: &'a [ManagedOllamaCandidateGenerationEvidenceV2Input],
+    pub(crate) include_failed_result: bool,
+    pub(crate) receipt_input: GenerationQualificationOperationReceiptV1Input,
+    pub(crate) interruption_input:
         Option<&'a GenerationQualificationPhaseInterruptionRecordV1Input>,
 }
 
-pub(super) struct Cohort {
+pub(crate) struct Cohort {
     pub(super) platform: GenerationQualificationPlatformEvidenceV1,
     platform_input: GenerationQualificationPlatformEvidenceV1Input,
     pub(super) license: GenerationQualificationLicenseEvidenceV1,
@@ -65,7 +68,7 @@ pub(super) struct Cohort {
 }
 
 impl Cohort {
-    pub(super) fn input<'a>(
+    pub(crate) fn input<'a>(
         &'a self,
         fixture: &'a Fixture,
     ) -> GenerationQualificationTerminalEvidenceV1Input<'a> {
@@ -112,7 +115,7 @@ impl Cohort {
     }
 }
 
-pub(super) fn cohort(fixture: &Fixture, spec: CohortSpec<'_>) -> Cohort {
+pub(crate) fn cohort(fixture: &Fixture, spec: CohortSpec<'_>) -> Cohort {
     let (platform, platform_input, license, license_input, foundation_id, control_id) =
         platform_and_license(fixture);
     let (ledger, results) = ledger_and_results(fixture, &spec);
@@ -178,7 +181,7 @@ pub(super) const fn cancelled_receipt() -> GenerationQualificationOperationRecei
     }
 }
 
-pub(super) const fn completed_receipt() -> GenerationQualificationOperationReceiptV1Input {
+pub(crate) const fn completed_receipt() -> GenerationQualificationOperationReceiptV1Input {
     GenerationQualificationOperationReceiptV1Input {
         elapsed_nanoseconds: 1_000_000,
         peak_concurrent_attempts: 1,

@@ -80,6 +80,10 @@ pub use store::generation_qualification_preregistration::{
     GenerationQualificationPreregistrationWriteDisposition,
     StoredGenerationQualificationPreregistration,
 };
+pub use store::generation_qualification_record::{
+    GenerationQualificationRecordV1Input, GenerationQualificationRecordV1ReadInput,
+    GenerationQualificationRecordV1TransactionError,
+};
 pub use store::generation_qualification_terminal_evidence::{
     GenerationQualificationTerminalEvidenceV1Input,
     GenerationQualificationTerminalEvidenceV1ReadInput,

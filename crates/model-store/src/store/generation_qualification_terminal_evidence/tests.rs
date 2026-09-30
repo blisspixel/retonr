@@ -22,7 +22,7 @@ use crate::store::generation_qualification_preregistration::tests::support::{
 use crate::{ArtifactStateStore, StoreError, WriteDisposition};
 
 #[path = "tests/build.rs"]
-mod build;
+pub(crate) mod build;
 
 const COHORT_TABLES: [&str; 9] = [
     "generation_qualification_platform_evidence",

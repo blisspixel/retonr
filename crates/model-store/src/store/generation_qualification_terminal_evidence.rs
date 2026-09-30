@@ -319,4 +319,4 @@ impl ArtifactStateStore {
 
 #[cfg(test)]
 #[path = "generation_qualification_terminal_evidence/tests.rs"]
-mod tests;
+pub(crate) mod tests;
