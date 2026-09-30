@@ -9,6 +9,7 @@ These documents define the product direction and constrain implementation.
 | [Editorial sovereignty](governance/editorial-sovereignty.md) | Viewpoint neutrality, user responsibility, and project legal boundary |
 | [Provenance and derivative handling](provenance.md) | Inspection, preservation, sanitation, signatures, markings, and reports |
 | [Current state](current-state.md) | Implemented behavior, verification evidence, limitations, and next operations |
+| [Development status](development-status.md) | Prose account of the current implementation and the immediate 0.2 path |
 | [Naming](naming.md) | Public identity, namespace evidence, and remaining release gates |
 | [Architecture](architecture.md) | Component boundaries, data flow, contracts, and failure semantics |
 | [Design](design.md) | CLI, native desktop, editorial brief, API, MCP, and screenshot experience |

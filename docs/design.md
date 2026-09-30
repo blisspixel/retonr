@@ -100,9 +100,10 @@ The CLI is a primary product, not a debug wrapper around the desktop application
 
 The command families below are the planned 1.0 surface. They are not implemented
 until [the current-state document](current-state.md) records them. The current
-binary exposes `check` plus the offline model commands listed in the
-[README](../readme.md), including exact single-file `import` and exact folder
-`import-set`.
+binary exposes `check`, `rewrite`, `inspect`, `lint`, and the offline model
+commands recorded in [Current state](current-state.md), including exact single-file
+`import` and exact folder `import-set`. How to run a checkout is in the
+[README](../readme.md).
 
 ### Command families
 
