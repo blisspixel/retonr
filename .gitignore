@@ -28,6 +28,8 @@ Thumbs.db
 *.swo
 
 # Temporary files
+__pycache__/
+*.pyc
 *.bak
 *.profraw
 *.tmp

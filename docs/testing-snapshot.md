@@ -31,6 +31,12 @@ The Linux archive also contains the internal `retonr-isolation` helper so its ex
 bytes can participate in runtime-package review. The snapshot CLI does not invoke
 that helper, and the helper is not a standalone user command.
 
+Each archive includes `THIRD-PARTY-NOTICES.txt` with complete upstream legal
+materials for its locked default shipping dependencies and Rust standard library.
+Crate archives are checked against their locked checksums. Retained upstream
+materials cover declarations omitted from published crate archives; their exact
+source, version, and content digest are pinned in the repository.
+
 The source repository also contains a development-only
 `rewrite-eval --ollama-bound-preflight` command. It is not part of this snapshot CLI
 workflow. When a developer explicitly supplies a versioned plan, that command may

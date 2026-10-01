@@ -13,7 +13,22 @@ const SELECTED_LANDLOCK_ABI_NUMBER: u32 = 3;
 const READ_ONLY_ROOTS: [&str; 5] = ["/inputs", "/toolchain", "/source", "/vendor", "/raw-crates"];
 const WRITABLE_ROOTS: [&str; 3] = ["/cargo-home", "/target", "/output"];
 
-pub(super) fn install_and_probe() -> Result<u32, HelperFailure> {
+pub(super) struct EstablishedBootstrapSandbox {
+    landlock_abi: u32,
+    archive_roots: [File; 3],
+}
+
+impl EstablishedBootstrapSandbox {
+    pub(super) const fn landlock_abi(&self) -> u32 {
+        self.landlock_abi
+    }
+
+    pub(super) const fn archive_roots(&self) -> &[File; 3] {
+        &self.archive_roots
+    }
+}
+
+pub(super) fn install_and_probe() -> Result<EstablishedBootstrapSandbox, HelperFailure> {
     let read_access = make_bitflags!(AccessFs::{Execute | ReadFile | ReadDir});
     let write_access = AccessFs::from_all(SELECTED_LANDLOCK_ABI);
     let read_roots = READ_ONLY_ROOTS
@@ -23,6 +38,16 @@ pub(super) fn install_and_probe() -> Result<u32, HelperFailure> {
     for root in &read_roots {
         require_read_only_mount(root)?;
     }
+    let archive_roots = [2, 3, 4]
+        .map(|index| {
+            read_roots[index]
+                .try_clone()
+                .map_err(|_| HelperFailure::FilesystemIsolationSetup)
+        })
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .try_into()
+        .map_err(|_| HelperFailure::FilesystemIsolationSetup)?;
     let write_roots = WRITABLE_ROOTS
         .map(open_directory)
         .into_iter()
@@ -63,7 +88,10 @@ pub(super) fn install_and_probe() -> Result<u32, HelperFailure> {
     probe_denied_read_only_write()?;
     probe_allowed_output()?;
     probe_old_root_absent()?;
-    Ok(SELECTED_LANDLOCK_ABI_NUMBER)
+    Ok(EstablishedBootstrapSandbox {
+        landlock_abi: SELECTED_LANDLOCK_ABI_NUMBER,
+        archive_roots,
+    })
 }
 
 fn open_directory(path: &str) -> Result<File, HelperFailure> {

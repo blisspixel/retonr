@@ -1,0 +1,78 @@
+{
+  "canonical_terms": {
+    "Apache-2.0": {
+      "file": "Apache-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+    },
+    "MIT": {
+      "file": "MIT.txt",
+      "sha256": "6d7c9e9d7d12c8d3753bdb24417b84819ba4d6c2f025c37948113d86dc81eef9",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/v3.26.0/text/MIT.txt"
+    },
+    "Zlib": {
+      "file": "Zlib.txt",
+      "sha256": "bfb1112d49db5b1daecdfef24bd7e2f3ea0bafb33aa67aa0ab51e2bf8407c03d",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/v3.26.0/text/Zlib.txt"
+    }
+  },
+  "packages": {
+    "block2@0.6.2": {
+      "archive_sha256": "cdeb9d870516001442e364c5220d3574d2da8dc765554b4a617230d33fa58ef5",
+      "declared_spdx_expression": "MIT",
+      "file": "objc2-NOTICE.txt",
+      "license_terms": [
+        "MIT"
+      ],
+      "retained_commit": "b4167b582b2f75f9a1be75495c41b765344fd03c",
+      "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+      "url": "https://raw.githubusercontent.com/madsmtm/objc2/b4167b582b2f75f9a1be75495c41b765344fd03c/LICENSE.md"
+    },
+    "dispatch2@0.3.1": {
+      "archive_sha256": "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38",
+      "declared_spdx_expression": "Zlib OR Apache-2.0 OR MIT",
+      "file": "objc2-NOTICE.txt",
+      "license_terms": [
+        "MIT",
+        "Apache-2.0",
+        "Zlib"
+      ],
+      "retained_commit": "8852b424193ca41602281b3d7540d7c8ed51e49a",
+      "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+      "url": "https://raw.githubusercontent.com/madsmtm/objc2/8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md"
+    },
+    "fs_at@0.2.1": {
+      "archive_sha256": "14af6c9694ea25db25baa2a1788703b9e7c6648dcaeeebeb98f7561b5384c036",
+      "declared_spdx_expression": "Apache-2.0",
+      "file": "fs_at-Cargo.toml",
+      "license_terms": [
+        "Apache-2.0"
+      ],
+      "retained_commit": "e8b58a0682496a0c6ddc9eae80942a2f29a5a7e4",
+      "sha256": "f96cfafa00b68f40f28bc170ec55ac897984d8676389de84e01967b6263df2ef",
+      "url": "https://raw.githubusercontent.com/rbtcollins/fs_at/e8b58a0682496a0c6ddc9eae80942a2f29a5a7e4/Cargo.toml"
+    },
+    "objc2-encode@4.1.0": {
+      "archive_sha256": "ef25abbcd74fb2609453eb695bd2f860d389e457f67dc17cafc8b8cbc89d0c33",
+      "declared_spdx_expression": "MIT",
+      "file": "objc2-NOTICE.txt",
+      "license_terms": [
+        "MIT"
+      ],
+      "retained_commit": "8d214f5477365ffcbcbb7de058c86ed9a518efb7",
+      "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+      "url": "https://raw.githubusercontent.com/madsmtm/objc2/8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md"
+    },
+    "objc2@0.6.4": {
+      "archive_sha256": "3a12a8ed07aefc768292f076dc3ac8c48f3781c8f2d5851dd3d98950e8c5a89f",
+      "declared_spdx_expression": "MIT",
+      "file": "objc2-NOTICE.txt",
+      "license_terms": [
+        "MIT"
+      ],
+      "retained_commit": "8852b424193ca41602281b3d7540d7c8ed51e49a",
+      "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+      "url": "https://raw.githubusercontent.com/madsmtm/objc2/8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md"
+    }
+  }
+}

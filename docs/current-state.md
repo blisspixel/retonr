@@ -40,6 +40,18 @@ metadata collision. These checks do not establish cross-platform terminal or
 production runtime qualification. See the
 [terminal workbench and admission review plan](planning/0.2-terminal-workbench-and-admission-review.md).
 
+The private Linux bootstrap now regenerates canonical archives from retained,
+kernel-verified read-only roots using numeric snapshots and one file at a time.
+The public mutable-input normalizer retains its held-file contract. The frozen
+4,096 descriptor ceiling is unchanged. Native regressions pass for 8,193 files,
+mutation and unsafe-input refusals, long-path normalization, and exact retained
+source, vendor, and crate archive equality, including the 19,781-file vendor tree.
+Archive corruption and output-identity replacement are rejected. The updated
+isolation library passes 138 instrumented unit tests, strict Linux lint, and the
+mandatory native fixture; combined local line coverage is 80.95 percent. These
+results fix a real reconstruction blocker, but do not establish the independently
+authenticated bootstrap pair, runtime build pair, semantic review, or admission.
+
 | Component | Current behavior |
 | --- | --- |
 | `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, content-redacted typed claim-evidence contracts, and an inert extractor manifest |

@@ -1,12 +1,8 @@
 use std::{
     fs::{self, File},
     io::{Read as _, Seek as _, SeekFrom},
-    os::{
-        fd::AsRawFd as _,
-        unix::{fs::MetadataExt as _, process::CommandExt as _},
-    },
+    os::unix::fs::MetadataExt as _,
     path::Path,
-    process::{Command, Stdio},
 };
 
 use rustix::fs::{Mode, OFlags, ResolveFlags, openat2};
@@ -51,12 +47,22 @@ const ARCHIVES: [(&str, &str, &str, &str); 3] = [
     ),
 ];
 
-pub(super) fn execute(input_root: &File, output_root: &File) -> Result<(), HelperFailure> {
+pub(super) fn execute(
+    input_root: &File,
+    output_root: &File,
+    sandbox: &super::linux_bootstrap_sandbox::EstablishedBootstrapSandbox,
+) -> Result<(), HelperFailure> {
     execute_at(
         input_root,
         output_root,
         Path::new(COMPARISON_ROOT),
-        run_archive_tool,
+        |_, kind, source, destination| {
+            let index = ARCHIVES
+                .iter()
+                .position(|(_, expected, _, _)| *expected == source)
+                .ok_or(HelperFailure::BootstrapRootVerification)?;
+            super::linux_bootstrap_archive_serialization::write(sandbox, index, kind, destination)
+        },
     )
 }
 
@@ -124,31 +130,6 @@ fn open_regular(root: &File, relative_path: &str) -> Result<File, HelperFailure>
     }
 }
 
-fn run_archive_tool(
-    tool: &File,
-    kind: &str,
-    source: &str,
-    destination: &Path,
-) -> Result<(), HelperFailure> {
-    let mut command = Command::new(format!("/proc/self/fd/{}", tool.as_raw_fd()));
-    command
-        .arg0(ARCHIVE_TOOL_OUTPUT)
-        .args([kind, source])
-        .arg(destination)
-        .env_clear()
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-    let status = command
-        .status()
-        .map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(HelperFailure::BootstrapRootVerification)
-    }
-}
-
 fn require_exact_bytes(left: &File, right: &File) -> Result<(), HelperFailure> {
     let left_metadata = left
         .metadata()
@@ -195,9 +176,7 @@ fn require_exact_bytes(left: &File, right: &File) -> Result<(), HelperFailure> {
 
 #[cfg(test)]
 mod tests {
-    use std::{os::unix::fs::PermissionsExt as _, path::PathBuf};
-
-    use rustix::io::{FdFlags, fcntl_setfd};
+    use std::path::PathBuf;
 
     use super::*;
 
@@ -268,30 +247,6 @@ mod tests {
                 .to_vec()
         );
         assert!(!comparison.exists());
-    }
-
-    #[test]
-    fn retained_fd_executor_requires_exact_success_status() {
-        let temporary = tempfile::tempdir().expect("temporary");
-        let destination = temporary.path().join("archive.tar");
-        let successful = executable_script(temporary.path(), "successful", b"#!/bin/sh\nexit 0\n");
-        assert_eq!(
-            run_archive_tool(&successful, "kind", "/source", &destination),
-            Ok(())
-        );
-        let failing = executable_script(temporary.path(), "failing", b"#!/bin/sh\nexit 7\n");
-        assert_eq!(
-            run_archive_tool(&failing, "kind", "/source", &destination),
-            Err(HelperFailure::BootstrapRootVerification)
-        );
-    }
-
-    fn executable_script(root: &Path, name: &str, bytes: &[u8]) -> File {
-        let path = write_tree_file(root, name, bytes);
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).expect("executable mode");
-        let file = File::open(path).expect("executable");
-        fcntl_setfd(&file, FdFlags::empty()).expect("retained script descriptor");
-        file
     }
 
     fn write_tree_file(root: &Path, relative: &str, bytes: &[u8]) -> PathBuf {

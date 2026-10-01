@@ -197,7 +197,8 @@ pub(super) fn stage_two(arguments: &[OsString]) -> Result<i32, HelperFailure> {
     let target = PreparedBootstrapTarget::prepare(&program, arguments, &environment)?;
     let evidence = super::linux_helper_setup::NamespaceEvidence::current()?;
     let mount = super::linux_helper_setup::mount_namespace_identity()?;
-    let landlock_abi = super::linux_bootstrap_sandbox::install_and_probe()?;
+    let sandbox = super::linux_bootstrap_sandbox::install_and_probe()?;
+    let landlock_abi = sandbox.landlock_abi();
     send(
         control.as_fd(),
         MessageKind::BootstrapArmed,
@@ -214,7 +215,11 @@ pub(super) fn stage_two(arguments: &[OsString]) -> Result<i32, HelperFailure> {
     }
     let output = target.run()?;
     if output.status() == crate::ControlledBuildProcessStatus::Success {
-        super::linux_bootstrap_archive_regeneration::execute(&input_root, &private_output)?;
+        super::linux_bootstrap_archive_regeneration::execute(
+            &input_root,
+            &private_output,
+            &sandbox,
+        )?;
     }
     send(
         control.as_fd(),

@@ -14,6 +14,11 @@ Milestone 0.2 is still in progress, and no milestone has been released.
   previews are truncated and escaped for safe display.
 - Serializes terminal rendering with panic cleanup so a background panic cannot
   let a later frame hide the restored cursor.
+- Regenerates private bootstrap source archives within the frozen 4,096 descriptor
+  limit, with canonical readback and mutation checks. Public mutable-input
+  normalization retains its existing held-file contract.
+- Includes complete third-party license and notice materials for each platform's
+  locked default shipping dependencies and the Rust standard library.
 - Adds bounded recursive directory lint and read-only paired-directory candidate
   checks, with explicit inventory limits and per-file findings.
 - Hardens retained-file reads against special files, ancestry replacement, and

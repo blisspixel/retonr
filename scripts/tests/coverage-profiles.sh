@@ -16,6 +16,12 @@ LLVM_PROFILE_FILE="$scratch/mixed/valid.profraw" "$scratch/fixture"
 valid_sha=$(sha256sum "$scratch/mixed/valid.profraw" | cut -d ' ' -f 1)
 head -c 16 "$scratch/mixed/valid.profraw" > "$scratch/mixed/truncated.profraw"
 truncated_sha=$(sha256sum "$scratch/mixed/truncated.profraw" | cut -d ' ' -f 1)
+cp "$scratch/mixed/valid.profraw" "$scratch/mixed/corrupt-header.profraw"
+# Preserve the recognized magic/version while making the binary-ID byte count
+# impossible. This exercises the exact corrupt-header diagnostic seen in CI.
+printf '\377\377\377\377\377\377\377\377' | \
+  dd of="$scratch/mixed/corrupt-header.profraw" bs=1 seek=16 conv=notrunc status=none
+corrupt_sha=$(sha256sum "$scratch/mixed/corrupt-header.profraw" | cut -d ' ' -f 1)
 touch "$scratch/mixed/empty.profraw"
 cp "$scratch/mixed/truncated.profraw" "$scratch/mixed/nested/untouched.profraw"
 bash "$validator" "$scratch/mixed"
@@ -24,6 +30,10 @@ test "$(sha256sum "$scratch/mixed/truncated.profraw.invalid" | cut -d ' ' -f 1)"
 test -f "$scratch/mixed/empty.profraw.invalid"
 test -s "$scratch/mixed/truncated.profraw.invalid.diagnostics"
 test -s "$scratch/mixed/empty.profraw.invalid.diagnostics"
+test "$(sha256sum "$scratch/mixed/corrupt-header.profraw.invalid" | cut -d ' ' -f 1)" = "$corrupt_sha"
+grep -F 'invalid instrumentation profile data (file header is corrupt)' \
+  "$scratch/mixed/corrupt-header.profraw.invalid.diagnostics" > /dev/null
+test ! -e "$scratch/mixed/corrupt-header.profraw"
 test ! -e "$scratch/mixed/truncated.profraw"
 test ! -e "$scratch/mixed/empty.profraw"
 test -f "$scratch/mixed/nested/untouched.profraw"

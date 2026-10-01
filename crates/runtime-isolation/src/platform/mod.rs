@@ -19,6 +19,8 @@ mod linux_bootstrap_archive;
 #[cfg(target_os = "linux")]
 mod linux_bootstrap_archive_regeneration;
 #[cfg(target_os = "linux")]
+mod linux_bootstrap_archive_serialization;
+#[cfg(target_os = "linux")]
 mod linux_bootstrap_execution;
 #[cfg(target_os = "linux")]
 mod linux_bootstrap_protocol;
