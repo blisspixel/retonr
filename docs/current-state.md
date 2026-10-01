@@ -150,6 +150,24 @@ materialization, and refusal of foreign aliases, extra links, symlinks, and
 replacement. Independent review finds no further actionable defects in these
 changes.
 
+The fresh `ad6e52d` candidate completes the first bootstrap's four program
+comparisons and three archive regenerations, and its namespace child exits
+successfully. The public caller then terminates with
+`Execution(Isolation(ControlledBuildObjectMismatch))`, before host output
+publication. The guardian's directory collector still opens
+`/proc/self/fd/NUMBER`, although its private root intentionally has an empty
+`/proc`; only the child's separate mount namespace remounts proc. Both host output
+roots remain empty, the original deadline is retained, and no independent-pair
+authority is established. The follow-up enumerates held directory descriptors
+directly while preserving anchored opens and exact output validation. Its actual
+privileged no-proc regression passes in a networkless container: the old lookup
+fails with `ENOENT`, while repeated collection, empty-root checks, publication,
+exact readback, mode preservation, and alias refusal succeed. All 160 ordinary
+isolation tests and strict isolation lint pass. The no-proc regression is required
+in both native CI and instrumented coverage. Its instrumented parent and child
+profiles merge successfully without write errors, and all 12 required-native
+tests pass with a rebuilt helper. Production filesystem grants remain unchanged.
+
 Native channel acquisition now refuses a Linux TCP self-connection whose local
 and peer endpoints are identical. A real kernel regression demonstrates a socket
 receiving its own bytes without a listening target. Distinct exact-endpoint
