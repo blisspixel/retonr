@@ -1,12 +1,12 @@
 use std::{
     collections::BTreeMap,
-    fs::{self, File},
+    fs::File,
     io::{Read as _, Seek as _, SeekFrom, Write as _},
-    os::{fd::AsRawFd as _, unix::fs::MetadataExt as _},
+    os::unix::fs::MetadataExt as _,
 };
 
 use rewrite_types::Digest;
-use rustix::fs::{Mode, OFlags, ResolveFlags, fchmod, mkdirat, openat2};
+use rustix::fs::{Dir, Mode, OFlags, ResolveFlags, fchmod, mkdirat, openat2};
 use sha2::{Digest as _, Sha256};
 
 use crate::{
@@ -164,6 +164,19 @@ enum CollectedKind {
     },
 }
 
+fn read_directory(directory: &File) -> Result<Dir, HelperFailure> {
+    if !directory
+        .metadata()
+        .map_err(|_| HelperFailure::ControlledBuildObjectMismatch)?
+        .is_dir()
+    {
+        return Err(HelperFailure::ControlledBuildObjectMismatch);
+    }
+    // read_from opens '.' relative to this held descriptor. Every traversal
+    // starts with its own directory cursor and needs no proc filesystem.
+    Dir::read_from(directory).map_err(|_| HelperFailure::ControlledBuildObjectMismatch)
+}
+
 fn collect_tree(root: &File) -> Result<CollectedTree, HelperFailure> {
     let mut directories = vec![(
         root.try_clone()
@@ -173,16 +186,19 @@ fn collect_tree(root: &File) -> Result<CollectedTree, HelperFailure> {
     let mut entries = Vec::new();
     let mut total_file_bytes = 0_u64;
     while let Some((directory, prefix)) = directories.pop() {
-        let path = format!("/proc/self/fd/{}", directory.as_raw_fd());
-        for raw in fs::read_dir(path).map_err(|_| HelperFailure::ControlledBuildObjectMismatch)? {
+        for raw in read_directory(&directory)? {
             let raw = raw.map_err(|_| HelperFailure::ControlledBuildObjectMismatch)?;
+            if matches!(raw.file_name().to_bytes(), b"." | b"..") {
+                continue;
+            }
             if entries.len() == MAXIMUM_CONTROLLED_BUILD_OUTPUT_TREE_ENTRIES {
                 return Err(HelperFailure::ControlledBuildObjectMismatch);
             }
             let name = raw
                 .file_name()
-                .into_string()
-                .map_err(|_| HelperFailure::ControlledBuildObjectMismatch)?;
+                .to_str()
+                .map_err(|_| HelperFailure::ControlledBuildObjectMismatch)?
+                .to_owned();
             let relative_path = if prefix.is_empty() {
                 name
             } else {
@@ -280,16 +296,20 @@ fn open_beneath(root: &File, relative_path: &str) -> Result<File, HelperFailure>
 }
 
 fn require_empty(root: &File) -> Result<(), HelperFailure> {
-    let path = format!("/proc/self/fd/{}", root.as_raw_fd());
-    if fs::read_dir(path)
+    if !root
+        .metadata()
         .map_err(|_| HelperFailure::FilesystemAliasOutput)?
-        .next()
-        .is_none()
+        .is_dir()
     {
-        Ok(())
-    } else {
-        Err(HelperFailure::ControlledBuildOutputNotEmpty)
+        return Err(HelperFailure::FilesystemAliasOutput);
     }
+    for entry in Dir::read_from(root).map_err(|_| HelperFailure::FilesystemAliasOutput)? {
+        let entry = entry.map_err(|_| HelperFailure::FilesystemAliasOutput)?;
+        if !matches!(entry.file_name().to_bytes(), b"." | b"..") {
+            return Err(HelperFailure::ControlledBuildOutputNotEmpty);
+        }
+    }
+    Ok(())
 }
 
 fn copy_file(
@@ -417,7 +437,12 @@ fn set_and_verify_mode_with(
 mod tests {
     use super::*;
     use crate::platform::linux_build_mount::BUILD_OUTPUT_ROOT;
-    use std::os::unix::fs::{PermissionsExt as _, symlink};
+    use std::{
+        fs,
+        os::unix::fs::{PermissionsExt as _, symlink},
+    };
+
+    mod native;
 
     #[test]
     fn private_output_path_is_fixed() {
