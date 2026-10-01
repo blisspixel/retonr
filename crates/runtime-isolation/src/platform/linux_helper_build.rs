@@ -85,7 +85,7 @@ pub(super) fn stage_one(arguments: &[OsString]) -> Result<i32, HelperFailure> {
             format!("{INTERNAL_PREFIX}LOOPBACK_INDEX"),
             established.loopback_index.to_string(),
         );
-    let mut child = command.spawn().map_err(|_| HelperFailure::NamespaceSetup)?;
+    let mut child = super::linux_helper_support::spawn_control_child(command)?;
     let namespace_init_pid = child.id();
     let deadline = Instant::now() + startup_timeout;
     let armed = receive(stage_control.as_fd(), deadline, None).map_err(control_failure)?;

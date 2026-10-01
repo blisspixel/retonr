@@ -143,7 +143,7 @@ fn stage_one_launch(arguments: &[OsString]) -> Result<i32, HelperFailure> {
             format!("{INTERNAL_PREFIX}LOOPBACK_INDEX"),
             established.loopback_index.to_string(),
         );
-    let mut child = command.spawn().map_err(|_| HelperFailure::NamespaceSetup)?;
+    let mut child = super::linux_helper_support::spawn_control_child(command)?;
     let namespace_init_pid = child.id();
     drop_managed_privileges()?;
     managed_spawn_handshake(stage_control.as_fd(), &launch, namespace_init_pid, timeout)?;

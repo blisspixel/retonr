@@ -6,7 +6,7 @@ use std::{
     io::{BufRead as _, BufReader, Read as _, Write as _},
     os::unix::fs::PermissionsExt as _,
     path::Path,
-    process::Child,
+    process::{Child, Command},
     time::Duration,
 };
 
@@ -23,6 +23,14 @@ use crate::contract::RetainedProgramBootstrapRootObservation;
 
 const INTERNAL_PREFIX: &str = "REWRITE_ISOLATION_INTERNAL_";
 const HANDSHAKE_LIMIT: u64 = 32;
+
+// Command owns the configured child endpoint even after spawn. Consume it here
+// so a namespace child's exit remains observable as control-channel EOF.
+pub(super) fn spawn_control_child(mut command: Command) -> Result<Child, HelperFailure> {
+    let child = command.spawn().map_err(|_| HelperFailure::NamespaceSetup)?;
+    drop(command);
+    Ok(child)
+}
 
 pub(super) fn legacy_spawn_handshake(
     child: &mut Child,
@@ -324,3 +332,7 @@ pub(super) fn write_protocol(message: &str) {
     let _ = output.write_all(message.as_bytes());
     let _ = output.flush();
 }
+
+#[cfg(test)]
+#[path = "linux_helper_support/control_child_tests.rs"]
+mod control_child_tests;

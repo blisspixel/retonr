@@ -10,6 +10,8 @@ use sha2::{Digest as _, Sha256};
 use super::{HelperFailure, recipe};
 use crate::platform::linux_executable::has_elf_magic;
 
+mod cargo_alias;
+
 const MAXIMUM_PROGRAM_BYTES: u64 = 128 * 1024 * 1024;
 const RESOLUTION: ResolveFlags = ResolveFlags::BENEATH
     .union(ResolveFlags::NO_MAGICLINKS)
@@ -20,6 +22,15 @@ pub(super) fn open_regular(
     root: &File,
     path: &str,
     executable: bool,
+) -> Result<File, HelperFailure> {
+    open_with_links(root, path, executable, 1)
+}
+
+fn open_with_links(
+    root: &File,
+    path: &str,
+    executable: bool,
+    maximum_links: u64,
 ) -> Result<File, HelperFailure> {
     let file = openat2(
         root,
@@ -34,7 +45,7 @@ pub(super) fn open_regular(
         .metadata()
         .map_err(|_| HelperFailure::BootstrapRootVerification)?;
     if !metadata.is_file()
-        || metadata.nlink() != 1
+        || !(1..=maximum_links).contains(&metadata.nlink())
         || (executable
             && (metadata.mode() & 0o111 == 0
                 || metadata.len() == 0
@@ -53,17 +64,16 @@ pub(super) fn publish(target: &File, output: &File) -> Result<(), HelperFailure>
         }
     }
     let candidates = recipe::BUILDS
-        .map(|build| {
-            let file = open_regular(target, &build.output(), true)?;
-            if !has_elf_magic(&file).map_err(|_| HelperFailure::BootstrapRootVerification)? {
-                return Err(HelperFailure::BootstrapRootVerification);
-            }
-            Ok(file)
-        })
+        .map(|build| cargo_alias::Candidate::open(target, build))
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
-    for (build, source) in recipe::BUILDS.into_iter().zip(candidates) {
-        copy(&source, output, build.program)?;
+    for (build, source) in recipe::BUILDS.into_iter().zip(&candidates) {
+        source.revalidate(target)?;
+        copy(&source.file, output, build.program)?;
+        source.revalidate(target)?;
+    }
+    for source in &candidates {
+        source.revalidate(target)?;
     }
     output
         .sync_all()
@@ -130,7 +140,13 @@ fn copy(source: &File, output: &File, name: &str) -> Result<(), HelperFailure> {
         }
         readback.update(&buffer[..read]);
     }
-    if readback.finalize() != hasher.finalize()
+    let destination_metadata = destination
+        .metadata()
+        .map_err(|_| HelperFailure::BootstrapRootVerification)?;
+    if !destination_metadata.is_file()
+        || destination_metadata.nlink() != 1
+        || destination_metadata.mode() & 0o111 == 0
+        || readback.finalize() != hasher.finalize()
         || destination
             .metadata()
             .map_err(|_| HelperFailure::BootstrapRootVerification)?
