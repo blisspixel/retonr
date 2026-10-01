@@ -132,6 +132,24 @@ merge successfully. All 154 ordinary isolation tests, strict Linux isolation lin
 and all 12 required-native integration tests pass. A fresh committed-source
 independent pair is still required; no admission is established.
 
+The retained `2fefa3c` candidate revalidates all 38 input members and completes
+primary compilation inside the private sandbox. Publication then refuses Cargo's
+internal release artifact hardlinks. The namespace child exits, but a retained
+command-owned control endpoint prevents the guardian from observing channel EOF.
+This attempt does not establish an independent pair or an executable closure.
+The owned experiment is host-terminated after the namespace child exits; this is
+not a typed public cancellation outcome. Its original deadline and diagnostic
+log are retained, and both output roots remain empty. The follow-up verifies the
+exact internal Cargo alias, materializes single-link published files, and releases
+inherited command endpoints immediately after spawn in bootstrap, controlled
+build, and managed launch. Final output verification and a fresh independent pair
+remain required. All 160 ordinary isolation tests, strict Linux isolation lint,
+and all 12 required-native tests with a rebuilt helper pass. Regressions cover
+child-exit and spawn-failure EOF, exact Cargo alias
+materialization, and refusal of foreign aliases, extra links, symlinks, and
+replacement. Independent review finds no further actionable defects in these
+changes.
+
 Native channel acquisition now refuses a Linux TCP self-connection whose local
 and peer endpoints are identical. A real kernel regression demonstrates a socket
 receiving its own bytes without a listening target. Distinct exact-endpoint
