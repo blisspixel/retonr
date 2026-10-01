@@ -111,7 +111,7 @@ pub(crate) fn exercise(
     assert!(active.terminal);
 }
 
-fn complete_fixture<'store, 'records, 'model, 'runtime>(
+pub(crate) fn complete_fixture<'store, 'records, 'model, 'runtime>(
     active: &ActiveGenerationQualificationOperation<'_, '_, '_, '_, '_>,
     mut join: VerifiedCandidateJudgeJoin<'store, 'records, 'model, 'runtime>,
     cancellation: &CancellationToken,

@@ -28,7 +28,7 @@ pub use active::{
     ActiveGenerationQualificationOperationInterruptionErrorKind,
     ActiveGenerationQualificationReceiptSetError,
     ActiveGenerationQualificationRepeatabilitySettlementError,
-    GenerationQualificationActivationError,
+    ActiveGenerationQualificationResourceSettlementError, GenerationQualificationActivationError,
 };
 pub use draft::GenerationQualificationOperationDraft;
 pub use prepared::{

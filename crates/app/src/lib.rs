@@ -16,6 +16,7 @@ mod artifact_storage;
 mod candidate_attempt_precursor;
 mod candidate_check;
 mod claim_extraction;
+pub mod document_input;
 mod document_review;
 pub mod effective_runtime_state_observation;
 mod generation_api;

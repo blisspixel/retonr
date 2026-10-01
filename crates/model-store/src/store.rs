@@ -59,6 +59,7 @@ pub mod generation_qualification_record;
 pub mod generation_qualification_selection;
 pub mod generation_qualification_terminal_evidence;
 pub mod generation_repeatability_terminal_result;
+pub mod generation_resource_phase;
 pub mod generation_system_foundation;
 mod inventory;
 mod open;

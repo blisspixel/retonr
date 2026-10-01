@@ -185,11 +185,12 @@ impl InterruptSender {
     fn prepare(directory: &Path) -> Self {
         let ready = directory.join("signal-sender-ready");
         let request = directory.join("signal-sender-request");
-        let script = "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class RetonrSignal { [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool FreeConsole(); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool AttachConsole(uint p); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool SetConsoleCtrlHandler(IntPtr h, bool a); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g); }'; Set-Content -LiteralPath $env:RETONR_SIGNAL_READY -Value ready -NoNewline; $deadline = [DateTime]::UtcNow.AddSeconds(30); while (-not (Test-Path -LiteralPath $env:RETONR_SIGNAL_REQUEST)) { if ([DateTime]::UtcNow -ge $deadline) { exit 2 }; Start-Sleep -Milliseconds 5 }; $target = [uint32](Get-Content -LiteralPath $env:RETONR_SIGNAL_REQUEST -Raw); [RetonrSignal]::FreeConsole() | Out-Null; if (-not [RetonrSignal]::AttachConsole($target)) { exit 3 }; if (-not [RetonrSignal]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)) { exit 4 }; if (-not [RetonrSignal]::GenerateConsoleCtrlEvent(1, $target)) { exit 5 }; Start-Sleep -Milliseconds 100";
-        let child = Command::new("powershell.exe")
-            .args(["-NoProfile", "-NonInteractive", "-Command", script])
+        let script = include_str!("signal_cancellation/windows_sender.py");
+        let child = Command::new("python.exe")
+            .args(["-I", "-S", "-c", script])
             .env("RETONR_SIGNAL_READY", &ready)
             .env("RETONR_SIGNAL_REQUEST", &request)
+            .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -199,7 +200,9 @@ impl InterruptSender {
     }
 
     fn send(self, child: &Child) {
-        fs::write(&self.request, child.id().to_string()).expect("submit Windows interrupt target");
+        let pending = self.request.with_extension("pending");
+        fs::write(&pending, child.id().to_string()).expect("write Windows interrupt target");
+        fs::rename(pending, &self.request).expect("publish complete Windows interrupt target");
         let output = self
             .child
             .wait_with_output()

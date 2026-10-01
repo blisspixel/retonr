@@ -21,6 +21,10 @@ pub(crate) fn bound_synthetic_set(
     fixture: super::support::Scenario,
     subject: &ActiveGenerationQualificationSubject,
 ) -> crate::VerifiedCandidateBatchSet {
+    let resource_observed = fixture
+        .batches
+        .iter()
+        .any(|batch| batch.resource_result().is_some());
     let batches = fixture
         .batches
         .into_iter()
@@ -29,9 +33,16 @@ pub(crate) fn bound_synthetic_set(
             binding: subject.binding(),
         })
         .collect();
-    let core =
+    let core = if resource_observed {
+        VerifiedCandidateBatchSetCore::verify_resource_observed(
+            fixture.input,
+            batches,
+            &CancellationToken::new(),
+        )
+    } else {
         VerifiedCandidateBatchSetCore::verify(fixture.input, batches, &CancellationToken::new())
-            .expect("synthetic exact bound batch set");
+    }
+    .expect("synthetic exact bound batch set");
     super::super::erase_core(core, super::map_offline_error)
 }
 

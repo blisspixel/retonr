@@ -60,7 +60,7 @@ pub(super) fn sidecar_scan(source: &Path) -> SidecarScan {
             present: Vec::new(),
         };
     };
-    let Some(name) = source.file_name().and_then(|value| value.to_str()) else {
+    let Some(name) = source.file_name() else {
         return SidecarScan {
             status: "complete",
             present: Vec::new(),
@@ -68,13 +68,14 @@ pub(super) fn sidecar_scan(source: &Path) -> SidecarScan {
     };
     let mut present = Vec::new();
     for suffix in SIDECAR_SUFFIXES {
-        let candidate = format!("{name}{suffix}");
+        let mut candidate = name.to_os_string();
+        candidate.push(suffix);
         let path = parent.join(&candidate);
         if let Ok(metadata) = fs::symlink_metadata(&path)
             && metadata.is_file()
             && !metadata.file_type().is_symlink()
         {
-            present.push(candidate);
+            present.push(candidate.to_string_lossy().into_owned());
         }
     }
     present.sort();
@@ -245,3 +246,6 @@ const fn carrier_name(presence: CarrierPresence) -> &'static str {
         CarrierPresence::NotDecoded => "not_decoded",
     }
 }
+
+#[cfg(all(test, unix))]
+mod tests;

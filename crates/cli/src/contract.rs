@@ -534,18 +534,9 @@ pub(crate) fn read_input_bounded(path: &Path, limit: usize) -> io::Result<Vec<u8
     }
 }
 
-/// Reads at most `limit` bytes and rejects anything longer.
+/// Reads one unchanged bounded byte stream using the shared application reader.
 pub(crate) fn read_bounded(reader: impl Read, limit: usize) -> io::Result<Vec<u8>> {
-    let read_limit = u64::try_from(limit).unwrap_or(u64::MAX).saturating_add(1);
-    let mut bytes = Vec::with_capacity(limit.min(64 * 1024));
-    reader.take(read_limit).read_to_end(&mut bytes)?;
-    if bytes.len() > limit {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "input exceeds the supported byte limit",
-        ));
-    }
-    Ok(bytes)
+    rewrite_app::document_input::read_bounded(reader, limit)
 }
 
 pub(crate) fn open_regular_file(path: &Path) -> io::Result<File> {

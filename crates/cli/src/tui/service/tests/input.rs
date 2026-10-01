@@ -156,3 +156,43 @@ fn protected_term_budget_uses_the_app_failure_contract_and_preserves_files() {
         b"Keep Acme 42 exactly.\n"
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn non_utf8_selected_source_and_candidate_sidecars_require_a_decision() {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt as _;
+    let data: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../../fixtures/cli/non-utf8-sidecar.json"
+    ))
+    .expect("regression fixture");
+    let name = OsString::from_vec(
+        serde_json::from_value(data["filename_bytes"].clone()).expect("filename bytes"),
+    );
+    for candidate in [false, true] {
+        let mut fixture = Fixture::new(b"Hello world.\n", b"Hello world!\n");
+        let path = fixture.directory.path().join(&name);
+        let selected = if candidate {
+            &mut fixture.candidate
+        } else {
+            &mut fixture.source
+        };
+        fs::rename(&*selected, &path).expect("non UTF8 selected file");
+        *selected = path;
+        load(&fixture.request(true), &CancellationToken::new())
+            .expect("ordinary path remains supported");
+        for suffix in [".c2pa", ".xmp"] {
+            let mut adjacent = name.clone();
+            adjacent.push(suffix);
+            let sidecar = fixture.directory.path().join(adjacent);
+            fs::write(&sidecar, data["sidecar"].as_str().expect("sidecar")).expect("sidecar");
+            assert_eq!(
+                load(&fixture.request(true), &CancellationToken::new())
+                    .expect_err("explicit decision")
+                    .body,
+                expected_body(ErrorCode::Unsupported)
+            );
+            fs::remove_file(sidecar).expect("remove fixture sidecar");
+        }
+    }
+}

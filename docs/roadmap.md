@@ -106,8 +106,10 @@ next.
 The active [folder workbench and durable repeatability batch](planning/0.2-folder-workbench-and-repeatability.md)
 adds bounded folder navigation, shared headless review, successful-ledger
 persistence, Passed repetition settlement, and transactional complete repeatability
-manifest publication. It also retains the next real
-bootstrap attempt without treating candidate preparation as runtime admission.
+manifest publication. Its follow-up adds shared retained-file intake and atomic
+resource-phase publication, with fixed-recipe bootstrap execution and exact
+compiler-library grants. It retains the next real bootstrap attempt without
+treating candidate preparation as runtime admission.
 
 1. Retain fresh controlled-build evidence for the real Linux runtime candidate.
    The historical source build is not retained evidence. Run the frozen-input build,

@@ -13,6 +13,8 @@ const SELECTED_LANDLOCK_ABI_NUMBER: u32 = 3;
 const READ_ONLY_ROOTS: [&str; 5] = ["/inputs", "/toolchain", "/source", "/vendor", "/raw-crates"];
 const WRITABLE_ROOTS: [&str; 3] = ["/cargo-home", "/target", "/output"];
 
+mod libraries;
+
 pub(super) struct EstablishedBootstrapSandbox {
     landlock_abi: u32,
     archive_roots: [File; 3],
@@ -57,6 +59,7 @@ pub(super) fn install_and_probe() -> Result<EstablishedBootstrapSandbox, HelperF
         .write(true)
         .open("/dev/null")
         .map_err(|_| HelperFailure::FilesystemIsolationSetup)?;
+    let libraries = libraries::open()?;
     let mut ruleset = Ruleset::default()
         .handle_access(write_access)
         .map_err(|_| HelperFailure::FilesystemIsolationSetup)?
@@ -71,6 +74,11 @@ pub(super) fn install_and_probe() -> Result<EstablishedBootstrapSandbox, HelperF
     for root in write_roots {
         ruleset = ruleset
             .add_rule(PathBeneath::new(root, write_access))
+            .map_err(|_| HelperFailure::FilesystemIsolationSetup)?;
+    }
+    for (library, access) in libraries {
+        ruleset = ruleset
+            .add_rule(PathBeneath::new(library, access))
             .map_err(|_| HelperFailure::FilesystemIsolationSetup)?;
     }
     let status = ruleset

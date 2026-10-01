@@ -22,12 +22,8 @@ use rewrite_model::{
 use rewrite_model_store::{GenerationSystemFoundationV1Input, WriteDisposition};
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "one synthetic authority fixture exercises the complete seven-row transaction and replay boundary"
-)]
 fn exact_live_projection_settles_replays_and_rejects_missing_parents_abort_and_corruption() {
-    for failure in [
+    exercise_scenarios(&[
         "none",
         "repeatability_none",
         "repeatability_result_corruption",
@@ -52,7 +48,34 @@ fn exact_live_projection_settles_replays_and_rejects_missing_parents_abort_and_c
         "foreign_subject",
         "finalization",
         "cancel",
-    ] {
+    ]);
+}
+
+#[test]
+fn resource_phase_publication_passes_fails_and_refuses_corruption_and_foreign_subjects() {
+    exercise_scenarios(&[
+        "resource_passed",
+        "resource_failed",
+        "resource_abort",
+        "resource_tamper",
+        "resource_corrupt_parent",
+        "resource_missing_repeatability",
+        "resource_foreign",
+        "resource_unsettled",
+        "resource_substituted_execution",
+        "resource_cancel",
+        "resource_postcommit_finalization",
+        "resource_postcommit_cancel",
+        "resource_deadline",
+    ]);
+}
+
+#[expect(
+    clippy::too_many_lines,
+    reason = "one synthetic retained authority fixture exercises exact durable cohort boundaries"
+)]
+fn exercise_scenarios(failures: &[&str]) {
+    for failure in failures.iter().copied() {
         with_synthetic_generation_qualification_fixture(
             SyntheticGenerationQualificationScenario::TrafficEligible,
             |mut input, platform_owners, license_proof, license_policy, production_policy| {
@@ -82,12 +105,20 @@ fn exact_live_projection_settles_replays_and_rejects_missing_parents_abort_and_c
                     cancellation,
                     evidence
                 );
-                let pair = SyntheticPair::new(
+                let mut pair = SyntheticPair::new(
                     input.foundation.plan_foundation,
                     input.operation_policy_relations,
                     &active,
                     "qualification-closure-passing",
                 );
+                if failure.starts_with("resource_") {
+                    pair.attach_resource_observations(
+                        input.foundation.plan_foundation,
+                        input.operation_policy_relations,
+                        &active,
+                        failure == "resource_failed",
+                    );
+                }
                 let repeatability_failure_control = pair.target_failure_control();
                 let (target, baseline) = pair.bind(
                     &mut active,
@@ -296,6 +327,18 @@ fn exact_live_projection_settles_replays_and_rejects_missing_parents_abort_and_c
                     );
                 }
                 assert_eq!(active.next_judge_settlement, 1);
+                if failure.starts_with("resource_") {
+                    super::super::resource_settlement::tests::exercise(
+                        &mut active,
+                        &mut repository,
+                        join,
+                        &db,
+                        failure,
+                        &cancellation,
+                        &repeatability_failure_control,
+                    );
+                    return;
+                }
                 if failure.starts_with("repeatability_") {
                     super::super::repeatability_settlement::tests::exercise(
                         &mut active,

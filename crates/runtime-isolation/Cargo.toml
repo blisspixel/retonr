@@ -23,6 +23,7 @@ landlock.workspace = true
 libc.workspace = true
 rustix = { workspace = true, features = ["event", "fs", "mount", "net", "process", "runtime", "thread"] }
 seccompiler.workspace = true
+serde_json.workspace = true
 tar.workspace = true
 
 [lints]

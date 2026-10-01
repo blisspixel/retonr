@@ -58,6 +58,21 @@ impl SyntheticPair {
         }
     }
 
+    pub(crate) fn attach_resource_observations(
+        &mut self,
+        foundation: GenerationQualificationPlanFoundationV1Input<'_>,
+        relations: GenerationQualificationOperationPolicyV1Relations<'_>,
+        active: &ActiveGenerationQualificationOperation<'_, '_, '_, '_, '_>,
+        exceeded: bool,
+    ) {
+        self.target.attach_resource_observations(
+            foundation,
+            relations.target_system.generation_system,
+            active.operation_policy(),
+            exceeded,
+        );
+    }
+
     pub(crate) fn target_failure_control(
         &self,
     ) -> crate::verified_candidate_batch_set::tests::support::OfflineBatchFailureControl {

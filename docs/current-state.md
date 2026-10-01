@@ -17,8 +17,22 @@ ordered attempts, and independent finalizers. Phase transactions verify canonica
 bytes and indexed fields for both receipt sets, the deterministic evaluation, and
 all seven judge records. Persisted records remain inert. Local focused validation
 passes 41 Active tests and two ledger tests, including corruption, cancellation,
-replay, and finalization failures. Resource evidence, positive human adjudication,
-and the final generation qualification compiler remain unfinished.
+replay, and finalization failures. Durable resource publication now follows this
+closure. Approved resource evidence, positive human adjudication, and the final
+generation qualification compiler remain unfinished.
+
+Active now publishes exact ordered resource results and their derived Passed or
+Failed phase manifest atomically through existing schemas 13 and 11. Publication
+reconstructs the complete durable repeatability and execution parents in the same
+transaction, checks exact subject and repetition order, and independently reads
+back canonical records and indexed fields. The original deadline and cancellation
+precedence, mandatory independent finalizers, immutable replay, and terminal
+failure behavior remain enforced. Thirty-two focused resource tests pass,
+including fourteen real Active and database scenarios, rollback, corruption,
+missing parents, caller-status substitution, postcommit cancellation, and
+finalization failure. Strict evaluation and store lint pass. Positive fixtures
+remain private test code; production approval roots remain empty and persisted
+records grant no live authority.
 
 The integrated folder and repeatability batch passes 2,767 Windows workspace
 tests and doctests, 2,974 Linux workspace tests and doctests, strict workspace
@@ -27,6 +41,14 @@ Linux managed isolation is exercised with the static target fixture required by
 the native launch contract. Repository policy, Markdown, workflow lint, dependency
 checks, and legal-notice regressions also pass. Cross-platform CI, its native
 gates, and the unchanged 80 percent line-coverage floor remain publication gates.
+
+The integrated bootstrap, intake, and resource follow-up passes 2,771 Windows
+workspace tests and doctests, 2,993 Linux workspace tests and doctests, strict
+workspace lint on both platforms, and a warnings-as-errors Windows documentation
+build. Windows signal cancellation uses a stdlib native event sender with atomic
+target publication, preserving the original deadlines, exit 130, typed
+cancellation, and zero registered artifacts. Cross-platform CI and its coverage
+and native gates still must pass for the final published revision.
 
 The experimental read-only terminal workbench is available through `retonr tui
 SOURCE`, with an optional `--candidate FILE` and repeated `--protect TERM`. It
@@ -50,8 +72,9 @@ normal quit, Ctrl+C exit 130, terminal restoration, and unchanged documents.
 
 `DocumentReviewService` now owns complete-input inventory, candidate checking,
 editorial comparison, original cancellation, and bounded previews in the shared
-application core. Filesystem retention, metadata decisions, labels, and safe
-rendering remain presentation responsibilities. The service neither generates nor
+application core. Retained filesystem reads now also live in the shared core;
+metadata decisions, labels, and safe rendering remain presentation responsibilities.
+The service neither generates nor
 writes. Finding ceilings are enforced during matching; successful bounded results
 match the complete lint kernel and excessive results return errors rather than
 partial evidence. Marker occurrence ordinals are derived in one scan per marker,
@@ -60,6 +83,16 @@ rescanning. Eight focused application review regressions and ten engine lint
 regressions pass locally, with strict application and engine lint checks. This
 shared headless foundation prepares desktop integration but does not establish a
 native application, accessibility, or generation qualification.
+
+The shared `document_input` module preserves coherent bounded regular-file reads,
+explicit link and alias policies, retained parent identities, and the private
+concurrent-change error marker. CLI and TUI use thin adapters, retaining stdin and
+command error envelopes. Six Windows reader regressions, 131 CLI unit tests, and
+strict application and CLI lint pass. Linux verification passes all nine reader
+regressions, including races and FIFO replacement, all 134 CLI unit tests, and
+strict application and CLI lint. Single-file sidecar detection now appends suffixes
+to native path bytes before display conversion, covering non-UTF-8 Unix filenames
+without silently skipping an adjacent `.c2pa` or `.xmp` file.
 
 The fresh retained candidate frozen at `70d5cf3` independently verifies all 38
 input members and reaches the real private bootstrap through signed package and
@@ -83,8 +116,21 @@ committed revision.
 The fresh `60fd7b0` candidate rechecks all 38 inputs and passes private root
 preparation, then terminates with `BootstrapRootVerification`. Static review
 identifies the next missing seam: bootstrap launches the ordinary runtime builder
-instead of executing the retained recipe's four Rust program builds. Fixed recipe
-execution remains in development; no independent pair or admission is established.
+instead of executing the retained recipe's four Rust program builds.
+
+Bootstrap now requires the exact canonical recipe and executes its four fixed
+Cargo commands through the retained signed toolchain. Runtime-build arguments
+and ambient capability variables are excluded. Bounded diagnostics retain the
+first build failure, and only the four exact regular executable outputs are
+copied before the existing static and archive checks. A retained signed linker
+canary identifies Rust's required musl loader and libgcc payloads. Sandbox grants
+cover only those exact validated read-only files, with execution limited to the
+loader. The privileged library regression checks aliases, writable and stale
+mount handles, unlisted files, host reads, and payload writes; it is mandatory in
+native and instrumented CI. Instrumented parent and child profiles independently
+merge successfully. All 154 ordinary isolation tests, strict Linux isolation lint,
+and all 12 required-native integration tests pass. A fresh committed-source
+independent pair is still required; no admission is established.
 
 Native channel acquisition now refuses a Linux TCP self-connection whose local
 and peer endpoints are identical. A real kernel regression demonstrates a socket

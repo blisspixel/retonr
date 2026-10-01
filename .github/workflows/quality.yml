@@ -361,7 +361,8 @@ jobs:
           isolation_lib_test="$(cat "$RUNNER_TEMP/retonr-isolation-lib-test-binary")"
           serializer_test='platform::linux_bootstrap_archive_serialization::tests::native::kernel_read_only_streaming_refuses_aliases_special_files_nested_mounts_and_drift'
           mounts_test='platform::linux_bootstrap_root_native::mounts::tests::root_is_sealed_after_child_mounts_preserving_read_only_inputs_and_writable_outputs'
-          for native_test in "$serializer_test" "$mounts_test"; do
+          libraries_test='platform::linux_bootstrap_sandbox::libraries::tests::native::read_only_library_grants_refuse_aliases_and_leave_other_files_denied'
+          for native_test in "$serializer_test" "$mounts_test" "$libraries_test"; do
             "$isolation_lib_test" --ignored --exact "$native_test" --list --format terse \
               > "$RUNNER_TEMP/retonr-private-bootstrap-test-list"
             test "$(cat "$RUNNER_TEMP/retonr-private-bootstrap-test-list")" = "$native_test: test"
@@ -578,7 +579,8 @@ jobs:
           test -x "${isolation_lib_tests[0]}"
           serializer_test='platform::linux_bootstrap_archive_serialization::tests::native::kernel_read_only_streaming_refuses_aliases_special_files_nested_mounts_and_drift'
           mounts_test='platform::linux_bootstrap_root_native::mounts::tests::root_is_sealed_after_child_mounts_preserving_read_only_inputs_and_writable_outputs'
-          for native_test in "$serializer_test" "$mounts_test"; do
+          libraries_test='platform::linux_bootstrap_sandbox::libraries::tests::native::read_only_library_grants_refuse_aliases_and_leave_other_files_denied'
+          for native_test in "$serializer_test" "$mounts_test" "$libraries_test"; do
             "${isolation_lib_tests[0]}" --ignored --exact "$native_test" --list --format terse \
               > "$RUNNER_TEMP/retonr-private-bootstrap-coverage-test-list"
             test "$(cat "$RUNNER_TEMP/retonr-private-bootstrap-coverage-test-list")" = "$native_test: test"
@@ -668,7 +670,7 @@ jobs:
           mkdir -p "$native_dir"
           chmod 0733 "$native_dir"
           native_profile="$native_dir/native-%p-%m.profraw"
-          for native_test in "$serializer_test" "$mounts_test"; do
+          for native_test in "$serializer_test" "$mounts_test" "$libraries_test"; do
             docker run --rm --privileged \
               --ulimit nofile=4096:4096 \
               --security-opt seccomp=unconfined \

@@ -1,0 +1,5 @@
+{
+  "filename_bytes": [100, 114, 97, 102, 116, 45, 255, 46, 116, 120, 116],
+  "document": "Hello world.\n",
+  "sidecar": "Metadata requiring an explicit derivative decision.\n"
+}

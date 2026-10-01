@@ -207,7 +207,7 @@ fn reconstruct(
     Ok(())
 }
 
-fn load(
+pub(super) fn load(
     connection: &Connection,
     input: GenerationRepeatabilityPhaseV1Input<'_>,
 ) -> StoreResult<Option<GenerationRepeatabilityEvidenceManifestV1>> {

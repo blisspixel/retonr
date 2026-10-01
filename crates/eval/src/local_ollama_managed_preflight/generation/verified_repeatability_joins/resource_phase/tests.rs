@@ -400,7 +400,35 @@ fn with_scope(use_scope: impl FnOnce(GenerationQualificationPhaseScopeV1<'_>)) {
     );
 }
 
-fn canonical_resource_policy() -> &'static [u8] {
+#[test]
+fn maximum_resource_manifest_count_fits_established_store_bound() {
+    let material = Fixture::judge_pair();
+    let authority = complete_qualification_authority(&material);
+    let digests = (0..rewrite_model::MAX_GENERATION_QUALIFICATION_PHASE_ITEMS)
+        .map(|index| Digest::sha256(&index.to_be_bytes()))
+        .collect::<Vec<_>>();
+    let relations = rewrite_model::GenerationResourceEvidenceManifestV1Relations {
+        scope: GenerationQualificationPhaseScopeV1 {
+            generation_system: authority.target_generation_system(),
+            qualification_plan: authority.qualification_plan(),
+            suite: authority.suite(),
+        },
+        phase_policy_digest: authority.operation_policy().resource_policy_digest(),
+        evidence_record_digests: &digests,
+        status: GenerationQualificationPhaseStatusV1::Passed,
+    };
+    let manifest = rewrite_model::GenerationResourceEvidenceManifestV1::new(relations)
+        .expect("maximum bounded manifest");
+    let bytes = serde_json::to_vec(&manifest).expect("canonical manifest");
+    assert!(bytes.len() < rewrite_model::MAX_GENERATION_QUALIFICATION_PHASE_MANIFEST_JSON_BYTES);
+    assert_eq!(
+        rewrite_model::GenerationResourceEvidenceManifestV1::from_json_bytes(&bytes, relations)
+            .expect("maximum manifest round trip"),
+        manifest
+    );
+}
+
+pub(crate) fn canonical_resource_policy() -> &'static [u8] {
     concat!(
         "{\"authority\":\"none\",",
         "\"decision_rule\":\"all_complete_target_observations_within_declared_limits\",",

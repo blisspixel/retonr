@@ -225,3 +225,11 @@ fn status(manifest: &GenerationAttemptLedgerManifestV1) -> &'static str {
 
 #[cfg(test)]
 mod tests;
+
+// Read the full existing phase closure within the caller's transaction.
+pub(crate) fn load_repeatability_phase(
+    connection: &Connection,
+    input: GenerationRepeatabilityPhaseV1Input<'_>,
+) -> StoreResult<Option<rewrite_model::GenerationRepeatabilityEvidenceManifestV1>> {
+    repeatability::load(connection, input)
+}

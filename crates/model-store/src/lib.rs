@@ -127,3 +127,8 @@ pub use store::generation_attempt_ledger::{
     GenerationRepeatabilityPhaseParentV1, GenerationRepeatabilityPhaseV1Input,
     GenerationRepeatabilityPhaseV1TransactionError,
 };
+
+pub use store::generation_resource_phase::{
+    GenerationResourcePhaseV1Disposition, GenerationResourcePhaseV1Input,
+    GenerationResourcePhaseV1TransactionError, StoredGenerationResourcePhaseV1,
+};

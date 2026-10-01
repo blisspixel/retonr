@@ -152,3 +152,17 @@ impl ArtifactStateStore {
 #[cfg(test)]
 #[path = "resource_attempt_result/tests.rs"]
 mod tests;
+
+pub(crate) fn write_resource_result(
+    connection: &rusqlite::Connection,
+    record: &GenerationResourceAttemptResultRecordV1,
+) -> crate::StoreResult<WriteDisposition> {
+    write::write_one(connection, record)
+}
+
+pub(crate) fn load_resource_result(
+    connection: &rusqlite::Connection,
+    record: &GenerationResourceAttemptResultRecordV1,
+) -> crate::StoreResult<Option<GenerationResourceAttemptResultRecordV1>> {
+    read::load(connection, record)
+}
