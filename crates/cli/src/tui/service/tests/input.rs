@@ -177,7 +177,40 @@ fn non_utf8_selected_source_and_candidate_sidecars_require_a_decision() {
         } else {
             &mut fixture.source
         };
-        fs::rename(&*selected, &path).expect("non UTF8 selected file");
+        let original = selected.clone();
+        let original_bytes = fs::read(&original).expect("original selected role");
+        if let Err(error) = fs::rename(&original, &path) {
+            assert!(
+                unsupported_filename_on_macos(&error),
+                "unexpected fixture rename failure: {error}"
+            );
+            assert_eq!(
+                error.raw_os_error(),
+                Some(rustix::io::Errno::ILSEQ.raw_os_error())
+            );
+            *selected = path;
+            assert_eq!(
+                load(&fixture.request(true), &CancellationToken::new())
+                    .expect_err("unrepresentable selected role must be refused")
+                    .body,
+                ErrorBody::new(
+                    ErrorCategory::Operational,
+                    ErrorCode::InputUnreadable,
+                    false
+                )
+            );
+            assert_eq!(
+                fs::read(original).expect("original role retained"),
+                original_bytes
+            );
+            assert_eq!(
+                fs::read_dir(fixture.directory.path())
+                    .expect("fixture entries")
+                    .count(),
+                2
+            );
+            continue;
+        }
         *selected = path;
         load(&fixture.request(true), &CancellationToken::new())
             .expect("ordinary path remains supported");
@@ -195,4 +228,10 @@ fn non_utf8_selected_source_and_candidate_sidecars_require_a_decision() {
             fs::remove_file(sidecar).expect("remove fixture sidecar");
         }
     }
+}
+
+#[cfg(unix)]
+fn unsupported_filename_on_macos(error: &std::io::Error) -> bool {
+    cfg!(target_os = "macos")
+        && error.raw_os_error() == Some(rustix::io::Errno::ILSEQ.raw_os_error())
 }

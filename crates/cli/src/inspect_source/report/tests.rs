@@ -14,7 +14,35 @@ fn non_utf8_selected_paths_detect_each_exact_adjacent_sidecar() {
     let root = tempfile::tempdir().expect("root");
     let path = root.path().join(&name);
     let bytes = fixture["document"].as_str().expect("document").as_bytes();
-    fs::write(&path, bytes).expect("document");
+    if let Err(error) = fs::write(&path, bytes) {
+        // APFS rejects this raw filename before the application can inspect it.
+        assert!(
+            unsupported_filename_on_macos(&error),
+            "unexpected fixture creation failure: {error}"
+        );
+        assert_eq!(
+            error.raw_os_error(),
+            Some(rustix::io::Errno::ILSEQ.raw_os_error())
+        );
+        let failure = inspect_file(&path, CommandName::Inspect)
+            .err()
+            .expect("unrepresentable selected path must be refused");
+        assert_eq!(
+            failure.body,
+            crate::contract::ErrorBody::new(
+                crate::contract::ErrorCategory::Operational,
+                crate::contract::ErrorCode::InputUnreadable,
+                false,
+            )
+        );
+        assert_eq!(
+            fs::read_dir(root.path())
+                .expect("fixture directory")
+                .count(),
+            0
+        );
+        return;
+    }
     assert_eq!(
         inspect_file(&path, CommandName::Inspect)
             .expect("plain file")
@@ -35,4 +63,10 @@ fn non_utf8_selected_paths_detect_each_exact_adjacent_sidecar() {
         assert_eq!(fs::read(&path).expect("unchanged document"), bytes);
         fs::remove_file(sidecar).expect("remove sidecar");
     }
+}
+
+#[cfg(unix)]
+fn unsupported_filename_on_macos(error: &std::io::Error) -> bool {
+    cfg!(target_os = "macos")
+        && error.raw_os_error() == Some(rustix::io::Errno::ILSEQ.raw_os_error())
 }

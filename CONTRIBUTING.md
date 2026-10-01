@@ -19,6 +19,8 @@ provisional until their roadmap gates pass.
 
 - Rust 1.97.1, as pinned in `rust-toolchain.toml`
 - Node.js 24 or later for documentation tooling
+- Python 3 for legal-notice and native terminal fixtures (`python.exe` on Windows,
+  `python3` on macOS and Linux)
 - PowerShell 7, or the in-box Windows PowerShell 5.1, for repository policy checks
 - A supported Windows, macOS, or Linux development environment
 - Optional on Windows: Developer Mode or an elevated shell, so the account holds
@@ -59,6 +61,21 @@ powershell -NoProfile -File scripts/check-repository.ps1
 ```
 
 Continuous integration repeats the applicable gates on Windows, macOS, and Linux.
+
+Native-capable Linux hosts require a static managed target fixture before workspace
+tests. Install the musl target and build the fixture:
+
+```console
+rustup target add x86_64-unknown-linux-musl
+cargo test --locked -p rewrite-runtime-isolation --test linux_managed --target x86_64-unknown-linux-musl --release --no-run
+```
+
+Set `REWRITE_ISOLATION_TEST_TARGET` to the exact executable reported by that build
+before running workspace tests. Set `REWRITE_ISOLATION_REQUIRE_NATIVE=1` when native
+enforcement is required. The [native CI workflow](.github/workflows/quality.yml)
+defines the linker prerequisites, exact artifact selection, isolated containers,
+capabilities, and mandatory kernel fixtures. A dynamically linked test target
+cannot substitute for the static executable required by the launch contract.
 
 ## Change expectations
 
