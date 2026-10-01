@@ -1,5 +1,4 @@
 use std::{
-    ffi::CString,
     fs::{self, File, OpenOptions},
     io::Write as _,
     os::unix::fs::{MetadataExt as _, OpenOptionsExt as _},
@@ -15,7 +14,7 @@ use crate::{
 };
 use rustix::{
     fs::{StatVfsMountFlags, fstatvfs},
-    mount::{MountFlags, UnmountFlags, mount, mount_bind, mount_remount, unmount},
+    mount::{MountFlags, UnmountFlags, mount, unmount},
     process::{chdir, pivot_root},
 };
 
@@ -48,6 +47,7 @@ struct HostIdentity {
 
 mod libgcc;
 mod linker_name;
+mod mounts;
 mod toolchain;
 mod tree;
 
@@ -262,7 +262,11 @@ fn extract_build_inputs(busybox: &File) -> Result<(), HelperFailure> {
 }
 
 fn write_cargo_configuration() -> Result<(), HelperFailure> {
-    let cargo_home = Path::new(ROOTFS).join("cargo-home");
+    write_cargo_configuration_at(Path::new(ROOTFS))
+}
+
+fn write_cargo_configuration_at(root: &Path) -> Result<(), HelperFailure> {
+    let cargo_home = root.join("cargo-home");
     let configuration = cargo_home.join("config.toml");
     let mut file = OpenOptions::new()
         .write(true)
@@ -279,64 +283,11 @@ fn write_cargo_configuration() -> Result<(), HelperFailure> {
 }
 
 fn establish_mounts() -> Result<(), HelperFailure> {
-    bind_at(BUILD_INPUT_ROOT, &Path::new(ROOTFS).join("inputs"), true)?;
-    bind_at(BUILD_OUTPUT_ROOT, &Path::new(ROOTFS).join("output"), false)?;
-    for relative in ["toolchain", "source", "vendor", "raw-crates"] {
-        bind_self_read_only(&Path::new(ROOTFS).join(relative))?;
-    }
-    for relative in ["cargo-home", "target"] {
-        mount_writable_tmpfs(&Path::new(ROOTFS).join(relative))?;
-    }
-    let dev_null = Path::new(ROOTFS).join("dev/null");
-    if !dev_null.exists() {
-        File::create(&dev_null).map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    }
-    mount_bind("/dev/null", &dev_null).map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    mount_bind(ROOTFS, ROOTFS).map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    mount_remount(
-        ROOTFS,
-        MountFlags::BIND | MountFlags::RDONLY | MountFlags::NODEV | MountFlags::NOSUID,
-        "",
+    mounts::establish(
+        Path::new(ROOTFS),
+        Path::new(BUILD_INPUT_ROOT),
+        Path::new(BUILD_OUTPUT_ROOT),
     )
-    .map_err(|_| HelperFailure::BootstrapRootPreparation)
-}
-
-fn bind_at(source: &str, destination: &Path, read_only: bool) -> Result<(), HelperFailure> {
-    mount_bind(source, destination).map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    if read_only {
-        mount_remount(
-            destination,
-            MountFlags::BIND | MountFlags::RDONLY | MountFlags::NODEV | MountFlags::NOSUID,
-            "",
-        )
-        .map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    }
-    Ok(())
-}
-
-fn bind_self_read_only(path: &Path) -> Result<(), HelperFailure> {
-    mount_bind(path, path).map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    mount_remount(
-        path,
-        MountFlags::BIND | MountFlags::RDONLY | MountFlags::NODEV | MountFlags::NOSUID,
-        "",
-    )
-    .map_err(|_| HelperFailure::BootstrapRootPreparation)
-}
-
-fn mount_writable_tmpfs(path: &Path) -> Result<(), HelperFailure> {
-    let options = CString::new(format!(
-        "size={MAXIMUM_CONTROLLED_BUILD_WORKSPACE_BYTES},nr_inodes={MAXIMUM_CONTROLLED_BUILD_WORKSPACE_INODES},mode=0700"
-    ))
-    .map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    mount(
-        "tmpfs",
-        path,
-        "tmpfs",
-        MountFlags::NODEV | MountFlags::NOSUID,
-        Some(options.as_c_str()),
-    )
-    .map_err(|_| HelperFailure::BootstrapRootPreparation)
 }
 
 fn pivot_and_detach() -> Result<(), HelperFailure> {

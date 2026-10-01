@@ -61,6 +61,25 @@ regressions pass locally, with strict application and engine lint checks. This
 shared headless foundation prepares desktop integration but does not establish a
 native application, accessibility, or generation qualification.
 
+The fresh retained candidate frozen at `70d5cf3` independently verifies all 38
+input members and reaches the real private bootstrap through signed package and
+Rust component installation. Its first public verifier attempt terminates with
+`BootstrapRootPreparation`, without independent-pair authority. A retained syscall
+trace and privileged reproduction identify a mount-order defect: a nonrecursive
+root self-bind performed after child mounts hides the writable Cargo and output
+mounts, and Cargo configuration creation fails with `EROFS`. Previous candidates,
+the exact failure logs, and the original operation deadline remain preserved.
+
+The private root self-bind now precedes child mounts, with the root sealed
+read-only last. A real privileged, network-free regression reproduces the previous
+hidden mounts and `EROFS`, then verifies read-only root and input flags, unchanged
+write refusals, the exact writable output alias, writable Cargo and target tmpfs,
+Cargo configuration creation, and the null-device boundary. All 141 ordinary
+isolation unit tests and strict Linux isolation lint pass. The regression is
+mandatory in both native CI and instrumented coverage; the 80 percent floor is
+unchanged. A fresh independent bootstrap pair is still required from the fix's
+committed revision.
+
 An application-owned all-pass runtime admission review compiler now composes
 three independently reverified static controls with cleanup-gated execution
 records and three opaque live controls. It derives all six statuses, checks the

@@ -354,25 +354,28 @@ jobs:
             retonr-native-isolation \
             "$isolation_test" --test-threads=1
 
-      - name: Run the private source archive serializer regression gate
+      - name: Run the private bootstrap filesystem regression gates
         shell: bash
         run: |
           set -euo pipefail
           isolation_lib_test="$(cat "$RUNNER_TEMP/retonr-isolation-lib-test-binary")"
           serializer_test='platform::linux_bootstrap_archive_serialization::tests::native::kernel_read_only_streaming_refuses_aliases_special_files_nested_mounts_and_drift'
-          "$isolation_lib_test" --ignored --exact "$serializer_test" --list --format terse \
-            > "$RUNNER_TEMP/retonr-serializer-test-list"
-          test "$(cat "$RUNNER_TEMP/retonr-serializer-test-list")" = "$serializer_test: test"
-          docker run --rm --privileged \
-            --ulimit nofile=4096:4096 \
-            --security-opt seccomp=unconfined \
-            --security-opt apparmor=unconfined \
-            --network none \
-            --tmpfs /tmp:rw,nosuid,nodev,size=512m \
-            --mount "type=bind,source=$PWD,target=$PWD" \
-            --workdir "$PWD" \
-            retonr-native-isolation \
-            "$isolation_lib_test" --ignored --exact "$serializer_test" --test-threads=1
+          mounts_test='platform::linux_bootstrap_root_native::mounts::tests::root_is_sealed_after_child_mounts_preserving_read_only_inputs_and_writable_outputs'
+          for native_test in "$serializer_test" "$mounts_test"; do
+            "$isolation_lib_test" --ignored --exact "$native_test" --list --format terse \
+              > "$RUNNER_TEMP/retonr-private-bootstrap-test-list"
+            test "$(cat "$RUNNER_TEMP/retonr-private-bootstrap-test-list")" = "$native_test: test"
+            docker run --rm --privileged \
+              --ulimit nofile=4096:4096 \
+              --security-opt seccomp=unconfined \
+              --security-opt apparmor=unconfined \
+              --network none \
+              --tmpfs /tmp:rw,nosuid,nodev,size=512m \
+              --mount "type=bind,source=$PWD,target=$PWD" \
+              --workdir "$PWD" \
+              retonr-native-isolation \
+              "$isolation_lib_test" --ignored --exact "$native_test" --test-threads=1
+          done
 
       - name: Run the forced controlled source-build evidence gate
         shell: bash
@@ -574,9 +577,12 @@ jobs:
           test "${#isolation_lib_tests[@]}" -eq 1
           test -x "${isolation_lib_tests[0]}"
           serializer_test='platform::linux_bootstrap_archive_serialization::tests::native::kernel_read_only_streaming_refuses_aliases_special_files_nested_mounts_and_drift'
-          "${isolation_lib_tests[0]}" --ignored --exact "$serializer_test" --list --format terse \
-            > "$RUNNER_TEMP/retonr-serializer-coverage-test-list"
-          test "$(cat "$RUNNER_TEMP/retonr-serializer-coverage-test-list")" = "$serializer_test: test"
+          mounts_test='platform::linux_bootstrap_root_native::mounts::tests::root_is_sealed_after_child_mounts_preserving_read_only_inputs_and_writable_outputs'
+          for native_test in "$serializer_test" "$mounts_test"; do
+            "${isolation_lib_tests[0]}" --ignored --exact "$native_test" --list --format terse \
+              > "$RUNNER_TEMP/retonr-private-bootstrap-coverage-test-list"
+            test "$(cat "$RUNNER_TEMP/retonr-private-bootstrap-coverage-test-list")" = "$native_test: test"
+          done
           mapfile -t isolation_tests < <(
             cargo test --locked -p rewrite-runtime-isolation \
               --test linux_managed --no-run --message-format=json |
@@ -662,18 +668,20 @@ jobs:
           mkdir -p "$native_dir"
           chmod 0733 "$native_dir"
           native_profile="$native_dir/native-%p-%m.profraw"
-          docker run --rm --privileged \
-            --ulimit nofile=4096:4096 \
-            --security-opt seccomp=unconfined \
-            --security-opt apparmor=unconfined \
-            --network none \
-            --tmpfs /tmp:rw,nosuid,nodev,size=512m \
-            --mount "type=bind,source=$PWD,target=$PWD" \
-            --workdir "$PWD" \
-            --env CARGO_LLVM_COV=1 \
-            --env LLVM_PROFILE_FILE="$native_profile" \
-            retonr-native-isolation \
-            "${isolation_lib_tests[0]}" --ignored --exact "$serializer_test" --test-threads=1
+          for native_test in "$serializer_test" "$mounts_test"; do
+            docker run --rm --privileged \
+              --ulimit nofile=4096:4096 \
+              --security-opt seccomp=unconfined \
+              --security-opt apparmor=unconfined \
+              --network none \
+              --tmpfs /tmp:rw,nosuid,nodev,size=512m \
+              --mount "type=bind,source=$PWD,target=$PWD" \
+              --workdir "$PWD" \
+              --env CARGO_LLVM_COV=1 \
+              --env LLVM_PROFILE_FILE="$native_profile" \
+              retonr-native-isolation \
+              "${isolation_lib_tests[0]}" --ignored --exact "$native_test" --test-threads=1
+          done
           isolation_target="$(cat "$RUNNER_TEMP/retonr-isolation-target-binary")"
           test -x "$isolation_target"
           docker run --rm \
