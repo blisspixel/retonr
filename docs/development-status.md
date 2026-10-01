@@ -210,8 +210,9 @@ through 19 retain the terminal, judge, phase, receipt-set,
 deterministic, repeatability, qualification, invalidation, and selection
 contracts in the [durable evidence schema history](current-state.md#durable-evidence-schema-history).
 Their immediate-transaction writers grant no qualification, activation,
-or live-use authority. Schema 11 repeatability results remain limited to
-candidate-generation failure. Active-owned target receipt-set settlement now matches
+or live-use authority. Schema 11 now retains successful target attempt ledgers and
+complete repeatability phase manifests; schema 16 retains Passed repetition results. Active-owned
+target receipt-set settlement now matches
 the exact sealed ledger and same-operation live batch set, writes schema 14, and
 independently reads it back with mandatory final revalidation. Active deterministic
 settlement now validates exact same-subject target and baseline batches plus retained
@@ -317,8 +318,9 @@ The immediate runtime-dependent 0.2 work is:
    judge-execution cohort, phase-evidence rows, receipt set, deterministic evaluation,
    repeatability terminal result, qualification record, invalidation, and selection
    recorded in Current status above. Each of those writes grants no qualification,
-   activation, or live-use authority. Schema 11 repeatability results remain limited to
-   candidate-generation failure. Complete that cohort before
+   activation, or live-use authority. Schema 11 now retains successful target attempt
+   ledgers and complete repeatability phase manifests; schema 16 retains Passed
+   repetition results. Complete the remaining resource and human cohorts before
    populating any production Approved root. Positive human authority requires a reviewed
    V2 policy and explicit reviewer-governance and evidence-retention decisions. Add
    later dependency-complete schema cohorts before compiling `VerifiedGenerationQualification`. After that, run

@@ -155,7 +155,8 @@ and live-use authority in distinct domains.
    contracts in the [durable evidence schema history](../current-state.md#durable-evidence-schema-history).
    Their immediate-transaction writers grant no qualification, activation,
    or live-use authority.
-   Schema 11 repeatability results remain limited to candidate-generation failure.
+   Schema 11 now retains successful target attempt ledgers and complete repeatability
+   phase manifests; schema 16 retains Passed repetition results.
    The crate-private strict candidate and judge routes now carry one
    supplied absolute deadline through every traffic and finalization boundary.
    Preserve the consuming Active operation owner that connects Prepared's retained

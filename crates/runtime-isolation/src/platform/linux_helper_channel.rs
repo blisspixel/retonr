@@ -90,32 +90,40 @@ fn connect_exact_loopback(
     endpoint: SocketAddr,
     deadline: Instant,
 ) -> Result<TcpStream, HelperFailure> {
-    let stream = loop {
+    loop {
         let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
             return Err(HelperFailure::InvalidLaunch);
         }
         match TcpStream::connect_timeout(&endpoint, remaining.min(Duration::from_millis(100))) {
-            Ok(stream) => break stream,
-            Err(error) if error.kind() == std::io::ErrorKind::ConnectionRefused => {
-                if child
-                    .try_wait()
-                    .map_err(|_| HelperFailure::InvalidLaunch)?
-                    .is_some()
-                {
-                    return Err(HelperFailure::InvalidLaunch);
+            Ok(stream) => {
+                if has_distinct_peer(&stream, endpoint)? {
+                    return Ok(stream);
                 }
-                let wait = deadline
-                    .saturating_duration_since(Instant::now())
-                    .min(CONTROL_POLL);
-                if wait.is_zero() {
-                    return Err(HelperFailure::InvalidLaunch);
-                }
-                thread::sleep(wait);
+                // Linux can connect an ephemeral socket to its own loopback port.
+                // Such a socket has no listening target; close it and retry.
             }
+            Err(error) if error.kind() == std::io::ErrorKind::ConnectionRefused => {}
             Err(_error) => return Err(HelperFailure::InvalidLaunch),
         }
-    };
+        if child
+            .try_wait()
+            .map_err(|_| HelperFailure::InvalidLaunch)?
+            .is_some()
+        {
+            return Err(HelperFailure::InvalidLaunch);
+        }
+        let wait = deadline
+            .saturating_duration_since(Instant::now())
+            .min(CONTROL_POLL);
+        if wait.is_zero() {
+            return Err(HelperFailure::InvalidLaunch);
+        }
+        thread::sleep(wait);
+    }
+}
+
+fn has_distinct_peer(stream: &TcpStream, endpoint: SocketAddr) -> Result<bool, HelperFailure> {
     let peer = stream
         .peer_addr()
         .map_err(|_| HelperFailure::InvalidLaunch)?;
@@ -133,7 +141,7 @@ fn connect_exact_loopback(
     {
         return Err(HelperFailure::InvalidLaunch);
     }
-    Ok(stream)
+    Ok(local != peer)
 }
 
 fn create_socket_diagnostics() -> Result<OwnedFd, HelperFailure> {
@@ -234,3 +242,6 @@ fn control_failure(error: ControlError) -> HelperFailure {
         | ControlError::Native => HelperFailure::InvalidLaunch,
     }
 }
+
+#[cfg(test)]
+mod tests;

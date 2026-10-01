@@ -80,6 +80,20 @@ mandatory in both native CI and instrumented coverage; the 80 percent floor is
 unchanged. A fresh independent bootstrap pair is still required from the fix's
 committed revision.
 
+The fresh `60fd7b0` candidate rechecks all 38 inputs and passes private root
+preparation, then terminates with `BootstrapRootVerification`. Static review
+identifies the next missing seam: bootstrap launches the ordinary runtime builder
+instead of executing the retained recipe's four Rust program builds. Fixed recipe
+execution remains in development; no independent pair or admission is established.
+
+Native channel acquisition now refuses a Linux TCP self-connection whose local
+and peer endpoints are identical. A real kernel regression demonstrates a socket
+receiving its own bytes without a listening target. Distinct exact-endpoint
+connections remain accepted, and retries retain the original deadline. All three
+focused regressions, strict Linux isolation lint, and all 12 required-native
+managed integration tests pass; the latter include the unchanged non-listener
+deadline assertion that exposed this defect in instrumented CI.
+
 An application-owned all-pass runtime admission review compiler now composes
 three independently reverified static controls with cleanup-gated execution
 records and three opaque live controls. It derives all six statuses, checks the
@@ -583,7 +597,7 @@ commands require the exact supported schema and never migrate implicitly.
 | 8 | Atomic effective-package V2 and generation-system foundation |
 | 9 | Portable qualification plan and case foundation with recursive cold readback |
 | 10 | Pretraffic candidate checkpoint and atomic completed-or-failed terminal closure |
-| 11 | Platform and license evidence, attempt ledger, phase manifests, operation receipt, and interruption in one terminal-evidence cohort; repeatability results here cover candidate-generation failure only |
+| 11 | Platform and license evidence, attempt ledger, phase manifests, operation receipt, and interruption in one terminal-evidence cohort; successful target attempt ledgers and complete repeatability phase manifests are implemented; Passed repetition results use schema 16 |
 | 12 | Judge plans, schedules, requests, responses, observations, managed receipts, and candidate joins in one seven-row cohort |
 | 13 | Resource-attempt results and resource or human-adjudication policy denials, each written separately |
 | 14 | One candidate-generation receipt set |
@@ -1016,7 +1030,8 @@ semantics, nor qualification.
   contracts in the [durable evidence schema history](#durable-evidence-schema-history).
   Their immediate-transaction writers grant no qualification, activation,
   or live-use authority.
-  Schema 11 repeatability results remain limited to candidate-generation failure.
+  Schema 11 now retains successful target attempt ledgers and complete repeatability
+  phase manifests; schema 16 retains Passed repetition results.
   Stored digests or caller-selected measurements cannot substitute for those typed
   observations.
 - The model-free evaluator does not assess open-domain paraphrases and must abstain
@@ -1070,8 +1085,8 @@ the terminal, judge, phase, receipt-set,
 deterministic, repeatability, qualification, invalidation, and selection
 contracts in the [durable evidence schema history](#durable-evidence-schema-history).
 Their immediate-transaction writers grant no qualification, activation,
-or live-use authority. Schema 11 repeatability results remain limited to
-candidate-generation failure.
+or live-use authority. Schema 11 now retains successful target attempt ledgers and
+complete repeatability phase manifests; schema 16 retains Passed repetition results.
 Bounded read-only candidate-attempt reconciliation now runs before `Prepared`
 activation. It inspects at most the plan's 1,024 attempts in plan order, classifies
 each as not started, checkpoint-only, terminal failed, or terminal completed, and
@@ -1199,7 +1214,8 @@ checkpoint remains the concurrency barrier after this read-only admission check.
    contracts in the [durable evidence schema history](#durable-evidence-schema-history).
    Their immediate-transaction writers grant no qualification, activation,
    or live-use authority.
-   Schema 11 repeatability results remain limited to candidate-generation failure.
+   Schema 11 now retains successful target attempt ledgers and complete repeatability
+   phase manifests; schema 16 retains Passed repetition results.
    A positive human authority requires a reviewed V2
    policy and explicit reviewer-governance and evidence-retention decisions. Add each
    later dependency-complete schema cohort in order, then compile
