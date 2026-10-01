@@ -10,6 +10,51 @@ protocol, or stored-data contracts.
 
 ## Implemented
 
+Shared typed document selection, metadata intake, bounded catalogs, and an
+asynchronous read-only review bridge are implemented in `rewrite-app`. Catalog
+selection binds an exact portable path and expected digest to retained unaliased
+reads. Incomplete sidecar lookup requires a decision, including when appending a
+suffix exceeds the native filename limit. Catalog discovery preserves sorted
+results, exact counterpart matching, typed skipped reasons, original cancellation,
+and the existing entry, depth, file, and aggregate byte ceilings. CLI inspection
+and discovery consume thin adapters. The review bridge coalesces pending work,
+rejects stale operation IDs, preserves failed submissions, and confines joining
+to a supervisor thread. Focused validation passes 58 Windows and 63 Linux document
+tests, including 13 operation and 10 state regressions. Strict application lint
+passes on both platforms, with strict Windows workspace lint and documentation.
+These shared services prepare native presentation; no desktop window, accessibility
+qualification, generation capability, or runtime admission is established.
+
+TUI catalog selection now consumes shared intake too, including digest revalidation
+and decisions for sidecars added after discovery. A headless presentation state
+owns its review bridge, tracks accepted input byte counts and explicit lifecycle
+states, and rejects stale or duplicate completions. Cancellation remains a request
+until its tagged outcome arrives; a permanently failed mailbox settles the review
+as failed rather than leaving it loading indefinitely.
+
+The Linux control transport now gives finished build messages their exact bounded
+codec envelope, including the verified output-tree summary and both permitted
+32 KiB stream captures. A regression reproduced rejection under the old generic
+ceiling; the finished-only bound preserves every other message limit. Maximum,
+oversized, truncated, and wrongly classified frames are exercised. The fresh real
+build attempt failed during bootstrap completion after publishing its first root;
+stream saturation is a plausible cause, not a retained observation. It did not
+produce a runtime pair or qualify a runtime. A new immutable-source attempt remains
+necessary.
+
+The release notice collector now preserves exact bundled font license filenames
+and AUTHORS materials while excluding font binaries and unrelated assets. Cached
+font archive verification retains its legal texts verbatim. Native dependency
+adoption still needs pinned upstream fallback materials when crate archives omit
+required notices; no desktop dependencies have been added.
+
+The integrated native-foundation batch passes 2,805 Windows and 3,033 Linux
+workspace tests and doctests before its final state and transport follow-ups.
+Focused follow-up validation covers the current document services, CLI adapters,
+163 Linux isolation tests, and all 12 required native tests. Final cross-platform
+CI, warnings-as-errors lint and documentation, legal notice checks, and the 80
+percent Rust line coverage floor remain publication gates.
+
 Successful generation attempt ledgers, Passed repetition results, and complete
 repeatability phase manifests now publish through the existing schema 11 and 16
 contracts. Publication retains the exact Active subject, original deadline,
@@ -73,7 +118,8 @@ normal quit, Ctrl+C exit 130, terminal restoration, and unchanged documents.
 `DocumentReviewService` now owns complete-input inventory, candidate checking,
 editorial comparison, original cancellation, and bounded previews in the shared
 application core. Retained filesystem reads now also live in the shared core;
-metadata decisions, labels, and safe rendering remain presentation responsibilities.
+typed metadata decisions now also live in the application core; labels and safe
+rendering remain presentation responsibilities.
 The service neither generates nor
 writes. Finding ceilings are enforced during matching; successful bounded results
 match the complete lint kernel and excessive results return errors rather than

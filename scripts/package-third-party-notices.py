@@ -19,6 +19,13 @@ TARGETS = (
 )
 MAX_LEGAL_BYTES = 2 * 1024 * 1024
 LEGAL_PREFIXES = ("LICENSE", "LICENCE", "COPYING", "NOTICE", "COPYRIGHT")
+LEGAL_FILE_NAMES = frozenset(("AUTHORS", "OFL.TXT", "UFL.TXT"))
+# These shipped font notices have asset names rather than license prefixes.
+EXTRA_LEGAL_PATHS = {
+    "epaint_default_fonts": frozenset((
+        "fonts/Hack-Regular.txt", "fonts/emoji-icon-font-mit-license.txt",
+    )),
+}
 
 
 def digest(data):
@@ -100,7 +107,10 @@ def crate_materials(archive, package):
             if path.is_absolute() or ".." in path.parts or path.parts[0] != slug:
                 raise ValueError("invalid crate member path")
             relative = path.relative_to(slug)
-            legal = relative.name.upper().startswith(LEGAL_PREFIXES) or str(relative) == declared
+            legal = (relative.name.upper().startswith(LEGAL_PREFIXES)
+                     or relative.name.upper() in LEGAL_FILE_NAMES
+                     or str(relative) in EXTRA_LEGAL_PATHS.get(package["name"], ())
+                     or str(relative) == declared)
             if not legal or member.isdir():
                 continue
             if not member.isfile() or member.size > MAX_LEGAL_BYTES:

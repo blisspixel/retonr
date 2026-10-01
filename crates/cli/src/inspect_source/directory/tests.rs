@@ -74,31 +74,6 @@ fn zero_discovery_budget_accepts_empty_files_and_refuses_nonempty_files() {
 }
 
 #[test]
-fn enumeration_enforces_remaining_budget_before_inspection() {
-    let root = tempdir().expect("temporary directory");
-    for name in ["a", "b", "c"] {
-        fs::write(root.path().join(name), "draft").expect("write entry");
-    }
-    let cancellation = rewrite_types::CancellationToken::new();
-    assert_eq!(
-        read_sorted_entries(root.path(), 3, CommandName::Lint, &cancellation)
-            .expect("exact budget")
-            .len(),
-        3
-    );
-    assert!(read_sorted_entries(root.path(), 2, CommandName::Lint, &cancellation).is_err());
-    assert!(read_sorted_entries(root.path(), 0, CommandName::Lint, &cancellation).is_err());
-    cancellation.cancel();
-    let Err(failure) = read_sorted_entries(root.path(), 3, CommandName::Lint, &cancellation) else {
-        panic!("cancelled enumeration")
-    };
-    assert_eq!(
-        failure.exit_code,
-        ExitCode::from(crate::contract::EXIT_CANCELLED)
-    );
-}
-
-#[test]
 fn recursive_walk_lists_nested_files_and_skips_ignored_names() {
     let root = tempdir().expect("temporary directory");
     let path = root.path();
@@ -202,16 +177,4 @@ fn non_recursive_walk_skips_child_directories() {
     assert!(skipped.iter().any(
         |entry| entry.relative_path.as_deref() == Some("nested") && entry.reason == "directory"
     ));
-}
-
-#[test]
-fn portable_relative_paths_reject_separators_and_join_with_slash() {
-    assert!(!portable_component("a/b"));
-    assert!(!portable_component("a\\b"));
-    assert!(!portable_component(""));
-    assert_eq!(join_relative("", "a.txt"), "a.txt");
-    assert_eq!(join_relative("nested", "inner.txt"), "nested/inner.txt");
-    assert!(is_ignored("TARGET"));
-    assert!(is_ignored("Node_Modules"));
-    assert!(!is_ignored("src"));
 }

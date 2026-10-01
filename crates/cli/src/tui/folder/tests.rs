@@ -139,6 +139,43 @@ fn changed_discovery_digest_and_hardlinks_never_supply_review_bytes() {
 }
 
 #[test]
+fn selected_reacquisition_observes_new_sidecars_and_original_cancellation() {
+    let root = tempfile::tempdir().expect("root");
+    let source = root.path().join("draft.txt");
+    fs::write(&source, b"Hello world.\n").expect("source");
+    let catalog = discover_cancellable(
+        root.path(),
+        true,
+        CommandName::Tui,
+        &CancellationToken::new(),
+    )
+    .expect("initial catalog");
+    let document = &catalog.documents[0];
+    assert_eq!(
+        read(root.path(), document, &CancellationToken::new()).expect("selected bytes"),
+        b"Hello world.\n"
+    );
+    for suffix in [".c2pa", ".xmp"] {
+        let sidecar = root.path().join(format!("draft.txt{suffix}"));
+        fs::write(&sidecar, b"Unread metadata contents.").expect("late sidecar");
+        let failure = read(root.path(), document, &CancellationToken::new())
+            .expect_err("new metadata requires a decision");
+        assert_eq!(failure.body, RunFailure::usage_for(CommandName::Tui).body);
+        fs::remove_file(sidecar).expect("remove sidecar");
+    }
+    fs::remove_file(&source).expect("vanished source");
+    let cancellation = CancellationToken::new();
+    cancellation.cancel();
+    assert_eq!(
+        read(root.path(), document, &cancellation)
+            .expect_err("original cancellation wins over unreadable source")
+            .body,
+        RunFailure::cancelled(CommandName::Tui).body
+    );
+    assert_eq!(fs::read_dir(root.path()).expect("no writes").count(), 0);
+}
+
+#[test]
 fn hostile_paths_are_sanitized_in_catalog_and_selected_preview() {
     let root = tempfile::tempdir().expect("root");
     let name = "draft\u{202e}.txt";

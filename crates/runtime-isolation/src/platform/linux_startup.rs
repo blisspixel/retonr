@@ -6,7 +6,7 @@ use std::{
 
 use crate::{MAXIMUM_STARTUP_STREAM_BYTES, ManagedStartupOutput};
 
-const CAPTURE_HEADER_BYTES: usize = 9;
+pub(super) const CAPTURE_HEADER_BYTES: usize = 9;
 
 #[derive(Default)]
 struct StreamCapture {

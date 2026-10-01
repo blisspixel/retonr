@@ -25,12 +25,15 @@ class PackagingTests(unittest.TestCase):
         self.package = {"name": "example", "version": "1.0.0", "source":
                         "registry+https://github.com/rust-lang/crates.io-index"}
 
-    def archive(self, materials, extra=None):
+    def archive(self, materials, extra=None, license_expression="MIT"):
         archive = self.root / "example.crate"
         with tarfile.open(archive, "w:gz") as stream:
-            manifest = b'[package]\nname="example"\nversion="1.0.0"\nlicense="MIT"\n'
+            manifest = (f'[package]\nname="{self.package["name"]}"\n'
+                        f'version="{self.package["version"]}"\n'
+                        f'license="{license_expression}"\n').encode()
             for path, data in [("Cargo.toml", manifest), *materials]:
-                item = tarfile.TarInfo(f"example-1.0.0/{path}")
+                item = tarfile.TarInfo(
+                    f'{self.package["name"]}-{self.package["version"]}/{path}')
                 item.size = len(data)
                 stream.addfile(item, io.BytesIO(data))
             if extra is not None:
@@ -70,6 +73,55 @@ class PackagingTests(unittest.TestCase):
         link.linkname = "LICENSE"
         with self.assertRaises(ValueError):
             notices.crate_materials(self.archive([("LICENSE", b"legal")], link), self.package)
+
+    def test_font_archive_preserves_all_four_named_notices_without_font_assets(self):
+        self.package.update(name="epaint_default_fonts", version="0.36.2")
+        legal = [("fonts/OFL.txt", b"SIL Open Font License and original holders\r\n"),
+                 ("fonts/UFL.txt", b"Ubuntu Font License and original holders\n"),
+                 ("fonts/Hack-Regular.txt", b"MIT and Bitstream Vera terms\n"),
+                 ("fonts/emoji-icon-font-mit-license.txt", b"Icon font MIT notice\n")]
+        assets = [("fonts/Hack-Regular.ttf", b"binary\0font"),
+                  ("fonts/unrelated.txt", b"\xffnot legal text"),
+                  ("src/generated.rs", b"\xffsource")]
+        expression = "(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0"
+        actual_expression, actual, _ = notices.crate_materials(
+            self.archive(legal + assets, license_expression=expression), self.package)
+        self.assertEqual(actual_expression, expression)
+        self.assertEqual(actual, sorted(legal))
+        self.package["name"] = "example"
+        _, actual, _ = notices.crate_materials(self.archive(legal + assets), self.package)
+        self.assertEqual(actual, sorted(legal[:2]))
+
+    def test_accessibility_authors_and_derived_license_survive_complete_document(self):
+        self.package.update(name="accesskit", version="0.24.1")
+        legal = [("LICENSE-MIT", b"MIT terms\r\n"),
+                 ("LICENSE-APACHE", b"Apache terms\n"),
+                 ("LICENSE.chromium", b"Chromium BSD terms and copyrights\n"),
+                 ("AUTHORS", b"Original copyright authors\r\n")]
+        archive = self.archive(legal + [("AUTHORS.json", b"\xffunrelated asset"),
+                                       ("src/data.bin", b"binary\0")])
+        _, actual, _ = notices.crate_materials(archive, self.package)
+        self.assertEqual(actual, sorted(legal))
+        cache = self.root / "cargo/registry/cache/index"
+        cache.mkdir(parents=True)
+        (cache / "accesskit-0.24.1.crate").write_bytes(archive.read_bytes())
+        body = notices.document(notices.TARGETS[0], [self.package], self.root / "cargo",
+                                self.root, self.rust())
+        for path, data in legal:
+            self.assertIn(f"--- {path} ---\n".encode() + data, body)
+
+    def test_new_legal_names_are_bounded_regular_utf8_materials(self):
+        self.package.update(name="epaint_default_fonts", version="0.36.2")
+        for path in ["AUTHORS", "fonts/OFL.txt", "fonts/UFL.txt", "fonts/Hack-Regular.txt",
+                     "fonts/emoji-icon-font-mit-license.txt"]:
+            for body in [b"", b"nul\0", b"\xff", b"a" * (notices.MAX_LEGAL_BYTES + 1)]:
+                with self.assertRaises((ValueError, UnicodeDecodeError)):
+                    notices.crate_materials(self.archive([(path, body)]), self.package)
+            link = tarfile.TarInfo(f"epaint_default_fonts-0.36.2/{path}")
+            link.type = tarfile.SYMTYPE
+            link.linkname = "unrelated.bin"
+            with self.assertRaises(ValueError):
+                notices.crate_materials(self.archive([], link), self.package)
 
     def test_fallback_requires_exact_package_archive_and_legal_checksum(self):
         self.archive([])

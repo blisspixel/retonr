@@ -114,6 +114,12 @@ establishment and live revalidation. This closes the bootstrap execution blocker
 it does not admit a runtime or model tuple. See the exact revision and evidence
 scope in [current implementation state](current-state.md).
 
+The shared desktop foundation now includes typed selection, metadata decisions,
+bounded catalogs, and latest-only asynchronous review. CLI inspection and folder
+discovery consume the shared policies. The next presentation step is a reversible
+native window and accessibility experiment, followed by actual platform evidence;
+these headless components do not close the native desktop checkpoint.
+
 1. Retain fresh controlled-build evidence for the real Linux runtime candidate.
    The historical source build is not retained evidence. Run the frozen-input build,
    independent byte comparison, publication, and cold readback before review.

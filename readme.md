@@ -62,7 +62,9 @@ pending. No model and runtime combination is qualified.
 
 The planned 1.0 includes a scriptable CLI, an interactive terminal UI, and an
 accessible native desktop application on Linux, macOS, and Windows. All three use
-the same application core. The desktop uses no browser frontend or webview.
+the same application core. The desktop uses no browser frontend or webview. Shared document intake,
+bounded folder catalogs, and cancellable background review are implemented; the
+native window and accessibility qualification remain planned.
 
 The prose account of controlled builds, generation qualification, and the immediate
 0.2 path is in [Development status](docs/development-status.md). The authoritative

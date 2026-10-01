@@ -2,7 +2,11 @@
 
 use std::{collections::BTreeSet, fs, path::Path};
 
-use rewrite_app::{MAX_CANDIDATE_CHECK_BYTES, TextEncoding};
+use rewrite_app::{
+    MAX_CANDIDATE_CHECK_BYTES, TextEncoding,
+    document_intake::{DerivativeDisposition, DocumentIntakeError, DocumentIntakeService},
+    document_selection::{DocumentSelection, RelativeDocumentPath},
+};
 use rewrite_types::{CancellationToken, Digest};
 
 use super::{
@@ -195,23 +199,25 @@ fn read(
     if cancellation.is_cancelled() {
         return Err(RunFailure::cancelled(CommandName::Tui));
     }
-    let bytes = crate::file_input::read_directory_unaliased_bounded(
-        root,
-        Path::new(&document.relative_path),
+    let relative = RelativeDocumentPath::new(document.relative_path.clone())
+        .map_err(|_| RunFailure::operational(CommandName::Tui))?;
+    let expected = Digest::from_sha256_hex(document.digest.clone())
+        .map_err(|_| RunFailure::operational(CommandName::Tui))?;
+    let selected = DocumentIntakeService::read(
+        &DocumentSelection::catalog(root, relative, expected),
         MAX_CANDIDATE_CHECK_BYTES,
+        cancellation,
     )
-    .map_err(|error| RunFailure::input_read(CommandName::Tui, &error))?;
-    if Digest::sha256(&bytes).as_str() != document.digest {
-        return Err(RunFailure::concurrent_modification(CommandName::Tui));
-    }
-    if crate::inspect_source::requires_derivative_decision(
-        &root.join(&document.relative_path),
-        &bytes,
-        CommandName::Tui,
-    )? {
+    .map_err(|error| match error {
+        DocumentIntakeError::Input(error) => RunFailure::input_read(CommandName::Tui, &error),
+        DocumentIntakeError::Inspection(error) => RunFailure::app(CommandName::Tui, &error),
+        DocumentIntakeError::Changed => RunFailure::concurrent_modification(CommandName::Tui),
+        DocumentIntakeError::Cancelled => RunFailure::cancelled(CommandName::Tui),
+    })?;
+    if selected.observation.derivative == DerivativeDisposition::ExplicitDecisionRequired {
         return Err(RunFailure::usage_for(CommandName::Tui));
     }
-    Ok(bytes)
+    Ok(selected.bytes)
 }
 
 fn require_root(path: &Path) -> Result<(), RunFailure> {

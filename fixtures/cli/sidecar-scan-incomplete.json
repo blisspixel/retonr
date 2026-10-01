@@ -1,0 +1,7 @@
+{
+  "filename_bytes": 255,
+  "document": "Hello world.\n",
+  "sidecars": [".c2pa", ".xmp"],
+  "expected_scan": "incomplete",
+  "expected_derivative": "explicit_decision_required"
+}

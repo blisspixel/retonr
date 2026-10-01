@@ -1,8 +1,12 @@
-use std::{fs, path::Path};
+use std::path::Path;
 
 use rewrite_app::{
-    CarrierPresence, LineEndingKind, MAX_CANDIDATE_CHECK_BYTES, PlainTextInventory, TextEncoding,
-    inspect_plain_text,
+    CarrierPresence, LineEndingKind, MAX_CANDIDATE_CHECK_BYTES, TextEncoding,
+    document_intake::{
+        DerivativeDisposition, DocumentIntakeError, DocumentIntakeObservation,
+        DocumentIntakeService, SidecarScanCompleteness,
+    },
+    document_selection::DocumentSelection,
 };
 use serde::Serialize;
 
@@ -10,29 +14,25 @@ use crate::contract::{CommandName, STANDARD_STREAM_PATH, read_input_bounded};
 use crate::failure::RunFailure;
 use crate::render::escape_inline_for_display;
 
-const SIDECAR_SUFFIXES: [&str; 2] = [".c2pa", ".xmp"];
-
 pub(super) fn inspect_file(
     source: &Path,
     command: CommandName,
 ) -> Result<InspectReport, RunFailure> {
-    let bytes = read_input_bounded(source, MAX_CANDIDATE_CHECK_BYTES)
-        .map_err(|error| RunFailure::input_read(command, &error))?;
-    inventory_report(source, command, &bytes).map(|(report, _)| report)
-}
-
-pub(super) fn inspect_direct_file_bounded(
-    root: &Path,
-    source: &Path,
-    command: CommandName,
-    maximum_bytes: usize,
-) -> Result<(InspectReport, usize), RunFailure> {
-    let relative = source
-        .strip_prefix(root)
-        .map_err(|_| RunFailure::operational(command))?;
-    let bytes = crate::file_input::read_directory_bounded(root, relative, maximum_bytes)
-        .map_err(|error| RunFailure::input_read(command, &error))?;
-    inventory_report(source, command, &bytes)
+    if source.as_os_str() == STANDARD_STREAM_PATH {
+        let bytes = read_input_bounded(source, MAX_CANDIDATE_CHECK_BYTES)
+            .map_err(|error| RunFailure::input_read(command, &error))?;
+        return inventory_report(source, command, &bytes).map(|(report, _)| report);
+    }
+    let document = DocumentIntakeService::read(
+        &DocumentSelection::explicit(source),
+        MAX_CANDIDATE_CHECK_BYTES,
+        &rewrite_types::CancellationToken::new(),
+    )
+    .map_err(|error| intake_failure(command, &error))?;
+    Ok(InspectReport::from_observation(
+        source,
+        &document.observation,
+    ))
 }
 
 pub(super) fn inventory_report(
@@ -40,48 +40,25 @@ pub(super) fn inventory_report(
     command: CommandName,
     bytes: &[u8],
 ) -> Result<(InspectReport, usize), RunFailure> {
-    let inventory = inspect_plain_text(bytes).map_err(|error| RunFailure::app(command, &error))?;
+    let selected_path = (source.as_os_str() != STANDARD_STREAM_PATH).then_some(source);
+    let observation = DocumentIntakeService::inspect_bytes(
+        selected_path,
+        bytes,
+        &rewrite_types::CancellationToken::new(),
+    )
+    .map_err(|error| intake_failure(command, &error))?;
     Ok((
-        InspectReport::from_inventory(&inventory, sidecar_scan(source)),
+        InspectReport::from_observation(source, &observation),
         bytes.len(),
     ))
 }
 
-pub(super) fn sidecar_scan(source: &Path) -> SidecarScan {
-    if source.as_os_str() == STANDARD_STREAM_PATH {
-        return SidecarScan {
-            status: "not_applicable",
-            present: Vec::new(),
-        };
-    }
-    let Some(parent) = source.parent() else {
-        return SidecarScan {
-            status: "complete",
-            present: Vec::new(),
-        };
-    };
-    let Some(name) = source.file_name() else {
-        return SidecarScan {
-            status: "complete",
-            present: Vec::new(),
-        };
-    };
-    let mut present = Vec::new();
-    for suffix in SIDECAR_SUFFIXES {
-        let mut candidate = name.to_os_string();
-        candidate.push(suffix);
-        let path = parent.join(&candidate);
-        if let Ok(metadata) = fs::symlink_metadata(&path)
-            && metadata.is_file()
-            && !metadata.file_type().is_symlink()
-        {
-            present.push(candidate.to_string_lossy().into_owned());
-        }
-    }
-    present.sort();
-    SidecarScan {
-        status: "complete",
-        present,
+fn intake_failure(command: CommandName, error: &DocumentIntakeError) -> RunFailure {
+    match error {
+        DocumentIntakeError::Input(error) => RunFailure::input_read(command, error),
+        DocumentIntakeError::Inspection(error) => RunFailure::app(command, error),
+        DocumentIntakeError::Changed => RunFailure::concurrent_modification(command),
+        DocumentIntakeError::Cancelled => RunFailure::cancelled(command),
     }
 }
 
@@ -121,12 +98,30 @@ struct ControlReport {
 }
 
 impl InspectReport {
-    fn from_inventory(inventory: &PlainTextInventory, sidecars: SidecarScan) -> Self {
-        let derivative = derivative_decision(
-            inventory.encoding,
-            inventory.c2pa_unstructured_text,
-            !sidecars.present.is_empty(),
-        );
+    pub(super) fn from_observation(source: &Path, observation: &DocumentIntakeObservation) -> Self {
+        let inventory = &observation.inventory;
+        let derivative = match observation.derivative {
+            DerivativeDisposition::NotRequired => "not_required",
+            DerivativeDisposition::ExplicitDecisionRequired => "explicit_decision_required",
+            DerivativeDisposition::NotChecked => "not_checked",
+        };
+        let sidecars = SidecarScan {
+            status: match observation.sidecars.completeness {
+                SidecarScanCompleteness::Complete => "complete",
+                SidecarScanCompleteness::NotApplicable => "not_applicable",
+                SidecarScanCompleteness::Incomplete => "incomplete",
+            },
+            present: observation
+                .sidecars
+                .present
+                .iter()
+                .filter_map(|kind| {
+                    let mut name = source.file_name()?.to_os_string();
+                    name.push(kind.suffix());
+                    Some(name.to_string_lossy().into_owned())
+                })
+                .collect(),
+        };
         Self {
             encoding: inventory.encoding,
             valid_up_to: inventory.valid_up_to.map(|value| value.to_string()),
@@ -206,20 +201,6 @@ impl InspectReport {
     }
 }
 
-fn derivative_decision(
-    encoding: TextEncoding,
-    carrier: CarrierPresence,
-    sidecar_present: bool,
-) -> &'static str {
-    if sidecar_present || carrier == CarrierPresence::Possible {
-        return "explicit_decision_required";
-    }
-    if encoding != TextEncoding::Utf8 {
-        return "not_checked";
-    }
-    "not_required"
-}
-
 const fn encoding_name(encoding: TextEncoding) -> &'static str {
     match encoding {
         TextEncoding::Utf8 => "utf8",
@@ -247,5 +228,5 @@ const fn carrier_name(presence: CarrierPresence) -> &'static str {
     }
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests;

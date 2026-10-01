@@ -21,7 +21,8 @@ use rustix::{
 const MAGIC: &[u8; 8] = b"RTNRISO1";
 const HEADER_BYTES: usize = 16;
 const MAX_PAYLOAD_BYTES: usize = 64 * 1024 + 16;
-const MAX_FRAME_BYTES: usize = HEADER_BYTES + MAX_PAYLOAD_BYTES;
+const MAX_FRAME_BYTES: usize =
+    HEADER_BYTES + super::linux_build_protocol::MAXIMUM_FINISHED_PAYLOAD_BYTES;
 const POLL_INTERVAL: Duration = Duration::from_millis(5);
 pub(super) const MAX_RECEIVED_DESCRIPTORS: usize = 3;
 const ENDPOINT_BYTES: usize = 19;
@@ -51,6 +52,15 @@ pub(super) enum MessageKind {
 }
 
 impl MessageKind {
+    const fn maximum_payload_bytes(self) -> usize {
+        match self {
+            Self::BuildFinished | Self::BootstrapFinished => {
+                super::linux_build_protocol::MAXIMUM_FINISHED_PAYLOAD_BYTES
+            }
+            _ => MAX_PAYLOAD_BYTES,
+        }
+    }
+
     fn parse(value: u8) -> Result<Self, ControlError> {
         match value {
             1 => Ok(Self::LaunchDescriptor),
@@ -121,7 +131,8 @@ pub(super) fn send(
     deadline: Instant,
     cancellation: Option<&CancellationToken>,
 ) -> Result<(), ControlError> {
-    if payload.len() > MAX_PAYLOAD_BYTES || descriptors.len() > MAX_RECEIVED_DESCRIPTORS {
+    if payload.len() > kind.maximum_payload_bytes() || descriptors.len() > MAX_RECEIVED_DESCRIPTORS
+    {
         return Err(ControlError::Invalid);
     }
     let payload_len = u32::try_from(payload.len()).map_err(|_error| ControlError::Invalid)?;
@@ -220,7 +231,7 @@ fn parse_received(
             .map_err(|_error| ControlError::Invalid)?,
     ))
     .map_err(|_error| ControlError::Invalid)?;
-    if payload_len > MAX_PAYLOAD_BYTES || bytes != HEADER_BYTES + payload_len {
+    if payload_len > kind.maximum_payload_bytes() || bytes != HEADER_BYTES + payload_len {
         return Err(ControlError::Invalid);
     }
     let mut descriptors = Vec::new();
@@ -339,6 +350,8 @@ fn ensure_active(
 
 #[cfg(test)]
 mod tests {
+    mod build_finished;
+
     use std::{
         net::{Ipv6Addr, SocketAddr, SocketAddrV6},
         os::fd::AsFd as _,

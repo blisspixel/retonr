@@ -1,14 +1,10 @@
 //! Bounded directory discovery for pre-model inspect.
 
-use std::{
-    fs::{self, DirEntry},
-    path::{Path, PathBuf},
-    process::ExitCode,
-};
+use std::{path::Path, process::ExitCode};
 
 use serde::Serialize;
 
-use super::report::{InspectReport, inspect_direct_file_bounded};
+use super::report::InspectReport;
 use crate::contract::{CommandName, EXIT_COMPATIBILITY, ErrorBody, ErrorCategory, ErrorCode};
 use crate::failure::RunFailure;
 use crate::model::ModelOutput;
@@ -153,186 +149,63 @@ fn walk_cancellable(
     command: CommandName,
     cancellation: &rewrite_types::CancellationToken,
 ) -> Result<(Vec<DirectoryDocument>, Vec<SkippedEntry>), RunFailure> {
-    let mut pending = vec![Frame {
-        path: directory.to_path_buf(),
-        relative: String::new(),
-        depth: 0,
-    }];
-    let mut documents = Vec::new();
-    let mut skipped = Vec::new();
-    let mut seen = 0_usize;
-    let mut inspected_bytes = 0_usize;
-    while let Some(frame) = pending.pop() {
-        if cancellation.is_cancelled() {
-            return Err(RunFailure::cancelled(command));
-        }
-        let mut entries = read_sorted_entries(
-            &frame.path,
-            max_entries.saturating_sub(seen),
-            command,
-            cancellation,
-        )?;
-        seen = seen.saturating_add(entries.len());
-        if seen > max_entries {
-            return Err(directory_limit(command));
-        }
-        for entry in entries.drain(..) {
-            if cancellation.is_cancelled() {
-                return Err(RunFailure::cancelled(command));
+    use rewrite_app::document_catalog::{DocumentCatalogLimits, DocumentCatalogService};
+    let catalog = DocumentCatalogService::discover(
+        directory,
+        recursive,
+        DocumentCatalogLimits {
+            entries: max_entries,
+            depth: max_depth,
+            bytes: maximum_bytes,
+        },
+        cancellation,
+    )
+    .map_err(|error| catalog_failure(command, error))?;
+    let documents = catalog
+        .documents
+        .into_iter()
+        .map(|entry| {
+            let relative_path = entry.relative_path.as_str().to_owned();
+            DirectoryDocument {
+                report: InspectReport::from_observation(
+                    &directory.join(&relative_path),
+                    &entry.observation,
+                ),
+                relative_path,
             }
-            match classify_entry(&entry, &frame.relative) {
-                Class::Document {
-                    relative_path,
-                    path,
-                } => {
-                    let remaining_bytes = maximum_bytes.saturating_sub(inspected_bytes);
-                    let metadata = fs::symlink_metadata(&path)
-                        .map_err(|error| RunFailure::input_read(command, &error))?;
-                    if metadata.len() > remaining_bytes as u64 {
-                        return Err(directory_limit(command));
-                    }
-                    let (report, byte_count) = inspect_direct_file_bounded(
-                        directory,
-                        &path,
-                        command,
-                        remaining_bytes.min(rewrite_app::MAX_CANDIDATE_CHECK_BYTES),
-                    )?;
-                    inspected_bytes = inspected_bytes
-                        .checked_add(byte_count)
-                        .filter(|total| *total <= maximum_bytes)
-                        .ok_or_else(|| directory_limit(command))?;
-                    documents.push(DirectoryDocument {
-                        relative_path,
-                        report,
-                    });
-                }
-                Class::Descend {
-                    relative_path,
-                    path,
-                } => {
-                    let depth = frame.depth.saturating_add(1);
-                    if !recursive {
-                        skipped.push(SkippedEntry {
-                            relative_path: Some(relative_path),
-                            reason: "directory",
-                        });
-                    } else if depth > max_depth {
-                        skipped.push(SkippedEntry {
-                            relative_path: Some(relative_path),
-                            reason: "depth_limit",
-                        });
-                    } else {
-                        pending.push(Frame {
-                            path,
-                            relative: relative_path,
-                            depth,
-                        });
-                    }
-                }
-                Class::Skipped(entry) => skipped.push(entry),
-            }
-        }
-    }
+        })
+        .collect();
+    let skipped = catalog
+        .skipped
+        .into_iter()
+        .map(|entry| SkippedEntry {
+            relative_path: entry.relative_path,
+            reason: entry.reason.as_str(),
+        })
+        .collect();
     Ok((documents, skipped))
 }
 
-fn read_sorted_entries(
-    directory: &Path,
-    maximum_entries: usize,
+fn catalog_failure(
     command: CommandName,
-    cancellation: &rewrite_types::CancellationToken,
-) -> Result<Vec<DirEntry>, RunFailure> {
-    let mut entries = Vec::new();
-    let reader =
-        fs::read_dir(directory).map_err(|error| RunFailure::input_read(command, &error))?;
-    for entry in reader {
-        if cancellation.is_cancelled() {
-            return Err(RunFailure::cancelled(command));
-        }
-        if entries.len() == maximum_entries {
-            return Err(directory_limit(command));
-        }
-        entries.push(entry.map_err(|error| RunFailure::input_read(command, &error))?);
-    }
-    entries.sort_by_key(DirEntry::file_name);
-    Ok(entries)
-}
-
-fn classify_entry(entry: &DirEntry, prefix: &str) -> Class {
-    let os_name = entry.file_name();
-    let Some(name) = os_name.to_str() else {
-        return Class::Skipped(SkippedEntry {
-            relative_path: None,
-            reason: "malformed_name",
-        });
+    error: rewrite_app::document_catalog::DocumentCatalogError,
+) -> RunFailure {
+    use rewrite_app::{
+        document_catalog::DocumentCatalogError as Error, document_intake::DocumentIntakeError,
     };
-    if !portable_component(name) {
-        return Class::Skipped(SkippedEntry {
-            relative_path: None,
-            reason: "malformed_name",
-        });
-    }
-    let relative_path = join_relative(prefix, name);
-    if name.starts_with('.') {
-        return Class::Skipped(SkippedEntry {
-            relative_path: Some(relative_path),
-            reason: "hidden",
-        });
-    }
-    if is_ignored(name) {
-        return Class::Skipped(SkippedEntry {
-            relative_path: Some(relative_path),
-            reason: "ignored",
-        });
-    }
-    let Ok(metadata) = fs::symlink_metadata(entry.path()) else {
-        return Class::Skipped(SkippedEntry {
-            relative_path: Some(relative_path),
-            reason: "unreadable",
-        });
-    };
-    if metadata.file_type().is_symlink() {
-        return Class::Skipped(SkippedEntry {
-            relative_path: Some(relative_path),
-            reason: "symlink",
-        });
-    }
-    if metadata.is_dir() {
-        return Class::Descend {
-            relative_path,
-            path: entry.path(),
-        };
-    }
-    if !metadata.is_file() {
-        return Class::Skipped(SkippedEntry {
-            relative_path: Some(relative_path),
-            reason: "non_regular",
-        });
-    }
-    Class::Document {
-        relative_path,
-        path: entry.path(),
-    }
-}
-
-fn portable_component(name: &str) -> bool {
-    !name.is_empty()
-        && name != "."
-        && name != ".."
-        && !name.contains('/')
-        && !name.contains('\\')
-        && !name.contains('\0')
-}
-
-fn is_ignored(name: &str) -> bool {
-    name.eq_ignore_ascii_case("target") || name.eq_ignore_ascii_case("node_modules")
-}
-
-fn join_relative(prefix: &str, name: &str) -> String {
-    if prefix.is_empty() {
-        name.to_owned()
-    } else {
-        format!("{prefix}/{name}")
+    match error {
+        Error::Cancelled | Error::Intake(DocumentIntakeError::Cancelled) => {
+            RunFailure::cancelled(command)
+        }
+        Error::ResourceLimitExceeded => directory_limit(command),
+        Error::Input(error) | Error::Intake(DocumentIntakeError::Input(error)) => {
+            RunFailure::input_read(command, &error)
+        }
+        Error::Intake(DocumentIntakeError::Inspection(error)) => RunFailure::app(command, &error),
+        Error::InvalidPath | Error::Intake(DocumentIntakeError::Changed) => RunFailure::input_read(
+            command,
+            &std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid catalog input"),
+        ),
     }
 }
 
@@ -347,24 +220,6 @@ fn directory_limit(command: CommandName) -> RunFailure {
         exit_code: ExitCode::from(EXIT_COMPATIBILITY),
         message: "directory exceeds the supported resource limits",
     }
-}
-
-struct Frame {
-    path: PathBuf,
-    relative: String,
-    depth: usize,
-}
-
-enum Class {
-    Document {
-        relative_path: String,
-        path: PathBuf,
-    },
-    Descend {
-        relative_path: String,
-        path: PathBuf,
-    },
-    Skipped(SkippedEntry),
 }
 
 #[derive(Serialize)]

@@ -14,6 +14,10 @@ const ARM_BYTES: usize = 68;
 const BOOTSTRAP_ARM_BYTES: usize = ARM_BYTES + 1;
 const RESULT_HEADER_BYTES: usize = 7;
 const TREE_BYTES: usize = 80;
+pub(super) const MAXIMUM_FINISHED_PAYLOAD_BYTES: usize = RESULT_HEADER_BYTES
+    + TREE_BYTES
+    + linux_startup::CAPTURE_HEADER_BYTES
+    + 2 * crate::MAXIMUM_STARTUP_STREAM_BYTES;
 const INPUT_COUNT_BYTES: usize = 5;
 const INPUT_PATH_HEADER_BYTES: usize = 2;
 const INPUT_DECLARATION_SUFFIX_BYTES: usize = 8 + 64;
