@@ -168,6 +168,21 @@ in both native CI and instrumented coverage. Its instrumented parent and child
 profiles merge successfully without write errors, and all 12 required-native
 tests pass with a rebuilt helper. Production filesystem grants remain unchanged.
 
+The fresh candidate frozen at `61fc8f19aa7d7d9ecb7c90e048c84f5990148a39`
+successfully executes both independent private bootstrap roots. Each publishes
+all four exact retained programs, and the public verifier's establishment and
+live revalidation both pass. The exact 38-member input set is
+`41e403bc7bab7ce63e784afcd7dcbdd44a2cb204cc663cfcc73dc2b1b1d1ffea`;
+the authenticated retained-program closure digest is
+`e55ab5b21352277f85d350ea5aa7b2358881511ae0f69ecdf70633fb406bb2f2`.
+The original absolute deadline and networkless execution limits are preserved.
+The live lease ends with its caller process; retained logs cannot recreate it.
+This evidence binds that frozen revision, rather than subsequent documentation
+commits. All 371 legal subjects remain pending review, production approval roots
+remain empty, and no runtime or model tuple is admitted. The corrected source
+passes all 14 hosted CI checks with 83.61 percent Rust line coverage. The
+integrated Linux workspace passes 2,999 tests and doctests plus strict lint.
+
 Native channel acquisition now refuses a Linux TCP self-connection whose local
 and peer endpoints are identical. A real kernel regression demonstrates a socket
 receiving its own bytes without a listening target. Distinct exact-endpoint

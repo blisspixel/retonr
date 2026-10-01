@@ -108,8 +108,11 @@ adds bounded folder navigation, shared headless review, successful-ledger
 persistence, Passed repetition settlement, and transactional complete repeatability
 manifest publication. Its follow-up adds shared retained-file intake and atomic
 resource-phase publication, with fixed-recipe bootstrap execution and exact
-compiler-library grants. It retains the next real bootstrap attempt without
-treating candidate preparation as runtime admission.
+compiler-library grants. A fresh frozen-source bootstrap pair now executes both
+independent roots, publishes all four exact retained programs, and passes public
+establishment and live revalidation. This closes the bootstrap execution blocker;
+it does not admit a runtime or model tuple. See the exact revision and evidence
+scope in [current implementation state](current-state.md).
 
 1. Retain fresh controlled-build evidence for the real Linux runtime candidate.
    The historical source build is not retained evidence. Run the frozen-input build,
