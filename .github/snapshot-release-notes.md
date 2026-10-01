@@ -12,6 +12,8 @@ Milestone 0.2 is still in progress, and no milestone has been released.
   findings, source, and candidate. `--plain` provides bounded text or JSON previews
   for redirected output and accessible terminals. Validation uses complete inputs;
   previews are truncated and escaped for safe display.
+- Serializes terminal rendering with panic cleanup so a background panic cannot
+  let a later frame hide the restored cursor.
 - Adds bounded recursive directory lint and read-only paired-directory candidate
   checks, with explicit inventory limits and per-file findings.
 - Hardens retained-file reads against special files, ancestry replacement, and

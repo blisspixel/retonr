@@ -433,6 +433,7 @@ jobs:
         uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
         with:
           toolchain: 1.97.1
+          components: llvm-tools-preview
           targets: x86_64-unknown-linux-musl
 
       - name: Install static Linux build tooling
@@ -448,6 +449,11 @@ jobs:
         uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518
         with:
           tool: cargo-llvm-cov@0.8.7
+
+      - name: Verify raw coverage profile validation
+        if: steps.rust_workspace.outputs.exists == 'true'
+        shell: bash
+        run: bash scripts/tests/coverage-profiles.sh
 
       - name: Compile the static controlled-build fixture
         if: steps.rust_workspace.outputs.exists == 'true'
@@ -657,22 +663,36 @@ jobs:
             runtime_source_build_report::linux_tests::retained_pair_compiles_and_reverifies_one_exact_report \
             --nocapture
           profdata="$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | awk '/^host:/{print $2}')/bin/llvm-profdata"
-          valid_native_profiles=0
-          invalid_native_profiles=0
+          find "$native_dir" -mindepth 1 -maxdepth 1 -name '*.profraw' -print0 \
+            > "$RUNNER_TEMP/retonr-native-profile-list"
           while IFS= read -r -d '' profile; do
-            if "$profdata" merge -sparse "$profile" -o "$native_dir/check.profdata"; then
-              cp "$profile" "$profile_dir/"
-              valid_native_profiles=$((valid_native_profiles + 1))
-            else
-              rm -f "$profile"
-              invalid_native_profiles=$((invalid_native_profiles + 1))
+            if [[ ! -f "$profile" || -L "$profile" ]]; then
+              printf 'native coverage profile must be a regular file: %s\n' "$profile" >&2
+              exit 1
             fi
-          done < <(find "$native_dir" -name '*.profraw' -print0)
-          rm -f "$native_dir/check.profdata"
-          test "$valid_native_profiles" -gt 0
-          printf 'native coverage profiles: %s valid, %s discarded\n' \
-            "$valid_native_profiles" "$invalid_native_profiles"
+            destination="$profile_dir/$(basename "$profile")"
+            (set -o noclobber; cat "$profile" > "$destination")
+          done < "$RUNNER_TEMP/retonr-native-profile-list"
+          bash scripts/validate-coverage-profiles.sh "$profile_dir" "$profdata"
+          find "$profile_dir" -mindepth 1 -maxdepth 1 -type f -name 'native-*.profraw' \
+            -print > "$RUNNER_TEMP/retonr-valid-native-profile-list"
+          test -s "$RUNNER_TEMP/retonr-valid-native-profile-list"
+          printf 'valid native coverage profiles: %s\n' \
+            "$(wc -l < "$RUNNER_TEMP/retonr-valid-native-profile-list")"
           cargo llvm-cov report --fail-under-lines 80
+
+      - name: Retain invalid coverage profile diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: invalid-coverage-profiles
+          path: |
+            target/*.profraw.invalid
+            target/*.profraw.invalid.diagnostics
+            target/llvm-cov-target/*.profraw.invalid
+            target/llvm-cov-target/*.profraw.invalid.diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
 
   fuzz-smoke:
     name: fuzz target smoke tests

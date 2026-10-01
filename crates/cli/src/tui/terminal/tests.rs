@@ -1,4 +1,8 @@
 use super::*;
+use ratatui::{
+    backend::{Backend, TestBackend},
+    widgets::Paragraph,
+};
 
 #[derive(Default)]
 struct Script {
@@ -165,7 +169,14 @@ fn unwinding_reader_panic_defers_cleanup_to_ui_but_owner_and_abort_panics_restor
     ] {
         let mut script = Script::default();
         let mut delegated = false;
-        restore_for_panic(&mut script, owner, panicking, aborts, || delegated = true);
+        restore_for_panic(
+            &mut script,
+            &RenderGate::default(),
+            owner,
+            panicking,
+            aborts,
+            || delegated = true,
+        );
         assert!(delegated);
         if restored {
             assert_eq!(script.steps, ["cursor-show", "alternate-off", "raw-off"]);
@@ -176,4 +187,144 @@ fn unwinding_reader_panic_defers_cleanup_to_ui_but_owner_and_abort_panics_restor
             );
         }
     }
+}
+
+#[test]
+fn background_abort_restoration_waits_for_active_frame_and_refuses_all_later_frames() {
+    use std::{
+        sync::mpsc,
+        time::{Duration, Instant},
+    };
+    let deadline = Duration::from_secs(3);
+    let gate = Arc::new(RenderGate::default());
+    let terminal = Arc::new(Mutex::new(
+        Terminal::new(TestBackend::new(40, 10)).expect("terminal"),
+    ));
+    let (entered, entry) = mpsc::channel();
+    let (finish, resume) = mpsc::channel();
+    let frame_gate = gate.clone();
+    let frame_terminal = terminal.clone();
+    let active_frame = std::thread::spawn(move || {
+        frame_gate
+            .render(|| {
+                entered.send(()).expect("frame entered");
+                resume.recv_timeout(deadline).expect("finish active frame");
+                draw_preview(&frame_terminal, "active frame");
+                Ok(())
+            })
+            .expect("active render allowed");
+    });
+    entry
+        .recv_timeout(deadline)
+        .expect("frame holds render lock");
+    let (restored, restoration) = mpsc::channel();
+    let (delegate_finish, delegate_resume) = mpsc::channel();
+    let hook_gate = gate.clone();
+    let hook_terminal = terminal.clone();
+    let hook = std::thread::spawn(move || {
+        hook_gate.restore_for_panic(false, || {
+            hook_terminal
+                .lock()
+                .expect("terminal")
+                .backend_mut()
+                .show_cursor()
+                .expect("restore cursor");
+            restored.send(()).expect("restored");
+            delegate_resume
+                .recv_timeout(deadline)
+                .expect("delegated hook finishes");
+        });
+    });
+    let until = Instant::now() + deadline;
+    while !gate.panicking.load(Ordering::Acquire) {
+        assert!(
+            Instant::now() < until,
+            "hook sets panic flag before waiting for frame"
+        );
+        std::thread::yield_now();
+    }
+    assert!(
+        restoration.try_recv().is_err(),
+        "active frame must finish before restoration"
+    );
+    finish.send(()).expect("finish frame");
+    active_frame.join().expect("frame completes");
+    restoration
+        .recv_timeout(deadline)
+        .expect("cursor restored after active frame");
+    assert!(
+        terminal
+            .lock()
+            .expect("terminal")
+            .backend()
+            .cursor_visible()
+    );
+    let later_gate = gate.clone();
+    let later_terminal = terminal.clone();
+    let later_frame = std::thread::spawn(move || {
+        later_gate.render(|| {
+            draw_preview(&later_terminal, "must not hide restored cursor");
+            Ok(())
+        })
+    });
+    delegate_finish.send(()).expect("delegate completed");
+    hook.join().expect("hook completes");
+    assert!(later_frame.join().expect("later frame result").is_err());
+    assert!(
+        terminal
+            .lock()
+            .expect("terminal")
+            .backend()
+            .cursor_visible()
+    );
+}
+
+fn draw_preview(terminal: &Mutex<Terminal<TestBackend>>, text: &str) {
+    terminal
+        .lock()
+        .expect("terminal")
+        .draw(|frame| {
+            frame.render_widget(Paragraph::new(text), frame.area());
+        })
+        .expect("draw preview");
+}
+
+#[test]
+fn owner_panic_restoration_does_not_relock_its_active_frame() {
+    let (done, result) = std::sync::mpsc::channel();
+    let owner = std::thread::spawn(move || {
+        let gate = RenderGate::default();
+        let mut script = Script::default();
+        gate.render(|| {
+            gate.restore_for_panic(true, || restore_before_panic(&mut script, || {}));
+            Ok(())
+        })
+        .expect("owner frame callback returns in this simulation");
+        done.send(script.steps).expect("owner reports cleanup");
+    });
+    assert_eq!(
+        result
+            .recv_timeout(std::time::Duration::from_secs(3))
+            .expect("owner must not deadlock"),
+        ["cursor-show", "alternate-off", "raw-off"]
+    );
+    owner.join().expect("owner completes");
+}
+
+#[test]
+fn poisoned_render_lock_refuses_frames_but_still_allows_panic_cleanup() {
+    let gate = Arc::new(RenderGate::default());
+    let poison_gate = gate.clone();
+    assert!(
+        std::thread::spawn(move || {
+            let _guard = poison_gate.render.lock().expect("render lock");
+            panic!("scripted frame unwind");
+        })
+        .join()
+        .is_err()
+    );
+    assert!(gate.render(|| Ok(())).is_err());
+    let mut restored = false;
+    gate.restore_for_panic(false, || restored = true);
+    assert!(restored);
 }

@@ -29,8 +29,13 @@ production admission, license, cloud-disable, and worker policy roots remain
 empty. Local verification includes 2,737 passing Windows workspace tests and
 doctests, 2,672 passing Linux instrumented workspace tests, 133 passing isolation
 unit tests, strict workspace lint, a native Linux terminal smoke, and 81.25 percent
-overall Rust line coverage. The three actual pinned Rust installer archives also
-pass the production bounded extractor and component installer after fixing their
+overall Rust line coverage in the integrated batch. A terminal cleanup follow-up
+serializes rendering with panic restoration; its 34 focused regressions pass and
+combined local coverage remains 81.22 percent. CI validates root-level raw profiles
+before reporting coverage, retaining corrupt bytes and diagnostics while rejecting
+tool errors, requiring native profiles, and preserving the 80 percent floor. The
+three actual pinned Rust installer archives also pass the production bounded
+extractor and component installer after fixing their
 metadata collision. These checks do not establish cross-platform terminal or
 production runtime qualification. See the
 [terminal workbench and admission review plan](planning/0.2-terminal-workbench-and-admission-review.md).

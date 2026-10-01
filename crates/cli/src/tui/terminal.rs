@@ -3,7 +3,10 @@
 use std::{
     io::{self, Stdout},
     panic::PanicHookInfo,
-    sync::Arc,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use crossterm::{
@@ -13,7 +16,49 @@ use crossterm::{
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 
-pub(super) type NativeTerminal = Terminal<CrosstermBackend<Stdout>>;
+pub(super) struct NativeTerminal {
+    terminal: Terminal<CrosstermBackend<Stdout>>,
+    gate: Arc<RenderGate>,
+}
+
+impl NativeTerminal {
+    pub(super) fn draw(&mut self, render: impl FnOnce(&mut ratatui::Frame<'_>)) -> io::Result<()> {
+        let terminal = &mut self.terminal;
+        self.gate.render(|| terminal.draw(render).map(|_| ()))
+    }
+}
+
+#[derive(Default)]
+struct RenderGate {
+    render: Mutex<()>,
+    panicking: AtomicBool,
+}
+
+impl RenderGate {
+    fn render<T>(&self, draw: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
+        let _guard = self
+            .render
+            .lock()
+            .map_err(|_| io::Error::other("terminal render synchronization failed"))?;
+        if self.panicking.load(Ordering::Acquire) {
+            return Err(io::Error::other("terminal rendering stopped during panic"));
+        }
+        draw()
+    }
+
+    fn restore_for_panic<T>(&self, owner: bool, restore: impl FnOnce() -> T) -> T {
+        self.panicking.store(true, Ordering::Release);
+        if owner {
+            // The owner may already hold the render lock while its frame unwinds.
+            return restore();
+        }
+        let _guard = self
+            .render
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        restore()
+    }
+}
 
 pub(super) trait Lifecycle {
     fn raw(&mut self, enabled: bool) -> io::Result<()>;
@@ -50,9 +95,13 @@ impl Lifecycle for NativeLifecycle {
 pub(super) fn with_terminal<T>(
     run: impl FnOnce(&mut NativeTerminal) -> io::Result<T>,
 ) -> io::Result<T> {
-    let _panic_hook = PanicRestoration::install();
+    let gate = Arc::new(RenderGate::default());
+    let _panic_hook = PanicRestoration::install(gate.clone());
     with_lifecycle(&mut NativeLifecycle, || {
-        let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
+        let mut terminal = NativeTerminal {
+            terminal: Terminal::new(CrosstermBackend::new(io::stdout()))?,
+            gate,
+        };
         run(&mut terminal)
     })
 }
@@ -64,7 +113,7 @@ struct PanicRestoration {
 }
 
 impl PanicRestoration {
-    fn install() -> Self {
+    fn install(gate: Arc<RenderGate>) -> Self {
         let previous: Hook = Arc::from(std::panic::take_hook());
         let delegate = previous.clone();
         let owner = std::thread::current().id();
@@ -72,6 +121,7 @@ impl PanicRestoration {
             let mut lifecycle = NativeLifecycle;
             restore_for_panic(
                 &mut lifecycle,
+                &gate,
                 owner,
                 std::thread::current().id(),
                 cfg!(panic = "abort"),
@@ -84,6 +134,7 @@ impl PanicRestoration {
 
 fn restore_for_panic(
     lifecycle: &mut impl Lifecycle,
+    gate: &RenderGate,
     owner: std::thread::ThreadId,
     panicking: std::thread::ThreadId,
     aborts: bool,
@@ -92,7 +143,9 @@ fn restore_for_panic(
     // An unwinding reader reports disconnection; the UI restores its own modes.
     // Abort hooks must restore before the process exits because Drop cannot run.
     if aborts || panicking == owner {
-        restore_before_panic(lifecycle, delegate);
+        gate.restore_for_panic(panicking == owner, || {
+            restore_before_panic(lifecycle, delegate);
+        });
     } else {
         delegate();
     }
