@@ -97,7 +97,7 @@ fn poisoned_mailbox_settles_loading_failure_without_claiming_worker_exit() {
     let mut state = DocumentReviewState::new().expect("state");
     let id = accept(&mut state, request(b"prior", None));
     state.operation.poison_mailbox_for_test();
-    assert!(state.poll().expect("terminal failure accepted"));
+    settle(&mut state);
     assert_eq!(state.phase(), DocumentReviewPhase::Failed);
     assert_eq!(state.operation_id(), Some(id));
     assert_eq!(

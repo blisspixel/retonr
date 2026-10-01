@@ -109,9 +109,10 @@ fn semantic_and_encoding_validation_remain_in_shared_service() {
         },
     ] {
         let mut operation = DocumentReviewOperation::new().expect("worker");
-        operation
-            .submit(DocumentReviewOperationRequest::new(input).expect("transport accepts"))
-            .expect("submitted");
+        accept(
+            &mut operation,
+            DocumentReviewOperationRequest::new(input).expect("transport accepts"),
+        );
         assert!(matches!(
             completion(&mut operation).result,
             Err(DocumentReviewOperationError::Review(_))

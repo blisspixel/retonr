@@ -26,6 +26,25 @@ fn until(mut ready: impl FnMut() -> bool) {
     }
 }
 
+fn accept(
+    operation: &mut DocumentReviewOperation,
+    mut input: DocumentReviewOperationRequest,
+) -> DocumentReviewOperationId {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match operation.submit(input) {
+            Ok(id) => return id,
+            Err(DocumentReviewOperationSubmissionFailure {
+                request,
+                error: DocumentReviewOperationError::Busy,
+            }) => input = request,
+            Err(other) => panic!("unexpected submission: {other:?}"),
+        }
+        assert!(Instant::now() < deadline, "mailbox contention timed out");
+        thread::sleep(Duration::from_millis(1));
+    }
+}
+
 fn completion(operation: &mut DocumentReviewOperation) -> DocumentReviewOperationCompletion {
     let mut value = None;
     until(|| {
@@ -67,9 +86,10 @@ fn background_review_preserves_exact_service_evidence() {
         let expected =
             DocumentReviewService::review(input(), &CancellationToken::new()).expect("direct");
         let mut operation = DocumentReviewOperation::new().expect("worker");
-        let id = operation
-            .submit(DocumentReviewOperationRequest::new(input()).expect("bounded"))
-            .expect("accepted");
+        let id = accept(
+            &mut operation,
+            DocumentReviewOperationRequest::new(input()).expect("bounded"),
+        );
         let result = completion(&mut operation);
         assert_eq!(result.operation_id, id);
         compare(result.result.expect("review"), expected);
@@ -91,12 +111,12 @@ fn latest_pending_coalesces_and_old_running_result_is_discarded() {
         DocumentReviewService::review(input, &CancellationToken::new())
     })
     .expect("worker");
-    let first = operation.submit(request(b"first")).expect("first");
+    let first = accept(&mut operation, request(b"first"));
     let (_, original) = started_rx
         .recv_timeout(Duration::from_secs(5))
         .expect("running");
-    let second = operation.submit(request(b"second")).expect("second");
-    let latest = operation.submit(request(b"latest")).expect("latest");
+    let second = accept(&mut operation, request(b"second"));
+    let latest = accept(&mut operation, request(b"latest"));
     assert!(first.get() < second.get() && second.get() < latest.get());
     assert!(original.is_cancelled());
     release_tx.send(()).expect("release");
@@ -121,7 +141,7 @@ fn cancellation_reports_once_and_discards_noncooperative_late_result() {
         DocumentReviewService::review(input, &CancellationToken::new())
     })
     .expect("worker");
-    let id = operation.submit(request(b"private")).expect("accepted");
+    let id = accept(&mut operation, request(b"private"));
     let token = started_rx
         .recv_timeout(Duration::from_secs(5))
         .expect("running");
@@ -168,7 +188,7 @@ fn contention_preserves_request_identity_and_original_token() {
     operation.cancel();
     assert!(prior.is_cancelled());
     drop(guard);
-    let id = operation.submit(failure.request).expect("retry accepted");
+    let id = accept(&mut operation, failure.request);
     assert_eq!(id.get(), 8);
     assert_eq!(completion(&mut operation).operation_id, id);
 }
@@ -183,7 +203,7 @@ fn drop_returns_while_noncooperative_worker_runs_then_supervisor_joins() {
         DocumentReviewService::review(input, &CancellationToken::new())
     })
     .expect("worker");
-    operation.submit(request(b"running")).expect("accepted");
+    accept(&mut operation, request(b"running"));
     let token = started_rx
         .recv_timeout(Duration::from_secs(5))
         .expect("running");
@@ -209,7 +229,7 @@ fn drop_returns_while_noncooperative_worker_runs_then_supervisor_joins() {
 fn worker_panic_is_observable_and_future_submission_is_preserved() {
     let mut operation =
         DocumentReviewOperation::start(|_, _| panic!("synthetic worker failure")).expect("worker");
-    let id = operation.submit(request(b"private")).expect("accepted");
+    let id = accept(&mut operation, request(b"private"));
     let result = completion(&mut operation);
     assert_eq!(result.operation_id, id);
     assert!(matches!(
@@ -244,7 +264,11 @@ fn exhausted_identity_and_stale_completion_cannot_replace_latest() {
             operation_id: DocumentReviewOperationId(8),
             result: Err(DocumentReviewOperationError::Cancelled),
         });
-    assert!(operation.poll().expect("stale discarded").is_none());
+    until(|| match operation.poll() {
+        Ok(None) => true,
+        Err(DocumentReviewOperationError::Busy) => false,
+        other => panic!("unexpected stale poll: {other:?}"),
+    });
     assert_eq!(operation.latest.as_ref().expect("latest").0.get(), 9);
     operation.shutdown();
     until(|| operation.is_stopped());

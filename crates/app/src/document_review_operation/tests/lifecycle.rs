@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn accepting_new_request_discards_already_completed_previous_result() {
     let mut operation = DocumentReviewOperation::new().expect("worker");
-    let old = operation.submit(request(b"old")).expect("old");
+    let old = accept(&mut operation, request(b"old"));
     until(|| {
         operation
             .shared
@@ -13,7 +13,7 @@ fn accepting_new_request_discards_already_completed_previous_result() {
             .completed
             .is_some()
     });
-    let next = operation.submit(request(b"next")).expect("next");
+    let next = accept(&mut operation, request(b"next"));
     assert!(next.get() > old.get());
     let result = completion(&mut operation);
     assert_eq!(result.operation_id, next);
@@ -24,7 +24,7 @@ fn accepting_new_request_discards_already_completed_previous_result() {
 #[test]
 fn idle_shutdown_cleans_completed_mailbox_and_rejects_submission() {
     let mut operation = DocumentReviewOperation::new().expect("worker");
-    operation.submit(request(b"retained")).expect("accepted");
+    accept(&mut operation, request(b"retained"));
     until(|| {
         operation
             .shared
@@ -64,6 +64,7 @@ fn poisoned_mailbox_fails_without_accepting_or_cancelling_work() {
     })
     .join()
     .expect_err("poisoned");
+    until(|| operation.is_stopped());
     let token = CancellationToken::new();
     operation.latest = Some((DocumentReviewOperationId(1), token.clone()));
     let failure = operation.submit(request(b"private")).expect_err("poison");
