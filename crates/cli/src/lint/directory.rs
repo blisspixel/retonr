@@ -99,7 +99,12 @@ fn build_report(
             return Err(RunFailure::concurrent_modification(CommandName::Lint));
         }
         let text = String::from_utf8(bytes).map_err(|_| RunFailure::lint_invalid_utf8())?;
-        let findings = EditorialLintService::lint(&text);
+        let findings = lint_document(
+            &text,
+            MAXIMUM_FINDINGS.saturating_sub(findings_count),
+            cancellation,
+            || {},
+        )?;
         findings_count = check_budget(findings_count, findings.len(), MAXIMUM_FINDINGS)?;
         documents.push(DirectoryDocument {
             relative_path: document.relative_path,
@@ -129,17 +134,35 @@ fn build_report(
 fn check_budget(current: usize, additional: usize, maximum: usize) -> Result<usize, RunFailure> {
     match current.checked_add(additional) {
         Some(total) if total <= maximum => Ok(total),
-        _ => Err(RunFailure {
-            command: CommandName::Lint,
-            body: crate::contract::ErrorBody::new(
-                crate::contract::ErrorCategory::Compatibility,
-                crate::contract::ErrorCode::ResourceLimitExceeded,
-                false,
-            ),
-            exit_code: ExitCode::from(crate::contract::EXIT_COMPATIBILITY),
-            message: "directory lint exceeds the supported aggregate limit",
-        }),
+        _ => Err(aggregate_limit()),
     }
+}
+
+fn aggregate_limit() -> RunFailure {
+    RunFailure {
+        command: CommandName::Lint,
+        body: crate::contract::ErrorBody::new(
+            crate::contract::ErrorCategory::Compatibility,
+            crate::contract::ErrorCode::ResourceLimitExceeded,
+            false,
+        ),
+        exit_code: ExitCode::from(crate::contract::EXIT_COMPATIBILITY),
+        message: "directory lint exceeds the supported aggregate limit",
+    }
+}
+
+fn lint_document(
+    text: &str,
+    remaining: usize,
+    cancellation: &CancellationToken,
+    after_lint: impl FnOnce(),
+) -> Result<Vec<rewrite_types::EditorialFinding>, RunFailure> {
+    let result = EditorialLintService::lint_bounded(text, remaining);
+    after_lint();
+    if cancellation.is_cancelled() {
+        return Err(RunFailure::cancelled(CommandName::Lint));
+    }
+    result.map_err(|_| aggregate_limit())
 }
 
 const fn status(findings: usize) -> &'static str {
@@ -222,6 +245,55 @@ impl DirectoryLintReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cumulative_finding_fixture_accepts_exact_ceiling_and_refuses_one_extra() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../fixtures/cli/directory-lint-finding-budget.json"
+        ))
+        .expect("fixture");
+        let token = fixture["repeat_token"].as_str().expect("token");
+        let per_document =
+            usize::try_from(fixture["per_document_findings"].as_u64().expect("count"))
+                .expect("portable count");
+        assert_eq!(fixture["maximum_findings"], MAXIMUM_FINDINGS);
+        let root = tempfile::tempdir().expect("root");
+        let text = token.repeat(per_document);
+        std::fs::write(root.path().join("a.txt"), &text).expect("first");
+        std::fs::write(root.path().join("b.txt"), &text).expect("second");
+        let request = LintRequest {
+            source: root.path().into(),
+            recursive: true,
+            candidate: None,
+            fail_on_findings: false,
+        };
+        let report =
+            build_report(&request, &CancellationToken::new()).expect("exact combined ceiling");
+        assert_eq!(report.findings_count, MAXIMUM_FINDINGS);
+        assert_eq!(report.documents.len(), 2);
+        std::fs::write(root.path().join("c.txt"), "Certainly! One extra.")
+            .expect("one excess finding");
+        let failure = build_report(&request, &CancellationToken::new())
+            .err()
+            .expect("no partial report");
+        assert_eq!(failure.body, aggregate_limit().body);
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("a.txt")).expect("unchanged"),
+            text
+        );
+    }
+
+    #[test]
+    fn cancellation_after_bounded_matching_wins_over_success_and_limit_overflow() {
+        for maximum in [0, 1] {
+            let cancellation = CancellationToken::new();
+            let failure = lint_document("Certainly!", maximum, &cancellation, || {
+                cancellation.cancel();
+            })
+            .expect_err("cancelled completed kernel");
+            assert_eq!(failure.body, RunFailure::cancelled(CommandName::Lint).body);
+        }
+    }
 
     #[test]
     fn aggregate_limits_accept_the_boundary_and_refuse_overflow() {

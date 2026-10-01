@@ -64,6 +64,7 @@ fn every_untrusted_preview_is_escaped_and_boundaries_are_utf8_safe() {
         candidate: Some("界".repeat(TEXT_LIMIT)),
         findings: vec![hostile.repeat(1000); FINDING_LIMIT + 1],
         status: hostile.into(),
+        directory: None,
     }
     .bounded();
     assert!(snapshot.source.len() <= TEXT_LIMIT);

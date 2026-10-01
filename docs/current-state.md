@@ -10,6 +10,24 @@ protocol, or stored-data contracts.
 
 ## Implemented
 
+Successful generation attempt ledgers, Passed repetition results, and complete
+repeatability phase manifests now publish through the existing schema 11 and 16
+contracts. Publication retains the exact Active subject, original deadline,
+ordered attempts, and independent finalizers. Phase transactions verify canonical
+bytes and indexed fields for both receipt sets, the deterministic evaluation, and
+all seven judge records. Persisted records remain inert. Local focused validation
+passes 41 Active tests and two ledger tests, including corruption, cancellation,
+replay, and finalization failures. Resource evidence, positive human adjudication,
+and the final generation qualification compiler remain unfinished.
+
+The integrated folder and repeatability batch passes 2,767 Windows workspace
+tests and doctests, 2,974 Linux workspace tests and doctests, strict workspace
+lint on both platforms, and a warnings-as-errors Windows documentation build.
+Linux managed isolation is exercised with the static target fixture required by
+the native launch contract. Repository policy, Markdown, workflow lint, dependency
+checks, and legal-notice regressions also pass. Cross-platform CI, its native
+gates, and the unchanged 80 percent line-coverage floor remain publication gates.
+
 The experimental read-only terminal workbench is available through `retonr tui
 SOURCE`, with an optional `--candidate FILE` and repeated `--protect TERM`. It
 uses the same application validation and editorial lint as the CLI. A bounded
@@ -19,6 +37,29 @@ escape terminal controls. Interactive mode requires terminal input and output.
 Complete UTF-8 regular files up to 16 MiB each are validated before previews are
 clipped. The workbench does not generate or write documents. Full profiles,
 generation workflows, and the native desktop application remain pending.
+
+The workbench also supports explicit `--recursive` folder review, with exact
+relative-path candidate pairing and `--document` selection. Bracket keys navigate
+while idle; reload rediscovers and retains the exact selected relative path.
+Discovery remains bounded to 4,096 entries, depth 8, and 64 MiB per root. Only the
+selected supported UTF-8 document is reviewed. Missing or unsupported candidates
+remain source-only with explicit disclosure that checks did not occur. Selected
+bytes are reacquired through retained-root reads and matched to discovery digests.
+Linux process evidence covers real terminal navigation, changed-file reload,
+normal quit, Ctrl+C exit 130, terminal restoration, and unchanged documents.
+
+`DocumentReviewService` now owns complete-input inventory, candidate checking,
+editorial comparison, original cancellation, and bounded previews in the shared
+application core. Filesystem retention, metadata decisions, labels, and safe
+rendering remain presentation responsibilities. The service neither generates nor
+writes. Finding ceilings are enforced during matching; successful bounded results
+match the complete lint kernel and excessive results return errors rather than
+partial evidence. Marker occurrence ordinals are derived in one scan per marker,
+preserving quoted occurrence counts and saturated ordinals without quadratic
+rescanning. Eight focused application review regressions and ten engine lint
+regressions pass locally, with strict application and engine lint checks. This
+shared headless foundation prepares desktop integration but does not establish a
+native application, accessibility, or generation qualification.
 
 An application-owned all-pass runtime admission review compiler now composes
 three independently reverified static controls with cleanup-gated execution
@@ -51,6 +92,27 @@ isolation library passes 138 instrumented unit tests, strict Linux lint, and the
 mandatory native fixture; combined local line coverage is 80.95 percent. These
 results fix a real reconstruction blocker, but do not establish the independently
 authenticated bootstrap pair, runtime build pair, semantic review, or admission.
+
+The next real retained candidate exposed two preparation defects: Cargo's vendor
+export omitted authenticated Git metadata files, and its checksum JSON included
+an advisory field outside the closed schema. The corrected candidate reconstructs
+lossless payloads and exact `files`/`package` checksum records from all 319
+authenticated raw crate archives. Strong upstream, Cargo, and license byte
+closures then pass before private bootstrap. A separate preparation fix preserves
+the authenticated BusyBox executable role before acquiring its lease.
+
+Actual private execution exposed APK's temporary-root persistence refusal when
+installing the retained libgcc package offline on tmpfs. The installer now uses
+only `--force-non-repository` alongside its existing no-cache and no-network
+options; signature checks remain enabled. A 30.41-second privileged networkless
+regression uses the exact pinned Alpine rootfs, BusyBox, and signed package,
+reproduces the original exit 99, accepts the genuine package through the production
+installer, and rejects a signature mutation in a valid recompressed archive.
+Three ordinary installer regressions and strict Linux isolation lint also pass.
+The upstream behavior is documented in [apk-tools 3.0.3](https://raw.githubusercontent.com/alpinelinux/apk-tools/v3.0.3/src/app_add.c).
+This fixes a concrete execution blocker; the authenticated bootstrap pair must
+still be earned from a new committed source revision. Runtime build, admission,
+and model qualification remain pending.
 
 | Component | Current behavior |
 | --- | --- |

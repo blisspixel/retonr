@@ -6,7 +6,46 @@ fn request(plain: bool) -> TuiArgs {
         candidate: None,
         protected_terms: Vec::new(),
         plain,
+        recursive: false,
+        document: None,
     }
+}
+
+#[test]
+fn folder_navigation_is_bounded_and_blocks_while_loading_or_help_is_open() {
+    let mut state = state::State::default();
+    state.snapshot.directory = Some(state::DirectoryNavigation {
+        selected: 0,
+        total: 2,
+        source_skipped: 0,
+        candidate_skipped: 0,
+        unmatched_candidates: 0,
+        selected_relative: Some("a.txt".into()),
+    });
+    assert_eq!(navigation_index(&state, event::Action::Document(-1)), None);
+    assert_eq!(
+        navigation_index(&state, event::Action::Document(1)),
+        Some(1)
+    );
+    state.help = true;
+    assert_eq!(navigation_index(&state, event::Action::Document(1)), None);
+    state.help = false;
+    let operation = state.begin().expect("loading");
+    assert_eq!(navigation_index(&state, event::Action::Document(1)), None);
+    assert!(!state.complete(operation + 1, Err("stale")));
+    assert_eq!(navigation_index(&state, event::Action::Document(1)), None);
+    assert!(state.complete(operation, Err("read failure")));
+    state
+        .snapshot
+        .directory
+        .as_mut()
+        .expect("directory")
+        .selected = 1;
+    assert_eq!(navigation_index(&state, event::Action::Document(1)), None);
+    assert_eq!(
+        navigation_index(&state, event::Action::Document(-1)),
+        Some(0)
+    );
 }
 
 #[test]
@@ -43,6 +82,7 @@ fn plain_review_preserves_safe_preview_and_explicit_candidate_summary_in_both_fo
             candidate: Some("hello, world!".into()),
             findings: vec!["hostile\u{1b}]52;clipboard".into()],
             status: "Candidate accepted".into(),
+            directory: None,
         }),
     );
     for format in [ReportFormat::Json, ReportFormat::Text] {

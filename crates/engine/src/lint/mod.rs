@@ -2,6 +2,7 @@
 
 use rewrite_types::{EditorialComparison, EditorialFinding};
 
+mod collector;
 mod rules;
 mod slop_rules;
 mod style_rules;
@@ -9,6 +10,24 @@ mod style_rules;
 mod tests;
 
 pub use rules::{RuleCatalog, apply_all_rules};
+
+/// Complete findings cannot be represented within the requested ceiling.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
+#[error("editorial finding limit exceeded")]
+pub struct FindingLimitExceeded;
+
+/// Lints complete text while bounding finding allocation during matching.
+///
+/// # Errors
+///
+/// Returns [`FindingLimitExceeded`] rather than partial findings when the
+/// complete result exceeds `maximum`. Successful results match [`lint_text`].
+pub fn lint_text_bounded(
+    text: &str,
+    maximum: usize,
+) -> Result<Vec<EditorialFinding>, FindingLimitExceeded> {
+    rules::apply_bounded_rules(text, maximum)
+}
 
 /// Lints text against the comprehensive editorial rule catalog.
 #[must_use]

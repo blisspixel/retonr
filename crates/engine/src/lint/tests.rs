@@ -1,6 +1,46 @@
 use super::*;
 
 #[test]
+fn bounded_findings_match_full_results_and_refuse_every_insufficient_ceiling() {
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("../../fixtures/lint_bounded_regression.json"))
+            .expect("bounded regression");
+    for case in fixture["cases"].as_array().expect("cases") {
+        let text = case["text"].as_str().expect("text");
+        let expected = lint_text(text);
+        assert_eq!(
+            expected.len(),
+            usize::try_from(case["findings"].as_u64().expect("count")).expect("bounded count")
+        );
+        for limit in 0..=expected.len() + 1 {
+            let actual = lint_text_bounded(text, limit);
+            if limit < expected.len() {
+                assert_eq!(actual, Err(FindingLimitExceeded));
+            } else {
+                assert_eq!(actual.expect("complete result"), expected);
+            }
+        }
+    }
+}
+
+#[test]
+fn bounded_dense_matching_refuses_without_collecting_the_whole_document() {
+    for pattern in ["\u{2014}", "\u{2705}", "!!!", "Ultimately ", "Moreover "] {
+        let text = pattern.repeat(100_000);
+        assert_eq!(lint_text_bounded(&text, 8), Err(FindingLimitExceeded));
+    }
+}
+
+#[test]
+fn marker_ordinals_count_quoted_matches_and_saturate_without_quadratic_rescanning() {
+    let text = format!("\"Ultimately\" {}", "Ultimately ".repeat(65_537));
+    let findings = lint_text(&text);
+    assert_eq!(findings.len(), 65_537);
+    assert_eq!(findings[0].occurrence, 1);
+    assert_eq!(findings.last().expect("last").occurrence, u16::MAX);
+}
+
+#[test]
 fn clean_text_produces_no_findings() {
     let clean = "Retonr verifies each rewrite unit against structural and layout constraints.";
     assert!(lint_text(clean).is_empty());

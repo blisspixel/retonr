@@ -27,6 +27,7 @@ fn hostile_text_cannot_reach_terminal_cells_and_all_three_panes_render() {
             candidate: Some("candidate\rtext".into()),
             findings: vec!["finding\u{7}".into()],
             status: "ready\u{1b}]52;secret".into(),
+            directory: None,
         }),
     );
     let rendered = render(120, 24, &state);

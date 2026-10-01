@@ -22,6 +22,8 @@ fn key_press_navigation_quit_resize_and_non_key_events_have_stable_actions() {
         (KeyCode::Char('l'), Action::Horizontal(1)),
         (KeyCode::Home, Action::Home),
         (KeyCode::Char('r'), Action::Reload),
+        (KeyCode::Char('['), Action::Document(-1)),
+        (KeyCode::Char(']'), Action::Document(1)),
         (KeyCode::Char('x'), Action::None),
     ] {
         assert_eq!(

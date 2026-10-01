@@ -103,6 +103,11 @@ The fourth adds the experimental read-only terminal workbench and an inert all-p
 review compiler over existing opaque controls. Fresh real-runtime evidence,
 independently reviewed semantic controls, and the final qualification closure remain
 next.
+The active [folder workbench and durable repeatability batch](planning/0.2-folder-workbench-and-repeatability.md)
+adds bounded folder navigation, shared headless review, successful-ledger
+persistence, Passed repetition settlement, and transactional complete repeatability
+manifest publication. It also retains the next real
+bootstrap attempt without treating candidate preparation as runtime admission.
 
 1. Retain fresh controlled-build evidence for the real Linux runtime candidate.
    The historical source build is not retained evidence. Run the frozen-input build,

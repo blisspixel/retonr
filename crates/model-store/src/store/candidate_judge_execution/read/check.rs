@@ -25,6 +25,20 @@ pub(super) fn columns(
     join(&present.join, &records.join, closed)
 }
 
+pub(super) fn snapshot_columns(
+    present: &Present,
+    records: &super::super::StoredCandidateJudgeExecutionV1,
+    closed: &Closed,
+) -> StoreResult<()> {
+    plan(&present.plan, records.plan(), closed)?;
+    schedule(&present.schedule, records.schedule(), closed)?;
+    request(&present.request, records.request_aggregate())?;
+    response(&present.response, records.response_aggregate())?;
+    batch(&present.batch, records.observation_batch())?;
+    receipt(&present.receipt, records.managed_receipt(), closed)?;
+    join(&present.join, records.join(), closed)
+}
+
 fn plan(
     row: &super::super::rows::PlanRow,
     value: &CandidateJudgePlanV1,

@@ -43,6 +43,43 @@ pub(super) fn sql_u64(value: u64) -> StoreResult<i64> {
 }
 
 pub(super) fn close(records: &CohortRecords) -> StoreResult<Closed> {
+    close_parts(ClosureRecords {
+        plan: &records.plan,
+        schedule: &records.schedule,
+        requests: &records.requests,
+        responses: &records.responses,
+        observations: &records.observations,
+        receipt: &records.receipt,
+        join: &records.join,
+    })
+}
+
+pub(super) fn close_expected(
+    records: &super::StoredCandidateJudgeExecutionV1,
+) -> StoreResult<Closed> {
+    close_parts(ClosureRecords {
+        plan: records.plan(),
+        schedule: records.schedule(),
+        requests: records.request_aggregate(),
+        responses: records.response_aggregate(),
+        observations: records.observation_batch(),
+        receipt: records.managed_receipt(),
+        join: records.join(),
+    })
+}
+
+#[derive(Clone, Copy)]
+struct ClosureRecords<'a> {
+    plan: &'a rewrite_model::CandidateJudgePlanV1,
+    schedule: &'a rewrite_model::CandidateJudgeScheduleV1,
+    requests: &'a rewrite_model::CandidateJudgeRequestAggregateV1,
+    responses: &'a rewrite_model::CandidateJudgeResponseAggregateV1,
+    observations: &'a rewrite_model::CandidateJudgeObservationBatchV1,
+    receipt: &'a rewrite_model::ManagedLocalJudgeReceiptRecordV1,
+    join: &'a rewrite_model::CandidateJudgeJoinRecordV1,
+}
+
+fn close_parts(records: ClosureRecords<'_>) -> StoreResult<Closed> {
     let case_count =
         i64::try_from(records.plan.cases().len()).map_err(|_| StoreError::CorruptRecord)?;
     if !(1..=256).contains(&case_count) {

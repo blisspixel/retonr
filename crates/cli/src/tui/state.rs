@@ -13,6 +13,18 @@ pub(super) struct Snapshot {
     pub candidate: Option<String>,
     pub findings: Vec<String>,
     pub status: String,
+    pub directory: Option<DirectoryNavigation>,
+}
+
+#[derive(serde::Serialize)]
+pub(super) struct DirectoryNavigation {
+    pub selected: usize,
+    pub total: usize,
+    pub source_skipped: usize,
+    pub candidate_skipped: usize,
+    pub unmatched_candidates: usize,
+    #[serde(skip)]
+    pub selected_relative: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -115,7 +127,7 @@ impl State {
                 self.horizontal[self.pane.index()] = 0;
             }
             Action::Reload => return !self.help && self.pending.is_none(),
-            Action::Resize | Action::None => {}
+            Action::Document(_) | Action::Resize | Action::None => {}
         }
         false
     }
@@ -154,6 +166,7 @@ impl Snapshot {
                 .map(|text| safe_text(&text, TEXT_LIMIT, true)),
             findings,
             status: safe_text(&self.status, 1024, false),
+            directory: self.directory,
         }
     }
 }

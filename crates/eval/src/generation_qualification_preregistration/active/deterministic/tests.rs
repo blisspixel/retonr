@@ -58,6 +58,12 @@ impl SyntheticPair {
         }
     }
 
+    pub(crate) fn target_failure_control(
+        &self,
+    ) -> crate::verified_candidate_batch_set::tests::support::OfflineBatchFailureControl {
+        self.target.batches[0].failure_control()
+    }
+
     pub(crate) fn bind(
         self,
         active: &mut ActiveGenerationQualificationOperation<'_, '_, '_, '_, '_>,

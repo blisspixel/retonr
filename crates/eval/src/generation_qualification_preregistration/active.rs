@@ -30,7 +30,9 @@ mod deterministic;
 mod interruption;
 mod judge;
 mod judge_settlement;
+mod repeatability_settlement;
 pub use judge_settlement::ActiveGenerationQualificationJudgeSettlementError;
+pub use repeatability_settlement::ActiveGenerationQualificationRepeatabilitySettlementError;
 mod receipt_set;
 pub use deterministic::ActiveGenerationQualificationDeterministicSettlementError;
 

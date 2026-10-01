@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "cases": [
+    { "text": "Clean text.", "findings": 0 },
+    { "text": "Certainly! Hello world.", "findings": 1 },
+    { "text": "In summary Ultimately In conclusion", "findings": 3 },
+    { "text": "Moreover Furthermore Additionally", "findings": 3 },
+    { "text": "\"In summary\" In summary Ultimately In conclusion", "findings": 3 },
+    { "text": "\"Moreover\" Moreover Furthermore Additionally", "findings": 3 },
+    { "text": "\"\u2014\" \u2014 \u2014 \u2014", "findings": 3 },
+    { "text": "\u2705 \u2705", "findings": 0 },
+    { "text": "!!! !!!", "findings": 2 }
+  ]
+}

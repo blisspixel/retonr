@@ -29,6 +29,21 @@ use rewrite_model_store::{GenerationSystemFoundationV1Input, WriteDisposition};
 fn exact_live_projection_settles_replays_and_rejects_missing_parents_abort_and_corruption() {
     for failure in [
         "none",
+        "repeatability_none",
+        "repeatability_result_corruption",
+        "repeatability_manifest_corruption",
+        "repeatability_manifest_abort",
+        "repeatability_manifest_tamper",
+        "repeatability_missing",
+        "repeatability_corrupt_parent",
+        "repeatability_foreign",
+        "repeatability_unsettled",
+        "repeatability_substituted_execution",
+        "repeatability_wrong_execution",
+        "repeatability_abort",
+        "repeatability_cancel",
+        "repeatability_postcommit_finalization",
+        "repeatability_postcommit_cancel",
         "missing",
         "abort",
         "corrupt",
@@ -73,6 +88,7 @@ fn exact_live_projection_settles_replays_and_rejects_missing_parents_abort_and_c
                     &active,
                     "qualification-closure-passing",
                 );
+                let repeatability_failure_control = pair.target_failure_control();
                 let (target, baseline) = pair.bind(
                     &mut active,
                     directory.path(),
@@ -280,6 +296,18 @@ fn exact_live_projection_settles_replays_and_rejects_missing_parents_abort_and_c
                     );
                 }
                 assert_eq!(active.next_judge_settlement, 1);
+                if failure.starts_with("repeatability_") {
+                    super::super::repeatability_settlement::tests::exercise(
+                        &mut active,
+                        &mut repository,
+                        join,
+                        &db,
+                        failure,
+                        &cancellation,
+                        &repeatability_failure_control,
+                    );
+                    return;
+                }
                 if failure == "corrupt" {
                     connection
                         .execute(

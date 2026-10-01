@@ -145,23 +145,23 @@ impl ActiveGenerationQualificationOperation<'_, '_, '_, '_, '_> {
     }
 }
 
-struct JudgeSettlementContext<'a> {
-    ledger: &'a ActiveGenerationQualificationAttemptLedgerClosure,
-    subject:
+pub(super) struct JudgeSettlementContext<'a> {
+    pub(super) ledger: &'a ActiveGenerationQualificationAttemptLedgerClosure,
+    pub(super) subject:
         &'a crate::active_generation_qualification_subject::ActiveGenerationQualificationSubject,
-    subject_matches: bool,
-    selection_policy: &'a CandidateSelectionPolicyV1,
-    candidate_count: usize,
-    executed_count: usize,
-    executed_joins: &'a [rewrite_model::CandidateJudgeJoinId],
-    settled_count: usize,
-    suite: &'a rewrite_model::GenerationSuiteManifestV1,
-    cases: &'a [rewrite_model::GenerationCaseManifestV1],
-    contracts: &'a [crate::GenerationDeterministicCaseContractV1],
+    pub(super) subject_matches: bool,
+    pub(super) selection_policy: &'a CandidateSelectionPolicyV1,
+    pub(super) candidate_count: usize,
+    pub(super) executed_count: usize,
+    pub(super) executed_joins: &'a [rewrite_model::CandidateJudgeJoinId],
+    pub(super) settled_count: usize,
+    pub(super) suite: &'a rewrite_model::GenerationSuiteManifestV1,
+    pub(super) cases: &'a [rewrite_model::GenerationCaseManifestV1],
+    pub(super) contracts: &'a [crate::GenerationDeterministicCaseContractV1],
 }
 
 impl JudgeSettlementContext<'_> {
-    fn validate(
+    pub(super) fn validate(
         &self,
         view: &PreparedGenerationQualificationValidationView<'_>,
         evidence: &JudgeSettlementView<'_, '_>,

@@ -28,6 +28,7 @@ mod candidate_execution;
 mod deterministic;
 mod judge;
 mod receipt_set;
+mod repeatability;
 
 /// Failure to open the durable qualification preregistration repository.
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]

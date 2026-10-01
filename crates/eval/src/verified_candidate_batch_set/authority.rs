@@ -50,6 +50,16 @@ pub(super) trait CandidateBatchSetAuthority {
         scope: CandidateBatchSetScope<'_>,
         cancellation: &CancellationToken,
     ) -> Result<(), VerifiedCandidateBatchSetError>;
+    fn managed_evidence_inputs(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<
+        Vec<(
+            rewrite_model::PlannedCandidateAttemptId,
+            rewrite_model::ManagedOllamaCandidateGenerationEvidenceV2Input,
+        )>,
+        VerifiedCandidateBatchSetError,
+    >;
     fn active_binding(&self) -> Option<&ActiveGenerationQualificationBinding>;
     fn batch_count(&self) -> usize;
     fn revalidate(
@@ -93,6 +103,38 @@ impl<B: RetainedCandidateBatch> CandidateBatchSetAuthority for CandidateBatchSet
         super::scope::validate_core_scope(&self.core, scope)
             .map_err(VerifiedCandidateBatchSetError::Relationship)?;
         self.core.revalidate(cancellation).map_err(self.map_error)
+    }
+    fn managed_evidence_inputs(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<
+        Vec<(
+            rewrite_model::PlannedCandidateAttemptId,
+            rewrite_model::ManagedOllamaCandidateGenerationEvidenceV2Input,
+        )>,
+        VerifiedCandidateBatchSetError,
+    > {
+        self.core.revalidate(cancellation).map_err(self.map_error)?;
+        let inputs = self
+            .core
+            .batches
+            .iter()
+            .map(|batch| {
+                let receipt = batch.receipt();
+                (
+                    receipt.planned_attempt_id().clone(),
+                    rewrite_model::ManagedOllamaCandidateGenerationEvidenceV2Input {
+                        bracket_observation_v1_id: receipt.bracket_observation_v1_id().clone(),
+                        effective_runtime_state_join_id: receipt
+                            .effective_runtime_state_join_id()
+                            .clone(),
+                        response_id: receipt.response_id().clone(),
+                    },
+                )
+            })
+            .collect();
+        self.core.revalidate(cancellation).map_err(self.map_error)?;
+        Ok(inputs)
     }
     fn active_binding(&self) -> Option<&ActiveGenerationQualificationBinding> {
         self.core.active_binding.as_ref()

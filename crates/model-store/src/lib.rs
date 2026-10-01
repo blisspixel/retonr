@@ -121,3 +121,9 @@ pub use store::{
     ArtifactStateStore, InstallationWriteDisposition, RemovalCompletionDisposition,
     RemovalPreparationDisposition, StoredArtifactSetState, StoredArtifactState, WriteDisposition,
 };
+
+pub use store::generation_attempt_ledger::{
+    GenerationAttemptLedgerV1Input, GenerationAttemptLedgerV1TransactionError,
+    GenerationRepeatabilityPhaseParentV1, GenerationRepeatabilityPhaseV1Input,
+    GenerationRepeatabilityPhaseV1TransactionError,
+};

@@ -2,6 +2,8 @@
 
 use std::ops::Range;
 
+use super::collector::FindingCollector;
+
 use rewrite_types::EditorialFinding;
 
 use super::slop_rules;
@@ -87,8 +89,19 @@ impl RuleCatalog {
 /// Applies all rule checks against input text.
 #[must_use]
 pub fn apply_all_rules(text: &str) -> Vec<EditorialFinding> {
+    collect_rules(text, usize::MAX).into_findings()
+}
+
+pub(super) fn apply_bounded_rules(
+    text: &str,
+    maximum: usize,
+) -> Result<Vec<EditorialFinding>, super::FindingLimitExceeded> {
+    collect_rules(text, maximum).finish()
+}
+
+fn collect_rules(text: &str, maximum: usize) -> FindingCollector {
     let quotes = quoted_spans(text);
-    let mut findings = Vec::new();
+    let mut findings = FindingCollector::new(maximum);
 
     slop_rules::check_prefabricated_scene_setting(text, &quotes, &mut findings);
     slop_rules::check_contrastive_reframe(text, &quotes, &mut findings);
@@ -150,7 +163,7 @@ pub(crate) fn is_inside_quotes(start: usize, end: usize, quotes: &[Range<usize>]
 }
 
 pub(crate) fn add_finding(
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
     text: &str,
     rule: RuleCatalog,
     evidence: &str,

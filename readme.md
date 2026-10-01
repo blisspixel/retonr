@@ -86,6 +86,8 @@ cargo run --locked -p retonr-cli -- lint draft.txt --candidate candidate.txt --f
 cargo run --locked -p retonr-cli -- lint drafts/ --recursive --fail-on-findings
 cargo run --locked -p retonr-cli -- tui draft.txt --candidate candidate.txt --protect Acme
 cargo run --locked -p retonr-cli -- tui draft.txt --plain --format json
+cargo run --locked -p retonr-cli -- tui drafts/ --candidate candidates/ --recursive
+cargo run --locked -p retonr-cli -- tui drafts/ --recursive --document notes/draft.txt --plain --format json
 cargo run --locked -p retonr-cli -- rewrite fixtures/cli/source.txt
 cargo run --locked -p retonr-cli -- inspect fixtures/cli/source.txt
 cargo run --locked -p retonr-cli -- doctor
@@ -114,7 +116,11 @@ to 16 MiB, through the same application checks and lint service. It never writes
 documents or generates text. Interactive use requires terminal stdin and stdout
 and refuses JSON mode. `--plain` supports redirected text or JSON with bounded,
 sanitized previews. Reload cancels the previous operation; terminal state is
-restored on exit. Profiles, folder navigation, and writing remain later work.
+restored on exit. `--recursive` enables bounded folder review with exact
+relative-path candidate pairing; bracket keys select a document and `--document`
+selects an exact path for interactive or plain review. Missing or unsupported
+counterparts remain visible and never imply a candidate check. Profiles and
+writing remain later work.
 
 Detailed flags, structured output, terminal safety, recovery behavior, and the
 complete model command list are in [Current state](docs/current-state.md). Hands-on

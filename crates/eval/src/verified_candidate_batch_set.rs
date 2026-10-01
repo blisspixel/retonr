@@ -73,6 +73,19 @@ pub struct VerifiedCandidateBatchSet {
 }
 
 impl VerifiedCandidateBatchSet {
+    pub(crate) fn managed_evidence_inputs(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<
+        Vec<(
+            rewrite_model::PlannedCandidateAttemptId,
+            rewrite_model::ManagedOllamaCandidateGenerationEvidenceV2Input,
+        )>,
+        VerifiedCandidateBatchSetError,
+    > {
+        self.authority.managed_evidence_inputs(cancellation)
+    }
+
     pub(crate) fn active_binding(&self) -> Option<&ActiveGenerationQualificationBinding> {
         self.authority.active_binding()
     }

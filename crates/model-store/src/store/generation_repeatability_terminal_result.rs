@@ -18,6 +18,13 @@ mod parents;
 mod read;
 mod write;
 
+pub(crate) fn load_repeatability_result(
+    connection: &rusqlite::Connection,
+    record: &GenerationRepeatabilityResultRecordV1,
+) -> Result<Option<GenerationRepeatabilityResultRecordV1>, StoreError> {
+    read::load(connection, record)
+}
+
 /// Borrowed repeatability result to store.
 #[derive(Clone, Copy)]
 pub struct GenerationRepeatabilityTerminalResultV1Input<'a> {

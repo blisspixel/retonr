@@ -24,9 +24,11 @@ pub(super) fn draw(frame: &mut Frame<'_>, state: &State) {
         ])
         .split(area);
     frame.render_widget(
-        Paragraph::new(
-            "retonr: experimental read-only review\nFindings and supplied candidate validation.",
-        ),
+        Paragraph::new(if let Some(directory) = &state.snapshot.directory {
+            format!("retonr: read-only folder review\n{} supported documents; [ / ] select; r rediscovers.", directory.total)
+        } else {
+            "retonr: experimental read-only review\nFindings and supplied candidate validation.".into()
+        }),
         rows[0],
     );
     let columns = Layout::default()
@@ -86,7 +88,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, state: &State) {
     };
     frame.render_widget(
         Paragraph::new(format!(
-            "{status}\nTab pane | arrows scroll | r reload | ? help | q quit"
+            "{status}\nTab pane | arrows scroll | [ / ] document | r reload | ? help | q quit"
         )),
         rows[2],
     );
@@ -129,7 +131,7 @@ fn help(frame: &mut Frame<'_>, area: Rect) {
     );
     frame.render_widget(Clear, popup);
     frame.render_widget(Paragraph::new(
-        "Read-only source and supplied candidate review.\n\nTab / Shift+Tab: select pane\nUp / Down / j / k: scroll lines\nLeft / Right / h / l: scroll columns\nPageUp / PageDown: scroll ten lines\nHome: return to preview start\nr: reload when no operation is running\n? / F1: toggle help\nq / Escape: quit; Ctrl+C: interrupt\n\nDocument previews and finding lists are bounded.\nNo model generation, saves, or document writes."
+        "Read-only source and supplied candidate review.\n\nTab / Shift+Tab: select pane\nUp / Down / j / k: scroll lines\nLeft / Right / h / l: scroll columns\nPageUp / PageDown: scroll ten lines\nHome: return to preview start\n[ / ]: previous / next folder document when idle\nr: reload selected path and rediscover folder when idle\n? / F1: toggle help\nq / Escape: quit; Ctrl+C: interrupt\n\nDocument previews and finding lists are bounded.\nNo model generation, saves, or document writes."
     ).block(Block::default().borders(Borders::ALL).title("Help")), popup);
 }
 

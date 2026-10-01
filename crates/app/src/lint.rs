@@ -8,6 +8,36 @@ use rewrite_types::{EditorialComparison, EditorialFinding};
 pub struct EditorialLintService;
 
 impl EditorialLintService {
+    /// Lints complete text with a finding ceiling enforced during matching.
+    ///
+    /// # Errors
+    ///
+    /// Returns the finding-limit error instead of partial editorial evidence.
+    pub fn lint_bounded(
+        text: &str,
+        maximum: usize,
+    ) -> Result<Vec<EditorialFinding>, lint::FindingLimitExceeded> {
+        lint::lint_text_bounded(text, maximum)
+    }
+
+    /// Compares complete inputs under one combined finding-allocation ceiling.
+    ///
+    /// # Errors
+    ///
+    /// Refuses excessive findings before constructing a comparison.
+    pub fn compare_bounded(
+        source: &str,
+        candidate: &str,
+        maximum: usize,
+    ) -> Result<EditorialComparison, lint::FindingLimitExceeded> {
+        let source_findings = lint::lint_text_bounded(source, maximum)?;
+        let candidate_findings =
+            lint::lint_text_bounded(candidate, maximum.saturating_sub(source_findings.len()))?;
+        Ok(EditorialComparison::compute(
+            source_findings,
+            candidate_findings,
+        ))
+    }
     /// Lints plain text against the deterministic editorial rule catalog.
     #[must_use]
     pub fn lint(text: &str) -> Vec<EditorialFinding> {
@@ -24,6 +54,26 @@ impl EditorialLintService {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_comparison_matches_full_evidence_and_uses_one_combined_ceiling() {
+        let source = "Certainly! Source text.";
+        let candidate = "Certainly! Candidate text.";
+        assert_eq!(
+            EditorialLintService::compare_bounded(source, candidate, 2)
+                .expect("complete comparison"),
+            EditorialLintService::compare(source, candidate)
+        );
+        assert!(EditorialLintService::compare_bounded(source, candidate, 1).is_err());
+        assert!(EditorialLintService::compare_bounded(source, candidate, 0).is_err());
+        assert!(EditorialLintService::lint_bounded(source, 0).is_err());
+        assert!(
+            EditorialLintService::compare_bounded("Clean source.", "Clean candidate.", 0)
+                .expect("zero findings")
+                .source_findings
+                .is_empty()
+        );
+    }
 
     #[test]
     fn lint_service_detects_residue() {

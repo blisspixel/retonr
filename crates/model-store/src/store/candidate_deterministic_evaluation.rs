@@ -18,6 +18,13 @@ mod parents;
 mod read;
 mod write;
 
+pub(crate) fn load_candidate_deterministic_evaluation(
+    connection: &rusqlite::Connection,
+    record: &CandidateDeterministicEvaluationRecordV1,
+) -> Result<Option<CandidateDeterministicEvaluationRecordV1>, StoreError> {
+    read::load(connection, record)
+}
+
 /// Borrowed deterministic evaluation to store.
 #[derive(Clone, Copy)]
 pub struct CandidateDeterministicEvaluationV1Input<'a> {

@@ -79,9 +79,15 @@ fn target_prefix(
         return Err(StoreError::CorruptRecord);
     }
     let stored_count = connection.query_row(
-        "SELECT COUNT(*) FROM candidate_generation_attempt_records
-         WHERE generation_qualification_plan_id = ?1",
-        params![foundation.plan().qualification_plan_id().digest().as_str()],
+        "SELECT COUNT(*) FROM candidate_generation_attempt_records AS attempts
+         LEFT JOIN planned_candidate_attempts AS planned
+           ON planned.planned_candidate_attempt_id = attempts.planned_candidate_attempt_id
+         WHERE attempts.generation_qualification_plan_id = ?1
+           AND (planned.generation_system_id = ?2 OR planned.planned_candidate_attempt_id IS NULL)",
+        params![
+            foundation.plan().qualification_plan_id().digest().as_str(),
+            target_id.digest().as_str()
+        ],
         |row| row.get::<_, i64>(0),
     )?;
     if stored_count == i64::try_from(records.len()).unwrap_or(i64::MAX) {

@@ -262,18 +262,21 @@ retonr tui draft.txt
 retonr tui draft.txt --candidate candidate.txt --protect Acme
 retonr tui draft.txt --candidate candidate.txt --plain --format text
 retonr tui draft.txt --plain --format json
+retonr tui drafts/ --candidate candidates/ --recursive
+retonr tui drafts/ --recursive --document notes/draft.txt --plain --format json
 ```
 
 Interactive review requires terminal stdin and stdout and refuses JSON mode. Use
 `--plain` for a linear accessible review or redirected text or JSON. Inputs must
-be single regular UTF-8 files, at most 16 MiB each; stdin input and directories are
-unsupported. Metadata sidecars and possible carriers that require an explicit
+be regular UTF-8 files, at most 16 MiB each; stdin input is unsupported.
+Directories require explicit `--recursive`. Metadata sidecars and possible carriers that require an explicit
 derivative decision are refused. `--protect` requires a candidate and may repeat.
 
 The review uses the existing application candidate-check and editorial lint
 services. Source and candidate previews are sanitized and limited to 64 KiB each;
 displayed findings are capped at 256 with omission markers. Validation uses the
-complete input, and reviews exceeding 4,096 total findings are refused. These are
+complete input, and reviews exceeding 4,096 total findings are refused during
+matching rather than after collecting an unrestricted finding list. These are
 review previews, not document output. The source and candidate remain unchanged;
 the view does not generate text.
 
@@ -283,6 +286,19 @@ cancels the review. Terminal state is restored before worker cleanup. Editorial
 lint cannot stop midway through its call; cancellation discards its finished
 result. Local automated checks and a native Linux terminal smoke pass; completed
 cross-platform terminal and accessibility acceptance remain pending.
+
+Folder review discovers at most 4,096 entries, depth 8, and 64 MiB of text per
+root. Source and candidate roots must be separate and cannot contain one another.
+Candidates pair by exact relative path, including case. Skipped, unsupported,
+missing, and unmatched entries are disclosed. Only the selected document is
+linted or checked. A missing candidate leaves a source-only review and explicitly
+reports that candidate validation and protected-term checking did not occur.
+
+Use `[` and `]` to select the previous or next supported source document while
+idle. `r` rediscovers the tree and reloads the exact selected path. `--document`
+selects an exact supported relative path, including in plain-output mode. Each
+selection reacquires retained file bytes and compares their digest with discovery;
+links, aliases, drift, and required derivative decisions are refused.
 
 ## Output safety
 
@@ -341,7 +357,7 @@ These are known and expected. Reporting them again is not useful.
 - **Plain text only**, UTF-8, up to 16 MiB. Markdown and DOCX are later phases.
 - **No profiles or style learning.** Deterministic editorial lint is available;
   it reports named patterns and does not identify an author or qualify a model.
-- **The terminal UI is experimental and read-only.** Profiles, folder navigation,
+- **The terminal UI is experimental and read-only.** Profiles,
   writes, and model generation are unavailable in this view. The complete terminal
   workbench and native desktop remain required before 1.0. The desktop is planned
   for Linux, macOS, and Windows without a browser frontend.

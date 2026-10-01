@@ -2,6 +2,8 @@
 
 use std::ops::Range;
 
+use super::collector::FindingCollector;
+
 use rewrite_types::EditorialFinding;
 
 use super::rules::{RuleCatalog, add_finding, is_inside_quotes};
@@ -9,7 +11,7 @@ use super::rules::{RuleCatalog, add_finding, is_inside_quotes};
 pub(crate) fn check_conversational_residue(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     let openings = ["Certainly!"];
     for opening in openings {
@@ -46,7 +48,7 @@ pub(crate) fn check_conversational_residue(
 pub(crate) fn check_throat_clearing(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     let pattern = "It is important to note that";
     if let Some(pos) = text.find(pattern)
@@ -66,7 +68,7 @@ pub(crate) fn check_throat_clearing(
 pub(crate) fn check_canned_transition(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     let pattern = "That said,";
     if let Some(pos) = text.find(pattern)
@@ -86,7 +88,7 @@ pub(crate) fn check_canned_transition(
 pub(crate) fn check_repeated_conclusion(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     let pattern = "In conclusion, the tool preserves the source file.";
     if let Some(pos) = text.find(pattern)
@@ -106,7 +108,7 @@ pub(crate) fn check_repeated_conclusion(
 pub(crate) fn check_vague_attribution(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     let pattern = "Experts agree";
     if let Some(pos) = text.find(pattern)
@@ -126,7 +128,7 @@ pub(crate) fn check_vague_attribution(
 pub(crate) fn check_redundant_qualifier(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     let pattern = "completely unanimous";
     if let Some(pos) = text.find(pattern)
@@ -154,7 +156,7 @@ fn is_definitional_context(text: &str, start: usize, end: usize) -> bool {
 pub(crate) fn check_excessive_exclamation(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     repeated_findings(
         text,
@@ -170,7 +172,7 @@ pub(crate) fn check_excessive_exclamation(
 pub(crate) fn check_excessive_dash_density(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     repeated_findings(
         text,
@@ -186,7 +188,7 @@ pub(crate) fn check_excessive_dash_density(
 pub(crate) fn check_excessive_emoji_density(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
 ) {
     repeated_findings(
         text,
@@ -202,7 +204,7 @@ pub(crate) fn check_excessive_emoji_density(
 fn repeated_findings(
     text: &str,
     quotes: &[Range<usize>],
-    findings: &mut Vec<EditorialFinding>,
+    findings: &mut FindingCollector,
     rule: RuleCatalog,
     evidence: &str,
     minimum: usize,
@@ -224,8 +226,13 @@ fn repeated_findings(
         if eligible < minimum {
             pending.push(finding);
         } else {
-            findings.append(&mut pending);
+            for previous in pending.drain(..) {
+                findings.push(previous);
+            }
             findings.push(finding);
+            if findings.exceeded() {
+                return;
+            }
         }
     }
 }

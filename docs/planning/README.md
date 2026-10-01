@@ -36,6 +36,9 @@ The [judge settlement and runtime observations batch](0.2-judge-settlement-and-r
 advances the same first product checkpoint without changing the 1.0 scope.
 The [terminal workbench and admission review batch](0.2-terminal-workbench-and-admission-review.md)
 adds experimental presentation and the inert review composition seam.
+The [folder workbench and durable repeatability batch](0.2-folder-workbench-and-repeatability.md)
+extends the shared review foundation and closes the successful-ledger prerequisite
+for durable repeatability settlement while retaining real bootstrap outcomes.
 
 The active trust-boundary slice is the
 [0.2 runtime admission work package](0.2-runtime-admission.md). It replaces the

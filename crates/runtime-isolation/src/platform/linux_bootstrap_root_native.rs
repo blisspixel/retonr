@@ -4,7 +4,6 @@ use std::{
     io::Write as _,
     os::unix::fs::{MetadataExt as _, OpenOptionsExt as _},
     path::Path,
-    process::{Command, Stdio},
 };
 
 use crate::{
@@ -47,6 +46,7 @@ struct HostIdentity {
     inode: u64,
 }
 
+mod libgcc;
 mod linker_name;
 mod toolchain;
 mod tree;
@@ -174,32 +174,8 @@ fn extract_rootfs(
 }
 
 fn install_libgcc() -> Result<(), HelperFailure> {
-    let loader = Path::new(ROOTFS).join("lib/ld-musl-x86_64.so.1");
-    let apk = Path::new(ROOTFS).join("sbin/apk");
     let package = Path::new(BUILD_INPUT_ROOT).join(LIBGCC_APK);
-    for path in [&loader, &apk, &package] {
-        if !path
-            .metadata()
-            .map_err(|_| HelperFailure::BootstrapRootVerification)?
-            .is_file()
-        {
-            return Err(HelperFailure::BootstrapRootVerification);
-        }
-    }
-    let status = Command::new(loader)
-        .arg(apk)
-        .args(["add", "--root", ROOTFS, "--no-cache", "--no-network"])
-        .arg(package)
-        .env_clear()
-        .env("LD_LIBRARY_PATH", format!("{ROOTFS}/lib:{ROOTFS}/usr/lib"))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-    if !status.success() {
-        return Err(HelperFailure::BootstrapRootVerification);
-    }
+    libgcc::install(Path::new(ROOTFS), &package)?;
     install_linker_names(Path::new(ROOTFS))
 }
 

@@ -17,6 +17,13 @@ mod parents;
 mod read;
 mod write;
 
+pub(crate) fn load_candidate_receipt_set(
+    connection: &rusqlite::Connection,
+    record: &CandidateGenerationReceiptSetV1,
+) -> Result<Option<CandidateGenerationReceiptSetV1>, StoreError> {
+    read::load(connection, record)
+}
+
 /// Borrowed receipt set to store.
 #[derive(Clone, Copy)]
 pub struct CandidateGenerationReceiptSetV1Input<'a> {

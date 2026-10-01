@@ -3,12 +3,10 @@
 use std::path::Path;
 
 use rewrite_app::{
-    CandidateCheckRequest, CandidateCheckService, EditorialLintService, MAX_CANDIDATE_CHECK_BYTES,
-    PlainTextInventory, TextEncoding, inspect_plain_text,
+    DocumentReviewError, DocumentReviewRequest, DocumentReviewService, EditorialReview,
+    MAX_CANDIDATE_CHECK_BYTES, PlainTextInventory, TextEncoding, inspect_plain_text,
 };
-use rewrite_types::{
-    CancellationToken, EditorialComparison, EditorialFinding, ReasonCode, RewriteRecord,
-};
+use rewrite_types::{CancellationToken, RewriteRecord};
 
 use super::{TuiArgs, state};
 use crate::{
@@ -18,8 +16,12 @@ use crate::{
     failure::RunFailure,
 };
 
-const MAX_DOMAIN_FINDINGS: usize = 4096;
+#[cfg(test)]
 const PREVIEW_BYTES: usize = 65_536;
+#[cfg(test)]
+const MAX_DOMAIN_FINDINGS: usize = 4096;
+#[cfg(test)]
+use rewrite_app::{CandidateCheckRequest, CandidateCheckService, EditorialLintService};
 
 /// Owned domain result. Exact records never become a terminal rendering path.
 pub(super) struct Snapshot {
@@ -43,10 +45,7 @@ impl std::fmt::Debug for Snapshot {
     }
 }
 
-enum EditorialSnapshot {
-    Document(Vec<EditorialFinding>),
-    Comparison(EditorialComparison),
-}
+type EditorialSnapshot = EditorialReview;
 
 impl Snapshot {
     /// Converts only bounded preview fields through the shared terminal sanitizer.
@@ -102,6 +101,7 @@ impl Snapshot {
             candidate: self.candidate,
             findings,
             status,
+            directory: None,
         }
         .bounded()
     }
@@ -130,72 +130,55 @@ fn load_with_post_lint(
     {
         return Err(RunFailure::usage_for(CommandName::Tui));
     }
-    let (source, inspection) = read_document(&request.source, cancellation)?;
+    let source = read_document(&request.source, cancellation)?;
     let candidate = request
         .candidate
         .as_ref()
         .map(|path| read_document(path, cancellation))
         .transpose()?;
-    let (check, editorial) = if let Some((text, _)) = &candidate {
-        let result = CandidateCheckService::check_with_cancellation(
-            CandidateCheckRequest::new(
-                source.as_bytes().to_vec(),
-                text.clone(),
-                request.protected_terms.clone(),
-            ),
-            cancellation,
-        )
-        .map_err(|error| RunFailure::app(CommandName::Tui, &error))?;
-        if result.record.reason == Some(ReasonCode::Cancelled) {
-            return Err(RunFailure::cancelled(CommandName::Tui));
-        }
-        ensure_active(cancellation)?;
-        let comparison = EditorialLintService::compare(&source, text);
-        (
-            Some(result.record),
-            EditorialSnapshot::Comparison(comparison),
-        )
-    } else {
-        (
-            None,
-            EditorialSnapshot::Document(EditorialLintService::lint(&source)),
-        )
-    };
-    // The lint kernel is deliberately reused unchanged. A cancellation that
-    // arrives during its noncooperative work discards the entire result here.
+    let snapshot = load_bytes(request, source, candidate, cancellation)?;
     after_lint();
     ensure_active(cancellation)?;
-    let finding_count = match &editorial {
-        EditorialSnapshot::Document(findings) => findings.len(),
-        EditorialSnapshot::Comparison(comparison) => comparison
-            .source_findings
-            .len()
-            .saturating_add(comparison.candidate_findings.len()),
-    };
-    if finding_count > MAX_DOMAIN_FINDINGS {
-        return Err(resource_limit());
-    }
-    let snapshot = Snapshot {
+    Ok(snapshot)
+}
+
+pub(super) fn load_bytes(
+    request: &TuiArgs,
+    source: Vec<u8>,
+    candidate: Option<Vec<u8>>,
+    cancellation: &CancellationToken,
+) -> Result<Snapshot, RunFailure> {
+    let review = DocumentReviewService::review(
+        DocumentReviewRequest {
+            source,
+            candidate,
+            protected_terms: request.protected_terms.clone(),
+        },
+        cancellation,
+    )
+    .map_err(|error| match error {
+        DocumentReviewError::CandidateRequired => RunFailure::usage_for(CommandName::Tui),
+        DocumentReviewError::UnsupportedEncoding => unsupported_text(),
+        DocumentReviewError::Cancelled => RunFailure::cancelled(CommandName::Tui),
+        DocumentReviewError::FindingLimitExceeded => resource_limit(),
+        DocumentReviewError::Application(error) => RunFailure::app(CommandName::Tui, &error),
+    })?;
+    Ok(Snapshot {
         source_label: prefix(&request.source.to_string_lossy(), 512).to_owned(),
         candidate_label: request
             .candidate
             .as_ref()
             .map(|path| prefix(&path.to_string_lossy(), 512).to_owned()),
-        source: preview(&source),
-        candidate: candidate.as_ref().map(|(text, _)| preview(text)),
-        inspection,
-        candidate_inspection: candidate.map(|(_, inventory)| inventory),
-        check,
-        editorial,
-    };
-    ensure_active(cancellation)?;
-    Ok(snapshot)
+        source: review.source_preview,
+        candidate: review.candidate_preview,
+        inspection: review.inspection,
+        candidate_inspection: review.candidate_inspection,
+        check: review.check,
+        editorial: review.editorial,
+    })
 }
 
-fn read_document(
-    path: &Path,
-    cancellation: &CancellationToken,
-) -> Result<(String, PlainTextInventory), RunFailure> {
+fn read_document(path: &Path, cancellation: &CancellationToken) -> Result<Vec<u8>, RunFailure> {
     ensure_active(cancellation)?;
     let bytes = crate::file_input::read_regular_bounded(path, MAX_CANDIDATE_CHECK_BYTES)
         .map_err(|error| RunFailure::input_read(CommandName::Tui, &error))?;
@@ -213,9 +196,8 @@ fn read_document(
             message: "document metadata requires an explicit derivative decision",
         });
     }
-    let text = String::from_utf8(bytes).map_err(|_| unsupported_text())?;
     ensure_active(cancellation)?;
-    Ok((text, inventory))
+    Ok(bytes)
 }
 
 fn ensure_active(cancellation: &CancellationToken) -> Result<(), RunFailure> {
@@ -254,16 +236,6 @@ fn prefix(value: &str, maximum: usize) -> &str {
         end -= 1;
     }
     &value[..end]
-}
-
-fn preview(value: &str) -> String {
-    if value.len() <= PREVIEW_BYTES {
-        return value.to_owned();
-    }
-    let marker = "\n[Document preview truncated; validation used the complete input.]";
-    let mut preview = prefix(value, PREVIEW_BYTES.saturating_sub(marker.len())).to_owned();
-    preview.push_str(marker);
-    preview
 }
 
 #[cfg(test)]

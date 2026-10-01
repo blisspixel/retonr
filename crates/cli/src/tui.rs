@@ -17,6 +17,7 @@ use crate::{
 };
 
 mod event;
+mod folder;
 mod service;
 mod state;
 mod terminal;
@@ -26,11 +27,11 @@ mod worker;
 /// Read-only workbench options. Interactive review requires real terminal streams.
 #[derive(Args, Clone, Debug)]
 pub(crate) struct TuiArgs {
-    /// UTF-8 source file to inspect without mutation.
+    /// UTF-8 source file, or a directory with --recursive, to inspect without mutation.
     #[arg(value_name = "SOURCE")]
     pub(crate) source: PathBuf,
-    /// Optional supplied candidate to compare and validate.
-    #[arg(long, value_name = "FILE")]
+    /// Supplied candidate file, or directory for exact relative-path counterparts.
+    #[arg(long, value_name = "FILE_OR_DIRECTORY")]
     pub(crate) candidate: Option<PathBuf>,
     /// Exact term that must be preserved. May be repeated.
     #[arg(long = "protect", value_name = "TERM", requires = "candidate")]
@@ -38,6 +39,18 @@ pub(crate) struct TuiArgs {
     /// Print a bounded linear review for accessible terminals and redirected output.
     #[arg(long)]
     pub(crate) plain: bool,
+    /// Review a bounded directory tree without following links.
+    #[arg(long)]
+    pub(crate) recursive: bool,
+    /// Select an exact relative document path within a directory tree (forward slashes).
+    #[arg(long, value_name = "RELATIVE_PATH", requires = "recursive")]
+    pub(crate) document: Option<String>,
+}
+
+#[derive(Clone)]
+struct ReviewRequest {
+    args: TuiArgs,
+    index: Option<usize>,
 }
 
 pub(crate) fn run(
@@ -55,7 +68,13 @@ pub(crate) fn run(
     ctrlc::try_set_handler(move || signal_cancellation.cancel())
         .map_err(|_| RunFailure::operational(CommandName::Tui))?;
     if request.plain {
-        let snapshot = service::load(request, &cancellation)?.into_presentation();
+        let snapshot = folder::load(
+            &ReviewRequest {
+                args: request.clone(),
+                index: None,
+            },
+            &cancellation,
+        )?;
         require_not_cancelled(&cancellation)?;
         let format = ReportFormat::from_invocation(explicit_format, io::stdout().is_terminal());
         let output = write_plain(&snapshot, format, &mut io::stdout().lock());
@@ -86,14 +105,12 @@ fn interactive(
     cancellation: &CancellationToken,
 ) -> Result<ExitCode, RunFailure> {
     let mut worker = worker::Worker::new(|request, cancellation| {
-        service::load(&request, cancellation)
-            .map(service::Snapshot::into_presentation)
-            .map_err(|error| error.message)
+        folder::load(&request, cancellation).map_err(|error| error.message)
     })
     .map_err(|_| RunFailure::operational(CommandName::Tui))?;
     let result = terminal::with_terminal(|terminal| {
         let mut state = state::State::default();
-        submit(&mut state, &worker, request);
+        submit(&mut state, &worker, request, None);
         while !state.quit && !cancellation.is_cancelled() {
             if let Some(response) = worker.response() {
                 if response.stopped {
@@ -107,8 +124,15 @@ fn interactive(
                 if action == event::Action::Interrupt {
                     cancellation.cancel();
                 }
+                if let Some(index) = navigation_index(&state, action) {
+                    submit(&mut state, &worker, request, Some(index));
+                }
                 if state.apply(action) {
-                    submit(&mut state, &worker, request);
+                    let mut reload = request.clone();
+                    if let Some(directory) = &state.snapshot.directory {
+                        reload.document.clone_from(&directory.selected_relative);
+                    }
+                    submit(&mut state, &worker, &reload, None);
                 }
             }
         }
@@ -128,9 +152,32 @@ fn finish_output(
     result.map_err(|_| RunFailure::operational(CommandName::Tui))
 }
 
-fn submit(state: &mut state::State, worker: &worker::Worker<TuiArgs>, request: &TuiArgs) {
+fn navigation_index(state: &state::State, action: event::Action) -> Option<usize> {
+    let event::Action::Document(delta) = action else {
+        return None;
+    };
+    if state.pending.is_some() || state.help {
+        return None;
+    }
+    let directory = state.snapshot.directory.as_ref()?;
+    let selected = directory.selected.saturating_add_signed(isize::from(delta));
+    (selected < directory.total && selected != directory.selected).then_some(selected)
+}
+
+fn submit(
+    state: &mut state::State,
+    worker: &worker::Worker<ReviewRequest>,
+    request: &TuiArgs,
+    index: Option<usize>,
+) {
     if let Some(operation) = state.begin()
-        && !worker.submit(operation, request.clone())
+        && !worker.submit(
+            operation,
+            ReviewRequest {
+                args: request.clone(),
+                index,
+            },
+        )
     {
         state.complete(operation, Err("document review worker is unavailable"));
     }
@@ -152,6 +199,8 @@ struct PlainReview<'a> {
     candidate_preview: Option<&'a str>,
     findings: &'a [String],
     summary: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    directory: Option<&'a state::DirectoryNavigation>,
 }
 
 fn write_plain(
@@ -167,6 +216,7 @@ fn write_plain(
             candidate_preview: snapshot.candidate.as_deref(),
             findings: &snapshot.findings,
             summary: &snapshot.status,
+            directory: snapshot.directory.as_ref(),
         };
         let bytes =
             crate::render::to_safe_pretty_json(&SuccessEnvelope::new(CommandName::Tui, review))

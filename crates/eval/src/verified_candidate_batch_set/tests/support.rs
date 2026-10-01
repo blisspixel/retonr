@@ -72,6 +72,7 @@ pub(crate) struct OfflineBatch {
     label: usize,
     revalidation_calls: Rc<Cell<usize>>,
     fail_on_call: Rc<Cell<Option<usize>>>,
+    failure_predicate: control::FailurePredicate,
     log: Rc<RefCell<Vec<usize>>>,
     publication: publication::PortablePublication,
 }
@@ -107,14 +108,7 @@ impl RetainedCandidateBatch for OfflineBatch {
     }
 
     fn revalidate(&self, _cancellation: &CancellationToken) -> Result<(), Self::Error> {
-        let call = self.revalidation_calls.get() + 1;
-        self.revalidation_calls.set(call);
-        self.log.borrow_mut().push(self.label);
-        if self.fail_on_call.get() == Some(call) {
-            Err(OfflineBatchError::ForcedRevalidation)
-        } else {
-            Ok(())
-        }
+        self.revalidate_for_test()
     }
 }
 
@@ -458,6 +452,7 @@ fn offline_batch(
         label: index,
         revalidation_calls: Rc::new(Cell::new(0)),
         fail_on_call: Rc::new(Cell::new(None)),
+        failure_predicate: Rc::new(RefCell::new(None)),
         log,
     }
 }

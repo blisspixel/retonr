@@ -34,6 +34,30 @@ pub(super) fn load(
     }
 }
 
+pub(super) fn confirm_snapshot(
+    connection: &Connection,
+    expected: &StoredCandidateJudgeExecutionV1,
+) -> StoreResult<()> {
+    let plan_id = expected.plan().candidate_judge_plan_id().digest().as_str();
+    if !rows::counts(connection, plan_id)?.all_one() {
+        return Err(StoreError::CorruptRecord);
+    }
+    let stored = present(connection, plan_id)?;
+    let closed = derive::close_expected(expected)?;
+    check::snapshot_columns(&stored, expected, &closed)?;
+    if stored.plan.bytes != serde_json::to_vec(expected.plan())?
+        || stored.schedule.bytes != serde_json::to_vec(expected.schedule())?
+        || stored.request.bytes != serde_json::to_vec(expected.request_aggregate())?
+        || stored.response.bytes != serde_json::to_vec(expected.response_aggregate())?
+        || stored.batch.bytes != serde_json::to_vec(expected.observation_batch())?
+        || stored.receipt.bytes != serde_json::to_vec(expected.managed_receipt())?
+        || stored.join.bytes != serde_json::to_vec(expected.join())?
+    {
+        return Err(StoreError::CorruptRecord);
+    }
+    Ok(())
+}
+
 fn load_cohort(
     connection: &Connection,
     input: &CandidateJudgeExecutionV1ReadInput<'_>,

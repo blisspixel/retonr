@@ -13,6 +13,7 @@ pub(super) enum Action {
     Horizontal(i16),
     Home,
     Reload,
+    Document(i16),
     Resize,
     None,
 }
@@ -37,6 +38,8 @@ pub(super) fn action(event: &Event) -> Action {
                 KeyCode::Left | KeyCode::Char('h') => Action::Horizontal(-1),
                 KeyCode::Home => Action::Home,
                 KeyCode::Char('r') => Action::Reload,
+                KeyCode::Char(']') => Action::Document(1),
+                KeyCode::Char('[') => Action::Document(-1),
                 _ => Action::None,
             }
         }

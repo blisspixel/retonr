@@ -72,6 +72,15 @@ jobs:
           "$binary" check smoke-source.txt smoke-candidate.txt --format text
           "$binary" tui --help > /dev/null
           "$binary" tui smoke-source.txt --candidate smoke-candidate.txt --plain --format text
+          mkdir smoke-originals smoke-candidates
+          cp smoke-source.txt smoke-originals/draft.txt
+          cp smoke-candidate.txt smoke-candidates/draft.txt
+          "$binary" tui smoke-originals --candidate smoke-candidates \
+            --recursive --document draft.txt --plain --format json > smoke-folder-review.json
+          python3 -c 'import json; r=json.load(open("smoke-folder-review.json", encoding="utf-8")); assert r["result"]["directory"]["total"] == 1; assert "Candidate check: rewritten" in r["result"]["summary"]'
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            python3 fixtures/cli/folder-review-pty.py "$binary"
+          fi
 
       - name: Stage the archive
         id: stage

@@ -16,6 +16,8 @@ use thiserror::Error;
 
 use super::{VerifiedPassedRepeatabilityJoins, VerifiedPassedRepeatabilityJoinsError};
 
+mod settlement;
+
 /// Exact inert records used to prove a complete passed repeatability closure.
 #[derive(Clone, Copy)]
 pub struct CompletePassedRepeatabilityRelations<'a> {

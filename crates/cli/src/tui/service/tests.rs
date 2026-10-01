@@ -29,6 +29,8 @@ impl Fixture {
             candidate: candidate.then(|| self.candidate.clone()),
             protected_terms: Vec::new(),
             plain: true,
+            recursive: false,
+            document: None,
         }
     }
 }

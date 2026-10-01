@@ -38,6 +38,7 @@ impl OfflineBatch {
         OfflineBatchFailureControl::new(
             Rc::clone(&self.revalidation_calls),
             Rc::clone(&self.fail_on_call),
+            Rc::clone(&self.failure_predicate),
         )
     }
 

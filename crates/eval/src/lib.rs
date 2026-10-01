@@ -94,6 +94,7 @@ pub use generation_qualification_preregistration::{
     ActiveGenerationQualificationOperationInterruptionError,
     ActiveGenerationQualificationOperationInterruptionErrorKind,
     ActiveGenerationQualificationReceiptSetError,
+    ActiveGenerationQualificationRepeatabilitySettlementError,
     FinalizedPhasePolicyRefusedPretrafficGenerationQualification,
     FinalizedRejectedPretrafficGenerationQualification, GenerationQualificationActivationError,
     GenerationQualificationOperationDraft, GenerationQualificationPhasePolicyRefusalError,

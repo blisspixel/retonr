@@ -27,6 +27,13 @@ mod rows;
 mod text;
 mod write;
 
+pub(crate) fn confirm_candidate_judge_execution_snapshot(
+    connection: &rusqlite::Connection,
+    expected: &StoredCandidateJudgeExecutionV1,
+) -> StoreResult<()> {
+    read::confirm_snapshot(connection, expected)
+}
+
 /// One schedule-ordered observation fact supplied by the caller.
 #[derive(Clone, Copy)]
 pub struct CandidateJudgeObservationFactV1<'a> {

@@ -16,6 +16,7 @@ mod artifact_storage;
 mod candidate_attempt_precursor;
 mod candidate_check;
 mod claim_extraction;
+mod document_review;
 pub mod effective_runtime_state_observation;
 mod generation_api;
 mod generation_effective_package;
@@ -110,6 +111,10 @@ pub use claim_extraction::{
     ClaimExtractionError, ClaimExtractionPair, ClaimExtractionRequest, ClaimExtractionService,
     ClaimShadowJoinBinding, ClaimShadowJoinDisposition, ClaimShadowJoinService,
     PreparedClaimShadow, PreparedClaimShadowSet,
+};
+pub use document_review::{
+    DocumentReviewError, DocumentReviewRequest, DocumentReviewResult, DocumentReviewService,
+    EditorialReview, MAX_DOCUMENT_REVIEW_FINDINGS, MAX_DOCUMENT_REVIEW_PREVIEW_BYTES,
 };
 pub use generation_api::*;
 pub use grounded::{
