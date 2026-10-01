@@ -4,6 +4,7 @@
 *.md text eol=lf
 *.mmd text eol=lf
 *.ps1 text eol=lf
+*.py text eol=lf
 *.rs text eol=lf
 *.sh text eol=lf
 *.tsv text eol=lf
@@ -27,3 +28,6 @@ fuzz/corpus/** -text
 *.asc -text
 
 *.patch text eol=lf whitespace=-blank-at-eol
+
+# Preserve complete upstream legal text, including its original trailing spaces.
+support/third-party-licenses/*.txt whitespace=-blank-at-eol
