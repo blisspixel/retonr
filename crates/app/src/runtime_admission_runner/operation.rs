@@ -2,6 +2,7 @@ use rewrite_model::{RuntimeOperatingSystem, RuntimePackageLoadPolicy, RuntimePac
 use rewrite_runtime_attestor::AttachedProcessLease;
 use rewrite_runtime_isolation::PreparedIsolation;
 
+use super::observed_records::RuntimeAdmissionObservedFinalOperation;
 use super::validation::{
     ensure_not_cancelled, map_package_error, valid_managed_process_limits, valid_native_limits,
     validate_actual_launch_binding, validate_final_identity_bindings,
@@ -96,6 +97,39 @@ pub struct RuntimeAdmissionFinalOperation {
 }
 
 impl RuntimeAdmissionFinalOperation {
+    #[cfg(test)]
+    pub(crate) fn test_from_review_records(
+        native_load_record: RuntimeAdmissionNativeLoadRecord,
+        managed_final_record: RuntimeAdmissionManagedFinalRecord,
+        native_closure: VerifiedPassedRuntimeAdmissionNativeClosureControl,
+        managed_startup: VerifiedPassedRuntimeAdmissionManagedStartupControl,
+        cloud_disable: VerifiedPassedRuntimeAdmissionCloudDisableControl,
+    ) -> Self {
+        Self {
+            native_load_record,
+            managed_final_record,
+            native_closure,
+            managed_startup,
+            cloud_disable,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_review_fixture(
+        foundation: &VerifiedRuntimeAdmissionFoundationBinding,
+        package: &RuntimePackageManifest,
+    ) -> Self {
+        super::records::review_operation_fixture(foundation, package)
+    }
+
+    pub(crate) fn verify_records_for_review(
+        &self,
+        foundation: &VerifiedRuntimeAdmissionFoundationBinding,
+        package: &RuntimePackageManifest,
+    ) -> Result<(), RuntimeAdmissionRunnerError> {
+        super::records::verify_compiled_for_review(self, foundation, package)
+    }
+
     /// Returns canonical native-load publication material.
     #[must_use]
     pub const fn native_load_record(&self) -> &RuntimeAdmissionNativeLoadRecord {
@@ -154,11 +188,17 @@ impl RuntimeAdmissionRunner {
             .map_err(RuntimeAdmissionRunnerError::Isolation)?;
         let mut managed = RuntimeAdmissionManagedRuntimeLease::new(isolation);
         let operation = discover_launched(&mut managed, &mut request);
-        let discovery = finish_with_fresh_cleanup(operation, |fresh| managed.close(fresh))?;
-        request
-            .package_lease
-            .revalidate(&CancellationToken::new())
-            .map_err(map_package_error)?;
+        let discovery = finish_with_mandatory_finalization(
+            operation,
+            |fresh| managed.close(fresh),
+            |fresh| {
+                request
+                    .package_lease
+                    .revalidate(fresh)
+                    .map_err(map_package_error)
+            },
+            request.cancellation,
+        )?;
         Ok(RuntimeAdmissionNativeClosureDiscovery { discovery })
     }
 
@@ -173,46 +213,9 @@ impl RuntimeAdmissionRunner {
     /// frozen set, live evidence, cleanup, canonical records, and independent
     /// record verification all succeed.
     pub async fn verify_managed_final_and_close(
-        request: RuntimeAdmissionFinalOperationRequest<'_>,
+        mut request: RuntimeAdmissionFinalOperationRequest<'_>,
     ) -> Result<RuntimeAdmissionFinalOperation, RuntimeAdmissionRunnerError> {
-        if request.foundation.runtime_package_manifest_id()
-            != &request.package.runtime_package_manifest_id()
-        {
-            return Err(RuntimeAdmissionRunnerError::InvalidPackageBinding);
-        }
-        validate_launch_context(
-            request.package,
-            request.package_lease,
-            request.isolation,
-            request.limits,
-            request.cancellation,
-        )?;
-        let executable = request
-            .package_lease
-            .clone_entrypoint_for_launch(request.cancellation)
-            .map_err(map_package_error)?;
-        let isolation = request
-            .isolation
-            .launch_retained(request.launch, executable, request.cancellation)
-            .map_err(RuntimeAdmissionRunnerError::Isolation)?;
-        let mut managed = RuntimeAdmissionManagedRuntimeLease::new(isolation);
-        let operation = Self::verify_final(RuntimeAdmissionFinalVerificationRequest {
-            package: request.package,
-            package_lease: request.package_lease,
-            managed_runtime: &mut managed,
-            frozen: request.frozen,
-            endpoint: request.endpoint,
-            launch: request.launch,
-            limits: request.limits,
-            cancellation: request.cancellation,
-        })
-        .await;
-        let final_evidence = finish_with_fresh_cleanup(operation, |fresh| managed.close(fresh))?;
-        request
-            .package_lease
-            .revalidate(&CancellationToken::new())
-            .map_err(map_package_error)?;
-
+        let final_evidence = verify_and_close(&mut request).await?;
         let native_load_record = RuntimeAdmissionNativeLoadRecord::compile(
             request.foundation,
             request.package,
@@ -241,6 +244,7 @@ impl RuntimeAdmissionRunner {
             &final_evidence,
             &native_closure,
         )?;
+        ensure_not_cancelled(request.cancellation)?;
         Ok(RuntimeAdmissionFinalOperation {
             native_load_record,
             managed_final_record,
@@ -248,6 +252,106 @@ impl RuntimeAdmissionRunner {
             managed_startup,
             cloud_disable,
         })
+    }
+
+    /// Observes the exact frozen-set-gated managed runtime and closes it before
+    /// compiling canonical native and managed observation records.
+    ///
+    /// An `Unreviewed` cloud status is preserved as observation evidence. This
+    /// separate result grants no passed cloud control, startup-control authority,
+    /// admission, generation, or policy authority. Production policy is unchanged.
+    /// Mandatory cleanup and package revalidation both use fresh contexts even
+    /// when the primary operation or another finalizer fails.
+    ///
+    /// # Errors
+    /// Returns [`RuntimeAdmissionRunnerError`] for exact binding failures,
+    /// observation errors, cancellation, cleanup, package drift, malformed
+    /// canonical records, or independent reparse disagreement.
+    pub async fn observe_managed_final_and_close(
+        mut request: RuntimeAdmissionFinalOperationRequest<'_>,
+    ) -> Result<RuntimeAdmissionObservedFinalOperation, RuntimeAdmissionRunnerError> {
+        let final_evidence = verify_and_close(&mut request).await?;
+        let observed = RuntimeAdmissionObservedFinalOperation::compile(
+            request.foundation,
+            request.package,
+            request.frozen,
+            &final_evidence,
+        )?;
+        ensure_not_cancelled(request.cancellation)?;
+        Ok(observed)
+    }
+}
+
+async fn verify_and_close(
+    request: &mut RuntimeAdmissionFinalOperationRequest<'_>,
+) -> Result<super::RuntimeAdmissionFinalVerification, RuntimeAdmissionRunnerError> {
+    if request.foundation.runtime_package_manifest_id()
+        != &request.package.runtime_package_manifest_id()
+    {
+        return Err(RuntimeAdmissionRunnerError::InvalidPackageBinding);
+    }
+    validate_launch_context(
+        request.package,
+        request.package_lease,
+        request.isolation,
+        request.limits,
+        request.cancellation,
+    )?;
+    let executable = request
+        .package_lease
+        .clone_entrypoint_for_launch(request.cancellation)
+        .map_err(map_package_error)?;
+    let isolation = request
+        .isolation
+        .launch_retained(request.launch, executable, request.cancellation)
+        .map_err(RuntimeAdmissionRunnerError::Isolation)?;
+    let mut managed = RuntimeAdmissionManagedRuntimeLease::new(isolation);
+    let operation =
+        RuntimeAdmissionRunner::verify_final(RuntimeAdmissionFinalVerificationRequest {
+            package: request.package,
+            package_lease: request.package_lease,
+            managed_runtime: &mut managed,
+            frozen: request.frozen,
+            endpoint: request.endpoint.clone(),
+            launch: request.launch,
+            limits: request.limits,
+            cancellation: request.cancellation,
+        })
+        .await;
+    finish_with_mandatory_finalization(
+        operation,
+        |fresh| managed.close(fresh),
+        |fresh| {
+            request
+                .package_lease
+                .revalidate(fresh)
+                .map_err(map_package_error)
+        },
+        request.cancellation,
+    )
+}
+
+fn finish_with_mandatory_finalization<T>(
+    operation: Result<T, RuntimeAdmissionRunnerError>,
+    cleanup: impl FnOnce(&CancellationToken) -> Result<(), super::IsolationError>,
+    finalize_package: impl FnOnce(&CancellationToken) -> Result<(), RuntimeAdmissionRunnerError>,
+    cancellation: &CancellationToken,
+) -> Result<T, RuntimeAdmissionRunnerError> {
+    let closed = finish_with_fresh_cleanup(operation, cleanup);
+    let package = finalize_package(&CancellationToken::new());
+    match (closed, package) {
+        (Ok(value), Ok(())) => {
+            ensure_not_cancelled(cancellation)?;
+            Ok(value)
+        }
+        (Err(operation), Ok(())) => Err(operation),
+        (Ok(_), Err(finalization)) => Err(finalization),
+        (Err(operation), Err(finalization)) => {
+            Err(RuntimeAdmissionRunnerError::FinalizationAfterFailure {
+                operation: Box::new(operation),
+                finalization: Box::new(finalization),
+            })
+        }
     }
 }
 
@@ -368,54 +472,4 @@ where
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn cleanup_outcome_never_masks_the_primary_failure() {
-        let primary = RuntimeAdmissionRunnerError::Cancelled;
-        let cleanup = super::super::IsolationError::UnsupportedPlatform;
-        let error = finish_with_fresh_cleanup::<(), _>(Err(primary), |_fresh| Err(cleanup))
-            .expect_err("both failures must be retained");
-        assert!(matches!(
-            error,
-            RuntimeAdmissionRunnerError::CleanupAfterFailure {
-                operation,
-                cleanup: super::super::IsolationError::UnsupportedPlatform,
-            } if matches!(*operation, RuntimeAdmissionRunnerError::Cancelled)
-        ));
-    }
-
-    #[test]
-    fn cleanup_failure_blocks_an_apparent_success() {
-        let error = finish_with_fresh_cleanup(Ok(()), |_fresh| {
-            Err(super::super::IsolationError::UnsupportedPlatform)
-        })
-        .expect_err("cleanup is part of success");
-        assert!(matches!(
-            error,
-            RuntimeAdmissionRunnerError::Cleanup(super::super::IsolationError::UnsupportedPlatform)
-        ));
-    }
-
-    #[test]
-    fn cleanup_receives_a_fresh_token_after_operation_cancellation() {
-        let caller = CancellationToken::new();
-        caller.cancel();
-        let mut cleanup_called = false;
-
-        let error = finish_with_fresh_cleanup::<(), _>(
-            Err(RuntimeAdmissionRunnerError::Cancelled),
-            |fresh| {
-                cleanup_called = true;
-                assert!(!fresh.is_cancelled());
-                Ok(())
-            },
-        )
-        .expect_err("primary cancellation is retained");
-
-        assert!(cleanup_called);
-        assert!(caller.is_cancelled());
-        assert!(matches!(error, RuntimeAdmissionRunnerError::Cancelled));
-    }
-}
+mod tests;

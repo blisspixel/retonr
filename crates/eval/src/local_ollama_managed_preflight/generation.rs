@@ -485,3 +485,8 @@ async fn run_live_generation(
 
 #[cfg(test)]
 mod tests;
+
+pub(crate) use verified_candidate_judge_join::JudgeSettlementView;
+
+#[cfg(test)]
+pub(crate) use verified_candidate_judge_join::synthetic_join;

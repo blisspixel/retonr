@@ -1,9 +1,8 @@
 use std::{
-    collections::BTreeSet,
     fs::{self, File, OpenOptions},
     io::{Read as _, Seek as _, SeekFrom},
-    os::unix::fs::{MetadataExt as _, OpenOptionsExt as _, PermissionsExt as _},
-    path::{Path, PathBuf},
+    os::unix::fs::{MetadataExt as _, OpenOptionsExt as _},
+    path::Path,
 };
 
 use rewrite_types::Digest as DomainDigest;
@@ -76,68 +75,6 @@ fn collect_tree(root: &Path, path: &Path, output: &mut Vec<Vec<u8>>) -> Result<(
     Ok(())
 }
 
-pub(super) fn merge_tree(source: &Path, destination: &Path) -> Result<(), HelperFailure> {
-    require_matching_directory_mode(source, destination)?;
-    let mut seen = BTreeSet::new();
-    merge_directory(source, destination, &mut seen)
-}
-
-fn merge_directory(
-    source: &Path,
-    destination: &Path,
-    seen: &mut BTreeSet<PathBuf>,
-) -> Result<(), HelperFailure> {
-    if !source.is_dir() {
-        return Err(HelperFailure::BootstrapRootVerification);
-    }
-    for raw in fs::read_dir(source).map_err(|_| HelperFailure::BootstrapRootVerification)? {
-        let raw = raw.map_err(|_| HelperFailure::BootstrapRootVerification)?;
-        let source_path = raw.path();
-        let destination_path = destination.join(raw.file_name());
-        let metadata = fs::symlink_metadata(&source_path)
-            .map_err(|_| HelperFailure::BootstrapRootVerification)?;
-        if !seen.insert(destination_path.clone()) {
-            return Err(HelperFailure::BootstrapRootVerification);
-        }
-        if metadata.is_dir() {
-            if destination_path.exists() {
-                require_matching_directory_mode(&source_path, &destination_path)?;
-            } else {
-                fs::create_dir(&destination_path)
-                    .map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-                fs::set_permissions(
-                    &destination_path,
-                    fs::Permissions::from_mode(metadata.mode() & 0o777),
-                )
-                .map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-            }
-            merge_directory(&source_path, &destination_path, seen)?;
-        } else if metadata.is_file() {
-            let source_file =
-                File::open(&source_path).map_err(|_| HelperFailure::BootstrapRootPreparation)?;
-            copy_file(&source_file, &destination_path, metadata.mode() & 0o777)?;
-        } else {
-            return Err(HelperFailure::BootstrapRootVerification);
-        }
-    }
-    Ok(())
-}
-
-fn require_matching_directory_mode(source: &Path, destination: &Path) -> Result<(), HelperFailure> {
-    let source =
-        fs::symlink_metadata(source).map_err(|_| HelperFailure::BootstrapRootVerification)?;
-    let destination =
-        fs::symlink_metadata(destination).map_err(|_| HelperFailure::BootstrapRootVerification)?;
-    if source.is_dir()
-        && destination.is_dir()
-        && source.mode() & 0o777 == destination.mode() & 0o777
-    {
-        Ok(())
-    } else {
-        Err(HelperFailure::BootstrapRootVerification)
-    }
-}
-
 pub(super) fn copy_file(source: &File, destination: &Path, mode: u32) -> Result<(), HelperFailure> {
     let mut source = source
         .try_clone()
@@ -163,24 +100,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn merge_rejects_non_regular_entries_and_is_deterministic() {
+    fn hash_rejects_non_regular_entries_and_is_deterministic() {
         let temporary = tempfile::tempdir().expect("temporary directory");
         let source = temporary.path().join("source");
         let target = temporary.path().join("target");
         fs::create_dir(&source).expect("source");
         fs::create_dir(&target).expect("target");
         fs::write(source.join("file"), b"value").expect("file");
-        merge_tree(&source, &target).expect("merge");
+        copy_file(
+            &File::open(source.join("file")).expect("source file"),
+            &target.join("file"),
+            0o644,
+        )
+        .expect("copy");
         let first = hash_tree(&target).expect("first digest");
         let second = hash_tree(&target).expect("second digest");
         assert_eq!(first, second);
         let linked_source = temporary.path().join("linked-source");
-        let linked_target = temporary.path().join("linked-target");
         fs::create_dir(&linked_source).expect("linked source");
-        fs::create_dir(&linked_target).expect("linked target");
         std::os::unix::fs::symlink("missing", linked_source.join("link")).expect("link");
         assert_eq!(
-            merge_tree(&linked_source, &linked_target),
+            hash_tree(&linked_source),
             Err(HelperFailure::BootstrapRootVerification)
         );
     }

@@ -19,7 +19,9 @@ use crate::{VerifiedCandidateBatch, VerifiedCandidateBatchError};
 
 mod authority;
 mod resource;
+mod scope;
 mod validation;
+pub(crate) use scope::CandidateBatchSetScope;
 
 use authority::{CandidateBatchSetAuthority, RetainedCandidateBatch, erase_core};
 use resource::CandidateBatchSetResourceMode;

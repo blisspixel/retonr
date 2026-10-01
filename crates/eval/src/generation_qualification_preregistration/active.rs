@@ -26,8 +26,15 @@ mod attempt_ledger;
 mod candidate;
 mod candidate_closeout;
 mod candidate_settlement;
+mod deterministic;
 mod interruption;
 mod judge;
+mod judge_settlement;
+pub use judge_settlement::ActiveGenerationQualificationJudgeSettlementError;
+mod receipt_set;
+pub use deterministic::ActiveGenerationQualificationDeterministicSettlementError;
+
+pub use receipt_set::ActiveGenerationQualificationReceiptSetError;
 
 pub use attempt_ledger::{
     ActiveGenerationQualificationAttemptLedgerClosure,
@@ -149,6 +156,8 @@ pub struct ActiveGenerationQualificationOperation<'records, 'store, 'platform, '
     attempt_ledger: Option<ActiveGenerationQualificationAttemptLedgerClosure>,
     operation_interruption: Option<ActiveGenerationQualificationOperationInterruption>,
     next_judge_repetition: usize,
+    next_judge_settlement: usize,
+    executed_judge_joins: Vec<rewrite_model::CandidateJudgeJoinId>,
     terminal: bool,
 }
 
@@ -193,6 +202,8 @@ impl<'records, 'store, 'platform, 'proof, 'lease>
             attempt_ledger: None,
             operation_interruption: None,
             next_judge_repetition: 0,
+            next_judge_settlement: 0,
+            executed_judge_joins: Vec::new(),
             terminal: false,
         })
     }

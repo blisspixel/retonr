@@ -21,7 +21,7 @@ pub const MAX_RUNTIME_ADMISSION_EVIDENCE_DESTINATION_ENTRIES: usize = 262_144;
 /// Hard ceiling for direct entries while reserving a staging root.
 pub const MAX_RUNTIME_ADMISSION_EVIDENCE_STAGING_ROOTS: usize = 1_024;
 
-/// Caller-owned ceilings for future publication and reacquisition.
+/// Caller-owned ceilings for inert publication and reacquisition.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RuntimeAdmissionEvidenceBundleLimits {
     /// Maximum files plus directories in the durable closure.
@@ -75,7 +75,7 @@ impl RuntimeAdmissionEvidenceBundleLimits {
     }
 }
 
-/// Caller-selected absent path for future no-replace evidence publication.
+/// Caller-selected absent path for no-replace inert evidence publication.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RuntimeAdmissionEvidenceBundleDestination {
     pub(super) path: PathBuf,
@@ -86,8 +86,8 @@ pub struct RuntimeAdmissionEvidenceBundleDestination {
 impl RuntimeAdmissionEvidenceBundleDestination {
     /// Forms one absolute, portable final selection without creating it.
     ///
-    /// A future publisher must require the parent to exist and the final entry
-    /// to remain absent through a no-replace commit.
+    /// The publisher requires the parent to exist and the final entry to remain
+    /// absent through a no-replace commit.
     ///
     /// # Errors
     ///

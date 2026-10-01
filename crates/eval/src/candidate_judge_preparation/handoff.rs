@@ -21,6 +21,7 @@ use crate::{LocalJudgeRubric, VerifiedCandidateBatchSet};
 mod error;
 mod join;
 mod resource;
+mod settlement;
 mod traffic;
 mod triage;
 

@@ -69,6 +69,8 @@ jobs:
           printf 'Hello world\n' > smoke-source.txt
           printf 'Hello, world!\n' > smoke-candidate.txt
           "$binary" check smoke-source.txt smoke-candidate.txt --format text
+          "$binary" tui --help > /dev/null
+          "$binary" tui smoke-source.txt --candidate smoke-candidate.txt --plain --format text
 
       - name: Stage the archive
         id: stage

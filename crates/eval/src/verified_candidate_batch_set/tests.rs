@@ -17,7 +17,7 @@ use super::{
 pub(crate) mod support;
 
 #[path = "tests/active_subject.rs"]
-mod active_subject;
+pub(crate) mod active_subject;
 
 use support::{OfflineBatchError, scenario};
 

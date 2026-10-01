@@ -63,6 +63,13 @@ pub(crate) struct Fixture {
 }
 
 pub(crate) struct RuntimeFixture {
+    #[cfg_attr(
+        not(feature = "test-support"),
+        expect(
+            dead_code,
+            reason = "Used by the cross-crate synthetic fixture with test-support"
+        )
+    )]
     pub(crate) runtime_set: ArtifactSetManifest,
     pub(crate) runtime_manifest: RuntimePackageManifest,
     pub(crate) runtime_package: RuntimePackageLease,

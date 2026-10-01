@@ -209,6 +209,21 @@ pub fn compile_candidate_deterministic_evaluation(
     material: &VerifiedGenerationCaseMaterial<'_>,
     cancellation: &CancellationToken,
 ) -> Result<CandidateDeterministicEvaluationRecordV1, CandidateDeterministicCompilerError> {
+    compile_candidate_deterministic_evidence(candidate_a, candidate_b, material, cancellation)
+        .map(|evidence| evidence.record)
+}
+
+pub(crate) struct CompiledCandidateDeterministicEvidence {
+    pub(crate) record: CandidateDeterministicEvaluationRecordV1,
+    pub(crate) reports: CandidateDeterministicReportRelationshipV1,
+}
+
+pub(crate) fn compile_candidate_deterministic_evidence(
+    candidate_a: &VerifiedCandidateBatchSet,
+    candidate_b: &VerifiedCandidateBatchSet,
+    material: &VerifiedGenerationCaseMaterial<'_>,
+    cancellation: &CancellationToken,
+) -> Result<CompiledCandidateDeterministicEvidence, CandidateDeterministicCompilerError> {
     revalidate_all(candidate_a, candidate_b, material, cancellation)?;
     let primary =
         compile_after_initial_validation(candidate_a, candidate_b, material, cancellation);
@@ -235,7 +250,7 @@ fn compile_after_initial_validation(
     candidate_b: &VerifiedCandidateBatchSet,
     material: &VerifiedGenerationCaseMaterial<'_>,
     cancellation: &CancellationToken,
-) -> Result<CandidateDeterministicEvaluationRecordV1, CandidateDeterministicCompilerError> {
+) -> Result<CompiledCandidateDeterministicEvidence, CandidateDeterministicCompilerError> {
     ensure_active(cancellation)?;
     if deterministic::policy_digest() != candidate_deterministic_policy_digest() {
         return Err(relationship_error(
@@ -340,7 +355,7 @@ fn compile_after_initial_validation(
         ));
     }
     ensure_active(cancellation)?;
-    Ok(record)
+    Ok(CompiledCandidateDeterministicEvidence { record, reports })
 }
 
 fn revalidate_all(

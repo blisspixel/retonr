@@ -63,7 +63,8 @@ human-review controls.
 - Ask only the few document-specific questions that can materially improve the
   rewrite or prevent a wrong editorial assumption.
 - Return my original when a safe rewrite cannot be established.
-- Reuse one profile from the CLI, desktop app, scripts, editors, and local agents.
+- Reuse one profile from the CLI, terminal UI, native desktop app, scripts, editors,
+  and local agents.
 - Talk through my preferences locally when typing an interview is inconvenient.
 
 ## Positioning
@@ -228,6 +229,7 @@ block 1.0. Excluded rows stay post-1.0 or out of scope.
 | Capability | 1.0 disposition |
 | --- | --- |
 | Scriptable CLI on Windows, macOS, and Linux | Required |
+| Interactive terminal UI on Windows, macOS, and Linux | Required |
 | Accessible native desktop without a browser frontend | Required |
 | UTF-8 plain text rewriting | Required |
 | Declared Markdown subset via source splicing | Required |

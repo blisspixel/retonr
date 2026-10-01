@@ -11,6 +11,16 @@ use crate::model::ModelOutput;
 pub(crate) mod directory;
 mod report;
 
+/// Applies the shared carrier and sidecar policy to already retained input bytes.
+pub(crate) fn requires_derivative_decision(
+    source: &Path,
+    bytes: &[u8],
+    command: CommandName,
+) -> Result<bool, RunFailure> {
+    report::inventory_report(source, command, bytes)
+        .map(|(report, _)| report.derivative() == "explicit_decision_required")
+}
+
 /// Inventories one source file, standard input, or directory.
 pub(crate) fn run(
     source: &Path,

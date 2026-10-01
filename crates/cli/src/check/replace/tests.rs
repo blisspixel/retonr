@@ -251,8 +251,14 @@ fn verified_install_rejects_source_drift_before_replacement() {
     fs::write(&source, b"changed\n").expect("write changed source");
     fs::write(&staging, b"accepted\n").expect("write staging");
 
-    let failure = install_verified(&source, &staging, b"original\n", CommandName::Rewrite)
-        .expect_err("source drift must stop replacement");
+    let failure = install_verified(
+        &source,
+        &staging,
+        b"original\n",
+        b"accepted\n",
+        CommandName::Rewrite,
+    )
+    .expect_err("source drift must stop replacement");
 
     assert_eq!(
         failure.body,
@@ -274,5 +280,59 @@ fn sibling_names_stay_in_the_source_directory() {
     assert_eq!(
         backup.file_name().and_then(|name| name.to_str()),
         Some("draft.txt.retonr-backup")
+    );
+}
+
+#[test]
+fn verified_install_refuses_changed_staging_before_source_replacement() {
+    let root = tempdir().expect("root");
+    let source = root.path().join("draft.txt");
+    let staging = root.path().join("draft.txt.retonr-staging");
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../fixtures/cli/retained-input.json"
+    ))
+    .expect("retained-input fixture");
+    let original = fixture["original"].as_str().expect("original").as_bytes();
+    let accepted = fixture["candidate"].as_str().expect("candidate").as_bytes();
+    fs::write(&source, original).expect("source");
+    fs::write(&staging, fixture["changed"].as_str().expect("changed")).expect("changed staging");
+    let failure = install_verified(&source, &staging, original, accepted, CommandName::Check)
+        .expect_err("staging drift");
+    assert_eq!(
+        failure.body,
+        crate::contract::ErrorBody::new(
+            crate::contract::ErrorCategory::Operational,
+            crate::contract::ErrorCode::ConcurrentModification,
+            true
+        )
+    );
+    assert_eq!(fs::read(&source).expect("source unchanged"), original);
+}
+
+#[cfg(unix)]
+#[test]
+fn verified_install_refuses_same_byte_symlink_staging_before_source_replacement() {
+    use std::os::unix::fs::symlink;
+    let root = tempdir().expect("root");
+    let source = root.path().join("draft.txt");
+    let staging = root.path().join("draft.txt.retonr-staging");
+    let target = root.path().join("other.txt");
+    fs::write(&source, b"original\n").expect("source");
+    fs::write(&target, b"accepted\n").expect("accepted target");
+    symlink(&target, &staging).expect("substituted staging");
+    install_verified(
+        &source,
+        &staging,
+        b"original\n",
+        b"accepted\n",
+        CommandName::Check,
+    )
+    .expect_err("indirect staging");
+    assert_eq!(fs::read(&source).expect("source unchanged"), b"original\n");
+    assert!(
+        fs::symlink_metadata(&staging)
+            .expect("staging retained")
+            .file_type()
+            .is_symlink()
     );
 }

@@ -74,6 +74,9 @@ impl RunFailure {
     }
 
     pub fn input_read(command: CommandName, error: &io::Error) -> Self {
+        if crate::file_input::is_changed(error) {
+            return Self::concurrent_modification(command);
+        }
         if error.kind() == io::ErrorKind::InvalidInput {
             return Self {
                 command,

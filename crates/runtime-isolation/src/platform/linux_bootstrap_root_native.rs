@@ -48,10 +48,11 @@ struct HostIdentity {
 }
 
 mod linker_name;
+mod toolchain;
 mod tree;
 
 use linker_name::{install_linker_names, validate_libc_linker_name, validate_libgcc_linker_name};
-use tree::{copy_file, hash_file, hash_tree, merge_tree};
+use tree::{copy_file, hash_file, hash_tree};
 
 pub(super) fn execute(
     preparation: &mut RootPreparation,
@@ -244,7 +245,7 @@ fn assemble_toolchain(busybox: &File) -> Result<(), HelperFailure> {
             LinkPolicy::Reject,
             archive_limits(),
         )?;
-        merge_tree(
+        toolchain::install_component(
             &destination.join(component),
             &Path::new(ROOTFS).join("toolchain"),
         )?;

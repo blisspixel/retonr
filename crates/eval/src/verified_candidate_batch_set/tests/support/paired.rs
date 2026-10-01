@@ -22,6 +22,9 @@ use crate::VerifiedCandidateBatchSetInput;
 
 pub(super) fn selected_candidate_text(case_key: &str, suffix: &str, index: usize) -> String {
     match case_key {
+        "request-builder-case" if suffix.contains("qualification-closure-passing") => {
+            "Retain Acme 42 exactly!".to_owned()
+        }
         "eligible-rewrite" if suffix.contains("equal-selected") => {
             "Acme, 42 needs polish!".to_owned()
         }
@@ -293,6 +296,7 @@ fn paired_candidate(
                 Rc::clone(&log),
                 suffix,
                 operation_policy,
+                None,
             )
         })
         .collect();

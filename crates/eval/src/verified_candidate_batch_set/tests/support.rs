@@ -5,11 +5,10 @@ use std::{
 
 use rewrite_inference::GenerationCandidate;
 use rewrite_model::{
-    ArtifactId, ArtifactSetRelativePath, CandidateArtifactEntryV1,
-    CandidateGenerationAttemptPrecursorV1, CandidateGenerationAttemptPrecursorV1Input,
-    CandidateGenerationAttemptRecordV1, CandidateGenerationCleanupRecordV1,
-    CandidateGenerationCleanupRecordV1Input, CandidateGenerationEvidenceBundleEntryV1,
-    CandidateGenerationEvidenceBundleManifestV1,
+    ArtifactId, CandidateArtifactEntryV1, CandidateGenerationAttemptPrecursorV1,
+    CandidateGenerationAttemptPrecursorV1Input, CandidateGenerationAttemptRecordV1,
+    CandidateGenerationCleanupRecordV1, CandidateGenerationCleanupRecordV1Input,
+    CandidateGenerationEvidenceBundleEntryV1, CandidateGenerationEvidenceBundleManifestV1,
     CandidateGenerationEvidenceBundleManifestV1Relations,
     CandidateGenerationEvidenceBundleReadbackV1, CandidateGenerationEvidenceBundleRoleV1,
     CandidateGenerationPackageRevalidationStatusV1, CandidateGenerationProcessCleanupStatusV1,
@@ -48,15 +47,21 @@ pub(super) use paired::paired_scenario;
 
 #[path = "support/control.rs"]
 mod control;
-pub(crate) use control::OfflineBatchFailureControl;
+pub(crate) use control::{OfflineBatchError, OfflineBatchFailureControl};
 
 #[path = "support/portable.rs"]
 mod portable;
+use portable::path;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum OfflineBatchError {
-    ForcedRevalidation,
-}
+#[path = "support/portable_attempts.rs"]
+mod portable_attempts;
+
+#[path = "support/prepared.rs"]
+mod prepared;
+pub(crate) use prepared::{prepared_scenario, prepared_scenario_with_suffix};
+
+#[path = "support/publication.rs"]
+mod publication;
 
 /// Private non-authoritative adapter over exact portable records and copied candidates.
 pub(crate) struct OfflineBatch {
@@ -68,24 +73,7 @@ pub(crate) struct OfflineBatch {
     revalidation_calls: Rc<Cell<usize>>,
     fail_on_call: Rc<Cell<Option<usize>>>,
     log: Rc<RefCell<Vec<usize>>>,
-}
-
-impl OfflineBatch {
-    pub(super) fn fail_next_revalidation(&self) {
-        self.fail_on_call
-            .set(Some(self.revalidation_calls.get() + 1));
-    }
-
-    pub(super) fn remove_selected_candidate(&mut self) {
-        self.candidates.pop();
-    }
-
-    pub(super) fn failure_control(&self) -> OfflineBatchFailureControl {
-        OfflineBatchFailureControl::new(
-            Rc::clone(&self.revalidation_calls),
-            Rc::clone(&self.fail_on_call),
-        )
-    }
+    publication: publication::PortablePublication,
 }
 
 impl RetainedCandidateBatch for OfflineBatch {
@@ -200,6 +188,7 @@ pub(crate) fn scenario(suffix: &str) -> Scenario {
                 Rc::clone(&log),
                 suffix,
                 None,
+                None,
             )
         })
         .collect();
@@ -312,6 +301,7 @@ fn offline_batch(
     log: Rc<RefCell<Vec<usize>>>,
     suffix: &str,
     operation_policy: Option<&GenerationQualificationOperationPolicyV1>,
+    structured_request: Option<&StructuredCompletionRequestBindingId>,
 ) -> OfflineBatch {
     let precursor = CandidateGenerationAttemptPrecursorV1::new(
         plan,
@@ -320,10 +310,11 @@ fn offline_batch(
         CandidateGenerationAttemptPrecursorV1Input {
             runtime_installation_generation: 7 + index as u64,
             model_installation_generation: 11 + index as u64,
-            structured_request_binding_id:
+            structured_request_binding_id: structured_request.cloned().unwrap_or_else(|| {
                 StructuredCompletionRequestBindingId::from_derived_digest(digest(&format!(
                     "structured {suffix} {index}"
-                ))),
+                )))
+            }),
         },
     )
     .expect("precursor");
@@ -444,7 +435,15 @@ fn offline_batch(
             &receipt,
         )
     });
+    let publication = publication::PortablePublication {
+        precursor,
+        managed,
+        cleanup,
+        bundle,
+        readback,
+    };
     OfflineBatch {
+        publication,
         receipt,
         attempt_record,
         resource_result,
@@ -461,10 +460,6 @@ fn offline_batch(
         fail_on_call: Rc::new(Cell::new(None)),
         log,
     }
-}
-
-fn path(value: &str) -> ArtifactSetRelativePath {
-    ArtifactSetRelativePath::new(value).expect("fixture path")
 }
 
 fn bundle_entry<T: serde::Serialize>(

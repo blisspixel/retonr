@@ -57,6 +57,9 @@ impl<'store> ExactOfflineReceiptAuthority<'store> {
             judge_system: self.eval.judge_system(),
             response_aggregate: &self.response_aggregate,
             observation_batch: &self.observation_batch,
+            input: super::super::verified_candidate_judge_join::test_support::managed_input(
+                &self.eval,
+            ),
             record,
         });
         let final_validation = self

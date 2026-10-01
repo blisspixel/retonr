@@ -156,22 +156,15 @@ pub(crate) fn check_excessive_exclamation(
     quotes: &[Range<usize>],
     findings: &mut Vec<EditorialFinding>,
 ) {
-    let pattern = "!!!";
-    let mut offset = 0;
-    while let Some(pos) = text[offset..].find(pattern) {
-        let abs_pos = offset + pos;
-        if !is_inside_quotes(abs_pos, abs_pos + pattern.len(), quotes) {
-            add_finding(
-                findings,
-                text,
-                RuleCatalog::ExcessiveExclamation,
-                pattern,
-                abs_pos,
-                "Excessive exclamation punctuation",
-            );
-        }
-        offset = abs_pos + pattern.len();
-    }
+    repeated_findings(
+        text,
+        quotes,
+        findings,
+        RuleCatalog::ExcessiveExclamation,
+        "!!!",
+        1,
+        "Excessive exclamation punctuation",
+    );
 }
 
 pub(crate) fn check_excessive_dash_density(
@@ -179,28 +172,15 @@ pub(crate) fn check_excessive_dash_density(
     quotes: &[Range<usize>],
     findings: &mut Vec<EditorialFinding>,
 ) {
-    let dash = "\u{2014}";
-    let mut positions = Vec::new();
-    let mut offset = 0;
-    while let Some(pos) = text[offset..].find(dash) {
-        let abs_pos = offset + pos;
-        if !is_inside_quotes(abs_pos, abs_pos + dash.len(), quotes) {
-            positions.push(abs_pos);
-        }
-        offset = abs_pos + dash.len();
-    }
-    if positions.len() >= 3 {
-        for pos in positions {
-            add_finding(
-                findings,
-                text,
-                RuleCatalog::ExcessiveDashDensity,
-                dash,
-                pos,
-                "Excessive em-dash density",
-            );
-        }
-    }
+    repeated_findings(
+        text,
+        quotes,
+        findings,
+        RuleCatalog::ExcessiveDashDensity,
+        "\u{2014}",
+        3,
+        "Excessive em-dash density",
+    );
 }
 
 pub(crate) fn check_excessive_emoji_density(
@@ -208,26 +188,44 @@ pub(crate) fn check_excessive_emoji_density(
     quotes: &[Range<usize>],
     findings: &mut Vec<EditorialFinding>,
 ) {
-    let emoji = "\u{2705}";
-    let mut positions = Vec::new();
-    let mut offset = 0;
-    while let Some(pos) = text[offset..].find(emoji) {
-        let abs_pos = offset + pos;
-        if !is_inside_quotes(abs_pos, abs_pos + emoji.len(), quotes) {
-            positions.push(abs_pos);
+    repeated_findings(
+        text,
+        quotes,
+        findings,
+        RuleCatalog::ExcessiveEmojiDensity,
+        "\u{2705}",
+        3,
+        "Excessive emoji density",
+    );
+}
+
+fn repeated_findings(
+    text: &str,
+    quotes: &[Range<usize>],
+    findings: &mut Vec<EditorialFinding>,
+    rule: RuleCatalog,
+    evidence: &str,
+    minimum: usize,
+    message: &str,
+) {
+    let mut pending = Vec::with_capacity(minimum);
+    let mut eligible = 0;
+    for (occurrence, (start, _)) in text.match_indices(evidence).enumerate() {
+        if is_inside_quotes(start, start + evidence.len(), quotes) {
+            continue;
         }
-        offset = abs_pos + emoji.len();
-    }
-    if positions.len() >= 3 {
-        for pos in positions {
-            add_finding(
-                findings,
-                text,
-                RuleCatalog::ExcessiveEmojiDensity,
-                emoji,
-                pos,
-                "Excessive emoji density",
-            );
+        eligible += 1;
+        let finding = EditorialFinding::new(
+            rule.id(),
+            evidence,
+            u16::try_from(occurrence).unwrap_or(u16::MAX),
+            message,
+        );
+        if eligible < minimum {
+            pending.push(finding);
+        } else {
+            findings.append(&mut pending);
+            findings.push(finding);
         }
     }
 }

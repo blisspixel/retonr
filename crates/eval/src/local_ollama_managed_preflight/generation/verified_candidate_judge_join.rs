@@ -20,7 +20,11 @@ use crate::candidate_judge_preparation::{
 };
 use crate::{CandidateJudgeRunnerHandoff, HybridScorecardReport};
 
+mod settlement;
 mod validation;
+pub(crate) use settlement::JudgeSettlementView;
+#[cfg(test)]
+pub(crate) use settlement::synthetic_join;
 
 #[cfg(test)]
 use validation::validate_join_parts;

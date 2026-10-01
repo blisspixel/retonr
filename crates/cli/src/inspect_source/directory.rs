@@ -8,7 +8,7 @@ use std::{
 
 use serde::Serialize;
 
-use super::report::{InspectReport, inspect_file};
+use super::report::{InspectReport, inspect_direct_file_bounded};
 use crate::contract::{CommandName, EXIT_COMPATIBILITY, ErrorBody, ErrorCategory, ErrorCode};
 use crate::failure::RunFailure;
 use crate::model::ModelOutput;
@@ -16,6 +16,7 @@ use crate::render::escape_inline_for_display;
 
 const MAXIMUM_DIRECTORY_ENTRIES: usize = 4_096;
 const MAXIMUM_DIRECTORY_DEPTH: usize = 8;
+const MAXIMUM_DIRECTORY_BYTES: usize = 64 * 1024 * 1024;
 
 pub(crate) struct Discovery {
     pub documents: Vec<DiscoveredDocument>,
@@ -49,6 +50,7 @@ pub(super) fn inspect(
         recursion: if recursive { "bounded" } else { "none" },
         links: "not_followed",
         max_depth: recursive.then(|| MAXIMUM_DIRECTORY_DEPTH.to_string()),
+        maximum_total_bytes: MAXIMUM_DIRECTORY_BYTES.to_string(),
         document_count: documents.len().to_string(),
         skipped_count: skipped.len().to_string(),
         documents,
@@ -71,7 +73,29 @@ pub(crate) fn discover(
     recursive: bool,
     command: CommandName,
 ) -> Result<Discovery, RunFailure> {
-    let (mut documents, mut skipped) = walk(directory, recursive, command)?;
+    discover_cancellable(
+        directory,
+        recursive,
+        command,
+        &rewrite_types::CancellationToken::new(),
+    )
+}
+
+pub(crate) fn discover_cancellable(
+    directory: &Path,
+    recursive: bool,
+    command: CommandName,
+    cancellation: &rewrite_types::CancellationToken,
+) -> Result<Discovery, RunFailure> {
+    let (mut documents, mut skipped) = walk_cancellable(
+        directory,
+        recursive,
+        MAXIMUM_DIRECTORY_ENTRIES,
+        MAXIMUM_DIRECTORY_DEPTH,
+        MAXIMUM_DIRECTORY_BYTES,
+        command,
+        cancellation,
+    )?;
     documents.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     skipped.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(Discovery {
@@ -109,6 +133,26 @@ fn walk_bounded(
     max_depth: usize,
     command: CommandName,
 ) -> Result<(Vec<DirectoryDocument>, Vec<SkippedEntry>), RunFailure> {
+    walk_cancellable(
+        directory,
+        recursive,
+        max_entries,
+        max_depth,
+        MAXIMUM_DIRECTORY_BYTES,
+        command,
+        &rewrite_types::CancellationToken::new(),
+    )
+}
+
+fn walk_cancellable(
+    directory: &Path,
+    recursive: bool,
+    max_entries: usize,
+    max_depth: usize,
+    maximum_bytes: usize,
+    command: CommandName,
+    cancellation: &rewrite_types::CancellationToken,
+) -> Result<(Vec<DirectoryDocument>, Vec<SkippedEntry>), RunFailure> {
     let mut pending = vec![Frame {
         path: directory.to_path_buf(),
         relative: String::new(),
@@ -117,19 +161,46 @@ fn walk_bounded(
     let mut documents = Vec::new();
     let mut skipped = Vec::new();
     let mut seen = 0_usize;
+    let mut inspected_bytes = 0_usize;
     while let Some(frame) = pending.pop() {
-        let mut entries = read_sorted_entries(&frame.path, command)?;
+        if cancellation.is_cancelled() {
+            return Err(RunFailure::cancelled(command));
+        }
+        let mut entries = read_sorted_entries(
+            &frame.path,
+            max_entries.saturating_sub(seen),
+            command,
+            cancellation,
+        )?;
         seen = seen.saturating_add(entries.len());
         if seen > max_entries {
             return Err(directory_limit(command));
         }
         for entry in entries.drain(..) {
+            if cancellation.is_cancelled() {
+                return Err(RunFailure::cancelled(command));
+            }
             match classify_entry(&entry, &frame.relative) {
                 Class::Document {
                     relative_path,
                     path,
                 } => {
-                    let report = inspect_file(&path, command)?;
+                    let remaining_bytes = maximum_bytes.saturating_sub(inspected_bytes);
+                    let metadata = fs::symlink_metadata(&path)
+                        .map_err(|error| RunFailure::input_read(command, &error))?;
+                    if metadata.len() > remaining_bytes as u64 {
+                        return Err(directory_limit(command));
+                    }
+                    let (report, byte_count) = inspect_direct_file_bounded(
+                        directory,
+                        &path,
+                        command,
+                        remaining_bytes.min(rewrite_app::MAX_CANDIDATE_CHECK_BYTES),
+                    )?;
+                    inspected_bytes = inspected_bytes
+                        .checked_add(byte_count)
+                        .filter(|total| *total <= maximum_bytes)
+                        .ok_or_else(|| directory_limit(command))?;
                     documents.push(DirectoryDocument {
                         relative_path,
                         report,
@@ -167,12 +238,20 @@ fn walk_bounded(
 
 fn read_sorted_entries(
     directory: &Path,
+    maximum_entries: usize,
     command: CommandName,
+    cancellation: &rewrite_types::CancellationToken,
 ) -> Result<Vec<DirEntry>, RunFailure> {
     let mut entries = Vec::new();
     let reader =
         fs::read_dir(directory).map_err(|error| RunFailure::input_read(command, &error))?;
     for entry in reader {
+        if cancellation.is_cancelled() {
+            return Err(RunFailure::cancelled(command));
+        }
+        if entries.len() == maximum_entries {
+            return Err(directory_limit(command));
+        }
         entries.push(entry.map_err(|error| RunFailure::input_read(command, &error))?);
     }
     entries.sort_by_key(DirEntry::file_name);
@@ -266,7 +345,7 @@ fn directory_limit(command: CommandName) -> RunFailure {
             false,
         ),
         exit_code: ExitCode::from(EXIT_COMPATIBILITY),
-        message: "directory exceeds the supported entry limit",
+        message: "directory exceeds the supported resource limits",
     }
 }
 
@@ -309,6 +388,7 @@ struct DirectoryReport {
     links: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_depth: Option<String>,
+    maximum_total_bytes: String,
     document_count: String,
     skipped_count: String,
     documents: Vec<DirectoryDocument>,
@@ -327,6 +407,7 @@ impl DirectoryReport {
             lines.push(format!("max_depth: {max_depth}"));
         }
         lines.push(format!("documents: {}", self.document_count));
+        lines.push(format!("maximum_total_bytes: {}", self.maximum_total_bytes));
         lines.push(format!("skipped: {}", self.skipped_count));
         lines.push(format!("derivative: {}", self.derivative));
         for document in &self.documents {
@@ -352,124 +433,4 @@ impl DirectoryReport {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs;
-    use tempfile::tempdir;
-
-    #[test]
-    fn recursive_walk_lists_nested_files_and_skips_ignored_names() {
-        let root = tempdir().expect("temporary directory");
-        let path = root.path();
-        fs::write(path.join("a.txt"), "alpha\n").expect("write a");
-        fs::create_dir(path.join("nested")).expect("create nested");
-        fs::write(path.join("nested").join("inner.txt"), "inner\n").expect("write nested");
-        fs::create_dir(path.join("nested").join(".cache")).expect("create hidden");
-        fs::write(path.join("nested").join(".cache").join("x.txt"), "x\n").expect("write hidden");
-        fs::create_dir(path.join("node_modules")).expect("create node_modules");
-        fs::write(path.join("node_modules").join("pkg.js"), "pkg\n").expect("write ignored");
-
-        let (documents, skipped) = walk_bounded(
-            path,
-            true,
-            MAXIMUM_DIRECTORY_ENTRIES,
-            MAXIMUM_DIRECTORY_DEPTH,
-            CommandName::Inspect,
-        )
-        .expect("walk");
-        let document_paths: Vec<&str> = documents
-            .iter()
-            .map(|document| document.relative_path.as_str())
-            .collect();
-        assert_eq!(document_paths, vec!["a.txt", "nested/inner.txt"]);
-        assert!(skipped.iter().any(
-            |entry| entry.relative_path.as_deref() == Some("node_modules")
-                && entry.reason == "ignored"
-        ));
-        assert!(skipped.iter().any(|entry| entry.relative_path.as_deref()
-            == Some("nested/.cache")
-            && entry.reason == "hidden"));
-        assert!(!document_paths.iter().any(|name| name.contains("pkg.js")));
-        assert!(!document_paths.iter().any(|name| name.contains('\\')));
-    }
-
-    #[test]
-    fn recursive_walk_skips_directories_past_the_depth_limit() {
-        let root = tempdir().expect("temporary directory");
-        let path = root.path();
-        let nested = path.join("d1").join("d2");
-        fs::create_dir_all(&nested).expect("create nested");
-        fs::write(nested.join("leaf.txt"), "leaf\n").expect("write leaf");
-
-        let (documents, skipped) = walk_bounded(
-            path,
-            true,
-            MAXIMUM_DIRECTORY_ENTRIES,
-            1,
-            CommandName::Inspect,
-        )
-        .expect("walk");
-        assert!(documents.is_empty());
-        assert!(
-            skipped
-                .iter()
-                .any(|entry| entry.relative_path.as_deref() == Some("d1/d2")
-                    && entry.reason == "depth_limit")
-        );
-    }
-
-    #[test]
-    fn recursive_walk_refuses_when_the_entry_limit_is_exceeded() {
-        let root = tempdir().expect("temporary directory");
-        let path = root.path();
-        fs::write(path.join("a.txt"), "a\n").expect("write a");
-        fs::write(path.join("b.txt"), "b\n").expect("write b");
-        fs::write(path.join("c.txt"), "c\n").expect("write c");
-
-        let Err(failure) =
-            walk_bounded(path, true, 2, MAXIMUM_DIRECTORY_DEPTH, CommandName::Inspect)
-        else {
-            panic!("entry limit should refuse");
-        };
-        assert_eq!(failure.exit_code, ExitCode::from(EXIT_COMPATIBILITY));
-        assert!(failure.message.contains("entry limit"));
-    }
-
-    #[test]
-    fn non_recursive_walk_skips_child_directories() {
-        let root = tempdir().expect("temporary directory");
-        let path = root.path();
-        fs::write(path.join("a.txt"), "a\n").expect("write a");
-        fs::create_dir(path.join("nested")).expect("create nested");
-        fs::write(path.join("nested").join("inner.txt"), "inner\n").expect("write nested");
-
-        let (documents, skipped) = walk_bounded(
-            path,
-            false,
-            MAXIMUM_DIRECTORY_ENTRIES,
-            MAXIMUM_DIRECTORY_DEPTH,
-            CommandName::Inspect,
-        )
-        .expect("walk");
-        assert_eq!(documents.len(), 1);
-        assert_eq!(documents[0].relative_path, "a.txt");
-        assert!(
-            skipped
-                .iter()
-                .any(|entry| entry.relative_path.as_deref() == Some("nested")
-                    && entry.reason == "directory")
-        );
-    }
-
-    #[test]
-    fn portable_relative_paths_reject_separators_and_join_with_slash() {
-        assert!(!portable_component("a/b"));
-        assert!(!portable_component("a\\b"));
-        assert!(!portable_component(""));
-        assert_eq!(join_relative("", "a.txt"), "a.txt");
-        assert_eq!(join_relative("nested", "inner.txt"), "nested/inner.txt");
-        assert!(is_ignored("TARGET"));
-        assert!(is_ignored("Node_Modules"));
-        assert!(!is_ignored("src"));
-    }
-}
+mod tests;

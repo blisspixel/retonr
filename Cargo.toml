@@ -38,6 +38,7 @@ clap_complete = "4.6.9"
 clap_mangen = "0.2.33"
 close_fds = "0.3.2"
 ctrlc = "3.5.2"
+crossterm = { version = "=0.29.0", default-features = false, features = ["events", "windows"] }
 futures-util = "0.3.34"
 flate2 = { version = "=1.1.9", default-features = false, features = ["rust_backend"] }
 fs_at = "0.2.1"
@@ -49,6 +50,7 @@ landlock = "0.4.7"
 libc = "0.2.189"
 predicates = "3.1.4"
 proptest = "1.9.0"
+ratatui = { version = "=0.30.2", default-features = false, features = ["crossterm"] }
 regex = "1.11.2"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "stream"] }
 ring = "=0.17.14"

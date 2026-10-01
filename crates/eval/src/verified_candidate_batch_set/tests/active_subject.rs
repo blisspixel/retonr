@@ -16,6 +16,25 @@ struct BoundBatch {
     binding: ActiveGenerationQualificationBinding,
 }
 
+/// Private synthetic adapter, never issued through a shipping authority constructor.
+pub(crate) fn bound_synthetic_set(
+    fixture: super::support::Scenario,
+    subject: &ActiveGenerationQualificationSubject,
+) -> crate::VerifiedCandidateBatchSet {
+    let batches = fixture
+        .batches
+        .into_iter()
+        .map(|inner| BoundBatch {
+            inner,
+            binding: subject.binding(),
+        })
+        .collect();
+    let core =
+        VerifiedCandidateBatchSetCore::verify(fixture.input, batches, &CancellationToken::new())
+            .expect("synthetic exact bound batch set");
+    super::super::erase_core(core, super::map_offline_error)
+}
+
 impl RetainedCandidateBatch for BoundBatch {
     type Error = OfflineBatchError;
 

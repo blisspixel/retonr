@@ -54,7 +54,7 @@ to jump the runtime-package and managed-execution work.
 flowchart LR
     Writing["Authorized writing"] --> Profiles["Profile compilation and evidence store"]
     Preferences["Declared preferences"] --> Profiles
-    User["User or integration"] --> Interfaces["CLI, desktop, API, or MCP"]
+    User["User or integration"] --> Interfaces["CLI, TUI, native desktop, API, or MCP"]
     Interfaces --> Service["Application service"]
     Profiles --> Service
     Runtime["Qualified local model runtime"] --> Service
@@ -63,7 +63,7 @@ flowchart LR
     Adapters --> Result["Output and rewrite record"]
 ```
 
-Every entry point calls the same application service. CLI, desktop, HTTP, MCP, and
+Every entry point calls the same application service. CLI, TUI, native desktop, HTTP, MCP, and
 agent skill packages do not reimplement profile, rewrite, validation, or persistence
 logic.
 
@@ -75,11 +75,13 @@ Dependencies point inward toward domain types and policies.
 flowchart TD
     subgraph Entry["Entry points"]
         CLI["retonr-cli"]
+        TUI["rewrite-tui"]
         API["rewrite-api"]
         MCP["rewrite-mcp"]
         Desktop["rewrite-desktop"]
     end
     CLI --> App["rewrite-app"]
+    TUI --> App
     API --> App
     MCP --> App
     Desktop --> App

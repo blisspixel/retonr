@@ -219,7 +219,11 @@ impl ActiveGenerationQualificationOperation<'_, '_, '_, '_, '_> {
             .is_err();
         let result = combine_judge_finalization(primary, finalization_failed);
         match &result {
-            Ok(_) => self.next_judge_repetition += 1,
+            Ok(join) => {
+                self.executed_judge_joins
+                    .push(join.record().candidate_judge_join_id().clone());
+                self.next_judge_repetition += 1;
+            }
             Err(
                 ActiveGenerationQualificationJudgeRunError::CandidateSequenceIncomplete
                 | ActiveGenerationQualificationJudgeRunError::AttemptLedgerIncomplete

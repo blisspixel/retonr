@@ -12,6 +12,11 @@ the verification evidence.
 
 ## Approaching 1.0
 
+Use the roadmap's [product delivery checkpoints](../roadmap.md#product-delivery-checkpoints)
+to judge user-visible progress: a real Linux plain-text rewrite, a polished CLI
+beta, a complete product beta, and production release qualification. The versioned
+plans below supply engineering dependencies and evidence for those outcomes.
+
 Version 1.0 is the first frozen contract, not the first useful build. The path is
 the versioned roadmap: finish 0.2, then 0.3 through 0.9, then 1.0. Work may run
 ahead when it is reversible, $0, and does not create unmigratable state or a
@@ -22,6 +27,15 @@ model acquisition. Valid evidence is local: fixtures, fake backends, process
 tests, repository policy, and already-installed artifacts.
 
 The current 0.2 build queue, in dependency order, is:
+
+The completed [evidence closure and CLI batch](0.2-evidence-and-cli-batch.md) records
+the first local integration results. The
+[durable evaluation and folder checks batch](0.2-durable-evaluation-and-folder-checks.md)
+extends that work under the same $20 development-round ceiling, with $0 spent.
+The [judge settlement and runtime observations batch](0.2-judge-settlement-and-runtime-observations.md)
+advances the same first product checkpoint without changing the 1.0 scope.
+The [terminal workbench and admission review batch](0.2-terminal-workbench-and-admission-review.md)
+adds experimental presentation and the inert review composition seam.
 
 The active trust-boundary slice is the
 [0.2 runtime admission work package](0.2-runtime-admission.md). It replaces the
@@ -127,23 +141,18 @@ and live-use authority in distinct domains.
    completed or failed candidate execution around app-root-bound publication and fresh
    reacquisition. Bounded read-only activation reconciliation now runs before
    Prepared activation and allows only an entirely pristine plan. It does not retry,
-   repair, promote, delete, or fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
+   repair, promote, delete, or fabricate evidence. An in-memory planner now derives
+   that receipt and binds a phase interruption only
    when interruption facts are supplied for a noncompleted receipt. It does not
    persist, construct a qualification record, or acquire live
-   authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
-   the interruption, operation receipt, phase manifest, and attempt-ledger tables.
-   The cohort writer stores those rows in one transaction and grants no live authority.
-   Schema 12 adds seven judge-execution tables for plans, schedules, request
-   aggregates, response aggregates, observation batches, managed local judge receipts,
-   and candidate judge joins. The store writes that seven-row cohort in one immediate
-   transaction. The cohort grants no qualification, activation, or live-use authority.
+   authority. Read-only attempt-ledger rederive rebuilds the target manifest from
+   schema-10 rows and does not write. Schemas 11 through 19 retain the terminal,
+   judge, phase, receipt-set,
+   deterministic, repeatability, qualification, invalidation, and selection
+   contracts in the [durable evidence schema history](../current-state.md#durable-evidence-schema-history).
+   Their immediate-transaction writers grant no qualification, activation,
+   or live-use authority.
    Schema 11 repeatability results remain limited to candidate-generation failure.
-   Schema 13 adds three inert tables for resource-attempt results, resource-policy
-   denials, and human-adjudication-policy denials. The store writes one
-   resource-policy denial or one human-adjudication-policy denial in its own
-   immediate transaction. The store writes one resource-attempt result in its own immediate transaction. Schema 14 adds one inert candidate-generation receipt-set table. The store writes one receipt set in its own immediate transaction. A stored receipt set grants no qualification, activation, or live-use authority. Schema 15 adds one inert candidate-deterministic-evaluation table. The store writes one deterministic evaluation in its own immediate transaction. A stored deterministic evaluation grants no qualification, activation, or live-use authority. Schema 16 adds one inert repeatability terminal-result table. The store writes one repeatability result in its own immediate transaction. A stored repeatability result grants no qualification, activation, or live-use authority. Schema 17 adds one inert generation-qualification record table. The store writes one qualification record in its own immediate transaction. A stored qualification record grants no qualification, activation, or live-use authority. Schema 18 adds one inert generation-qualification invalidation table. The store writes one invalidation in its own immediate transaction. A stored invalidation grants no qualification, activation, or live-use authority. Schema 19 adds one inert generation-qualification selection table. The store writes one selection in its own immediate transaction. A stored selection grants no qualification, activation, or live-use authority.
-   A stored result or denial grants no qualification, activation, or live-use authority. Schema 11
-   repeatability results remain limited to candidate-generation failure.
    The crate-private strict candidate and judge routes now carry one
    supplied absolute deadline through every traffic and finalization boundary.
    Preserve the consuming Active operation owner that connects Prepared's retained
@@ -176,7 +185,7 @@ slice.
 | [0.2 grounded engine and CLI](0.2-grounded-cli.md) | Qualify one local generation path through the common validation cascade and complete the plain-text CLI |
 | [0.2 runtime admission work package](0.2-runtime-admission.md) | Produce and admit one controlled source-built Linux runtime root before effective-state work |
 | [0.2 generation qualification work package](0.2-generation-qualification.md) | Bind exact generated candidates to deterministic and judge evidence, then qualify and activate one exact managed tuple |
-| [0.3 profile and CLI alpha](0.3-profile-cli.md) | Build an inspectable, reversible style profile and prove it beats simpler baselines |
+| [0.3 profile and terminal workbench](0.3-profile-cli.md) | Prove reversible profiles against simpler baselines and add an interactive terminal workbench over shared application operations |
 | [0.4 Markdown](0.4-markdown.md) | Add a deliberately bounded source-splice Markdown adapter |
 | [0.5 calibration and runtime breadth](0.5-calibration.md) | Calibrate semantic risk, add strategies safely, qualify a second runtime path, and keep language and partial atomicity evidence-gated |
 | [0.6 agent tool, MCP, and Agent Plugins](0.6-integrations.md) | Package the stable CLI and application service for portable local agent use |

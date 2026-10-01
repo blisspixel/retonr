@@ -40,12 +40,14 @@ use crate::{
 };
 
 mod discovery;
+mod observed_records;
 mod operation;
 mod probe;
 mod records;
 mod validation;
 mod verify;
 
+pub use observed_records::RuntimeAdmissionObservedFinalOperation;
 pub use operation::{
     RuntimeAdmissionFinalOperation, RuntimeAdmissionFinalOperationRequest,
     RuntimeAdmissionNativeClosureDiscovery, RuntimeAdmissionNativeClosureDiscoveryRequest,
@@ -437,6 +439,14 @@ pub enum RuntimeAdmissionRunnerError {
         operation: Box<RuntimeAdmissionRunnerError>,
         /// The independent cleanup failure.
         cleanup: IsolationError,
+    },
+    /// Operation or cleanup failed and mandatory package finalization also failed.
+    #[error("runtime admission operation and package finalization both failed")]
+    FinalizationAfterFailure {
+        /// The independent operation or cleanup failure.
+        operation: Box<RuntimeAdmissionRunnerError>,
+        /// The independent package finalization failure.
+        finalization: Box<RuntimeAdmissionRunnerError>,
     },
     /// The exact one-request Ollama runtime probe failed.
     #[error("runtime admission Ollama runtime probe failed: {0}")]

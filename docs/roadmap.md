@@ -25,7 +25,7 @@ evidence.
 ```mermaid
 flowchart LR
     V01["0.1 deterministic core"] --> V02["0.2 excellent plain-text CLI"]
-    V02 --> V03["0.3 inspectable personal profiles"]
+    V02 --> V03["0.3 profiles and terminal UI"]
     V03 --> V04["0.4 bounded Markdown"]
     V04 --> V05["0.5 calibrated quality and runtime breadth"]
     V05 --> V06["0.6 agent tool and portable plugins"]
@@ -45,6 +45,35 @@ This order encodes five deliberate choices:
 5. The native desktop application consumes proven contracts and contains no second
    implementation of the product.
 
+## Product delivery checkpoints
+
+Track progress by demonstrated user outcomes alongside the versioned engineering
+milestones. An implemented contract, passing fixture, or durable evidence record
+does not complete a checkpoint without the named end-to-end evidence. The
+[product capability table](product.md#10-product-boundary) remains the single 1.0
+scope definition; these checkpoints do not remove required capabilities.
+
+| Checkpoint | User outcome and completion evidence | Current position |
+| --- | --- | --- |
+| Working Linux plain-text rewrite | From a clean local installation, explicitly import the exact runtime and model, qualify the combination, rewrite a real UTF-8 document through the CLI, preserve its protected content, show the change report, and repeat offline; retain actual runtime, quality, cancellation, failure, and resource evidence | Open: deterministic CLI operations work, but no runtime and model combination is qualified and the CLI does not generate |
+| Polished CLI beta | The same generation workflow handles files and folders with explicit budgets, progress, cancellation, safe output, actionable diagnostics, recovery, and documented setup; supported CLI platforms pass equivalent acceptance fixtures | Open: useful model-free file and folder checks exist; generation, setup, and cross-platform workflow qualification remain |
+| Complete product beta | Terminal UI, profiles and typed interviews, declared Markdown and DOCX subsets, two qualified runtime paths, independently earned language support, agent integrations, and an accessible native desktop satisfy the required product capability rows | Open: these broader product workflows are not complete |
+| Production 1.0 | Exact signed distributions pass clean installation, offline use, upgrade, migration, interruption, recovery, removal, compatibility, accessibility, security, fidelity, quality, and resource qualification on every advertised platform | Open: release qualification has not begun for a complete product |
+
+The immediate priority is the first checkpoint. Close runtime observation and
+review, durable judge settlement, and the final qualification relationship only
+as needed to demonstrate that workflow. Then expose the qualified application
+operation through the CLI and retain a real offline rewrite acceptance run before
+expanding the format or presentation surface. Synthetic native fixtures are useful
+regressions but cannot substitute for the real runtime and model run.
+
+Every implementation batch should state which checkpoint it advances, its
+observable result, its evidence, and its remaining blocker. Count library and
+schema work as supporting infrastructure. Do not infer a release percentage from
+test count, coverage, line count, or the current version number. Any informal
+completion estimate is a judgment about unfinished product scope, not a measured
+release guarantee.
+
 ## Current build queue
 
 Milestone 0.1 technical evidence is complete, and reversible 0.2 implementation is
@@ -52,311 +81,67 @@ active under the roadmap's run-ahead policy. Milestone 0.1 remains open until it
 release closeout is tagged and published. INV-Q04 applies from the first completed
 0.2 closeout. The 1.0 include list lives in the
 [product 1.0 capability table](product.md#10-product-boundary). Work
-proceeds in this exact order:
+proceeds in the dependency order below. The completed reversible
+[evidence closure and CLI batch](planning/0.2-evidence-and-cli-batch.md) closes
+three independent implementation gaps:
 
-Within the active generation-qualification work in item 11, bounded read-only
-candidate-attempt reconciliation now runs before `Prepared` can activate. It
-classifies every plan-order attempt as not started, checkpoint-only, terminal
-failed, or terminal completed; compares durable metadata with the canonical
-application evidence root; and refuses traffic for every state except an entirely
-pristine plan. It does not retry an attempt, fabricate terminal evidence, promote
-staging, delete an orphan, or grant live authority. An in-memory planner now derives that receipt and binds a phase interruption only
-when interruption facts are supplied for a noncompleted receipt. It does not
-persist, construct a qualification record, or acquire live
-authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
-the operation-level terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live
-authority. Schema 12 adds seven judge-execution tables for plans, schedules,
-request aggregates, response aggregates, observation batches, managed local judge
-receipts, and candidate judge joins. The store writes that seven-row cohort in one
-immediate transaction. The cohort grants no qualification, activation, or live-use
-authority. Schema 11 repeatability results remain limited to candidate-generation failure. Schema 13 adds three inert tables for resource-attempt results, resource-policy denials, and human-adjudication-policy denials. The store writes one resource-policy denial or one human-adjudication-policy denial in its own immediate transaction. The store writes one resource-attempt result in its own immediate transaction. Schema 14 adds one inert candidate-generation receipt-set table. The store writes one receipt set in its own immediate transaction. A stored receipt set grants no qualification, activation, or live-use authority. Schema 15 adds one inert candidate-deterministic-evaluation table. The store writes one deterministic evaluation in its own immediate transaction. A stored deterministic evaluation grants no qualification, activation, or live-use authority. Schema 16 adds one inert repeatability terminal-result table. The store writes one repeatability result in its own immediate transaction. A stored repeatability result grants no qualification, activation, or live-use authority. Schema 17 adds one inert generation-qualification record table. The store writes one qualification record in its own immediate transaction. A stored qualification record grants no qualification, activation, or live-use authority. Schema 18 adds one inert generation-qualification invalidation table. The store writes one invalidation in its own immediate transaction. A stored invalidation grants no qualification, activation, or live-use authority. Schema 19 adds one inert generation-qualification selection table. The store writes one selection in its own immediate transaction. A stored selection grants no qualification, activation, or live-use authority. A stored result or denial grants no qualification, activation, or live-use authority. Schema 11 repeatability results remain limited to candidate-generation failure. No production Approved root is added by that seam.
+| Area | Implemented result | Why |
+| --- | --- | --- |
+| Qualification closure | Bind live candidate batch sets to exact durable target receipt sets | Persistence alone cannot establish the operation and repetition relationship |
+| Runtime evidence | Independently verify and retain the exact admission evidence tree | Runtime review needs a trustworthy byte closure before it can derive admission |
+| Plain-text CLI | Lint folders with bounded discovery and safe reports | Users can review document collections now, without waiting for model qualification |
 
-1. With offline import, read-only inventory, selected reconciliation, inactive
-   removal, exact removal recovery, non-mutating pending-operation inspection,
-   backup-backed explicit repository migration, and cross-platform signal
-   cancellation exposed or proven through the narrow model CLI, retain the complete
-   0.2 lifecycle evidence.
-2. Keep runtime use behind verified shared leases before wiring a real model
-   consumer. Do not add network acquisition to the current administrative slice.
-3. Retain the completed opaque exclusive-lock capability on both low-level removal
-   transitions and the completed application-owned inventory DTO boundary. The
-   application binds the lock capability to the exact pinned repository entry, and
-   persistence records do not become a CLI or public inventory contract.
-4. Retain the completed rewrite-record v2, typed invariant summaries, typed claim
-   evidence, deterministic comparison, exact output-contract discovery, bounded
-   structured-completion boundary, distinct inert claim-extraction role, canonical
-   artifact-set manifest, runtime-build and effective-state identities, and
-   relationship-checked effective-package evidence. Preserve the separate inert
-   qualification v2 that binds all four identities and exact qualification policy
-   without rewriting v1 evidence. Preserve current schema-10 persistence, including
-   every unchanged schema-7 preregistration and schema-6 artifact, lifecycle, package,
-   and evidence contract and
-   the schema-7 atomic preregistration nucleus, recursive relationship checks,
-   the schema-8 atomic effective-package V2 and generation-system foundation, the
-   schema-9 portable plan and case foundation,
-   distinct inert artifact-set installation generations,
-   bounded exact folder import, the offline `import-set` CLI, backup-backed explicit
-   migration from schemas 1 through 6, repository-owned artifact-set leases, and read-only set
-   inventory without implying set authority. Preserve the completed managed-process
-   attestor, extractor manifest, strict ephemeral wire contract, cancellable pair
-   operation, two-phase informational engine evidence join, and independent shadow
-   calibration. Never treat probabilistic extraction as proof.
-5. Retain the versioned read-only Ollama preflight. It observes or verifies bounded
-   runtime, inventory, model-description, and residency evidence, rechecks stable
-   state, performs no generation, and always reports `qualified: false`. Retain the
-   smaller caller-stream runtime-only probe: exactly one 1 KiB-capped
-   `GET /api/version`, exact typed version equality, and non-authoritative
-   version-only evidence with no model, generation, or admission authority.
-6. Retain the attached-process witness. Windows and Linux bracket preflight with
-   listener-owner, process-incarnation, and executable evidence; macOS fails closed.
-   The report remains `response_bound: false` and `qualified: false`.
-7. Retain the separate bound preflight. It sends the complete read-only sequence over
-   one direct retained HTTP/1 connection and checks exact reverse established-row
-   attribution before traffic and after every fully drained response. It rejects
-   reconnect, drift, ambiguity, incomplete required visibility, and unsupported
-   platforms. It remains unqualified and does not prove exclusive socket ownership
-   or application-handler execution.
-8. Retain Linux bounded `NETLINK_SOCK_DIAG` row selection and exact retained-cookie
-   connection queries. Retain the proc-root-relative holder scanner: acquire a pidfd
-   before the process directory, parse exactly one four-field `Uid:` row from each bounded status record for
-   effective UID, inspect descriptors relative to the held process directory, confirm
-   the same effective UID through a second anchored status read, and
-   continue through the admitted view after a match. After pidfd acquisition, skip a
-   missing process only when the pidfd confirms exit. Fail closed on access denial,
-   resource exhaustion, malformed state, or incomplete visibility. Retain the
-   complete runtime-package, model-package,
-   native-load, static package-lease, and schema-6 package and evidence contracts
-   preserved by the schema-10 store. The
-   installed-Ollama import may reconstruct and persist only inert model-package
-   evidence. The reviewed Linux Ollama runtime import may reconstruct and persist
-   only inert runtime-package evidence from one caller-supplied exact tree and
-   layout. A separate direct bridge may import only the exact byte-identical primary
-   package from a retained controlled-build evidence closure, with member rehashing and
-   evidence revalidation at the publication and readback boundaries. Both routes remain
-   inert; neither is a freeze or admission of an upstream package. Retain the
-   v0.32.15 static import-to-inventory binding, neutral judge output contract,
-   retained-stream executor, separate limited transport receipt, and opt-in
-   runtime-reported residency profile. The static binding consumes the opaque,
-   nonserializable, single-use receipt from the exact preflight runner.
-   Retained-session completion input has an absolute 4 MiB UTF-8 ceiling enforced
-   before wire serialization or completion traffic. None grants execution or
-   qualification authority. The judge receipt alone proves no managed isolation,
-   handler execution, model load or use, candidate generation, effective identity,
-   semantics, or qualification.
-9. Retain Linux managed prelaunch namespace isolation and namespace-local process,
-   connection, and native-load attestation when host policy permits. Retain the
-   target-inherited seccomp policy that admits only `AF_INET` and `AF_INET6` through
-   `socket()`, denies every other socket family and `io_uring_setup`, and requires
-   seccomp mode 2 on target reobservation. Attached Windows and Linux evidence remains
-   observation-only. Windows managed isolation and exact native-load binding are
-   unsupported, and macOS is unsupported.
-   Keep uncontrolled-host compatibility limited to the exact typed access-denied
-   result. Require a separate networkless, dropped-capability, no-new-privileges
-   native attestor success gate and include that execution in the LLVM profile before
-   enforcing the workspace line-coverage floor. Require the separate static-musl live
-   worker gate under a networkless root process with only `CAP_SETPCAP` and
-   `CAP_CHECKPOINT_RESTORE`, then drop both before worker execution and merge its
-   exact descendant, zero-capability worker, command, native-closure, private-model-mapping,
-   reobservation, and post-exit rejection profile into that same report. Also require the privileged,
-   networkless controlled source-build fixture gate and include its execution in the
-   same profile.
-10. Retain the Linux-only managed preflight that joins runtime-package, isolation,
-    process, connection, provider-declaration, read-only API, and native-load evidence
-    without an attached-process fallback. Its report remains inert and unqualified.
-    Retain the separate opt-in binding that constructs only a package-declared
-    `RuntimeBuildIdentity`; only its entrypoint is joined to live evidence, other
-    package semantics are not independently live-observed, cleanup completes before
-    return, and effective runtime state remains unproven.
-    Preserve the official v0.32.15 archive review as a blocked historical record. The
-    active admission root is the controlled source-built package defined by ADR 0010.
-    Retain the sealed, expected-identity helper snapshot before the first probe and
-    the exact digest-verified private input snapshot under the shared tmpfs quota.
-    The real frozen closure historically completed two byte-identical controlled builds
-    through capability ABI 2 on 2026-08-26 and was published and independently
-    reacquired. A later workspace cleanup removed that local target-owned evidence.
-    Preserve the replacement helper's completed private device and proc boundary and
-    retained-file private model-root capability. The helper is a runtime package
-    member, so changing that capability after admission would invalidate the reviewed
-    package. Build and independently reacquire a fresh typed-receipt closure before adjudicating
-    source lineage, transformation, license, frozen native closure, managed startup,
-    and cloud disable from typed retained evidence. Only an all-pass schema-2 review
-    may change the empty production cloud-disable allowlist. It must not populate the
-    separate generation-path allowlist.
-11. Retain the completed dual-gated one-shot managed generation bracket. The current
-    empty cloud-disable and exact package-and-worker generation allowlists both block
-    it before launch. After both independent reviews pass, it keeps the exact process,
-    runtime package lease, native observer, and direct HTTP/1 connection live through
-    one completion and two equal runtime-reported residency observations,
-    records the directly reported effective context, and closes before return. Its
-    model artifact and Ollama inventory digests are distinct. The bracket now
-    constructs the inert app-observed effective runtime state from generation-bound
-    provider, closed configuration, platform and driver-class, actual server and
-    worker native closure, normalized worker configuration, and CPU-placement
-    relationships. Portable state excludes installation generations and other live
-    attempt provenance, while the app-owned live join retains those exact bindings.
-    The outcome is released only after cleanup and final revalidation of both package
-    leases. This state remains unqualified and is not formal placement, driver-absence,
-    handler-execution, model-use, or resident-page proof. Managed
-    Linux launch now establishes and reobserves a private mount namespace, private
-    procfs, and reviewed device view that exposes only the retained null device. Retain
-    those boundaries across worker and model-root work. A CPU-only build
-    and zero reported accelerator bytes are supporting evidence, not sufficient
-    placement evidence by themselves. The bracket now retains and repeatedly
-    revalidates the exact model-package lease, reconstructs the reviewed manifest and
-    blob layout from retained file objects inside a private read-only model root,
-    closes the version-scoped launch environment, and requires the separate
-    generation worker, native closure, and exact private GGUF mapping to remain stable.
-    This is bounded
-    model-load evidence, not proof of model use. Preserve the app-owned
-    effective-package v2 derivation, exact live-subject checks, shared-byte purpose
-    unions, cleanup-gated release, exact failed-attempt outcome, separate
-    candidate-generation receipt, opaque verified candidate batch and batch set,
-    retained exact case material, portable deterministic evaluation record,
-    qualified deterministic compiler, offline candidate-to-judge preparation join
-    with its exact two-order schedule, request aggregate, and compatibility hard-gate
-    projection, app-owned managed-judge precursor, exact no-launch pairing of both
-    runner handoffs, crate-private no-launch runner configuration with complete
-    retained authority and exact preflight, limits, runtime, isolation,
-    launch-plan-to-model-package lease identity, model, and installation-generation
-    closure, phase-ordered observer with exact per-attempt evidence sealing,
-    pure judge-output normalizer, schedule-wide observation authority with five
-    exact evidence aggregates and a dedicated effective-state join, and the distinct
-    app-owned schedule package released only after cleanup plus independent model,
-    runtime, evidence, and retained-authority validation. Preserve the
-    portable response record that binds plan, schedule, index, exact request, and
-    nested provider response identity. Its association is rederived from the loaded
-    schedule and request aggregate, so repeated equal provider response IDs remain
-    distinct portable presentation records. Preserve the Active operation's single
-    public high-level managed judge entry point, which consumes exact preregistered
-    repetitions in order, validates the complete operation scope, and supplies the
-    Prepared deadline and single lifecycle while executing the schedule. It derives an eval-owned
-    cleanup-gated durable receipt with exact resident response ordinals
-    `8..(7 + 9 * N)`, compiles canonical compatibility triage, and returns a
-    nonforgeable opaque join. Fresh join revalidation recompiles the triage and full
-    portable record from retained authorities. The scorecard remains
-    probabilistic and triage-only; receipts and joins
-    do not prove handler execution, model use, semantics, or qualification by
-    themselves. Preserve the implemented frozen attempt-ledger,
-    repeatability-result, repeatability-evidence, resource-evidence, and
-    human-adjudication contracts. Also preserve the implemented portable
-    `GenerationQualificationOperationPolicyV1`,
-    `GenerationQualificationRequestProjectionV1`,
-    `GenerationQualificationPlatformEvidenceV1`,
-    `GenerationQualificationLicenseEvidenceV1`, and
-    `GenerationQualificationOperationReceiptV1`. Their strict decoders require
-    trusted independently supplied expected policy, request, assessment, and runner
-    inputs rather than trusting serialized fields. The receipt admits peak-zero
-    `NotRequired` for
-    pre-acquisition cancellation, deadline, or failure, and for `Completed` only at
-    an exact rejected platform or license gate. Peak one requires passed or failed
-    live finalization, and `Completed` at peak one requires passed finalization.
-    Preserve the implemented
-    `GenerationQualificationPhaseInterruptionRecordV1` inert companion. It binds one
-    noncompleted receipt to its exact policy and frozen scope plus a closed phase,
-    checkpoint, optional planned attempt, and terminal reason. Keep it outside phase
-    manifests and prevent it from granting execution, persistence, activation,
-    qualification, or live-use authority.
-    Preserve the implemented compact `GenerationQualificationRecordV1`. Its
-    nine-field wire shape derives status internally after recursively checking the
-    trusted portable closure and rejects incomplete phase prefixes as operational
-    aborts rather than policy decisions. Preserve the implemented eval-owned
-    `VerifiedPassedRepeatabilityJoins` boundary, which binds each caller-supplied,
-    internally consistent Passed result to one distinct live opaque join in exact
-    order and runs mandatory fresh final validation across the supplied subset.
-    Preserve the implemented canonical app-owned
-    platform and license assessment-policy authorities, their empty production
-    roots, the implemented platform and license assessment compilers, the canonical
-    double-sampled current-host authority, the typed case request profile, the shared
-    byte-exact prompt renderer, the deterministic one-at-a-time request builder, and
-    the structural model-license proof separated from explicit launch-authority
-    promotion. Preserve the implemented streaming projection authority, structural
-    model-license proof, staged Draft -> Projected -> Prepared compiler, the schema-7
-    atomic preregistration cohort, the schema-8 effective-package V2 plus
-    generation-system foundation, the schema-9 portable plan and case foundation, and
-    the schema-10 precursor checkpoint and terminal candidate closure.
-    Preserve rejected pretraffic terminalization, the strict
-    resource and human phase-policy verifiers, their typed inert source-denial
-    records and app-owned denied-phase authorities, and fail-fast pretraffic
-    phase-policy refusal. Preserve the inert positive resource-attempt result, exact
-    verified package payload sizes, pidfd-bound Linux worker high-water observation,
-    inseparable retained-session resource completion, and Approved-only app
-    measurement authority. Preserve the strict eval runner and receipt-time portable
-    result compiler, strict batch-set mode, A/B target selection, repeatability
-    resource collection, complete Passed closure, and resource-manifest compiler.
-    Persist interruption records later in the same dependency-complete
-    terminal-evidence cohort as their receipts without allowing persistence to
-    recreate live authority.
-    Preserve the implemented strict candidate and judge routes that carry Active's
-    retained Prepared deadline through strict launch, preflight, generation,
-    observation, joins, and terminalization. Preserve the consuming Active operation
-    owner as the sole public high-level candidate and judge entry with exact plan-order
-    request and repetition scope, target resource observation, baseline compatibility,
-    candidate-before-judge ordering, Prepared's retained clock, one lifecycle,
-    no-retry terminalization, and mandatory finalization. Preserve the process-local
-    Active subject across outcomes, batches, batch sets, paired handoffs, and joins.
-    Preserve two-phase completed candidate settlement, target-only attempt-record
-    and completed-receipt collection, exact receipt-to-record validation, one-shot
-    attempt-ledger sealing, and the ledger-before-judge gate.
-    Preserve Active-owned publication, fresh readback, receipt failure closure,
-    exact failed-attempt derivation, and the fresh-revalidatable in-memory operation
-    interruption. Preserve foundation-gated preregistration with its retained cold
-    readback, the newly inserted pretraffic checkpoint, Active-owned completion,
-    app-root-bound publication and reacquisition, and atomic completed-or-failed
-    candidate closure. Bounded activation reconciliation now runs before Prepared
-    activation and allows only an entirely pristine plan. It does not retry, repair,
-    promote, delete, or fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
-    when interruption facts are supplied for a noncompleted receipt. It does not
-    persist, construct a qualification record, or acquire live
-    authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
-    the terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live authority.
-    Schema 12 adds seven judge-execution tables for plans, schedules, request
-    aggregates, response aggregates, observation batches, managed local judge receipts,
-    and candidate judge joins. The store writes that seven-row cohort in one immediate
-    transaction. The cohort grants no qualification, activation, or live-use authority.
-    Schema 11 repeatability results remain limited to candidate-generation failure.
-    Schema 13 adds three inert tables for resource-attempt results, resource-policy
-    denials, and human-adjudication-policy denials. The store writes one
-    resource-policy denial or one human-adjudication-policy denial in its own
-    immediate transaction. The store writes one resource-attempt result in its own immediate transaction. Schema 14 adds one inert candidate-generation receipt-set table. The store writes one receipt set in its own immediate transaction. A stored receipt set grants no qualification, activation, or live-use authority. Schema 15 adds one inert candidate-deterministic-evaluation table. The store writes one deterministic evaluation in its own immediate transaction. A stored deterministic evaluation grants no qualification, activation, or live-use authority. Schema 16 adds one inert repeatability terminal-result table. The store writes one repeatability result in its own immediate transaction. A stored repeatability result grants no qualification, activation, or live-use authority. Schema 17 adds one inert generation-qualification record table. The store writes one qualification record in its own immediate transaction. A stored qualification record grants no qualification, activation, or live-use authority. Schema 18 adds one inert generation-qualification invalidation table. The store writes one invalidation in its own immediate transaction. A stored invalidation grants no qualification, activation, or live-use authority. Schema 19 adds one inert generation-qualification selection table. The store writes one selection in its own immediate transaction. A stored selection grants no qualification, activation, or live-use authority.
-    A stored result or denial grants no qualification, activation, or live-use authority. Schema 11
-    repeatability results remain limited to candidate-generation failure. Complete that dependency
-    chain before
-    populating a production Approved root. Positive
-    human authority
-    requires a reviewed V2 policy and explicit reviewer-governance and
-    evidence-retention decisions. Add later
-    dependency-complete schema cohorts before the final
-    `VerifiedGenerationQualification` compiler. Do not widen the
-    claim-extraction-only qualification-v2 record or reuse the weaker single-file
-    activation authority. No final generation-qualification authority exists yet.
-    Independent CPU-bound work (frozen-file hashing, deterministic evaluation
-    cases, later independent unit validation) may use a bounded worker pool whose
-    results join by stable identifier. Retained inference sessions, managed
-    isolation, exclusive lifecycle mutations, and document-atomic short-circuit
-    stay serial. Do not default to oversubscribing cores while a local runtime is
-    generating. This is reversible 0.x work; it does not jump runtime-package
-    review or managed execution evidence.
-12. Project the eight-case smoke and 39-case editorial protocol into versioned local
-    generation plans. Run only exact stacks that passed identity and isolation
-    preflight. The old Gemma 4, Qwen3.6, and Ministral observations have expired; do
-    not reacquire a candidate without separate approval. Keep runtime strata separate
-    and publish no support claim from a development run. The checked-in development
-    foundation is larger: 49 deterministic fidelity and structure cases plus 120
-    synthetic editorial cases, 169 total. Freeze the smaller qualification projection
-    before any candidate output is opened.
-13. Finish the plain-text CLI contract, terminal safety, and recovery paths. Then
-    qualify one exact local runtime and artifact combination on each claimed platform
-    before adding profiles or another format.
-14. Establish the versioned editorial-quality corpus and the bounded editorial
-   pattern graph during evaluation work. Keep model-family and population
-   source-signal relationships in a separate research graph with no live rewrite
-   authority. Do not give lint findings product authority until the 0.3 rule and
-   profile contracts pass qualification.
-15. Deliver visible anti-slop lint and inspectable personal-style behavior in 0.3.
-16. Let editorial lint guide or rank generated candidates in 0.5 only after the
-   common fidelity cascade has accepted them.
-17. Add agent packaging, rich document formats, and native presentation layers only
-   after the underlying CLI and application contracts are proven.
+One qualified Linux generation path remains the milestone outcome. Profiles,
+additional formats, and desktop work follow its completion evidence.
+The current [durable evaluation and folder checks batch](planning/0.2-durable-evaluation-and-folder-checks.md)
+adds initial inert runtime evidence publication, deterministic settlement, and
+paired-folder candidate checks. The successor
+[judge settlement and runtime observations batch](planning/0.2-judge-settlement-and-runtime-observations.md)
+adds durable managed judge settlement, unreviewed runtime observation records,
+retained CLI reads, and public evidence composition in the synthetic native fixture.
+The fourth adds the experimental read-only terminal workbench and an inert all-pass
+review compiler over existing opaque controls. Fresh real-runtime evidence,
+independently reviewed semantic controls, and the final qualification closure remain
+next.
+
+1. Retain fresh controlled-build evidence for the real Linux runtime candidate.
+   The historical source build is not retained evidence. Run the frozen-input build,
+   independent byte comparison, publication, and cold readback before review.
+2. Complete real managed observations and semantic runtime review. Preserve the
+   unreviewed observation path and require independently reviewed cloud-disable,
+   startup, native-load, source-lineage, isolation, and cleanup relationships before
+   admission. Do not populate production approval policies from synthetic fixtures.
+3. Complete terminal generation qualification over the settled candidate,
+   deterministic, managed judge, repeatability, resource, and reviewed human-phase
+   evidence. Retain exact operation identities, original deadlines, fresh readback,
+   and independent finalizers. A durable row cannot recreate live authority.
+4. Qualify one exact Linux runtime/model combination against the frozen fidelity,
+   quality, resource, cancellation, and offline requirements. Judge observations are
+   probabilistic triage; they cannot override deterministic failure or establish
+   formal semantic guarantees. Any artifact acquisition remains separately scoped.
+5. Expose that qualified operation through the plain-text CLI and retain the first
+   complete clean-install and offline-repeat rewrite run. Preserve useful current
+   model-free checks, folder reports, non-destructive output, diagnostics, migration,
+   recovery, and deterministic unsupported-platform behavior.
+6. Close the polished CLI beta with reviewed setup, files and folders, progress,
+   budgets, cancellation, safe output, and recovery. Use shared application events
+   to extend the implemented experimental read-only TUI and build an early native
+   desktop accessibility spike without implying unavailable generation or format
+   support.
+7. Complete profiles and the terminal workbench, then graduate Markdown, quality and
+   runtime breadth, agent integration, and DOCX through their versioned capability
+   evidence. Complete the accessible native desktop before 1.0. All presentation
+   layers use the shared application core.
+8. Freeze only proven contracts and qualify exact signed release artifacts across
+   Linux, macOS, and Windows, including installation, offline use, update, migration,
+   interruption, recovery, removal, accessibility, and security.
+
+Detailed trust-boundary and schema dependencies live in the
+[runtime admission plan](planning/0.2-runtime-admission.md),
+[generation qualification plan](planning/0.2-generation-qualification.md),
+[phase execution plans](planning/README.md), and authoritative
+[current state](current-state.md). Keep implementation history and exact evidence
+there rather than expanding this product queue with completed internal interfaces.
 
 This sequencing makes three independent outcomes visible in every release report:
 
@@ -498,12 +283,20 @@ polished CLI.
   fallback.
 - The CLI is complete enough to serve as the reference surface for later adapters.
 
-## 0.3: Inspectable personal profiles and CLI workflows
+## 0.3: Inspectable personal profiles and terminal workflows
 
 ### Outcome
 
 Authorized writing evidence and explicit preferences produce a reversible profile
-that improves owner preference over the strongest simple baseline.
+that improves owner preference over the strongest simple baseline. A terminal UI
+provides an interactive workbench over the same proven application operations as
+the scriptable CLI.
+
+An experimental read-only TUI is implemented ahead of this phase: single-file
+source inspection, editorial lint, and supplied-candidate checks through the shared
+application services, with bounded sanitized previews and a plain-output fallback.
+Local service, presentation, process, and Linux terminal checks pass. It does not complete the profile workbench,
+qualified generation, or desktop requirements.
 
 ### Required work
 
@@ -525,6 +318,15 @@ that improves owner preference over the strongest simple baseline.
 - Explicit feedback that cannot contaminate the authorized evidence corpus
 - Complete profile create, inspect, edit, compare, ingest, export, import, restore,
   reindex, revoke, and delete workflows through the CLI
+- Interactive terminal workbench for document and folder selection, capability
+  inspection, explicit runtime/model/profile choice, source and candidate review,
+  safe output, progress, cancellation, diagnostics, and recovery
+- Shared application operation IDs and events across CLI and TUI, with no second
+  validation, model-management, qualification, or persistence implementation
+- Keyboard navigation, terminal resizing, plain-text accessible fallback, hostile
+  content rendering, terminal restoration after failure, and non-TTY refusal
+- Permit a reversible native-desktop shell and accessibility spike after the CLI
+  beta proves the shared operation contract; full desktop qualification remains 0.8
 - Canonical versioned JSON export remains authoritative; define a content-minimized
   projection boundary for later portable knowledge formats
 - Document analysis and a bounded typed editorial brief that asks only high-value,
@@ -539,6 +341,9 @@ that improves owner preference over the strongest simple baseline.
 - Generated candidates never become evidence implicitly.
 - Migration, rollback, export, import, revocation, deletion, and reindex pass on all
   supported operating systems.
+- CLI and TUI produce equivalent records and output for shared conformance fixtures;
+  cancellation, failure, recovery, keyboard navigation, and terminal restoration
+  pass on Windows, macOS, and Linux for each supported capability.
 
 ## 0.4: Bounded Markdown
 
@@ -812,6 +617,7 @@ appears.
 ### Required capabilities
 
 - Exceptional documented and scriptable CLI on Windows, macOS, and Linux
+- Interactive terminal UI sharing the CLI's application operations and evidence
 - Accessible native desktop application built without a browser-based frontend
 - Inspectable, reversible, provenance-backed personal profiles
 - Qualified plain text, declared Markdown, and bounded DOCX rewriting
@@ -841,7 +647,7 @@ appears.
 
 - Locked evaluation meets published fidelity, coverage, style, leakage, latency,
   memory, and resource thresholds.
-- CLI, desktop, MCP, Agent Skills, Agent Plugin, API, and document adapters agree on
+- CLI, TUI, native desktop, MCP, Agent Skills, Agent Plugin, API, and document adapters agree on
   shared conformance fixtures.
 - Every supported platform passes installation, operation, update, migration,
   recovery, cancellation, and removal testing.

@@ -50,6 +50,13 @@ pub(crate) struct Fixture {
     pub(crate) builder: GenerationQualificationRequestBuilderV1,
     pub(crate) baseline_builder: GenerationQualificationRequestBuilderV1,
     pub(crate) cluster: GenerationClusterRecordV1,
+    #[cfg_attr(
+        not(feature = "test-support"),
+        expect(
+            dead_code,
+            reason = "Used by the cross-crate synthetic fixture with test-support"
+        )
+    )]
     pub(crate) deterministic_contract: GenerationDeterministicCaseContractV1,
     pub(crate) case: GenerationCaseManifestV1,
     pub(crate) suite: GenerationSuiteManifestV1,
@@ -373,6 +380,13 @@ impl Fixture {
 pub(crate) struct PlanFixture {
     pub(crate) target_attempt: PlannedCandidateAttemptV1,
     pub(crate) baseline_attempt: PlannedCandidateAttemptV1,
+    #[cfg_attr(
+        not(feature = "test-support"),
+        expect(
+            dead_code,
+            reason = "Used by the cross-crate synthetic fixture with test-support"
+        )
+    )]
     pub(crate) selection_policy: CandidateSelectionPolicyV1,
     pub(crate) plan: GenerationQualificationPlanV1,
     pub(crate) operation: GenerationQualificationOperationPolicyV1,

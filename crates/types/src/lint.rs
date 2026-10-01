@@ -1,5 +1,7 @@
 //! Domain contracts for editorial lint findings and comparative assessments.
 
+use std::collections::BTreeMap;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +12,8 @@ pub struct EditorialFinding {
     pub rule_id: String,
     /// Exact matched substring in the text.
     pub evidence: String,
-    /// Zero-based occurrence of this evidence substring in the text.
+    /// Zero-based occurrence of this evidence substring, saturated at `u16::MAX`.
+    /// Repeated saturated findings retain their full multiplicity in comparisons.
     pub occurrence: u16,
     /// Human-readable explanation of why this pattern is flagged.
     pub message: String,
@@ -56,27 +59,21 @@ impl EditorialComparison {
         source_findings: Vec<EditorialFinding>,
         candidate_findings: Vec<EditorialFinding>,
     ) -> Self {
+        let mut candidate_remaining = finding_counts(&candidate_findings);
+        let mut source_remaining = finding_counts(&source_findings);
         let mut resolved = Vec::new();
         let mut retained = Vec::new();
-
         for source in &source_findings {
-            if candidate_findings
-                .iter()
-                .any(|cand| cand.rule_id == source.rule_id && cand.evidence == source.evidence)
-            {
+            if consume_finding(&mut candidate_remaining, source) {
                 retained.push(source.clone());
             } else {
                 resolved.push(source.clone());
             }
         }
-
         let mut introduced = Vec::new();
-        for cand in &candidate_findings {
-            if !source_findings
-                .iter()
-                .any(|source| source.rule_id == cand.rule_id && source.evidence == cand.evidence)
-            {
-                introduced.push(cand.clone());
+        for candidate in &candidate_findings {
+            if !consume_finding(&mut source_remaining, candidate) {
+                introduced.push(candidate.clone());
             }
         }
 
@@ -100,6 +97,39 @@ impl EditorialComparison {
     #[must_use]
     pub fn is_strict_improvement(&self) -> bool {
         !self.resolved_findings.is_empty() && self.introduced_findings.is_empty()
+    }
+}
+
+fn finding_counts(findings: &[EditorialFinding]) -> BTreeMap<(&str, &str, u16), usize> {
+    let mut counts = BTreeMap::new();
+    for finding in findings {
+        *counts
+            .entry((
+                finding.rule_id.as_str(),
+                finding.evidence.as_str(),
+                finding.occurrence,
+            ))
+            .or_default() += 1;
+    }
+    counts
+}
+
+fn consume_finding<'a>(
+    counts: &mut BTreeMap<(&'a str, &'a str, u16), usize>,
+    finding: &'a EditorialFinding,
+) -> bool {
+    let key = (
+        finding.rule_id.as_str(),
+        finding.evidence.as_str(),
+        finding.occurrence,
+    );
+    if let Some(count) = counts.get_mut(&key)
+        && *count > 0
+    {
+        *count -= 1;
+        true
+    } else {
+        false
     }
 }
 
@@ -148,6 +178,28 @@ mod tests {
         assert_eq!(comparison.resolved_findings.len(), 1);
         assert!(comparison.introduced_findings.is_empty());
         assert!(!comparison.has_introduced_defects());
+        assert!(comparison.is_strict_improvement());
+    }
+    #[test]
+    fn occurrence_identity_and_duplicate_multiplicity_are_preserved() {
+        let first = EditorialFinding::new("r", "e", 0, "m");
+        let second = EditorialFinding::new("r", "e", 1, "m");
+        let saturated = EditorialFinding::new("r", "e", u16::MAX, "m");
+        let comparison = EditorialComparison::compute(
+            vec![
+                first.clone(),
+                second.clone(),
+                saturated.clone(),
+                saturated.clone(),
+            ],
+            vec![second.clone(), saturated.clone()],
+        );
+        assert_eq!(
+            comparison.retained_findings,
+            vec![second, saturated.clone()]
+        );
+        assert_eq!(comparison.resolved_findings, vec![first, saturated]);
+        assert!(comparison.introduced_findings.is_empty());
         assert!(comparison.is_strict_improvement());
     }
 }

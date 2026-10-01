@@ -159,15 +159,18 @@ pub(crate) fn commit(
     require_unoccupied_path(&staging_path, command)?;
     write_exclusive(&backup_path, original, command)?;
     write_exclusive(&staging_path, accepted, command)?;
-    let staged =
-        crate::contract::read_input_bounded(&staging_path, accepted.len().saturating_add(1))
-            .map_err(|_| RunFailure::operational(command))?;
+    let staged = crate::file_input::read_direct_unaliased_bounded(
+        &staging_path,
+        accepted.len().saturating_add(1),
+    )
+    .map_err(|_| RunFailure::operational(command))?;
     if staged != accepted {
         return Err(RunFailure::operational(command));
     }
-    install_verified(source, &staging_path, original, command)?;
-    let replaced = crate::contract::read_input_bounded(source, accepted.len().saturating_add(1))
-        .map_err(|_| RunFailure::operational(command))?;
+    install_verified(source, &staging_path, original, accepted, command)?;
+    let replaced =
+        crate::file_input::read_direct_unaliased_bounded(source, accepted.len().saturating_add(1))
+            .map_err(|_| RunFailure::operational(command))?;
     if replaced != accepted {
         return Err(RunFailure::operational(command));
     }
@@ -184,8 +187,9 @@ fn require_original_bytes(
     original: &[u8],
     command: CommandName,
 ) -> Result<(), RunFailure> {
-    let current = crate::contract::read_input_bounded(source, original.len().saturating_add(1))
-        .map_err(|_| RunFailure::concurrent_modification(command))?;
+    let current =
+        crate::file_input::read_direct_unaliased_bounded(source, original.len().saturating_add(1))
+            .map_err(|_| RunFailure::concurrent_modification(command))?;
     if current != original {
         return Err(RunFailure::concurrent_modification(command));
     }
@@ -196,10 +200,17 @@ fn install_verified(
     source: &Path,
     staging: &Path,
     original: &[u8],
+    accepted: &[u8],
     command: CommandName,
 ) -> Result<(), RunFailure> {
     require_regular_file(source, command)?;
     require_original_bytes(source, original, command)?;
+    let staged =
+        crate::file_input::read_direct_unaliased_bounded(staging, accepted.len().saturating_add(1))
+            .map_err(|_| RunFailure::concurrent_modification(command))?;
+    if staged != accepted {
+        return Err(RunFailure::concurrent_modification(command));
+    }
     install(source, staging, command)
 }
 
@@ -308,7 +319,7 @@ fn hard_link_usage(command: CommandName) -> RunFailure {
 }
 
 #[cfg(unix)]
-fn require_single_link(
+pub(super) fn require_single_link(
     _path: &Path,
     metadata: &fs::Metadata,
     command: CommandName,
@@ -322,7 +333,7 @@ fn require_single_link(
 }
 
 #[cfg(windows)]
-fn require_single_link(
+pub(super) fn require_single_link(
     path: &Path,
     _metadata: &fs::Metadata,
     command: CommandName,
@@ -337,7 +348,7 @@ fn require_single_link(
 }
 
 #[cfg(not(any(unix, windows)))]
-fn require_single_link(
+pub(super) fn require_single_link(
     _path: &Path,
     _metadata: &fs::Metadata,
     command: CommandName,

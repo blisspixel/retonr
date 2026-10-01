@@ -39,6 +39,24 @@ pub struct RuntimeSourceBuildEvidenceBundleLease {
 }
 
 impl RuntimeSourceBuildEvidenceBundleLease {
+    pub(crate) fn overlaps_evidence_path(&self, path: &std::path::Path) -> bool {
+        if super::contract::paths_overlap(&self.pinned.path, path) {
+            return true;
+        }
+        let Some(parent) = path.parent() else {
+            return true;
+        };
+        let Some(name) = path.file_name() else {
+            return true;
+        };
+        match (
+            std::fs::canonicalize(&self.pinned.path),
+            std::fs::canonicalize(parent),
+        ) {
+            (Ok(source), Ok(parent)) => super::contract::paths_overlap(&source, &parent.join(name)),
+            _ => true,
+        }
+    }
     /// Returns the content manifest for every closure member except the manifest itself.
     #[must_use]
     pub const fn manifest(&self) -> &ArtifactSetManifest {

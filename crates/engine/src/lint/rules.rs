@@ -135,11 +135,18 @@ pub(crate) fn quoted_spans(text: &str) -> Vec<Range<usize>> {
             spans.push(start..idx + ch.len_utf8());
         }
     }
+    spans.sort_by_key(|span| span.start);
+    let mut maximum_end = 0;
+    for span in &mut spans {
+        maximum_end = maximum_end.max(span.end);
+        span.end = maximum_end;
+    }
     spans
 }
 
 pub(crate) fn is_inside_quotes(start: usize, end: usize, quotes: &[Range<usize>]) -> bool {
-    quotes.iter().any(|q| q.start <= start && end <= q.end)
+    let index = quotes.partition_point(|span| span.start <= start);
+    index > 0 && end <= quotes[index - 1].end
 }
 
 pub(crate) fn add_finding(
@@ -160,14 +167,14 @@ pub(crate) fn add_finding(
 }
 
 fn count_previous_occurrences(text: &str, evidence: &str, match_start: usize) -> u16 {
-    let mut count = 0;
+    let mut count = 0_u16;
     let mut offset = 0;
     while let Some(pos) = text[offset..].find(evidence) {
         let abs_pos = offset + pos;
         if abs_pos >= match_start {
             break;
         }
-        count += 1;
+        count = count.saturating_add(1);
         offset = abs_pos + evidence.len();
     }
     count

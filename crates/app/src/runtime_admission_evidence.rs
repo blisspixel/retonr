@@ -1,13 +1,31 @@
 //! Inert contracts for a future durable runtime-admission evidence closure.
 //!
-//! These types bind subjects and plan a bounded tree. They confer no admission
-//! or policy authority and intentionally provide no publication API.
+//! These types bind subjects, assemble exact opaque bytes, and publish a bounded
+//! inert tree. They confer no semantic review, admission, or policy authority.
 
+mod assembly;
 mod binding;
 mod contract;
 mod foundation;
+mod publish;
+mod review;
 mod static_control;
 mod tree_plan;
+mod verify;
+
+pub use assembly::{
+    CompiledRuntimeAdmissionEvidenceAssembly, RuntimeAdmissionEvidenceAssemblyCompiler,
+    RuntimeAdmissionEvidenceAssemblyError, RuntimeAdmissionEvidenceAssemblyMember,
+};
+pub use publish::RuntimeAdmissionEvidenceAssemblyPublisher;
+pub use review::{
+    CompiledRuntimeAdmissionAllPassReview, RuntimeAdmissionAllPassReviewCompiler,
+    RuntimeAdmissionAllPassReviewError, RuntimeAdmissionAllPassReviewRequest,
+};
+pub use verify::{
+    RuntimeAdmissionEvidenceBundleError, RuntimeAdmissionEvidenceBundleLease,
+    RuntimeAdmissionEvidenceBundleVerifier,
+};
 
 pub use contract::{
     MAX_RUNTIME_ADMISSION_EVIDENCE_BUNDLE_BYTES,

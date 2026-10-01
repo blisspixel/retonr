@@ -17,6 +17,7 @@ use crate::{
     failure::RunFailure,
 };
 
+mod directory;
 pub(crate) mod inspect;
 pub(crate) mod replace;
 pub(crate) mod report;
@@ -38,6 +39,7 @@ pub(crate) enum OutputSink {
 pub(crate) struct CheckRequest {
     pub(crate) source: PathBuf,
     pub(crate) candidate: PathBuf,
+    pub(crate) traversal: CheckTraversal,
     pub(crate) protected_terms: Vec<String>,
     pub(crate) fail_on_abstain: bool,
     pub(crate) output: Option<PathBuf>,
@@ -49,6 +51,19 @@ pub(crate) struct CheckRequest {
     pub(crate) edit_level: Option<rewrite_types::EditLevel>,
 }
 
+/// Whether directory discovery visits children.
+#[derive(Clone, Copy)]
+pub(crate) enum CheckTraversal {
+    Flat,
+    Recursive,
+}
+
+impl CheckTraversal {
+    pub(crate) const fn recursive(self) -> bool {
+        matches!(self, Self::Recursive)
+    }
+}
+
 /// Optional inspection views that do not change acceptance.
 pub(crate) struct CheckInspection {
     pub(crate) diff: bool,
@@ -58,6 +73,14 @@ pub(crate) struct CheckInspection {
 
 /// Validates one candidate and applies the explicit input and output policy.
 pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCode, RunFailure> {
+    if directory::is_real_directory(&request.source)
+        && directory::is_real_directory(&request.candidate)
+    {
+        return directory::run(&request, format);
+    }
+    if request.traversal.recursive() {
+        return Err(RunFailure::usage_for(CommandName::Check));
+    }
     let destination = replace::resolve_destination(
         &request.source,
         request.output.as_deref(),

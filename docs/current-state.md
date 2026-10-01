@@ -10,6 +10,31 @@ protocol, or stored-data contracts.
 
 ## Implemented
 
+The experimental read-only terminal workbench is available through `retonr tui
+SOURCE`, with an optional `--candidate FILE` and repeated `--protect TERM`. It
+uses the same application validation and editorial lint as the CLI. A bounded
+worker supports reload, cancellation, and stale-result rejection; safe previews
+escape terminal controls. Interactive mode requires terminal input and output.
+`--plain` supports bounded text or JSON output for accessible terminals and pipes.
+Complete UTF-8 regular files up to 16 MiB each are validated before previews are
+clipped. The workbench does not generate or write documents. Full profiles,
+generation workflows, and the native desktop application remain pending.
+
+An application-owned all-pass runtime admission review compiler now composes
+three independently reverified static controls with cleanup-gated execution
+records and three opaque live controls. It derives all six statuses, checks the
+exact source and foundation bindings, performs final fresh validation, and
+independently reads back its canonical schema-2 review. This is inert material;
+production admission, license, cloud-disable, and worker policy roots remain
+empty. Local verification includes 2,737 passing Windows workspace tests and
+doctests, 2,672 passing Linux instrumented workspace tests, 133 passing isolation
+unit tests, strict workspace lint, a native Linux terminal smoke, and 81.25 percent
+overall Rust line coverage. The three actual pinned Rust installer archives also
+pass the production bounded extractor and component installer after fixing their
+metadata collision. These checks do not establish cross-platform terminal or
+production runtime qualification. See the
+[terminal workbench and admission review plan](planning/0.2-terminal-workbench-and-admission-review.md).
+
 | Component | Current behavior |
 | --- | --- |
 | `rewrite-types` | Versioned document, candidate, gate, status, reason, edit, rewrite-record v2, redacted generation provenance, content-redacted typed claim-evidence contracts, and an inert extractor manifest |
@@ -289,6 +314,192 @@ reservation. The result reports the exact source and target schemas plus an opaq
 retained backup key. Ordinary repository commands remain exact-schema and never
 migrate implicitly.
 
+## Evidence closure and folder lint batch
+
+The application exposes `RuntimeAdmissionEvidenceBundleVerifier` and a retained
+`RuntimeAdmissionEvidenceBundleLease`. The verifier pins an existing local root,
+requires the fixed twelve evidence members, four directories, and canonical
+artifact-set manifest, and independently rehashes every bounded member. It parses
+the canonical foundation, derives the tree plan, and checks named and retained
+root identity. Member access freshly revalidates the complete tree and rejects
+drift. The aggregate ceiling includes the manifest bytes. Other evidence members
+remain opaque snapshots: this byte closure does not validate their semantic
+relationships, adjudicate controls, publish a bundle, or grant admission authority.
+
+The evaluation operation exposes `persist_target_receipt_set` after the complete
+candidate sequence has settled and the target ledger is sealed as Passed. It
+requires the batch set and ledger to belong to the same live operation, rebuilds
+the exact target repetition's receipt set in semantic suite order, compares the
+complete live record, writes schema 14, and independently reads the canonical row
+back. Batch and Prepared final validation run with fresh uncancelled tokens even
+after a publication failure. A stored row remains inert if later validation fails.
+This closes the target receipt-set settlement seam. Its successor batch is recorded
+in [durable evaluation and folder checks](planning/0.2-durable-evaluation-and-folder-checks.md).
+
+The CLI's read-only directory lint behavior and limits are recorded below. The
+[batch execution plan](planning/0.2-evidence-and-cli-batch.md) records the ownership,
+budget, verification requirements, and following work.
+
+### Paired-folder candidate checks and discovery budgets
+
+The CLI accepts `check SOURCE_ROOT CANDIDATE_ROOT --recursive --dry-run` for two
+separate nonoverlapping directories. It joins regular UTF-8 documents by exact,
+case-sensitive relative path and runs the existing candidate-check service for
+each complete pair. Reports retain normal per-document fidelity records and expose
+missing, unsupported, carrier-bearing, and skipped counterparts. No document,
+backup, diff, or trace is written. Output and mutation flags are refused.
+
+Each root's discovery enforces a 64 MiB raw-byte budget while inspecting files,
+including unsupported encodings, in addition to the existing 4,096-entry and
+eight-level ceilings. Checked source/candidate pairs share a separate 64 MiB byte
+budget, with bounded remaining-byte reads and discovery-digest coherence checks.
+Pair reads reject indirect parents, nonregular files, and multiply linked files.
+`--fail-on-abstain` returns exit 3 for an abstained result or incomplete coverage,
+including unmatched and skipped entries. Limits return exit 4 before report
+publication. Folder inputs remain unchanged.
+
+### Retained CLI file input
+
+Bounded file reads now retain and validate the opened regular file around the
+read. Unix regular-file opens use nonblocking mode so a FIFO substituted after a
+regular-file observation cannot wait for a writer. Directory reads pin the selected
+real root, resolve ancestry above that root, and open descendants with retained
+parent handles and no link following. Windows checks reparse points and retains
+strict file and directory handles without delete sharing. Ordinary single-file
+symlink inputs and standard input retain their existing behavior.
+
+Named and held identity, size, timestamps, and link state are compared before and
+after bounded reads. Paired-folder reads continue to require one link and the
+discovery digest. Replacement verification freshly checks exact staging bytes
+immediately before rename. Detected drift returns a content-free, retryable
+concurrent-modification error; unrelated operating-system interruptions retain
+their existing input-error classification. These checks do not establish atomic
+filesystem snapshots or exclude concurrent writes.
+
+The Windows all-feature CLI suite passed 212 tests, including retained-reader and
+staging substitution regressions. Linux-only fixtures also cover regular-file
+replacement with a FIFO and identity-changing ancestor substitution.
+
+### Initial runtime evidence assembly and publication
+
+The application exposes `RuntimeAdmissionEvidenceAssemblyCompiler` and
+`RuntimeAdmissionEvidenceAssemblyPublisher`. Compilation verifies the foundation's
+complete subject binding against a retained byte-identical source-build evidence
+lease, checks the exact eleven nonfoundation purposes and complete byte ceilings,
+and snapshots the fixed twelve-member closure with a derived canonical manifest.
+
+Publication revalidates the source foundation, refuses source/destination overlap
+and existing destinations, writes only bounded immutable snapshot bytes into owned
+staging, independently verifies and synchronizes the tree, and commits with an
+atomic no-replace rename. Fresh retained readback compares the manifest and
+foundation and rehashes the closure. Source finalization uses an independent
+uncancelled token; cancellation is sampled again before successful return. Errors
+distinguish cleanup and source-finalization failures and a committed inert root
+whose final verification failed.
+
+These APIs create a durable byte root, not a semantic admission result. The eleven
+caller-selected control, execution, review, and policy members remain opaque.
+Compilation does not derive passed controls, an all-pass review, or a production
+policy entry. Their semantic composition and the real candidate's fresh controlled
+build remain required. The production runtime allowlists are unchanged and empty.
+
+On 2026-09-30, the forced privileged, networkless Linux controlled-build fixture
+also exercised the public assembly compiler and publisher through a cold-reacquired
+retained source-build lease. Exact opaque-member readback, cancellation before
+publication, existing-destination refusal, and changed-member cold-readback
+rejection passed. This is retained synthetic source-build composition, not a real
+runtime candidate build or admission result.
+
+### Managed runtime observations before review
+
+`RuntimeAdmissionRunner::observe_managed_final_and_close` returns canonical
+native-load and managed-final observation records only after the consuming managed
+lifecycle completes cleanup and independent runtime-package revalidation. It
+preserves the actual cloud-review status, including `Unreviewed`, and exposes no
+Passed cloud or startup control, admission, or production policy authority. The
+existing reviewed-only verification route retains its separate approval gate.
+
+Both final-operation routes and native discovery run fresh cleanup and fresh
+package checks even when the primary operation or another finalizer fails. Error
+classes preserve independent failures, and cancellation is sampled after these
+mandatory checks. Canonical observation verification reparses and compares exact
+foundation, package, frozen-native, and observed facts. Twenty-three focused
+Windows runner tests passed, including the primary/cleanup/package failure matrix,
+late cancellation, unreviewed status preservation, and canonical record mutations.
+A real managed runtime observation run remains required.
+
+### Active deterministic evaluation settlement
+
+`persist_candidate_deterministic_evaluation` requires current target and baseline
+batch sets from the same Active operation and retained exact case material. It
+compares complete Prepared plan, suite, systems, repetition, selection policy, and
+planned attempts, then independently reconstructs the target set from the Passed
+sealed ledger. Baseline authority comes from its live same-subject batch set over
+the exact Prepared scope; there is no separate retained baseline ledger.
+
+The existing deterministic compiler derives the evaluation record. Both Passed
+and Failed records are valid evidence. The bridge commits the exact target and
+baseline receipt sets independently before the schema-15 evaluation transaction,
+then performs fresh canonical readback. A later evaluation or finalization failure
+can leave inert parent rows. It cannot return a settled result or confer
+qualification. Target, baseline, case-material, and Prepared finalization run
+independently with fresh uncancelled tokens; the original deadline and cancellation
+are sampled afterward. Replay is idempotent, and corrupt or substituted rows fail
+closed. The final qualification compiler remains outstanding.
+
+### Active managed judge cohort settlement
+
+`persist_candidate_judge_execution` derives the exact seven-record schema-12 cohort
+from the retained judge handoff and managed execution package. The Active owner
+requires the join's private process-local subject and exact successful execution
+identity, settled candidates, the Passed sealed target ledger, complete Prepared
+systems and repetition, and current exact case material. Copied portable records
+cannot authorize publication. New settlements follow preregistered repetition
+order; prior successfully settled joins may replay the immutable cohort.
+
+Deterministic facts are freshly recompiled from live candidate/material owners,
+and managed receipt facts derive from the retained execution package. Before the
+atomic judge transaction, exact target and baseline receipt sets and the
+deterministic evaluation must cold-read from schemas 14 and 15. Independent typed
+canonical readback checks every cohort record. Join and Prepared finalizers run
+with fresh uncancelled contexts even after another failure, followed by the
+original deadline-first cancellation gate. Substantive failure terminalizes the
+Active owner; stored records remain inert and confer no qualification.
+
+Focused synthetic authorities exercised the real store's insert, cold reopen and
+replay, missing-parent refusal, seven-table rollback, corrupt bytes, unexecuted or
+foreign joins, live-source drift, and cancellation paths. Those fixtures do not
+establish a real judge model run. Terminal qualification, reviewed policy
+relationships, and a qualified real runtime/model combination remain required.
+
+## Durable evidence schema history
+
+Schema 19 is the current repository schema. It preserves the preceding contracts
+and supports explicit, backup-backed migration from schemas 1 through 18. Ordinary
+commands require the exact supported schema and never migrate implicitly.
+
+| Schema | Added evidence and write boundary |
+| --- | --- |
+| 6 | Artifact lifecycle, runtime and model packages, and evidence contracts |
+| 7 | Atomic operation-policy and complete-request preregistration |
+| 8 | Atomic effective-package V2 and generation-system foundation |
+| 9 | Portable qualification plan and case foundation with recursive cold readback |
+| 10 | Pretraffic candidate checkpoint and atomic completed-or-failed terminal closure |
+| 11 | Platform and license evidence, attempt ledger, phase manifests, operation receipt, and interruption in one terminal-evidence cohort; repeatability results here cover candidate-generation failure only |
+| 12 | Judge plans, schedules, requests, responses, observations, managed receipts, and candidate joins in one seven-row cohort |
+| 13 | Resource-attempt results and resource or human-adjudication policy denials, each written separately |
+| 14 | One candidate-generation receipt set |
+| 15 | One candidate deterministic evaluation |
+| 16 | One repeatability terminal result |
+| 17 | One generation-qualification record |
+| 18 | One generation-qualification invalidation |
+| 19 | One generation-qualification selection |
+
+Each listed cohort or individual write uses one immediate transaction. Canonical
+readback and relationship validation remain required. A stored record grants no
+qualification, activation, or live-use authority and cannot reconstruct a live
+operation. The final generation-qualification compiler is still planned.
+
 ## Verification
 
 The complete current trust-chain slice is held to these repository gates:
@@ -332,7 +543,7 @@ unsupported contracts. Warnings are treated as errors. The local nightly check o
 type-checks fuzz targets on Windows; Linux CI runs the bounded sanitizer-backed fuzz
 smoke.
 
-The current public-main baseline is
+The retained public-main workflow baseline is
 `6a9a00bc1af7181fae6489f5856653ccc7c5bb4b`. Its
 [quality workflow](https://github.com/blisspixel/retonr/actions/runs/32615625101)
 and [snapshot workflow](https://github.com/blisspixel/retonr/actions/runs/32615998005)
@@ -378,7 +589,8 @@ semantics, nor qualification.
   With `--recursive`, the walk is bounded, does not follow links, and uses
   portable `/` relative paths. A UTF-8 BOM plus variation selectors is
   `possible`, not a valid Content Credential. External references are
-  `not_checked`. The command does not strip bytes. `model list` and `model inspect` are read-only: they do not qualify,
+  `not_checked`. The command does not strip bytes. `model list` and `model inspect`
+  are read-only: they do not qualify,
   activate, download, or treat a report as mutation authority.
   `model device-evidence` (`fitr`) reads optional
   `fitr.retonr.evidence.v1` without a repository. It reports device
@@ -437,9 +649,27 @@ semantics, nor qualification.
   path reserved by the same non-dry-run document transaction. Exclusive creation is
   still enforced when the trace is written because preflight does not eliminate a
   later filesystem race.
-- The editorial corpus contract and 120 synthetic fixtures across five groups are
-  implemented, but no lint scanner, rule catalog, or live anti-slop ranking path is
-  implemented yet. A separate writing-sample library holds licensed pre-2018
+- Deterministic editorial lint, its rule catalog, and 120 synthetic editorial
+  fixtures across five groups are implemented. `lint` reports one document or
+  compares one source with one candidate. A directory input reports sorted
+  per-document findings and skipped entries; `--recursive` (`-r`) opts into the
+  existing depth-8, 4,096-entry discovery envelope. Hidden entries, ignored build
+  directories, links, and unsupported encodings are skipped with reasons. Each
+  document is bounded to 16 MiB and its bytes are checked against the discovery
+  digest before linting. Folder lint also caps linted UTF-8 content at 64 MiB and
+  accumulated findings at 16,384; exceeding either ceiling refuses the report.
+  Directory input cannot be paired with `--candidate`;
+  `--recursive` requires a directory. Findings with `--fail-on-findings` return
+  exit code 3; comparative lint returns it only for introduced findings. Reports
+  use the shared safe text and JSON rendering, and lint never writes source files.
+  Comparative reports account for repeated findings by rule, evidence, and
+  occurrence with multiplicity, so removing two of three equal defects reports
+  two resolved and one retained. Occurrence indices saturate at `u16::MAX` while
+  retaining every finding and its multiplicity. Dense punctuation matching avoids
+  repeated prefix scans and checks quoted contexts through a sorted index.
+  The engine uses deterministic finding counts in candidate ranking after hard
+  fidelity gates. This behavior is not model or semantic qualification.
+  A separate writing-sample library holds licensed pre-2018
   human excerpts and synthetic model-style impressions. A research-only watermark file
   refuses style-as-mark folklore and does not contain generated marks.
 - `check` and `rewrite` accept only UTF-8 plain-text documents up to 16 MiB.
@@ -683,17 +913,12 @@ semantics, nor qualification.
   storage, bounded readback, receipt, and attempt metadata atomically. Bounded
   read-only reconciliation now runs before Prepared activation and allows only an
   entirely pristine plan. It does not retry, repair, promote, delete, or fabricate
-  evidence. Schema 11 adds the terminal-evidence tables and an atomic cohort writer.
-  That writer grants no live authority, so positive production execution remains
-  disabled. Schema 12 stores the seven judge-execution rows in one immediate
-  transaction. The cohort grants no qualification, activation, or live-use authority, and
-  schema 11 repeatability results remain limited to candidate-generation failure.
-  Schema 13 adds three inert tables for resource-attempt results, resource-policy
-  denials, and human-adjudication-policy denials. The store writes one
-  resource-policy denial or one human-adjudication-policy denial in its own
-  immediate transaction. The store writes one resource-attempt result in its own immediate transaction. Schema 14 adds one inert candidate-generation receipt-set table. The store writes one receipt set in its own immediate transaction. A stored receipt set grants no qualification, activation, or live-use authority. Schema 15 adds one inert candidate-deterministic-evaluation table. The store writes one deterministic evaluation in its own immediate transaction. A stored deterministic evaluation grants no qualification, activation, or live-use authority. Schema 16 adds one inert repeatability terminal-result table. The store writes one repeatability result in its own immediate transaction. A stored repeatability result grants no qualification, activation, or live-use authority. Schema 17 adds one inert generation-qualification record table. The store writes one qualification record in its own immediate transaction. A stored qualification record grants no qualification, activation, or live-use authority. Schema 18 adds one inert generation-qualification invalidation table. The store writes one invalidation in its own immediate transaction. A stored invalidation grants no qualification, activation, or live-use authority. Schema 19 adds one inert generation-qualification selection table. The store writes one selection in its own immediate transaction. A stored selection grants no qualification, activation, or live-use authority.
-  A stored result or denial grants no qualification, activation, or live-use authority. Schema 11
-  repeatability results remain limited to candidate-generation failure.
+  evidence. Schemas 11 through 19 retain the terminal, judge, phase, receipt-set,
+  deterministic, repeatability, qualification, invalidation, and selection
+  contracts in the [durable evidence schema history](#durable-evidence-schema-history).
+  Their immediate-transaction writers grant no qualification, activation,
+  or live-use authority.
+  Schema 11 repeatability results remain limited to candidate-generation failure.
   Stored digests or caller-selected measurements cannot substitute for those typed
   observations.
 - The model-free evaluator does not assess open-domain paraphrases and must abstain
@@ -742,13 +967,13 @@ An in-memory terminal-evidence planner now derives one operation receipt and bin
 a phase interruption only when interruption facts are supplied for a noncompleted
 receipt. It does not persist, construct a qualification record,
 or acquire live authority. Read-only attempt-ledger rederive rebuilds the
-target manifest from schema-10 rows and does not write. Schema 11 adds
-the operation-level terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live
-authority. Schema 12 adds seven judge-execution tables for plans, schedules,
-request aggregates, response aggregates, observation batches, managed local judge
-receipts, and candidate judge joins. The store writes that seven-row cohort in one
-immediate transaction. The cohort grants no qualification, activation, or live-use
-authority. Schema 11 repeatability results remain limited to candidate-generation failure. Schema 13 adds three inert tables for resource-attempt results, resource-policy denials, and human-adjudication-policy denials. The store writes one resource-policy denial or one human-adjudication-policy denial in its own immediate transaction. The store writes one resource-attempt result in its own immediate transaction. Schema 14 adds one inert candidate-generation receipt-set table. The store writes one receipt set in its own immediate transaction. A stored receipt set grants no qualification, activation, or live-use authority. Schema 15 adds one inert candidate-deterministic-evaluation table. The store writes one deterministic evaluation in its own immediate transaction. A stored deterministic evaluation grants no qualification, activation, or live-use authority. Schema 16 adds one inert repeatability terminal-result table. The store writes one repeatability result in its own immediate transaction. A stored repeatability result grants no qualification, activation, or live-use authority. Schema 17 adds one inert generation-qualification record table. The store writes one qualification record in its own immediate transaction. A stored qualification record grants no qualification, activation, or live-use authority. Schema 18 adds one inert generation-qualification invalidation table. The store writes one invalidation in its own immediate transaction. A stored invalidation grants no qualification, activation, or live-use authority. Schema 19 adds one inert generation-qualification selection table. The store writes one selection in its own immediate transaction. A stored selection grants no qualification, activation, or live-use authority. A stored result or denial grants no qualification, activation, or live-use authority. Schema 11 repeatability results remain limited to candidate-generation failure.
+target manifest from schema-10 rows and does not write. Schemas 11 through 19 retain
+the terminal, judge, phase, receipt-set,
+deterministic, repeatability, qualification, invalidation, and selection
+contracts in the [durable evidence schema history](#durable-evidence-schema-history).
+Their immediate-transaction writers grant no qualification, activation,
+or live-use authority. Schema 11 repeatability results remain limited to
+candidate-generation failure.
 Bounded read-only candidate-attempt reconciliation now runs before `Prepared`
 activation. It inspects at most the plan's 1,024 attempts in plan order, classifies
 each as not started, checkpoint-only, terminal failed, or terminal completed, and
@@ -865,22 +1090,18 @@ checkpoint remains the concurrency barrier after this read-only admission check.
    publication and reacquisition, and atomic completed-or-failed terminal persistence.
    Bounded activation reconciliation now runs before Prepared activation and allows
    only an entirely pristine plan. It does not retry, repair, promote, delete, or
-   fabricate evidence. An in-memory planner now derives that receipt and binds a phase interruption only
+   fabricate evidence. An in-memory planner now derives that receipt and binds a
+   phase interruption only
    when interruption facts are supplied for a noncompleted receipt. It does not
    persist, construct a qualification record, or acquire live
-   authority. Read-only attempt-ledger rederive rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds
-   the terminal-evidence tables. The cohort writer stores those rows in one transaction and grants no live authority.
-   Schema 12 adds seven judge-execution tables for plans, schedules, request
-   aggregates, response aggregates, observation batches, managed local judge receipts,
-   and candidate judge joins. The store writes that seven-row cohort in one immediate
-   transaction. The cohort grants no qualification, activation, or live-use authority.
+   authority. Read-only attempt-ledger rederive rebuilds the target manifest from
+   schema-10 rows and does not write. Schemas 11 through 19 retain the terminal,
+   judge, phase, receipt-set,
+   deterministic, repeatability, qualification, invalidation, and selection
+   contracts in the [durable evidence schema history](#durable-evidence-schema-history).
+   Their immediate-transaction writers grant no qualification, activation,
+   or live-use authority.
    Schema 11 repeatability results remain limited to candidate-generation failure.
-   Schema 13 adds three inert tables for resource-attempt results, resource-policy
-   denials, and human-adjudication-policy denials. The store writes one
-   resource-policy denial or one human-adjudication-policy denial in its own
-   immediate transaction. The store writes one resource-attempt result in its own immediate transaction. Schema 14 adds one inert candidate-generation receipt-set table. The store writes one receipt set in its own immediate transaction. A stored receipt set grants no qualification, activation, or live-use authority. Schema 15 adds one inert candidate-deterministic-evaluation table. The store writes one deterministic evaluation in its own immediate transaction. A stored deterministic evaluation grants no qualification, activation, or live-use authority. Schema 16 adds one inert repeatability terminal-result table. The store writes one repeatability result in its own immediate transaction. A stored repeatability result grants no qualification, activation, or live-use authority. Schema 17 adds one inert generation-qualification record table. The store writes one qualification record in its own immediate transaction. A stored qualification record grants no qualification, activation, or live-use authority. Schema 18 adds one inert generation-qualification invalidation table. The store writes one invalidation in its own immediate transaction. A stored invalidation grants no qualification, activation, or live-use authority. Schema 19 adds one inert generation-qualification selection table. The store writes one selection in its own immediate transaction. A stored selection grants no qualification, activation, or live-use authority.
-   A stored result or denial grants no qualification, activation, or live-use authority. Schema 11
-   repeatability results remain limited to candidate-generation failure.
    A positive human authority requires a reviewed V2
    policy and explicit reviewer-governance and evidence-retention decisions. Add each
    later dependency-complete schema cohort in order, then compile

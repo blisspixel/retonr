@@ -10,8 +10,8 @@ use rewrite_types::CancellationToken;
 use crate::active_generation_qualification_subject::ActiveGenerationQualificationBinding;
 
 use super::{
-    CoreError, VerifiedCandidateBatch, VerifiedCandidateBatchError, VerifiedCandidateBatchSet,
-    VerifiedCandidateBatchSetCore, VerifiedCandidateBatchSetError,
+    CandidateBatchSetScope, CoreError, VerifiedCandidateBatch, VerifiedCandidateBatchError,
+    VerifiedCandidateBatchSet, VerifiedCandidateBatchSetCore, VerifiedCandidateBatchSetError,
 };
 
 pub(super) trait RetainedCandidateBatch {
@@ -45,6 +45,11 @@ impl RetainedCandidateBatch for VerifiedCandidateBatch {
 }
 
 pub(super) trait CandidateBatchSetAuthority {
+    fn validate_scope(
+        &self,
+        scope: CandidateBatchSetScope<'_>,
+        cancellation: &CancellationToken,
+    ) -> Result<(), VerifiedCandidateBatchSetError>;
     fn active_binding(&self) -> Option<&ActiveGenerationQualificationBinding>;
     fn batch_count(&self) -> usize;
     fn revalidate(
@@ -79,6 +84,16 @@ struct CandidateBatchSetAuthorityCore<B: RetainedCandidateBatch> {
 }
 
 impl<B: RetainedCandidateBatch> CandidateBatchSetAuthority for CandidateBatchSetAuthorityCore<B> {
+    fn validate_scope(
+        &self,
+        scope: CandidateBatchSetScope<'_>,
+        cancellation: &CancellationToken,
+    ) -> Result<(), VerifiedCandidateBatchSetError> {
+        self.core.revalidate(cancellation).map_err(self.map_error)?;
+        super::scope::validate_core_scope(&self.core, scope)
+            .map_err(VerifiedCandidateBatchSetError::Relationship)?;
+        self.core.revalidate(cancellation).map_err(self.map_error)
+    }
     fn active_binding(&self) -> Option<&ActiveGenerationQualificationBinding> {
         self.core.active_binding.as_ref()
     }

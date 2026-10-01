@@ -21,6 +21,8 @@ use crate::{
     runtime_source_build_execution::inject_controlled_build_output_substitution_once,
 };
 
+#[path = "linux_tests/admission.rs"]
+mod admission;
 mod fixture;
 mod review;
 
@@ -279,6 +281,7 @@ fn assert_evidence_publishes_and_detects_tampering(
     );
     assert_eq!(reacquired.report(), published.report());
     review::assert_blocked_build_stage_review(&reacquired, cancellation);
+    admission::assert_public_admission_assembly(&reacquired, cancellation);
     pair.primary()
         .revalidate_output(cancellation)
         .expect("revalidate primary output");

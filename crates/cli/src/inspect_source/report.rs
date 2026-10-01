@@ -18,10 +18,32 @@ pub(super) fn inspect_file(
 ) -> Result<InspectReport, RunFailure> {
     let bytes = read_input_bounded(source, MAX_CANDIDATE_CHECK_BYTES)
         .map_err(|error| RunFailure::input_read(command, &error))?;
-    let inventory = inspect_plain_text(&bytes).map_err(|error| RunFailure::app(command, &error))?;
-    Ok(InspectReport::from_inventory(
-        &inventory,
-        sidecar_scan(source),
+    inventory_report(source, command, &bytes).map(|(report, _)| report)
+}
+
+pub(super) fn inspect_direct_file_bounded(
+    root: &Path,
+    source: &Path,
+    command: CommandName,
+    maximum_bytes: usize,
+) -> Result<(InspectReport, usize), RunFailure> {
+    let relative = source
+        .strip_prefix(root)
+        .map_err(|_| RunFailure::operational(command))?;
+    let bytes = crate::file_input::read_directory_bounded(root, relative, maximum_bytes)
+        .map_err(|error| RunFailure::input_read(command, &error))?;
+    inventory_report(source, command, &bytes)
+}
+
+pub(super) fn inventory_report(
+    source: &Path,
+    command: CommandName,
+    bytes: &[u8],
+) -> Result<(InspectReport, usize), RunFailure> {
+    let inventory = inspect_plain_text(bytes).map_err(|error| RunFailure::app(command, &error))?;
+    Ok((
+        InspectReport::from_inventory(&inventory, sidecar_scan(source)),
+        bytes.len(),
     ))
 }
 

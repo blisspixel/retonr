@@ -25,6 +25,9 @@ use super::{GenerationQualificationPreparationError, check_gate};
 
 mod activation_admission;
 mod candidate_execution;
+mod deterministic;
+mod judge;
+mod receipt_set;
 
 /// Failure to open the durable qualification preregistration repository.
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]

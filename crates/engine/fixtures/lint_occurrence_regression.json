@@ -1,0 +1,8 @@
+{
+  "pattern": "!!! ",
+  "repetitions": 65538,
+  "source": "First!!! Second!!! Third!!!",
+  "candidate": "First!!! Second. Third.",
+  "quoted": "\"!!!\" outside!!!",
+  "nested_quotes": "\u201couter \"nested !!!\" remains !!! quoted\u201d outside!!!"
+}

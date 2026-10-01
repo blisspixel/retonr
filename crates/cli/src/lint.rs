@@ -12,6 +12,8 @@ use rewrite_app::{
 };
 use serde::Serialize;
 
+mod directory;
+
 use crate::{
     contract::{
         CommandName, EXIT_POLICY, ReportFormat, STANDARD_STREAM_PATH, SuccessEnvelope,
@@ -23,6 +25,7 @@ use crate::{
 /// Owned arguments for editorial lint inspection.
 pub(crate) struct LintRequest {
     pub(crate) source: PathBuf,
+    pub(crate) recursive: bool,
     pub(crate) candidate: Option<PathBuf>,
     pub(crate) fail_on_findings: bool,
 }
@@ -61,6 +64,14 @@ pub struct ComparativeLintReport {
 
 /// Inspects one or two documents against deterministic editorial rules.
 pub(crate) fn run(request: &LintRequest, format: ReportFormat) -> Result<ExitCode, RunFailure> {
+    if std::fs::symlink_metadata(&request.source)
+        .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
+    {
+        return directory::run(request, format);
+    }
+    if request.recursive {
+        return Err(RunFailure::usage_for(CommandName::Lint));
+    }
     if let Some(candidate_path) = &request.candidate {
         run_comparative(
             &request.source,
@@ -165,9 +176,11 @@ fn is_standard_stream(path: &Path) -> bool {
 fn write_single_report(report: &DocumentLintReport, format: ReportFormat) -> io::Result<()> {
     let bytes = match format {
         ReportFormat::Json => {
-            let mut bytes =
-                serde_json::to_vec_pretty(&SuccessEnvelope::new(CommandName::Lint, report))
-                    .map_err(io::Error::other)?;
+            let mut bytes = crate::render::to_safe_pretty_json(&SuccessEnvelope::new(
+                CommandName::Lint,
+                report,
+            ))
+            .map_err(io::Error::other)?;
             bytes.push(b'\n');
             bytes
         }
@@ -179,7 +192,10 @@ fn write_single_report(report: &DocumentLintReport, format: ReportFormat) -> io:
                 let _ = writeln!(
                     text,
                     "  - [{}] '{}' (occurrence {}): {}",
-                    finding.rule_id, finding.evidence, finding.occurrence, finding.message
+                    finding.rule_id,
+                    crate::render::escape_inline_for_display(&finding.evidence),
+                    finding.occurrence,
+                    finding.message
                 );
             }
             text.into_bytes()
@@ -196,9 +212,11 @@ fn write_comparative_report(
 ) -> io::Result<()> {
     let bytes = match format {
         ReportFormat::Json => {
-            let mut bytes =
-                serde_json::to_vec_pretty(&SuccessEnvelope::new(CommandName::Lint, report))
-                    .map_err(io::Error::other)?;
+            let mut bytes = crate::render::to_safe_pretty_json(&SuccessEnvelope::new(
+                CommandName::Lint,
+                report,
+            ))
+            .map_err(io::Error::other)?;
             bytes.push(b'\n');
             bytes
         }
@@ -219,7 +237,10 @@ fn write_comparative_report(
                     let _ = writeln!(
                         text,
                         "  - [{}] '{}' (occurrence {}): {}",
-                        finding.rule_id, finding.evidence, finding.occurrence, finding.message
+                        finding.rule_id,
+                        crate::render::escape_inline_for_display(&finding.evidence),
+                        finding.occurrence,
+                        finding.message
                     );
                 }
             }

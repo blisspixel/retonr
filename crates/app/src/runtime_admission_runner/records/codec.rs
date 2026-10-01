@@ -17,6 +17,11 @@ use crate::{
     RuntimeAdmissionRunnerError, VerifiedRuntimeAdmissionFoundationBinding,
 };
 
+mod compiled_binding;
+#[cfg(test)]
+pub(in crate::runtime_admission_runner) use compiled_binding::review_operation_fixture;
+pub(in crate::runtime_admission_runner) use compiled_binding::verify_compiled_for_review;
+
 pub(super) fn validate_subjects(
     foundation: &VerifiedRuntimeAdmissionFoundationBinding,
     package: &RuntimePackageManifest,

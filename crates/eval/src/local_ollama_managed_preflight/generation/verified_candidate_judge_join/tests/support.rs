@@ -102,7 +102,6 @@ pub(in crate::local_ollama_managed_preflight::generation) fn managed_receipt(
     responses: &CandidateJudgeResponseAggregateV1,
     observations: &CandidateJudgeObservationBatchV1,
 ) -> ManagedLocalJudgeReceiptRecordV1 {
-    let count = u64::from(handoff.judge_schedule().entry_count());
     ManagedLocalJudgeReceiptRecordV1::new(
         ManagedLocalJudgeReceiptRecordV1Relations {
             plan: handoff.judge_plan(),
@@ -112,25 +111,7 @@ pub(in crate::local_ollama_managed_preflight::generation) fn managed_receipt(
             response_aggregate: responses,
             observation_batch: observations,
         },
-        ManagedLocalJudgeReceiptRecordV1Input {
-            judge_runtime_installation_generation: 7,
-            judge_model_installation_generation: 11,
-            managed_preflight_digest: Digest::sha256(b"join managed preflight"),
-            retained_session_preflight_digest: Digest::sha256(b"join retained preflight"),
-            residency_receipt_aggregate_digest: Digest::sha256(b"join residency aggregate"),
-            process_observation_aggregate_digest: Digest::sha256(b"join process aggregate"),
-            native_load_observation_aggregate_digest: Digest::sha256(b"join native aggregate"),
-            connection_observation_aggregate_digest: Digest::sha256(b"join connection aggregate"),
-            effective_runtime_state_observation_aggregate_digest: Digest::sha256(
-                b"join effective state aggregate",
-            ),
-            judge_effective_runtime_state_join_id:
-                ManagedOllamaEffectiveRuntimeStateJoinId::from_derived_digest(Digest::sha256(
-                    b"join effective state",
-                )),
-            first_response_ordinal: 8,
-            last_response_ordinal: 7 + count * 9,
-        },
+        managed_input(handoff),
     )
     .expect("managed receipt")
 }
@@ -195,4 +176,29 @@ pub(super) fn failures() -> ManagedJudgeScheduleAuthorityFailures {
 
 pub(super) fn primary() -> CandidateJudgeJoinPrimaryError {
     CandidateJudgeJoinPrimaryError::Join(CandidateJudgeJoinCompilationError::Cancelled)
+}
+
+pub(in crate::local_ollama_managed_preflight::generation) fn managed_input(
+    handoff: &CandidateJudgeRunnerHandoff<'_>,
+) -> ManagedLocalJudgeReceiptRecordV1Input {
+    let count = u64::from(handoff.judge_schedule().entry_count());
+    ManagedLocalJudgeReceiptRecordV1Input {
+        judge_runtime_installation_generation: 7,
+        judge_model_installation_generation: 11,
+        managed_preflight_digest: Digest::sha256(b"join managed preflight"),
+        retained_session_preflight_digest: Digest::sha256(b"join retained preflight"),
+        residency_receipt_aggregate_digest: Digest::sha256(b"join residency aggregate"),
+        process_observation_aggregate_digest: Digest::sha256(b"join process aggregate"),
+        native_load_observation_aggregate_digest: Digest::sha256(b"join native aggregate"),
+        connection_observation_aggregate_digest: Digest::sha256(b"join connection aggregate"),
+        effective_runtime_state_observation_aggregate_digest: Digest::sha256(
+            b"join effective state aggregate",
+        ),
+        judge_effective_runtime_state_join_id:
+            ManagedOllamaEffectiveRuntimeStateJoinId::from_derived_digest(Digest::sha256(
+                b"join effective state",
+            )),
+        first_response_ordinal: 8,
+        last_response_ordinal: 7 + count * 9,
+    }
 }

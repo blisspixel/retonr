@@ -545,3 +545,8 @@ async fn run_live_join(
         native_load,
     )
 }
+
+pub(crate) use generation::JudgeSettlementView;
+
+#[cfg(test)]
+pub(crate) use generation::synthetic_join;

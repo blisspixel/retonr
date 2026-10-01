@@ -1,0 +1,5 @@
+[
+  {"path": "a.txt", "source": "Hello world\n", "candidate": "Hello, world!\n", "status": "rewritten"},
+  {"path": "nested/b.txt", "source": "Hello world\n", "candidate": "Hello, world!\n", "status": "rewritten"},
+  {"path": "z.txt", "source": "Version 2\n", "candidate": "Version 3\n", "status": "abstained"}
+]

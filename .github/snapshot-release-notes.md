@@ -7,6 +7,22 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 
 ## Changes in this snapshot
 
+- Adds an experimental read-only terminal workbench: `retonr tui SOURCE`, with
+  optional `--candidate FILE` and repeated `--protect TERM`. The three panes show
+  findings, source, and candidate. `--plain` provides bounded text or JSON previews
+  for redirected output and accessible terminals. Validation uses complete inputs;
+  previews are truncated and escaped for safe display.
+- Adds bounded recursive directory lint and read-only paired-directory candidate
+  checks, with explicit inventory limits and per-file findings.
+- Hardens retained-file reads against special files, ancestry replacement, and
+  concurrent changes, and rechecks staged bytes before publication.
+- Fixes controlled bootstrap assembly for the pinned Rust distribution archives:
+  installer metadata stays separate while validated manifest-declared payloads
+  merge into the toolchain. The actual archives pass the production extractor.
+- Adds durable Active receipt, deterministic evaluation, and managed judge-cohort
+  persistence. Adds cleanup-gated runtime observations, exact-source evidence
+  assembly and publication, and an inert all-pass admission review compiler.
+  These internal bridges do not admit a production runtime or qualify a model.
 - Adds optional layout bounds on `retonr check`: an edit level, a character budget,
   and an expansion ceiling. These gates decide acceptance before a candidate is
   written. They do not qualify a model.
@@ -67,6 +83,10 @@ the current model-free rewrite transaction. `retonr inspect` performs pre-model
 source inventory. `retonr model` administers exact local model artifacts offline.
 These commands do not download, qualify, activate, or run a model.
 
+`retonr tui` presents existing candidate validation and editorial lint in a
+read-only terminal view. Interactive mode requires terminal input and output;
+use `--plain` for redirected output. It does not generate or write documents.
+
 Model-backed rewrite, managed runtime execution, profiles, agents, and the desktop
 application are not exposed by this binary. See
 [Current state](https://github.com/blisspixel/retonr/blob/main/docs/current-state.md),
@@ -74,7 +94,10 @@ which is the only authority for implemented behavior.
 
 ## Known limits
 
-- `check` and `rewrite` accept only UTF-8 plain-text documents up to 16 MiB.
+- Single-file `check`, `rewrite`, and `tui` accept only UTF-8 plain-text documents
+  up to 16 MiB each. TUI accepts regular files and refuses stdin and directories.
+- Recursive lint and paired-directory checks are read-only, bounded operations;
+  they do not provide multi-document mutation or recovery transactions.
 - The candidate must be a complete replacement document, not a patch.
 - The current evaluator accepts only literal, token-preserving changes.
   Open-domain paraphrases abstain by design.

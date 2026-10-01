@@ -3,7 +3,7 @@
 use std::{
     error::Error,
     fmt,
-    fs::{self, File},
+    fs::File,
     io::{self, Read},
     num::NonZeroU64,
     path::Path,
@@ -139,6 +139,9 @@ pub enum CommandName {
     /// Deterministic editorial lint and anti-slop inspection.
     #[serde(rename = "lint")]
     Lint,
+    /// Read-only interactive document review and linear fallback.
+    #[serde(rename = "tui")]
+    Tui,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -527,7 +530,7 @@ pub(crate) fn read_input_bounded(path: &Path, limit: usize) -> io::Result<Vec<u8
     if path.as_os_str() == STANDARD_STREAM_PATH {
         read_bounded(io::stdin().lock(), limit)
     } else {
-        read_bounded(open_regular_file(path)?, limit)
+        crate::file_input::read_regular_bounded(path, limit)
     }
 }
 
@@ -546,20 +549,7 @@ pub(crate) fn read_bounded(reader: impl Read, limit: usize) -> io::Result<Vec<u8
 }
 
 pub(crate) fn open_regular_file(path: &Path) -> io::Result<File> {
-    let listed = fs::symlink_metadata(path)?;
-    let metadata = if listed.file_type().is_symlink() {
-        fs::metadata(path)?
-    } else {
-        listed
-    };
-    if metadata.is_file() {
-        File::open(path)
-    } else {
-        Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "input must be a regular file",
-        ))
-    }
+    crate::file_input::open_regular_file(path)
 }
 
 /// Parses one strict artifact manifest from a bounded byte stream.

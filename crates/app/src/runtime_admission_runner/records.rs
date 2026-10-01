@@ -22,7 +22,14 @@ const NATIVE_CONTROL_DOMAIN: &[u8] = b"retonr:runtime-admission:native-closure-c
 const STARTUP_CONTROL_DOMAIN: &[u8] = b"retonr:runtime-admission:managed-startup-control:v1";
 const CLOUD_CONTROL_DOMAIN: &[u8] = b"retonr:runtime-admission:cloud-disable-control:v1";
 
+#[cfg(test)]
+#[path = "records/observed_tests.rs"]
+mod observed_tests;
+
 mod codec;
+#[cfg(test)]
+pub(super) use codec::review_operation_fixture;
+pub(super) use codec::verify_compiled_for_review;
 use codec::{
     ManagedFinalRecordWire, NativeLoadRecordWire, derive_managed_wire, derive_native_wire, encode,
     parse_canonical, parse_native_observation, record_digest, validate_native_observation,
@@ -104,6 +111,25 @@ pub struct RuntimeAdmissionManagedFinalRecord {
 }
 
 impl RuntimeAdmissionManagedFinalRecord {
+    pub(super) fn verify_observed(
+        bytes: &[u8],
+        foundation: &VerifiedRuntimeAdmissionFoundationBinding,
+        package: &RuntimePackageManifest,
+        frozen: &VerifiedFrozenExternalNativeComponentSet,
+        final_evidence: &RuntimeAdmissionFinalVerification,
+        native_record_id: &RuntimeAdmissionNativeLoadRecordId,
+    ) -> Result<Self, RuntimeAdmissionRunnerError> {
+        validate_subjects(foundation, package, frozen)?;
+        validate_native_observation(package, frozen, final_evidence.native_load())?;
+        let expected = derive_managed_wire(
+            foundation.foundation_id(),
+            package,
+            frozen,
+            final_evidence,
+            native_record_id,
+        )?;
+        verify_observed_managed_wire(bytes, &expected)
+    }
     /// Returns exact canonical publication bytes.
     #[must_use]
     pub fn canonical_bytes(&self) -> &[u8] {
@@ -141,6 +167,24 @@ impl RuntimeAdmissionManagedFinalRecord {
             record_id,
         })
     }
+}
+
+fn verify_observed_managed_wire(
+    bytes: &[u8],
+    expected: &ManagedFinalRecordWire,
+) -> Result<RuntimeAdmissionManagedFinalRecord, RuntimeAdmissionRunnerError> {
+    let parsed: ManagedFinalRecordWire =
+        parse_canonical(bytes, MAX_RUNTIME_ADMISSION_MANAGED_FINAL_RECORD_BYTES)?;
+    if &parsed != expected {
+        return Err(RuntimeAdmissionRunnerError::InvalidEvidenceBinding);
+    }
+    Ok(RuntimeAdmissionManagedFinalRecord {
+        canonical_bytes: bytes.to_vec(),
+        record_id: RuntimeAdmissionManagedFinalRecordId(record_digest(
+            MANAGED_RECORD_ID_DOMAIN,
+            bytes,
+        )),
+    })
 }
 
 /// Independently verified passed native-closure result.
@@ -287,82 +331,11 @@ impl VerifiedPassedRuntimeAdmissionCloudDisableControl {
 }
 
 #[cfg(test)]
-pub(crate) fn test_execution_control_fixtures(
-    foundation_id: RuntimeAdmissionEvidenceFoundationId,
-    cloud_status: OllamaCloudDisableVersionStatus,
-    native_record_matches: bool,
-    frozen_set_matches: bool,
-) -> (
-    VerifiedPassedRuntimeAdmissionNativeClosureControl,
-    VerifiedPassedRuntimeAdmissionManagedStartupControl,
-    VerifiedPassedRuntimeAdmissionCloudDisableControl,
-) {
-    test_execution_control_fixtures_with_launch(
-        foundation_id,
-        cloud_status,
-        native_record_matches,
-        frozen_set_matches,
-        Digest::sha256(b"launch"),
-    )
-}
-
+mod control_fixtures;
 #[cfg(test)]
-pub(crate) fn test_execution_control_fixtures_with_launch(
-    foundation_id: RuntimeAdmissionEvidenceFoundationId,
-    cloud_status: OllamaCloudDisableVersionStatus,
-    native_record_matches: bool,
-    frozen_set_matches: bool,
-    startup_launch_spec_digest: Digest,
-) -> (
-    VerifiedPassedRuntimeAdmissionNativeClosureControl,
-    VerifiedPassedRuntimeAdmissionManagedStartupControl,
-    VerifiedPassedRuntimeAdmissionCloudDisableControl,
-) {
-    let native_record_id = RuntimeAdmissionNativeLoadRecordId(Digest::sha256(b"native record"));
-    let managed_record_id = RuntimeAdmissionManagedFinalRecordId(Digest::sha256(b"managed record"));
-    let native_load_observation_id =
-        serde_json::from_value(serde_json::json!(Digest::sha256(b"native observation")))
-            .expect("test native observation identity");
-    let frozen_external_component_set_id: FrozenExternalNativeComponentSetId =
-        serde_json::from_value(serde_json::json!(Digest::sha256(
-            b"frozen external components"
-        )))
-        .expect("test frozen set identity");
-    let managed_native_record_id = if native_record_matches {
-        native_record_id.clone()
-    } else {
-        RuntimeAdmissionNativeLoadRecordId(Digest::sha256(b"other native record"))
-    };
-    let managed_frozen_external_component_set_id = if frozen_set_matches {
-        frozen_external_component_set_id.clone()
-    } else {
-        serde_json::from_value(serde_json::json!(Digest::sha256(b"other frozen set")))
-            .expect("other test frozen set identity")
-    };
-    let native = VerifiedPassedRuntimeAdmissionNativeClosureControl {
-        foundation_id: foundation_id.clone(),
-        record_id: native_record_id.clone(),
-        control_digest: Digest::sha256(b"native control"),
-        native_load_observation_id,
-        frozen_external_component_set_id: frozen_external_component_set_id.clone(),
-    };
-    let bindings = ManagedControlBindings {
-        cloud_control_digest: Digest::sha256(b"cloud control"),
-        cloud_status,
-        foundation_id,
-        frozen_external_component_set_id: managed_frozen_external_component_set_id,
-        native_record_id: managed_native_record_id,
-        record_id: managed_record_id,
-        startup_launch_spec_digest,
-        startup_control_digest: Digest::sha256(b"startup control"),
-    };
-    let (startup, cloud) = if cloud_status == OllamaCloudDisableVersionStatus::Reviewed {
-        derive_passed_managed_controls(bindings).expect("reviewed test controls")
-    } else {
-        derive_managed_controls(bindings)
-    };
-    (native, startup, cloud)
-}
+pub(crate) use control_fixtures::{
+    test_execution_control_fixtures, test_execution_control_fixtures_with_launch,
+};
 
 /// Independent verifier for one native-load execution record.
 #[derive(Clone, Copy, Debug, Default)]

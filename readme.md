@@ -54,9 +54,15 @@ active under the roadmap's run-ahead policy.
 Today the CLI can validate a caller-supplied candidate, run a model-free rewrite
 transaction, inspect a plain-text source, lint a document or compare it with a
 candidate, administer exact local artifacts offline, and run the checked-in
-evaluation suites. It does not download, qualify, activate, or start a model.
-Qualified local generation, profiles, Markdown, DOCX, agents, and the desktop
-application are not implemented. No model and runtime combination is qualified.
+evaluation suites. An experimental read-only terminal UI brings source inspection,
+editorial lint, and supplied-candidate checking into one view. It does not download,
+qualify, activate, or start a model. Qualified local generation, profiles, Markdown,
+DOCX, agents, the complete terminal workbench, and the desktop application remain
+pending. No model and runtime combination is qualified.
+
+The planned 1.0 includes a scriptable CLI, an interactive terminal UI, and an
+accessible native desktop application on Linux, macOS, and Windows. All three use
+the same application core. The desktop uses no browser frontend or webview.
 
 The prose account of controlled builds, generation qualification, and the immediate
 0.2 path is in [Development status](docs/development-status.md). The authoritative
@@ -74,8 +80,12 @@ The workspace pins Rust 1.97.1. From the repository root:
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt
 cargo run --locked -p retonr-cli -- check original.txt - -o checked.txt
 cargo run --locked -p retonr-cli -- check original.txt candidate.txt --edit-level voice-pass --max-chars 280 --max-expansion-pct 8
+cargo run --locked -p retonr-cli -- check originals/ candidates/ --recursive --dry-run --fail-on-abstain
 cargo run --locked -p retonr-cli -- lint draft.txt --format text
 cargo run --locked -p retonr-cli -- lint draft.txt --candidate candidate.txt --fail-on-findings
+cargo run --locked -p retonr-cli -- lint drafts/ --recursive --fail-on-findings
+cargo run --locked -p retonr-cli -- tui draft.txt --candidate candidate.txt --protect Acme
+cargo run --locked -p retonr-cli -- tui draft.txt --plain --format json
 cargo run --locked -p retonr-cli -- rewrite fixtures/cli/source.txt
 cargo run --locked -p retonr-cli -- inspect fixtures/cli/source.txt
 cargo run --locked -p retonr-cli -- doctor
@@ -88,13 +98,23 @@ cargo run --locked -p rewrite-eval -- --lint draft.txt
 `check` validates a complete candidate without invoking a model. An accepted
 candidate can be written to a new destination; an abstention returns the exact
 original. Optional `--edit-level`, character budget, expansion ceiling, and line budget
-flags enforce layout constraints. `lint` inspects one document, or compares it with a
-candidate, for conversational residue, cliches, and synthetic patterns. `rewrite`
+flags enforce layout constraints. Read-only folder checks pair documents by exact
+relative path and report missing or skipped counterparts. `lint` inspects one document or a bounded folder,
+or compares one document with a candidate, for conversational residue, cliches,
+and synthetic patterns. Folder recursion is explicit and reports skipped entries.
+`rewrite`
 runs the current model-free transaction and never starts a runtime. `inspect`
 performs pre-model inventory. The implemented `model` commands manage
 caller-selected local artifacts without network access, qualification, or
 activation. Evaluation commands run checked-in development suites and do not
 create release qualification evidence.
+
+`tui` reviews one regular UTF-8 source file and an optional candidate, each limited
+to 16 MiB, through the same application checks and lint service. It never writes
+documents or generates text. Interactive use requires terminal stdin and stdout
+and refuses JSON mode. `--plain` supports redirected text or JSON with bounded,
+sanitized previews. Reload cancels the previous operation; terminal state is
+restored on exit. Profiles, folder navigation, and writing remain later work.
 
 Detailed flags, structured output, terminal safety, recovery behavior, and the
 complete model command list are in [Current state](docs/current-state.md). Hands-on

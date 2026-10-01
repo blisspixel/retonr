@@ -174,6 +174,8 @@ pub(in crate::local_ollama_managed_preflight::generation) struct ManagedLocalJud
         &'borrow CandidateJudgeResponseAggregateV1,
     pub(in crate::local_ollama_managed_preflight::generation) observation_batch:
         &'borrow CandidateJudgeObservationBatchV1,
+    pub(in crate::local_ollama_managed_preflight::generation) input:
+        ManagedLocalJudgeReceiptRecordV1Input,
     pub(in crate::local_ollama_managed_preflight::generation) record:
         &'borrow ManagedLocalJudgeReceiptRecordV1,
 }
@@ -196,6 +198,9 @@ impl ManagedLocalJudgeReceipt<'_, '_, '_, '_> {
                         judge_system: execution.released_package.judge_system(),
                         response_aggregate: execution.response_aggregate,
                         observation_batch: execution.observation_batch,
+                        input: execution.released_package.receipt_input(
+                            execution.managed_preflight.report().binding_digest.clone(),
+                        ),
                         record,
                     })
                 }),

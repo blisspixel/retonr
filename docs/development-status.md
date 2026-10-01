@@ -12,6 +12,19 @@ technical evidence is complete, but the milestone remains open because its relea
 closeout has not been published. Reversible milestone 0.2 implementation is active under
 the roadmap's run-ahead policy.
 
+Product readiness should be assessed through the roadmap's
+[delivery checkpoints](roadmap.md#product-delivery-checkpoints). The next outcome
+is a clean-install, qualified Linux plain-text rewrite with retained real-runtime
+evidence and repeatable offline operation. It is not yet demonstrated. Passing
+library tests and the coverage floor establish engineering evidence for the
+implemented scope; they do not establish completion of that user workflow or
+production readiness. A complete CLI beta, the broader required product features,
+and signed cross-platform release qualification remain separate later gates.
+The required interfaces are the scriptable CLI, an interactive terminal UI, and an
+accessible native desktop on Linux, macOS, and Windows. The native application
+uses no webview or browser frontend. TUI and early desktop-shell work consume the
+same application operations rather than implementing another rewrite engine.
+
 Today the CLI can validate a caller-supplied candidate, run a model-free rewrite
 transaction, inspect a plain-text source, administer exact local artifacts offline, and
 run the checked-in evaluation suites. It does not download, qualify, activate, or start
@@ -192,37 +205,23 @@ It performs no retry, repair, promotion, deletion, or evidence fabrication. An i
 planner now derives that receipt and binds a phase interruption only when interruption
 facts are supplied for a noncompleted receipt. It does not persist, construct a
 qualification record, or acquire live authority. Read-only attempt-ledger rederive
-rebuilds the target manifest from schema-10 rows and does not write. Schema 11 adds the
-operation-level terminal-evidence tables. The cohort writer stores those rows in one
-transaction and grants no live authority. Schema 12 adds seven judge-execution tables
-for plans, schedules, request aggregates, response aggregates, observation batches,
-managed local judge receipts, and candidate judge joins. The store writes that seven-row
-cohort in one immediate transaction. The cohort grants no qualification, activation, or
-live-use authority. Schema 11 repeatability results remain limited to
-candidate-generation failure. Schema 13 adds three inert tables for resource-attempt
-results, resource-policy denials, and human-adjudication-policy denials. The store
-writes one resource-policy denial or one human-adjudication-policy denial in its own
-immediate transaction. The store writes one resource-attempt result in its own immediate
-transaction. Schema 14 adds one inert candidate-generation receipt-set table. The store
-writes one receipt set in its own immediate transaction. A stored receipt set grants no
-qualification, activation, or live-use authority. Schema 15 adds one inert
-candidate-deterministic-evaluation table. The store writes one deterministic evaluation
-in its own immediate transaction. A stored deterministic evaluation grants no
-qualification, activation, or live-use authority. Schema 16 adds one inert repeatability
-terminal-result table. The store writes one repeatability result in its own immediate
-transaction. A stored repeatability result grants no qualification, activation, or
-live-use authority. Schema 17 adds one inert generation-qualification record table. The
-store writes one qualification record in its own immediate transaction. A stored
-qualification record grants no qualification, activation, or live-use authority. Schema
-18 adds one inert generation-qualification invalidation table. The store writes one
-invalidation in its own immediate transaction. A stored invalidation grants no
-qualification, activation, or live-use authority. Schema 19 adds one inert
-generation-qualification selection table. The store writes one selection in its own
-immediate transaction. A stored selection grants no qualification, activation, or
-live-use authority. A stored result or denial grants no qualification, activation, or
-live-use authority. Schema 11 repeatability results remain limited to
-candidate-generation failure. Exact per-repetition receipt-set-to-ledger matching,
-judge-result collection, and the final verifier follow. Production Approved roots remain
+rebuilds the target manifest from schema-10 rows and does not write. Schemas 11
+through 19 retain the terminal, judge, phase, receipt-set,
+deterministic, repeatability, qualification, invalidation, and selection
+contracts in the [durable evidence schema history](current-state.md#durable-evidence-schema-history).
+Their immediate-transaction writers grant no qualification, activation,
+or live-use authority. Schema 11 repeatability results remain limited to
+candidate-generation failure. Active-owned target receipt-set settlement now matches
+the exact sealed ledger and same-operation live batch set, writes schema 14, and
+independently reads it back with mandatory final revalidation. Active deterministic
+settlement now validates exact same-subject target and baseline batches plus retained
+case material, persists both receipt sets and the compiler-derived schema-15 result,
+and independently finalizes all authorities. Passed and Failed results remain inert.
+The application also compiles and publishes a fixed runtime-admission evidence tree
+from a source-build-bound foundation and bounded opaque snapshots, then independently
+reacquires its retained byte closure. Other members remain opaque until their
+independent semantic controls are verified. Durable managed judge settlement and
+the final verifier follow. Production Approved roots remain
 empty, no runtime has been admitted for this path, and the final `VerifiedGenerationQualification` compiler is not
 implemented.
 

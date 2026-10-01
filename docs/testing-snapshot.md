@@ -12,7 +12,8 @@ behavior. This guide summarizes it for a hands-on session and does not extend it
 Retonr is a local-first editorial engine. The snapshot's primary useful workflow is
 **fidelity checking**. It also exposes pre-model source inspection, deterministic
 editorial lint, a provisional `rewrite` command that does not start a runtime, and
-offline artifact administration.
+offline artifact administration. The experimental read-only TUI presents source
+inspection, lint, and supplied-candidate checking together.
 
 You bring two documents. The first is your original. The second is a complete
 rewritten version of it, produced by any tool or by hand. Retonr answers one
@@ -174,6 +175,27 @@ Make a failed check stop a pipeline:
 retonr check original.txt rewritten.txt --fail-on-abstain
 ```
 
+## Checking paired folders
+
+Use a read-only dry-run to validate a collection of supplied candidates:
+
+```console
+retonr --format json check originals/ candidates/ --recursive --dry-run --fail-on-abstain
+```
+
+The command pairs regular UTF-8 documents by exact, case-sensitive relative path.
+It reports each pair's normal fidelity result plus missing, skipped, or unsupported
+counterparts. The roots must be separate and nonoverlapping. Documents carrying
+content-credential markers or sidecars require an explicit derivative decision and
+are not checked as ordinary folder pairs.
+
+Folder checks write no documents, diffs, traces, or backups. They require
+`--dry-run`; recursion is explicit. Discovery is bounded to 4,096 entries, eight
+levels, and 64 MiB per root, including unsupported encodings. Checked pairs share a
+64 MiB source-and-candidate byte budget. Individual documents remain limited to
+16 MiB. `--fail-on-abstain` returns exit 3 for abstention or incomplete coverage,
+including unmatched and skipped entries. A resource-limit refusal returns exit 4.
+
 ## Reading the result
 
 `status` is one of:
@@ -206,6 +228,55 @@ already-preflighted retained Ollama stream and returns a limited transport-bindi
 receipt. Retained-session input above the absolute 4 MiB UTF-8 ceiling is rejected
 before wire serialization or completion traffic. The receipt remains separate from
 the scorecard and cannot override hard gates or human release adjudication.
+
+## Editorial lint
+
+You can inspect editorial patterns in one file or a folder without changing it:
+
+```console
+retonr lint draft.txt
+retonr lint drafts/ --recursive --fail-on-findings
+retonr lint source.txt --candidate candidate.txt --fail-on-findings
+```
+
+Folder reports sort documents by portable relative path and include skipped-entry
+reasons. Recursion is explicit; hidden entries, build directories, links, and
+unsupported encodings are skipped. The walk visits at most 4,096 entries through
+depth 8. Lint enforces 16 MiB per document, 64 MiB of folder text, and 16,384 folder
+findings. Exceeding a limit refuses the report. `--fail-on-findings` returns exit
+code 3 for document or folder findings, or for newly introduced comparative
+findings. A folder cannot be compared with one candidate.
+
+## Experimental terminal review
+
+Review a source and optionally validate a supplied candidate:
+
+```console
+retonr tui draft.txt
+retonr tui draft.txt --candidate candidate.txt --protect Acme
+retonr tui draft.txt --candidate candidate.txt --plain --format text
+retonr tui draft.txt --plain --format json
+```
+
+Interactive review requires terminal stdin and stdout and refuses JSON mode. Use
+`--plain` for a linear accessible review or redirected text or JSON. Inputs must
+be single regular UTF-8 files, at most 16 MiB each; stdin input and directories are
+unsupported. Metadata sidecars and possible carriers that require an explicit
+derivative decision are refused. `--protect` requires a candidate and may repeat.
+
+The review uses the existing application candidate-check and editorial lint
+services. Source and candidate previews are sanitized and limited to 64 KiB each;
+displayed findings are capped at 256 with omission markers. Validation uses the
+complete input, and reviews exceeding 4,096 total findings are refused. These are
+review previews, not document output. The source and candidate remain unchanged;
+the view does not generate text.
+
+Use Tab to switch panes, arrow keys to scroll, `?` for help, `r` to reload, and `q`
+or Escape to quit. Reload is serialized and stale results are discarded. Ctrl+C
+cancels the review. Terminal state is restored before worker cleanup. Editorial
+lint cannot stop midway through its call; cancellation discards its finished
+result. Local automated checks and a native Linux terminal smoke pass; completed
+cross-platform terminal and accessibility acceptance remain pending.
 
 ## Output safety
 
@@ -240,6 +311,13 @@ Directory dry-run resolves existing output ancestors before comparing roots. A
 link alias cannot hide an output nested under the source, and a dangling link at a
 mapped destination is reported as a collision.
 
+File reads validate retained regular-file handles around bounded input. Folder
+reads retain the selected real root and parent directories and refuse indirect
+descendants. Detected file or parent replacement returns a redacted
+`concurrent_modification` error. On Unix, a FIFO substituted for an observed
+regular file is refused without waiting for a writer. These are drift checks,
+not an atomic snapshot or exclusion of concurrent writes.
+
 ## What will frustrate you, and why
 
 These are known and expected. Reporting them again is not useful.
@@ -255,7 +333,12 @@ These are known and expected. Reporting them again is not useful.
   fake-conformance development binding, but it does not start a runtime or produce a
   qualified local-model rewrite.
 - **Plain text only**, UTF-8, up to 16 MiB. Markdown and DOCX are later phases.
-- **No profiles, no style learning, no editorial lint.**
+- **No profiles or style learning.** Deterministic editorial lint is available;
+  it reports named patterns and does not identify an author or qualify a model.
+- **The terminal UI is experimental and read-only.** Profiles, folder navigation,
+  writes, and model generation are unavailable in this view. The complete terminal
+  workbench and native desktop remain required before 1.0. The desktop is planned
+  for Linux, macOS, and Windows without a browser frontend.
 
 ## What feedback is genuinely useful
 

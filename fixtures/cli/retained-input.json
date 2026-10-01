@@ -1,0 +1,5 @@
+{
+  "original": "Hello world\n",
+  "candidate": "Hello, world!\n",
+  "changed": "Changed draft\n"
+}
