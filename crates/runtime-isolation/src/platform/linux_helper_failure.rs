@@ -43,6 +43,7 @@ impl HelperFailure {
             b"controlled-build-object-mismatch" => Some(Self::ControlledBuildObjectMismatch),
             b"controlled-build-output-not-empty" => Some(Self::ControlledBuildOutputNotEmpty),
             b"controlled-build-snapshot-timeout" => Some(Self::ControlledBuildSnapshotTimeout),
+            b"startup-timeout" => Some(Self::StartupTimeout),
             b"bootstrap-root-preparation" => Some(Self::BootstrapRootPreparation),
             b"bootstrap-root-verification" => Some(Self::BootstrapRootVerification),
             b"invalid-launch" => Some(Self::InvalidLaunch),

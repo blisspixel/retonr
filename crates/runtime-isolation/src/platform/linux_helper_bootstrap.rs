@@ -26,7 +26,7 @@ use super::{
     linux_bootstrap_target::PreparedBootstrapTarget,
     linux_build_mount::require_read_only_mount,
     linux_build_output,
-    linux_build_protocol::{InputDeclaration, decode_input_declarations},
+    linux_build_protocol::InputDeclaration,
     linux_build_protocol::{
         decode_process_finished, encode_bootstrap_armed, encode_finished, encode_helper_failure,
         encode_process_finished, require_bootstrap_armed,
@@ -50,6 +50,12 @@ use super::{
 
 const INTERNAL_PREFIX: &str = "REWRITE_ISOLATION_INTERNAL_";
 
+mod deadlines;
+mod inputs;
+
+use deadlines::{PreparationDeadline, startup_control_failure};
+use inputs::receive_input_files;
+
 struct BootstrapCapabilities {
     program: File,
     host_output: File,
@@ -61,9 +67,11 @@ pub(super) fn stage_one(arguments: &[OsString]) -> Result<i32, HelperFailure> {
     validate_mode_arguments(Mode::Bootstrap, arguments)?;
     validate_descriptor_set()?;
     arm_parent_death()?;
-    let deadline = Instant::now() + operation_timeout()?;
+    let startup_timeout = operation_timeout()?;
+    let deadline = Instant::now() + startup_timeout;
     let control = std::io::stdin();
     let (request, capabilities) = receive_capabilities(control.as_fd(), deadline)?;
+    let preparation = PreparationDeadline::new_at(Instant::now(), startup_timeout);
     let helper = open_executable(Path::new("/proc/self/exe"))?;
     let capability_limit = bootstrap_capability_limit()?;
     let relative_path = env::var(format!("{INTERNAL_PREFIX}BUILD_PROGRAM_RELATIVE_PATH"))
@@ -72,7 +80,7 @@ pub(super) fn stage_one(arguments: &[OsString]) -> Result<i32, HelperFailure> {
     begin_bootstrap_isolation(
         &capabilities.host_output,
         &capabilities.input_files,
-        deadline,
+        preparation.expires_at(),
     )?;
     let mut root = linux_bootstrap_root::execute(&request, &capabilities.declarations, &helper)?;
     let private_input =
@@ -81,6 +89,7 @@ pub(super) fn stage_one(arguments: &[OsString]) -> Result<i32, HelperFailure> {
     drop(capabilities.input_files);
     drop(capabilities.program);
     let established = prepare_bootstrap_child_namespace(read_limits()?)?;
+    let deadline = preparation.finish_at(Instant::now())?;
     let guardian_pid = u32::try_from(getpid().as_raw_nonzero().get())
         .map_err(|_| HelperFailure::NamespaceSetup)?;
     let (stage_control, child_control) = pair().map_err(control_failure)?;
@@ -101,7 +110,7 @@ pub(super) fn stage_one(arguments: &[OsString]) -> Result<i32, HelperFailure> {
         );
     let mut child = super::linux_helper_support::spawn_control_child(command)?;
     let namespace_init_pid = child.id();
-    let armed = receive(stage_control.as_fd(), deadline, None).map_err(control_failure)?;
+    let armed = receive(stage_control.as_fd(), deadline, None).map_err(startup_control_failure)?;
     if armed.kind != MessageKind::Armed
         || !armed.payload.is_empty()
         || !armed.descriptors.is_empty()
@@ -117,8 +126,8 @@ pub(super) fn stage_one(arguments: &[OsString]) -> Result<i32, HelperFailure> {
         deadline,
         None,
     )
-    .map_err(control_failure)?;
-    let armed = receive(stage_control.as_fd(), deadline, None).map_err(control_failure)?;
+    .map_err(startup_control_failure)?;
+    let armed = receive(stage_control.as_fd(), deadline, None).map_err(startup_control_failure)?;
     if armed.kind != MessageKind::BootstrapArmed || !armed.descriptors.is_empty() {
         return Err(HelperFailure::InvalidLaunch);
     }
@@ -164,8 +173,8 @@ pub(super) fn stage_two(arguments: &[OsString]) -> Result<i32, HelperFailure> {
         deadline,
         None,
     )
-    .map_err(control_failure)?;
-    let go = receive(control.as_fd(), deadline, None).map_err(control_failure)?;
+    .map_err(startup_control_failure)?;
+    let go = receive(control.as_fd(), deadline, None).map_err(startup_control_failure)?;
     if go.kind != MessageKind::Go || go.payload.len() != 4 || go.descriptors.len() != 2 {
         return Err(HelperFailure::InvalidLaunch);
     }
@@ -204,12 +213,11 @@ pub(super) fn stage_two(arguments: &[OsString]) -> Result<i32, HelperFailure> {
         MessageKind::BootstrapArmed,
         &encode_bootstrap_armed(evidence, mount, landlock_abi),
         &[],
-        Instant::now() + startup_timeout,
+        deadline,
         None,
     )
-    .map_err(control_failure)?;
-    let go = receive(control.as_fd(), Instant::now() + startup_timeout, None)
-        .map_err(control_failure)?;
+    .map_err(startup_control_failure)?;
+    let go = receive(control.as_fd(), deadline, None).map_err(startup_control_failure)?;
     if go.kind != MessageKind::BootstrapGo || !go.payload.is_empty() || !go.descriptors.is_empty() {
         return Err(HelperFailure::InvalidLaunch);
     }
@@ -237,7 +245,7 @@ fn receive_capabilities(
     control: std::os::fd::BorrowedFd<'_>,
     deadline: Instant,
 ) -> Result<(BootstrapRequest, BootstrapCapabilities), HelperFailure> {
-    let message = receive(control, deadline, None).map_err(control_failure)?;
+    let message = receive(control, deadline, None).map_err(startup_control_failure)?;
     if message.kind != MessageKind::BootstrapDescriptors
         || message.descriptors.len() != BOOTSTRAP_ROOT_DESCRIPTOR_COUNT
     {
@@ -271,40 +279,6 @@ fn receive_capabilities(
             declarations,
         },
     ))
-}
-
-fn receive_input_files(
-    control: std::os::fd::BorrowedFd<'_>,
-    input_count: usize,
-    deadline: Instant,
-) -> Result<(Vec<ControlledBuildInputFile>, Vec<InputDeclaration>), HelperFailure> {
-    let mut input_files = Vec::with_capacity(input_count);
-    let mut retained_declarations = Vec::with_capacity(input_count);
-    while input_files.len() < input_count {
-        let message = receive(control, deadline, None).map_err(control_failure)?;
-        if message.kind != MessageKind::BuildInputFiles {
-            return Err(HelperFailure::InvalidLaunch);
-        }
-        let declarations =
-            decode_input_declarations(&message.payload).ok_or(HelperFailure::InvalidLaunch)?;
-        if declarations.len() != message.descriptors.len()
-            || declarations.len() > input_count.saturating_sub(input_files.len())
-        {
-            return Err(HelperFailure::InvalidLaunch);
-        }
-        for (declaration, descriptor) in declarations.into_iter().zip(message.descriptors) {
-            let input = ControlledBuildInputFile::new(
-                declaration.relative_path.clone(),
-                declaration.expected_digest.clone(),
-                declaration.expected_bytes,
-                File::from(descriptor),
-            )
-            .map_err(|_| HelperFailure::InvalidLaunch)?;
-            retained_declarations.push(declaration);
-            input_files.push(input);
-        }
-    }
-    Ok((input_files, retained_declarations))
 }
 
 fn require_mapped_program(

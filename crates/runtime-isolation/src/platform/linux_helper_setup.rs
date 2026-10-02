@@ -66,6 +66,7 @@ pub(super) enum HelperFailure {
     ControlledBuildObjectMismatch,
     ControlledBuildOutputNotEmpty,
     ControlledBuildSnapshotTimeout,
+    StartupTimeout,
     BootstrapRootPreparation,
     BootstrapRootVerification,
     InvalidLaunch,
@@ -114,6 +115,7 @@ impl HelperFailure {
             Self::ControlledBuildObjectMismatch => "controlled-build-object-mismatch",
             Self::ControlledBuildOutputNotEmpty => "controlled-build-output-not-empty",
             Self::ControlledBuildSnapshotTimeout => "controlled-build-snapshot-timeout",
+            Self::StartupTimeout => "startup-timeout",
             Self::BootstrapRootPreparation => "bootstrap-root-preparation",
             Self::BootstrapRootVerification => "bootstrap-root-verification",
             Self::InvalidLaunch => "invalid-launch",
@@ -178,6 +180,7 @@ impl HelperFailure {
             Self::ControlledBuildObjectMismatch => IsolationError::ControlledBuildObjectMismatch,
             Self::ControlledBuildOutputNotEmpty => IsolationError::ControlledBuildOutputNotEmpty,
             Self::ControlledBuildSnapshotTimeout => IsolationError::ControlledBuildSnapshotTimeout,
+            Self::StartupTimeout => IsolationError::StartupTimeout,
             Self::BootstrapRootPreparation => IsolationError::BootstrapRootPreparation,
             Self::BootstrapRootVerification => IsolationError::BootstrapRootVerification,
             Self::InvalidLaunch => IsolationError::InvalidLaunch("helper validation"),
@@ -185,7 +188,7 @@ impl HelperFailure {
     }
 
     #[cfg(test)]
-    pub(super) const ALL: [Self; 43] = [
+    pub(super) const ALL: [Self; 44] = [
         Self::HostPolicyDenied,
         Self::NamespaceSetup,
         Self::LoopbackSetup,
@@ -226,6 +229,7 @@ impl HelperFailure {
         Self::ControlledBuildObjectMismatch,
         Self::ControlledBuildOutputNotEmpty,
         Self::ControlledBuildSnapshotTimeout,
+        Self::StartupTimeout,
         Self::BootstrapRootPreparation,
         Self::BootstrapRootVerification,
         Self::InvalidLaunch,
