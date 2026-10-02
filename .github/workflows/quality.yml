@@ -666,7 +666,9 @@ jobs:
           for index in "${!expected_attestor_tests[@]}"; do
             test "${observed_attestor_tests[$index]}" = "${expected_attestor_tests[$index]}"
           done
-          cargo test --locked --workspace --all-targets --all-features
+          cargo test --locked --workspace --exclude rewrite-runtime-attestor --all-targets --all-features
+          # Process-holder fixtures require an exclusive process observation window.
+          cargo test --locked -p rewrite-runtime-attestor --all-targets --all-features -- --test-threads=1
           profile_dir="$(dirname "$LLVM_PROFILE_FILE")"
           native_dir="$profile_dir/native"
           mkdir -p "$native_dir"
