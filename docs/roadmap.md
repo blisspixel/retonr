@@ -108,11 +108,18 @@ adds bounded folder navigation, shared headless review, successful-ledger
 persistence, Passed repetition settlement, and transactional complete repeatability
 manifest publication. Its follow-up adds shared retained-file intake and atomic
 resource-phase publication, with fixed-recipe bootstrap execution and exact
-compiler-library grants. A fresh frozen-source bootstrap pair now executes both
-independent roots, publishes all four exact retained programs, and passes public
-establishment and live revalidation. This closes the bootstrap execution blocker;
-it does not admit a runtime or model tuple. See the exact revision and evidence
-scope in [current implementation state](current-state.md).
+compiler-library grants. An earlier exact frozen-source bootstrap pair executed
+both independent roots, published all four retained programs, and passed public
+establishment and live revalidation. A subsequent real-runtime attempt exposed a
+bootstrap preparation and startup deadline mismatch. The helper now separates
+the existing preparation and handshake phases without widening their committed
+limits. Fresh exact-source runtime comparison and cold readback remain required.
+See the exact revision and evidence scope in
+[current implementation state](current-state.md).
+
+Failed resource qualification can now close into an inert Rejected record with
+human review Skipped. This completes a negative terminal path; reviewed positive
+human evidence and the final live qualification authority remain unfinished.
 
 The shared desktop foundation now includes typed selection, metadata decisions,
 bounded catalogs, and latest-only asynchronous review. CLI inspection and folder
@@ -123,6 +130,8 @@ these headless components do not close the native desktop checkpoint.
 1. Retain fresh controlled-build evidence for the real Linux runtime candidate.
    The historical source build is not retained evidence. Run the frozen-input build,
    independent byte comparison, publication, and cold readback before review.
+   Preserve the original preparation, startup, child-execution, and whole-operation
+   limits, and derive retained budget metadata directly from the verified plan.
 2. Complete real managed observations and semantic runtime review. Preserve the
    unreviewed observation path and require independently reviewed cloud-disable,
    startup, native-load, source-lineage, isolation, and cleanup relationships before

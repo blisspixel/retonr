@@ -31,6 +31,14 @@ run the checked-in evaluation suites. It does not download, qualify, activate, o
 a model. Qualified local generation, profiles, Markdown, DOCX, agents, and the desktop
 application are not implemented.
 
+The shared headless document services now serve CLI and terminal review, including
+bounded catalogs, retained intake, metadata decisions, and cancellable asynchronous
+review. Failed resource qualification has an atomic inert rejection closeout;
+positive qualification remains pending. The latest runtime diagnostic identified
+and fixed bootstrap preparation using the startup deadline. Existing phase limits
+remain intact, and a fresh exact-source runtime build is the next evidence task.
+See [Current state](current-state.md) for the completed tests and evidence limits.
+
 Development libraries can reconstruct selected Ollama model and runtime layouts as inert
 evidence and run a retained two-attempt Linux source-build fixture through
 controlled-build capability ABI 2. Before its first probe, each attempt copies the

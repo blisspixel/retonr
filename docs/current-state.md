@@ -39,19 +39,46 @@ ceiling; the finished-only bound preserves every other message limit. Maximum,
 oversized, truncated, and wrongly classified frames are exercised. The fresh real
 build attempt failed during bootstrap completion after publishing its first root;
 stream saturation is a plausible cause, not a retained observation. It did not
-produce a runtime pair or qualify a runtime. A new immutable-source attempt remains
-necessary.
+produce a runtime pair or qualify a runtime.
+
+A subsequent immutable-source attempt failed before publishing bootstrap outputs.
+A separate inert diagnostic observed the root-preparation checkpoint 37.090 seconds
+beyond the original startup deadline. Bootstrap preparation had reused the
+30-second startup deadline even though the parent already allowed a distinct
+600-second preparation phase. The helper now uses one immutable preparation
+deadline followed by one 30-second child handshake, preserving the existing parent
+ready ceiling, whole-operation deadline, and original cancellation. Expired
+startup controls retain the existing typed startup-timeout cause. The fix passes
+167 isolation unit tests and all 12 required native tests, with strict lint,
+formatting, and repository policy. Both real attempts and the diagnostic are
+terminal, with retained evidence. A fresh exact-source runtime build and cold
+readback remain the next checkpoint; no runtime or model tuple is admitted.
+
+Failed resource qualification now closes through the consuming Active operation
+into a negative Completed receipt and inert Rejected record, with human review
+Skipped. One transaction reconstructs the complete existing canonical execution,
+repeatability, and resource parents before inserting the terminal suffix. Exact
+replay and cold readback verify canonical bytes and indexed fields. Original
+deadline and cancellation precedence, same-subject joins, and independent
+uncancelled finalizers remain enforced. Postcommit cancellation or finalizer
+failure can return an error while leaving an inert Rejected record; these rows
+grant no qualification, activation, selection, or generation authority. Focused
+Windows and Linux rejection scenarios, full store suites, and strict evaluation
+and store lint pass. Positive human adjudication and qualification remain pending.
 
 The release notice collector now preserves exact bundled font license filenames
 and AUTHORS materials while excluding font binaries and unrelated assets. Cached
 font archive verification retains its legal texts verbatim. Native dependency
 adoption still needs pinned upstream fallback materials when crate archives omit
-required notices; no desktop dependencies have been added.
+required notices; no desktop dependencies have been added. Native adoption also
+requires merging verified supplemental code licenses when an archive already
+contains font notices. Retained candidate archive and upstream-material research
+does not yet establish a resolved shipping dependency closure.
 
 The integrated native-foundation batch passes 2,805 Windows and 3,033 Linux
 workspace tests and doctests before its final state and transport follow-ups.
 Focused follow-up validation covers the current document services, CLI adapters,
-163 Linux isolation tests, and all 12 required native tests. Final cross-platform
+167 Linux isolation tests, and all 12 required native tests. Final cross-platform
 CI, warnings-as-errors lint and documentation, legal notice checks, and the 80
 percent Rust line coverage floor remain publication gates.
 
