@@ -15,6 +15,15 @@ macro_rules! prepare_active {
     ($input:ident, $platform_owners:ident, $license_proof:ident, $license_policy:ident,
      $production_policy:ident, $directory:ident, $repository:ident, $active:ident,
      $cancellation:ident, $evidence:ident) => {
+        // Provision fixture dependencies before capturing the operation clock.
+        let $directory = tempfile::tempdir().expect("temporary repository");
+        let mut $repository = GenerationQualificationPreregistrationRepository::open(
+            &$directory.path().join("qualification.db"),
+        )
+        .expect("repository");
+        let $evidence =
+            rewrite_app::CandidateGenerationEvidenceRepository::initialize($directory.path())
+                .expect("evidence root");
         let $cancellation = CancellationToken::new();
         let projected = GenerationQualificationOperationDraft::begin(
             $input.operation_policy_relations,
@@ -38,11 +47,6 @@ macro_rules! prepare_active {
             &$cancellation,
         )
         .expect("license");
-        let $directory = tempfile::tempdir().expect("temporary repository");
-        let mut $repository = GenerationQualificationPreregistrationRepository::open(
-            &$directory.path().join("qualification.db"),
-        )
-        .expect("repository");
         let prepared = projected
             .finish(
                 &mut $repository,
@@ -54,9 +58,6 @@ macro_rules! prepare_active {
                 &$cancellation,
             )
             .expect("prepared");
-        let $evidence =
-            rewrite_app::CandidateGenerationEvidenceRepository::initialize($directory.path())
-                .expect("evidence root");
         let mut $active = prepared
             .activate(&$repository, &$evidence, &$cancellation)
             .expect("active");

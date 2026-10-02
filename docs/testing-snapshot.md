@@ -84,6 +84,11 @@ path and ordinary Unix permission-bit commitment, special-bit rejection, durable
 publication, reacquisition, and blocked schema-2 review. All three executions contribute to the
 workspace LLVM profile before the 80 percent line floor is checked.
 
+Process-holder attestor fixtures run serially in both the ordinary Linux test
+scheduler and coverage. Concurrent child creation can temporarily inherit a
+listener and interfere with exact ownership observation. Coverage still runs every
+attestor target and feature, followed by the required native gates.
+
 An opt-in managed-preflight library call can return the unchanged report with a
 separate inert package-declared typed runtime-build binding. Only the exact entrypoint
 is joined to managed process and native-load evidence; target, revision, and other
