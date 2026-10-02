@@ -7,6 +7,12 @@ priority = 100
 threads-required = "num-test-threads"
 
 [[profile.default.overrides]]
+filter = 'binary_id(rewrite-eval) and test(~generation_qualification_preregistration::active::)'
+platform = { host = 'cfg(windows)' }
+priority = 90
+threads-required = "num-test-threads"
+
+[[profile.default.overrides]]
 filter = 'binary_id(rewrite-runtime-attestor) and test(~platform::linux_managed::tests::)'
 platform = { host = 'cfg(target_os = "linux")' }
 priority = 90
