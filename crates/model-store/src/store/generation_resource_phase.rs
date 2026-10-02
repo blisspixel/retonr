@@ -146,7 +146,7 @@ fn status(manifest: &GenerationResourceEvidenceManifestV1) -> &'static str {
     }
 }
 
-fn load(
+pub(crate) fn load(
     connection: &Connection,
     input: GenerationResourcePhaseV1Input<'_>,
 ) -> StoreResult<Option<StoredGenerationResourcePhaseV1>> {

@@ -10,7 +10,9 @@ use super::codec::PreparedCohort;
 use super::text;
 
 mod confirm;
+mod resource_rejection;
 use crate::{StoreError, StoreResult, WriteDisposition};
+pub(super) use resource_rejection::insert_suffix;
 
 #[derive(Clone, Copy)]
 struct PhaseInsert<'a> {

@@ -70,6 +70,33 @@ fn resource_phase_publication_passes_fails_and_refuses_corruption_and_foreign_su
     ]);
 }
 
+#[test]
+fn resource_rejection_closes_only_failed_same_subject_complete_live_phases() {
+    exercise_scenarios(&[
+        "rejection_ok",
+        "rejection_passed",
+        "rejection_foreign",
+        "rejection_unsettled",
+        "rejection_substituted_execution",
+        "rejection_wrong_execution",
+        "rejection_no_acquisition",
+        "rejection_missing_ledger",
+        "rejection_missing_resource",
+        "rejection_corrupt_parent",
+        "rejection_abort",
+        "rejection_tamper",
+        "rejection_cancel",
+        "rejection_deadline",
+        "rejection_postcommit_cancel",
+        "rejection_postcommit_finalization",
+    ]);
+}
+
+#[test]
+fn resource_rejection_initial_finalizer_failure_is_not_counted_twice() {
+    exercise_scenarios(&["rejection_initial_finalization"]);
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "one synthetic retained authority fixture exercises exact durable cohort boundaries"
@@ -111,12 +138,13 @@ fn exercise_scenarios(failures: &[&str]) {
                     &active,
                     "qualification-closure-passing",
                 );
-                if failure.starts_with("resource_") {
+                if failure.starts_with("resource_") || failure.starts_with("rejection_") {
                     pair.attach_resource_observations(
                         input.foundation.plan_foundation,
                         input.operation_policy_relations,
                         &active,
-                        failure == "resource_failed",
+                        failure == "resource_failed"
+                            || (failure.starts_with("rejection_") && failure != "rejection_passed"),
                     );
                 }
                 let repeatability_failure_control = pair.target_failure_control();
@@ -327,6 +355,18 @@ fn exercise_scenarios(failures: &[&str]) {
                     );
                 }
                 assert_eq!(active.next_judge_settlement, 1);
+                if failure.starts_with("rejection_") {
+                    super::super::resource_rejection::tests::exercise(
+                        active,
+                        &mut repository,
+                        join,
+                        &db,
+                        failure,
+                        &cancellation,
+                        &repeatability_failure_control,
+                    );
+                    return;
+                }
                 if failure.starts_with("resource_") {
                     super::super::resource_settlement::tests::exercise(
                         &mut active,

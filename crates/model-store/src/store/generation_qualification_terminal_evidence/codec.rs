@@ -373,7 +373,7 @@ fn interruption_relations<'a>(
     }
 }
 
-fn encode_records(records: &CohortRecords) -> StoreResult<EncodedCohort> {
+pub(super) fn encode_records(records: &CohortRecords) -> StoreResult<EncodedCohort> {
     let mut results = Vec::with_capacity(records.results.len());
     for result in &records.results {
         results.push(encode_record(

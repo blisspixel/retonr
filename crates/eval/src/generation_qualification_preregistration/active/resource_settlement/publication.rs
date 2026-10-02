@@ -19,10 +19,13 @@ type ManagedFacts = Vec<(
 )>;
 
 #[derive(Clone, Copy)]
-pub(super) struct ResourceClosure<'a> {
-    pub(super) repeatability_manifest: &'a rewrite_model::GenerationRepeatabilityEvidenceManifestV1,
-    pub(super) resource_results: &'a [rewrite_model::GenerationResourceAttemptResultRecordV1],
-    pub(super) manifest: &'a rewrite_model::GenerationResourceEvidenceManifestV1,
+pub(in crate::generation_qualification_preregistration::active) struct ResourceClosure<'a> {
+    pub(in crate::generation_qualification_preregistration::active) repeatability_manifest:
+        &'a rewrite_model::GenerationRepeatabilityEvidenceManifestV1,
+    pub(in crate::generation_qualification_preregistration::active) resource_results:
+        &'a [rewrite_model::GenerationResourceAttemptResultRecordV1],
+    pub(in crate::generation_qualification_preregistration::active) manifest:
+        &'a rewrite_model::GenerationResourceEvidenceManifestV1,
 }
 
 pub(super) fn publish(
@@ -40,6 +43,40 @@ pub(super) fn publish(
     ),
     Error,
 > {
+    with_input(
+        context,
+        prepared,
+        closure,
+        resource,
+        joins,
+        repository,
+        cancellation,
+        |repository, input| {
+            let disposition = repository
+                .persist_resource_phase(input, prepared.deadline, cancellation)
+                .map_err(map_preparation_error)?;
+            Ok((input.manifest.clone(), disposition))
+        },
+    )
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one private scoped callback retains exact live and durable closure without owning new authority"
+)]
+pub(in crate::generation_qualification_preregistration::active) fn with_input<T>(
+    context: &JudgeSettlementContext<'_>,
+    prepared: &PreparedGenerationQualificationValidationView<'_>,
+    closure: CompletePassedRepeatabilityRelations<'_>,
+    resource: ResourceClosure<'_>,
+    joins: &mut [VerifiedCandidateJudgeJoin<'_, '_, '_, '_>],
+    repository: &mut GenerationQualificationPreregistrationRepository,
+    cancellation: &CancellationToken,
+    callback: impl FnOnce(
+        &mut GenerationQualificationPreregistrationRepository,
+        rewrite_model_store::GenerationResourcePhaseV1Input<'_>,
+    ) -> Result<T, Error>,
+) -> Result<T, Error> {
     let ResourceClosure {
         repeatability_manifest,
         resource_results,
@@ -98,18 +135,14 @@ pub(super) fn publish(
         expected_parents: &expected_parents,
         manifest: repeatability_manifest,
     };
-    let disposition = repository
-        .persist_resource_phase(
-            rewrite_model_store::GenerationResourcePhaseV1Input {
-                repeatability: &parent,
-                ordered_results: resource_results,
-                manifest,
-            },
-            prepared.deadline,
-            cancellation,
-        )
-        .map_err(map_preparation_error)?;
-    Ok((manifest.clone(), disposition))
+    callback(
+        repository,
+        rewrite_model_store::GenerationResourcePhaseV1Input {
+            repeatability: &parent,
+            ordered_results: resource_results,
+            manifest,
+        },
+    )
 }
 
 fn validate_scope(

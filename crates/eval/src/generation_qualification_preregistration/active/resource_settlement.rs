@@ -11,7 +11,7 @@ use rewrite_model::GenerationResourceEvidenceManifestV1;
 use rewrite_types::CancellationToken;
 use thiserror::Error;
 
-mod publication;
+pub(super) mod publication;
 
 /// Content-free failure of complete live resource settlement.
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
@@ -148,7 +148,7 @@ impl ActiveGenerationQualificationOperation<'_, '_, '_, '_, '_> {
     }
 }
 
-fn map_preparation_error(
+pub(super) fn map_preparation_error(
     error: GenerationQualificationPreparationError,
 ) -> ActiveGenerationQualificationResourceSettlementError {
     use ActiveGenerationQualificationResourceSettlementError as Error;
@@ -159,7 +159,7 @@ fn map_preparation_error(
     }
 }
 
-fn finish<T>(
+pub(super) fn finish<T>(
     primary: Result<T, ActiveGenerationQualificationResourceSettlementError>,
     finalization_failed: bool,
     terminal_gate: Result<(), ActiveGenerationQualificationResourceSettlementError>,

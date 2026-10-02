@@ -28,9 +28,11 @@ use crate::{StoreError, StoreResult};
 mod codec;
 mod context;
 mod read;
+mod resource_rejection;
 mod rows;
 mod text;
 mod write;
+pub use resource_rejection::GenerationResourceRejectionV1Input;
 
 /// Borrowed terminal-evidence records and the independent facts that rederive them.
 #[derive(Clone, Copy)]

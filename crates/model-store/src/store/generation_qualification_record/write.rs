@@ -7,7 +7,7 @@ use super::parents::{self, Cited};
 use super::read;
 use crate::{StoreError, StoreResult, WriteDisposition};
 
-pub(super) fn write_one(
+pub(crate) fn write_one(
     connection: &Connection,
     record: &GenerationQualificationRecordV1,
 ) -> StoreResult<WriteDisposition> {

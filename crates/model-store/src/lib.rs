@@ -96,7 +96,7 @@ pub use store::generation_qualification_terminal_evidence::{
     GenerationQualificationTerminalEvidenceV1Input,
     GenerationQualificationTerminalEvidenceV1ReadInput,
     GenerationQualificationTerminalEvidenceV1TransactionError,
-    GenerationQualificationTerminalEvidenceV1WriteDisposition,
+    GenerationQualificationTerminalEvidenceV1WriteDisposition, GenerationResourceRejectionV1Input,
     StoredGenerationQualificationTerminalEvidenceV1,
 };
 pub use store::generation_repeatability_terminal_result::{

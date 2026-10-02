@@ -16,6 +16,8 @@ use crate::StoreError;
 mod parents;
 mod read;
 mod write;
+pub(crate) use read::load as load_on_connection;
+pub(crate) use write::write_one as write_on_connection;
 
 /// Borrowed qualification record to store.
 #[derive(Clone, Copy)]

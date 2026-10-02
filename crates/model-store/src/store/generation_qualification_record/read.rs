@@ -6,11 +6,14 @@ use rusqlite::{Connection, Row, params};
 use super::parents::{self, Cited};
 use crate::{StoreError, StoreResult};
 
+#[cfg(test)]
+mod tests;
+
 const SELECT_COLUMNS: &str = "generation_qualification_id, target_generation_system_id,
     baseline_generation_system_id, operation_policy_id, request_projection_id,
     generation_qualification_platform_evidence_id, generation_qualification_license_evidence_id,
     generation_qualification_operation_receipt_id, status, typeof(canonical_json),
-    length(canonical_json), canonical_json";
+    length(canonical_json), substr(CAST(canonical_json AS BLOB), 1, 16385)";
 
 pub(super) struct RecordRow {
     pub(super) id: String,
@@ -25,7 +28,7 @@ pub(super) struct RecordRow {
     bytes: Vec<u8>,
 }
 
-pub(super) fn load(
+pub(crate) fn load(
     connection: &Connection,
     record: &GenerationQualificationRecordV1,
 ) -> StoreResult<Option<GenerationQualificationRecordV1>> {
