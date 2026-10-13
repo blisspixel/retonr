@@ -7,6 +7,21 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 
 ## Changes in this snapshot
 
+- A changed quantity now abstains with `protected_value_changed`. A dropped or
+  flipped sign, a unicode minus, a dropped currency sign, a removed fraction
+  slash, and a flipped comparison are protected. Decimal points, percent signs,
+  range hyphens, and collapsed fractions still abstain. Unrelated punctuation
+  is not a protected quantity. The report names `line N col M: kind change`
+  and does not echo the protected text.
+- `retonr model device-evidence` accepts a fitr export whose need state is
+  `INCONCLUSIVE`. Malformed evidence, an unknown state, and a dishonest
+  disclaimer still fail.
+- `retonr check --edit-level` reports `semantic_evaluator:
+  literal-token-sequence-v1` and `edit_level_effective: touch-up`. A wider
+  requested level notes that only punctuation and capitalization are accepted.
+- `retonr rewrite` without a selected qualified local artifact exits 3 as
+  `policy_refusal` and does not start a runtime. Identical accepted text is
+  `unchanged_identical`. `--version` includes the commit and snapshot.
 - Adds an experimental read-only terminal workbench: `retonr tui SOURCE`, with
   optional `--candidate FILE` and repeated `--protect TERM`. The three panes show
   findings, source, and candidate. `--plain` provides bounded text or JSON previews
@@ -81,12 +96,14 @@ before running it.
 `retonr check` validates a complete candidate rewrite against a source document
 without using a model. It reports whether the candidate preserved protected
 values, structure, and literal token content, and it can write the accepted
-bytes, or the exact original after an abstention, to a new file. Optional edit
-level, character budget, and expansion ceiling flags enforce layout bounds.
+bytes, or the exact original after an abstention, to a new file. A changed
+quantity abstains. Optional edit level, character budget, and expansion ceiling
+flags enforce layout bounds.
 
 `retonr lint` inspects one document, or compares it with a candidate, for
 conversational residue, cliches, and synthetic patterns. `retonr rewrite` runs
-the current model-free rewrite transaction. `retonr inspect` performs pre-model
+the current model-free rewrite transaction and exits 3, without starting a
+runtime, when no qualified local artifact is selected. `retonr inspect` performs pre-model
 source inventory. `retonr model` administers exact local model artifacts offline.
 These commands do not download, qualify, activate, or run a model.
 
@@ -106,8 +123,8 @@ which is the only authority for implemented behavior.
 - Recursive lint and paired-directory checks are read-only, bounded operations;
   they do not provide multi-document mutation or recovery transactions.
 - The candidate must be a complete replacement document, not a patch.
-- The current evaluator accepts only literal, token-preserving changes.
-  Open-domain paraphrases abstain by design.
+- The current evaluator accepts punctuation and capitalization at touch-up.
+  A changed quantity abstains. Open-domain paraphrases abstain by design.
 - No public API, schema, package, executable name, or configuration namespace
   is frozen. Any of them may change without a migration in `0.x`.
 - Unkeyed content digests in reports are identifiers, not anonymization.
