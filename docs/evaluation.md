@@ -80,8 +80,8 @@ calibration runner assigns fixture claim identities separately from generation
 and fails if attaching the informational shadow changes hard-gate acceptance.
 See [Writing-sample library](evaluation-style-library.md).
 
-The current checked-in development foundation contains 49 deterministic fidelity
-and structure cases plus 120 synthetic editorial cases across five groups, 169 total.
+The current checked-in development foundation contains 60 deterministic fidelity
+and structure cases plus 120 synthetic editorial cases across five groups, 180 total.
 The versioned hybrid scorecard executes and binds two exact deterministic suites
 before it normalizes blinded, order-swapped structured judge observations. The
 observation batch and serializable report remain caller-declared and triage-only. A

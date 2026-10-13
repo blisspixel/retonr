@@ -122,7 +122,7 @@ fn passed_and_failed_results_persist_replay_and_cold_read_back_exactly() {
     for passed in [false, true] {
         with_synthetic_generation_qualification_fixture(
             SyntheticGenerationQualificationScenario::TrafficEligible,
-            |input, platform_owners, license_proof, license_policy, production_policy| {
+            |mut input, platform_owners, license_proof, license_policy, production_policy| {
                 let source = input.case_authorities[0]
                     .source
                     .with_source_bytes(&CancellationToken::new(), <[u8]>::to_vec)
@@ -224,7 +224,7 @@ fn swapped_candidate_systems_and_missing_terminal_parents_cannot_settle() {
     for swapped in [false, true] {
         with_synthetic_generation_qualification_fixture(
             SyntheticGenerationQualificationScenario::TrafficEligible,
-            |input, platform_owners, license_proof, license_policy, production_policy| {
+            |mut input, platform_owners, license_proof, license_policy, production_policy| {
                 let source = input.case_authorities[0]
                     .source
                     .with_source_bytes(&CancellationToken::new(), <[u8]>::to_vec)

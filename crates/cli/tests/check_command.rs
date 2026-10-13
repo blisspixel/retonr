@@ -433,5 +433,113 @@ fn edit_level_argument_is_accepted_by_cli() {
         .args(["--edit-level", "voice-pass"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"status\": \"rewritten\""));
+        .stdout(predicate::str::contains("\"status\": \"rewritten\""))
+        .stdout(predicate::str::contains(
+            "\"semantic_evaluator\": \"literal-token-sequence-v1\"",
+        ))
+        .stdout(predicate::str::contains(
+            "\"edit_level_effective\": \"touch-up\"",
+        ))
+        .stdout(predicate::str::contains(
+            "\"edit_level_requested\": \"voice-pass\"",
+        ));
+}
+
+#[test]
+fn edit_level_reports_effective_touch_up_for_every_requested_level() {
+    let levels = ["touch-up", "voice-pass", "rewrite", "reconstruct"];
+    for level in levels {
+        let directory = tempdir().expect("temporary directory");
+        let source = directory.path().join("source.txt");
+        let candidate = directory.path().join("candidate.txt");
+        fs::write(&source, "Hello world\n").expect("write source fixture");
+        fs::write(&candidate, "Hello, world!\n").expect("write candidate fixture");
+        let mut command = Command::cargo_bin("retonr").expect("compiled CLI");
+        command
+            .args(["--format", "text", "check"])
+            .arg(&source)
+            .arg(&candidate)
+            .args(["--edit-level", level]);
+        let assertion = command
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(
+                "semantic_evaluator: literal-token-sequence-v1",
+            ))
+            .stdout(predicate::str::contains("edit_level_effective: touch-up"))
+            .stdout(predicate::str::contains(format!(
+                "edit_level_requested: {level}"
+            )));
+        if level == "touch-up" {
+            assertion.stdout(predicate::str::contains("note:").not());
+        } else {
+            assertion.stdout(predicate::str::contains(format!(
+                "note: edit level {level} requested; the current evaluator accepts touch-up changes only (punctuation and capitalization)"
+            )));
+        }
+    }
+}
+
+#[test]
+fn missing_input_names_the_unreadable_side_and_path() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, "Hello\n").expect("write source");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "check"])
+        .arg(directory.path().join("missing.txt"))
+        .arg(&candidate)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("error: source could not be read:"))
+        .stderr(predicate::str::contains("missing.txt"));
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "check"])
+        .arg(&source)
+        .arg(directory.path().join("absent.txt"))
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains(
+            "error: candidate could not be read:",
+        ))
+        .stderr(predicate::str::contains("absent.txt"));
+}
+
+#[test]
+fn abstention_reports_span_location_without_protected_text() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    let marker = "zzMARKER9f3k";
+    fs::write(&source, format!("Keep {marker} stable.\n")).expect("write source");
+    fs::write(&candidate, "Keep other stable.\n").expect("write candidate");
+
+    let text = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "check", "--protect", marker])
+        .arg(&source)
+        .arg(&candidate)
+        .output()
+        .expect("run check");
+    let stdout = String::from_utf8(text.stdout).expect("stdout");
+    assert!(text.status.success());
+    assert!(stdout.contains("line 1 col 6: declared_term"));
+    assert!(!stdout.contains(marker));
+
+    let json = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "json", "check", "--protect", marker])
+        .arg(&source)
+        .arg(&candidate)
+        .output()
+        .expect("run json check");
+    let body = String::from_utf8(json.stdout).expect("json stdout");
+    assert!(json.status.success());
+    assert!(body.contains("\"kind\": \"declared_term\""));
+    assert!(!body.contains(marker));
 }

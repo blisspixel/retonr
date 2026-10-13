@@ -23,10 +23,10 @@ fn rewrite_fails_closed_without_a_qualified_artifact() {
         .arg("--output")
         .arg(&output)
         .assert()
-        .code(4)
+        .code(3)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains("\"command\": \"rewrite\""))
-        .stderr(predicate::str::contains("\"code\": \"unsupported\""));
+        .stderr(predicate::str::contains("\"code\": \"policy_refusal\""));
     assert!(!output.exists(), "failure must not create --output");
     assert_eq!(fs::read(&source).expect("source remains"), b"Hello world\n");
 }
@@ -81,9 +81,9 @@ fn rewrite_inspects_a_repository_without_starting_a_runtime() {
         .args(["rewrite"])
         .arg(&source)
         .assert()
-        .code(4)
+        .code(3)
         .stderr(predicate::str::contains("\"command\": \"rewrite\""))
-        .stderr(predicate::str::contains("\"code\": \"unsupported\""));
+        .stderr(predicate::str::contains("\"code\": \"policy_refusal\""));
     assert!(!data.exists(), "rewrite must not initialize a repository");
 }
 
@@ -310,8 +310,9 @@ fn rewrite_standard_input_is_accepted_then_refused() {
         .args(["rewrite", "-"])
         .write_stdin(b"Hello world\n".to_vec())
         .assert()
-        .code(4)
-        .stderr(predicate::str::contains("\"command\": \"rewrite\""));
+        .code(3)
+        .stderr(predicate::str::contains("\"command\": \"rewrite\""))
+        .stderr(predicate::str::contains("\"code\": \"policy_refusal\""));
 }
 
 fn fake_generation_qualification(

@@ -51,6 +51,71 @@ fn leading_decimal_is_a_distinct_quantity() {
 }
 
 #[test]
+fn sign_fraction_and_comparison_surfaces_are_distinct_quantities() {
+    let cases = [
+        (
+            "The low was -5 C overnight.",
+            "The low was 5 C overnight.",
+            "-5",
+        ),
+        (
+            "The low was \u{2212}5 C overnight.",
+            "The low was 5 C overnight.",
+            "\u{2212}5",
+        ),
+        ("Balance: -$1,200.", "Balance: $1,200.", "-$1,200"),
+        ("Shift by +2 hours.", "Shift by -2 hours.", "+2"),
+        ("Add 3/4 cup.", "Add 3 4 cup.", "3/4"),
+        ("Add 3/4 cup.", "Add 34 cup.", "3/4"),
+        ("Alert when temp > 5.", "Alert when temp < 5.", ">"),
+        ("Use a != b here.", "Use a == b here.", "!="),
+        ("Value is 1.5.", "Value is 15.", "1.5"),
+        ("Rate 10% now.", "Rate 10 now.", "10%"),
+        ("Range 5-10 stays.", "Range 510 stays.", "5"),
+    ];
+    for (source, candidate, surface) in cases {
+        let plan = ProtectionPlan::build(source, &[]).expect("valid fixture");
+        assert!(
+            plan.values().iter().any(|value| value.surface == surface),
+            "{source} did not protect {surface}: {:?}",
+            plan.values()
+                .iter()
+                .map(|value| value.surface.as_str())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            plan.mask_raw_candidate(candidate),
+            Err(ProtectionError::ProtectedOccurrenceCount),
+            "{source} -> {candidate} must abstain as a changed protected value"
+        );
+    }
+}
+
+#[test]
+fn unrelated_punctuation_is_not_a_protected_quantity() {
+    let plan = ProtectionPlan::build("Hello world", &[]).expect("valid fixture");
+    assert!(plan.values().is_empty());
+    let masked = plan
+        .mask_raw_candidate("Hello, world!")
+        .expect("comma and exclamation are not protected quantities");
+    assert_eq!(
+        plan.restore(&masked).expect("issued sentinels"),
+        "Hello, world!"
+    );
+}
+
+#[test]
+fn range_hyphen_does_not_become_a_sign_on_the_upper_bound() {
+    let plan = ProtectionPlan::build("Range 5-10 stays.", &[]).expect("valid fixture");
+    let surfaces = plan
+        .values()
+        .iter()
+        .map(|value| value.surface.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(surfaces, ["5", "10"]);
+}
+
+#[test]
 fn rejects_currency_percent_and_decimal_wrappers() {
     let plan = ProtectionPlan::build("Pay 10 now.", &[]).expect("valid fixture");
     assert_eq!(plan.values()[0].surface, "10");

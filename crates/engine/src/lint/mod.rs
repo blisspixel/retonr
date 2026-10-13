@@ -3,6 +3,7 @@
 use rewrite_types::{EditorialComparison, EditorialFinding};
 
 mod collector;
+mod residue;
 mod rules;
 mod slop_rules;
 mod style_rules;

@@ -15,6 +15,8 @@ pub(crate) struct ProductIdentity {
     pub(crate) cli_schema_version: u32,
     pub(crate) store_schema_version: u32,
     pub(crate) local_only: bool,
+    pub(crate) commit: &'static str,
+    pub(crate) snapshot: &'static str,
 }
 
 impl ProductIdentity {
@@ -26,18 +28,22 @@ impl ProductIdentity {
             cli_schema_version: CLI_SCHEMA_VERSION,
             store_schema_version: ArtifactRepository::required_schema_version(),
             local_only: true,
+            commit: env!("RETONR_COMMIT"),
+            snapshot: env!("RETONR_SNAPSHOT_TAG"),
         }
     }
 
     pub(crate) fn text(&self) -> String {
         format!(
-            "product: {}\nproduct_version: {}\nrust_version: {}\ncli_schema_version: {}\nstore_schema_version: {}\nlocal_only: {}\n",
+            "product: {}\nproduct_version: {}\nrust_version: {}\ncli_schema_version: {}\nstore_schema_version: {}\nlocal_only: {}\ncommit: {}\nsnapshot: {}\n",
             self.product,
             self.product_version,
             self.rust_version,
             self.cli_schema_version,
             self.store_schema_version,
-            self.local_only
+            self.local_only,
+            self.commit,
+            self.snapshot
         )
     }
 }
@@ -60,6 +66,10 @@ mod tests {
             ArtifactRepository::required_schema_version()
         );
         assert!(identity.local_only);
+        assert!(!identity.commit.is_empty());
+        assert!(!identity.snapshot.is_empty());
         assert!(identity.text().contains("local_only: true"));
+        assert!(identity.text().contains("commit:"));
+        assert!(identity.text().contains(identity.commit));
     }
 }

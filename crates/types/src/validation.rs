@@ -5,6 +5,13 @@ use thiserror::Error;
 use crate::bounded_serde::{BoundedString, BoundedVec};
 use crate::{CandidateId, ClaimComparisonEvidence, RewriteUnitId};
 
+#[path = "validation/semantic.rs"]
+mod semantic;
+
+pub use semantic::{
+    SemanticAssessment, SemanticEvidence, SemanticEvidenceCode, SemanticEvidenceDetails,
+};
+
 /// Maximum findings accepted from one semantic evaluator call or gate.
 pub const MAX_SEMANTIC_EVIDENCE_ITEMS: usize = 32;
 /// Maximum gates retained for one candidate.
@@ -102,6 +109,54 @@ impl<'de> Deserialize<'de> for InvariantEvidenceSummary {
     }
 }
 
+/// Maximum redacted span failures retained on one gate.
+pub const MAX_SPAN_FAILURES: usize = 32;
+
+/// How a protected or structural span differs, without its text.
+#[derive(Clone, Copy, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpanChange {
+    /// Both sides have a span and the surfaces differ.
+    Altered,
+    /// The source span has no counterpart.
+    Missing,
+    /// The candidate span has no counterpart.
+    Added,
+    /// A structural boundary moved.
+    Moved,
+    /// The candidate introduced an unsafe character.
+    Introduced,
+}
+
+/// One-based line and byte column. Neither value is document text.
+#[derive(Clone, Copy, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TextPoint {
+    /// One-based line number.
+    pub line: u32,
+    /// One-based byte column within the line.
+    pub column: u32,
+}
+
+/// One redacted location for a failed protected, structural, or safety span.
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpanFailure {
+    /// Closed category such as `number`, `url`, or `structure`.
+    pub kind: String,
+    /// One-based index in the caller-declared term list.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ordinal: Option<u32>,
+    /// Location in the source when the span is present there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<TextPoint>,
+    /// Location in the candidate when the span is present there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub candidate: Option<TextPoint>,
+    /// Difference category.
+    pub change: SpanChange,
+}
+
 /// Typed evidence payload attached to a retained gate finding.
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -110,6 +165,11 @@ pub enum GateEvidenceDetails {
     InvariantSummary(InvariantEvidenceSummary),
     /// Redacted aggregate from independently produced claim evidence.
     ClaimComparison(Box<ClaimComparisonEvidence>),
+    /// Locations of spans that failed a hard gate, without their text.
+    SpanFailures {
+        /// Bounded redacted failures.
+        failures: Vec<SpanFailure>,
+    },
 }
 
 /// Redacted, machine-readable evidence attached to a gate result.
@@ -176,126 +236,6 @@ impl<'de> Deserialize<'de> for GateEvidence {
         }
         let wire = Wire::deserialize(deserializer)?;
         Self::new(wire.code.0, wire.message.0, wire.details).map_err(D::Error::custom)
-    }
-}
-
-/// Closed semantic finding categories accepted from an evaluator.
-#[derive(Clone, Copy, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SemanticEvidenceCode {
-    /// Literal-mode tokens were identical.
-    LiteralTokensEqual,
-    /// Literal-mode tokens changed.
-    LiteralTokensChanged,
-    /// The evaluator does not support the requested rewrite mode.
-    UnsupportedMode,
-    /// Typed claim evidence reported preservation without unresolved uncertainty.
-    ClaimComparisonPreserved,
-    /// Typed claim evidence reported a fidelity conflict.
-    ClaimComparisonConflict,
-    /// Typed claim evidence was incomplete or retained unresolved uncertainty.
-    ClaimComparisonUncertain,
-}
-
-impl SemanticEvidenceCode {
-    /// Returns the stable product-owned evidence code.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::LiteralTokensEqual => "literal_tokens_equal",
-            Self::LiteralTokensChanged => "literal_tokens_changed",
-            Self::UnsupportedMode => "unsupported_mode",
-            Self::ClaimComparisonPreserved => "claim_comparison_preserved",
-            Self::ClaimComparisonConflict => "claim_comparison_conflict",
-            Self::ClaimComparisonUncertain => "claim_comparison_uncertain",
-        }
-    }
-}
-
-/// Typed detail variants a semantic evaluator is permitted to return.
-#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum SemanticEvidenceDetails {
-    /// Redacted aggregate from independently produced claim evidence.
-    ClaimComparison(ClaimComparisonEvidence),
-}
-
-/// Content-redacted evidence returned by an independent semantic evaluator.
-#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct SemanticEvidence {
-    /// Closed product-owned finding category.
-    pub code: SemanticEvidenceCode,
-    /// Optional permitted semantic aggregate without raw text.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub details: Option<SemanticEvidenceDetails>,
-}
-
-impl<'de> Deserialize<'de> for SemanticEvidence {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(deny_unknown_fields)]
-        struct Wire {
-            code: SemanticEvidenceCode,
-            #[serde(default)]
-            details: Option<SemanticEvidenceDetails>,
-        }
-        let wire = Wire::deserialize(deserializer)?;
-        let evidence = Self::new(wire.code, wire.details);
-        evidence.validate().map_err(D::Error::custom)?;
-        Ok(evidence)
-    }
-}
-
-impl SemanticEvidence {
-    /// Builds one semantic finding from a closed product-owned category.
-    #[must_use]
-    pub const fn new(code: SemanticEvidenceCode, details: Option<SemanticEvidenceDetails>) -> Self {
-        Self { code, details }
-    }
-
-    fn validate(&self) -> Result<(), EvidenceContractError> {
-        match (&self.code, &self.details) {
-            (
-                SemanticEvidenceCode::LiteralTokensEqual
-                | SemanticEvidenceCode::LiteralTokensChanged
-                | SemanticEvidenceCode::UnsupportedMode
-                | SemanticEvidenceCode::ClaimComparisonUncertain,
-                None,
-            ) => {}
-            (
-                SemanticEvidenceCode::ClaimComparisonPreserved,
-                Some(SemanticEvidenceDetails::ClaimComparison(comparison)),
-            ) => {
-                comparison.validate()?;
-                if comparison.counts().has_uncertainty() || comparison.counts().has_difference() {
-                    return Err(EvidenceContractError::InconsistentSemanticFinding);
-                }
-            }
-            (
-                SemanticEvidenceCode::ClaimComparisonConflict,
-                Some(SemanticEvidenceDetails::ClaimComparison(comparison)),
-            ) => {
-                comparison.validate()?;
-                if !comparison.counts().has_difference() {
-                    return Err(EvidenceContractError::InconsistentSemanticFinding);
-                }
-            }
-            (
-                SemanticEvidenceCode::ClaimComparisonUncertain,
-                Some(SemanticEvidenceDetails::ClaimComparison(comparison)),
-            ) => {
-                comparison.validate()?;
-                if !comparison.counts().has_uncertainty() {
-                    return Err(EvidenceContractError::InconsistentSemanticFinding);
-                }
-            }
-            _ => return Err(EvidenceContractError::InconsistentSemanticFinding),
-        }
-        Ok(())
     }
 }
 
@@ -396,71 +336,6 @@ impl<'de> Deserialize<'de> for GateResult {
     }
 }
 
-/// Independent semantic evaluator result.
-#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize)]
-pub struct SemanticAssessment {
-    /// Evaluator decision.
-    pub status: GateStatus,
-    /// Calibrated confidence when available.
-    pub confidence: Option<f32>,
-    /// Redacted evaluator findings.
-    pub evidence: Vec<SemanticEvidence>,
-}
-
-impl SemanticAssessment {
-    /// Validates the bounded evaluator response contract.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`EvidenceContractError`] when the response violates the contract.
-    pub fn validate(&self) -> Result<(), EvidenceContractError> {
-        validate_confidence(self.confidence)?;
-        if self.evidence.len() > MAX_SEMANTIC_EVIDENCE_ITEMS {
-            return Err(EvidenceContractError::TooManyFindings);
-        }
-        self.evidence
-            .iter()
-            .try_for_each(SemanticEvidence::validate)?;
-        if self.status == GateStatus::Pass
-            && (self.evidence.is_empty()
-                || self.evidence.iter().any(|finding| {
-                    !matches!(
-                        finding.code,
-                        SemanticEvidenceCode::LiteralTokensEqual
-                            | SemanticEvidenceCode::ClaimComparisonPreserved
-                    )
-                }))
-        {
-            return Err(EvidenceContractError::InconsistentSemanticFinding);
-        }
-        Ok(())
-    }
-}
-
-impl<'de> Deserialize<'de> for SemanticAssessment {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(deny_unknown_fields)]
-        struct Wire {
-            status: GateStatus,
-            confidence: Option<f32>,
-            #[serde(default)]
-            evidence: BoundedVec<SemanticEvidence, MAX_SEMANTIC_EVIDENCE_ITEMS>,
-        }
-        let wire = Wire::deserialize(deserializer)?;
-        let assessment = Self {
-            status: wire.status,
-            confidence: wire.confidence,
-            evidence: wire.evidence.0,
-        };
-        assessment.validate().map_err(D::Error::custom)?;
-        Ok(assessment)
-    }
-}
-
 /// Malformed or unbounded redacted evidence from an evaluator.
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum EvidenceContractError {
@@ -494,6 +369,9 @@ pub enum EvidenceContractError {
     /// Exact invariant counts do not add to the declared total.
     #[error("invariant evidence counts are inconsistent")]
     InvalidInvariantSummary,
+    /// A span-failure list is empty, unbounded, or not content-free.
+    #[error("span failure evidence is invalid")]
+    InvalidSpanFailure,
     /// A semantic conclusion conflicts with its typed finding category or details.
     #[error("semantic evidence conclusion is inconsistent")]
     InconsistentSemanticFinding,
@@ -509,7 +387,49 @@ fn validate_gate_details(
         Some(GateEvidenceDetails::ClaimComparison(comparison)) => {
             comparison.validate()?;
         }
+        Some(GateEvidenceDetails::SpanFailures { failures }) => {
+            validate_span_failures(failures)?;
+        }
         None => {}
+    }
+    Ok(())
+}
+
+fn validate_span_failures(failures: &[SpanFailure]) -> Result<(), EvidenceContractError> {
+    if failures.is_empty() || failures.len() > MAX_SPAN_FAILURES {
+        return Err(EvidenceContractError::InvalidSpanFailure);
+    }
+    failures.iter().try_for_each(validate_span_failure)
+}
+
+fn validate_span_failure(failure: &SpanFailure) -> Result<(), EvidenceContractError> {
+    if !is_span_kind(&failure.kind) {
+        return Err(EvidenceContractError::InvalidSpanFailure);
+    }
+    match (failure.kind.as_str(), failure.ordinal) {
+        ("declared_term", Some(ordinal)) if ordinal > 0 => {}
+        (_, None) => {}
+        ("declared_term", _) | (_, Some(_)) => {
+            return Err(EvidenceContractError::InvalidSpanFailure);
+        }
+    }
+    if failure.source.is_none() && failure.candidate.is_none() {
+        return Err(EvidenceContractError::InvalidSpanFailure);
+    }
+    validate_point(failure.source)?;
+    validate_point(failure.candidate)
+}
+
+fn is_span_kind(kind: &str) -> bool {
+    matches!(
+        kind,
+        "number" | "url" | "email" | "declared_term" | "unsafe_text" | "structure"
+    )
+}
+
+fn validate_point(point: Option<TextPoint>) -> Result<(), EvidenceContractError> {
+    if point.is_some_and(|point| point.line == 0 || point.column == 0) {
+        return Err(EvidenceContractError::InvalidSpanFailure);
     }
     Ok(())
 }

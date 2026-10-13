@@ -55,7 +55,8 @@ pub use validation::{
     CandidateAssessment, EvidenceContractError, GateEvidence, GateEvidenceDetails, GateResult,
     GateStatus, InvariantEvidenceSummary, MAX_GATE_EVIDENCE_CODE_BYTES,
     MAX_GATE_EVIDENCE_MESSAGE_BYTES, MAX_GATES_PER_CANDIDATE, MAX_SEMANTIC_EVIDENCE_ITEMS,
-    SemanticAssessment, SemanticEvidence, SemanticEvidenceCode, SemanticEvidenceDetails, Severity,
+    MAX_SPAN_FAILURES, SemanticAssessment, SemanticEvidence, SemanticEvidenceCode,
+    SemanticEvidenceDetails, Severity, SpanChange, SpanFailure, TextPoint,
 };
 
 /// Current schema version for in-memory and serialized prototype contracts.

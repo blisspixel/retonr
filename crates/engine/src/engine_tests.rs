@@ -453,7 +453,7 @@ fn unchanged_candidate_has_no_edit() {
             &CancellationToken::new(),
         )
         .expect("deterministic ports succeed");
-    assert_eq!(outcome.status, RewriteStatus::UnchangedNoEligibleContent);
+    assert_eq!(outcome.status, RewriteStatus::UnchangedIdentical);
     assert!(outcome.edits.is_empty());
     assert_eq!(
         outcome.assessments[0].gates.last().map(|gate| gate.status),

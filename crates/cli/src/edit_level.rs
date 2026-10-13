@@ -3,13 +3,13 @@
 /// Supported CLI edit levels.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, clap::ValueEnum)]
 pub enum EditLevelArg {
-    /// Surface cleanup, grammar, punctuation, and mechanical correction.
+    /// Punctuation and capitalization. This is the only level the check evaluator enforces.
     TouchUp,
-    /// Style, tone, and register tuning while strictly preserving layout and length bounds.
+    /// Not yet enforced. Check abstains on any wording change and reports touch-up as effective.
     VoicePass,
-    /// Sentence-level and paragraph-level rewrites preserving all factual claims.
+    /// Not yet enforced. Check abstains on any wording change and reports touch-up as effective.
     Rewrite,
-    /// Structural reformulations retaining core invariants and claims.
+    /// Not yet enforced. Check abstains on any wording change and reports touch-up as effective.
     Reconstruct,
 }
 

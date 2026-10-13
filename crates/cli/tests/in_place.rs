@@ -266,10 +266,10 @@ fn rewrite_in_place_fails_closed_without_mutation() {
         .args(["rewrite", "--in-place", "--backup"])
         .arg(&source)
         .assert()
-        .code(4)
+        .code(3)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains("\"command\": \"rewrite\""))
-        .stderr(predicate::str::contains("\"code\": \"unsupported\""));
+        .stderr(predicate::str::contains("\"code\": \"policy_refusal\""));
     assert_eq!(fs::read(&source).expect("source remains"), b"Hello world\n");
     assert!(!directory.path().join("draft.txt.retonr-backup").exists());
     assert!(!directory.path().join("draft.txt.retonr-staging").exists());

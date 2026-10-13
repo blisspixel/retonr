@@ -137,3 +137,73 @@ fn density_thresholds_preserve_every_unquoted_match_and_its_ordinal() {
         );
     }
 }
+
+#[test]
+fn folded_residue_catches_common_assistant_lines_and_leaves_ordinary_prose() {
+    let caught = [
+        (
+            "I hope this helps! Let me know if you'd like any further changes.",
+            "conversational_residue",
+        ),
+        (
+            "In today's fast-paced world, things change.",
+            "prefabricated_scene_setting",
+        ),
+        ("It's important to note that we grew.", "throat_clearing"),
+        ("Let's delve into the details.", "ornamental_abstraction"),
+        (
+            "This is a rich tapestry of ideas.",
+            "ornamental_abstraction",
+        ),
+        (
+            "Here's a revised version of your draft.",
+            "conversational_residue",
+        ),
+        (
+            "As an AI language model, I cannot do that.",
+            "conversational_residue",
+        ),
+        (
+            "Great question! The answer is yes.",
+            "conversational_residue",
+        ),
+        ("certainly! Done.", "conversational_residue"),
+        (
+            "This is a game-changer for the team.",
+            "promotional_puffery",
+        ),
+        (
+            "This is a game changer for the team.",
+            "promotional_puffery",
+        ),
+    ];
+    for (text, rule) in caught {
+        let findings = lint_text(text);
+        assert!(
+            findings.iter().any(|finding| finding.rule_id == rule),
+            "{text:?} missing {rule}: {findings:?}"
+        );
+    }
+
+    let clean = [
+        "Surely the plan is sound.",
+        "Historical certainty is rare.",
+        "I am sure the gate held.",
+        "We are certain the count matches.",
+        "We delved into the archive yesterday.",
+        "The game-changing update shipped.",
+        "A seventeenth-century tapestry survived.",
+        "Digital advertising landscape shifted last year.",
+        "She wrote, \"Certainly!\" in the margin.",
+        "The witness wrote, \"It is important to note that timing matters.\"",
+        "The quoted review called it a \"game-changing platform\" and stopped.",
+        "Retonr verifies each rewrite unit against structural and layout constraints.",
+    ];
+    for text in clean {
+        let findings = lint_text(text);
+        assert!(
+            findings.is_empty(),
+            "{text:?} should stay clean: {findings:?}"
+        );
+    }
+}

@@ -329,6 +329,7 @@ fn every_closed_expectation_variant_has_a_distinct_identity() {
         RewriteStatus::UnchangedNoEligibleContent,
         RewriteStatus::Abstained,
         RewriteStatus::Failed,
+        RewriteStatus::UnchangedIdentical,
     ] {
         let mut value = input();
         value.expected_status = status;

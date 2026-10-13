@@ -367,6 +367,86 @@ fn device_evidence_refuses_a_qualification_claim() {
 }
 
 #[test]
+fn fitr_inconclusive_export_is_a_measurement() {
+    let directory = tempdir().expect("temporary directory");
+    let evidence = directory.path().join("gemma.retonr.json");
+    fs::write(
+        &evidence,
+        serde_json::to_vec(&serde_json::json!({
+            "schema": "fitr.retonr.evidence.v1",
+            "kind": "device_measurement",
+            "disclaimer": "This is a fitr measurement of one model on one device. It is not a retonr qualification, activation, or license decision.",
+            "fitr_version": "0.11.3",
+            "model": "gemma4:e4b-it-qat",
+            "level": "full",
+            "device": {
+                "host": "secret-laptop",
+                "os": "linux",
+                "ram_gb": 32.0,
+                "gpu": "demo-gpu",
+                "vram_gb": 8.0,
+                "ollama": "0.11.3",
+                "inference_device": "GPU",
+                "config": { "OLLAMA_MODELS": "/secret/models" }
+            },
+            "needs": {
+                "fast_and_decent": { "state": "INCONCLUSIVE", "why": "no cache receipt" },
+                "structured_output": { "state": "PASS" },
+                "vision": { "state": "n/a" },
+                "tools": { "state": "SKIP" }
+            },
+            "serves": ["structured_output"],
+            "use_for": "local drafts",
+            "result": "/secret/home/.fitr/results/gemma.json"
+        }))
+        .expect("encode"),
+    )
+    .expect("write evidence");
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "model", "fitr"])
+        .arg(&evidence)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("qualified: false"))
+        .stdout(predicate::str::contains(
+            "need fast_and_decent state=INCONCLUSIVE",
+        ))
+        .stdout(predicate::str::contains("ram_gb: 32"))
+        .stdout(predicate::str::contains("vram_gb: 8"))
+        .stdout(predicate::str::contains("inference_device: GPU"))
+        .stdout(predicate::str::contains("level: full"))
+        .stdout(predicate::str::contains("serves: structured_output"))
+        .stdout(predicate::str::contains("use_for: local drafts"))
+        .stdout(predicate::str::contains("secret").not());
+
+    let bad = directory.path().join("maybe.json");
+    fs::write(
+        &bad,
+        serde_json::to_vec(&serde_json::json!({
+            "schema": "fitr.retonr.evidence.v1",
+            "kind": "device_measurement",
+            "disclaimer": "This is a fitr measurement of one model on one device. It is not a retonr qualification, activation, or license decision.",
+            "model": "gemma4:e4b-it-qat",
+            "needs": { "fast_and_decent": { "state": "MAYBE", "why": "secret-why" } }
+        }))
+        .expect("encode"),
+    )
+    .expect("write bad evidence");
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "model", "fitr"])
+        .arg(&bad)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains(
+            "needs.fast_and_decent.state: unsupported value MAYBE",
+        ))
+        .stderr(predicate::str::contains("secret-why").not());
+}
+
+#[test]
 fn list_and_inspect_report_registered_artifacts_without_activation() {
     let directory = tempdir().expect("temporary directory");
     let data = directory.path().join("repository");

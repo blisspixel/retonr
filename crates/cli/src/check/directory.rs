@@ -115,6 +115,7 @@ fn build_report(
         MAXIMUM_TOTAL_BYTES,
         source.skipped,
         candidate.skipped,
+        request.edit_level,
     );
     let mut total_bytes = 0;
     for source in source.documents {

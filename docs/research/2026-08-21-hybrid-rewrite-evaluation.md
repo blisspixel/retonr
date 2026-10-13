@@ -17,7 +17,7 @@ scorecard foundation:
 
 | Asset | Implemented scope | Current authority |
 | --- | --- | --- |
-| [Core suite](../../crates/eval/fixtures/core.json) | 49 positive, identity, protected-value, semantic hard-negative, structure, unsafe-text, sentinel, and paraphrase cases | Exact status, reason, and returned-byte expectations |
+| [Core suite](../../crates/eval/fixtures/core.json) | 60 positive, identity, protected-value, semantic hard-negative, structure, unsafe-text, sentinel, and paraphrase cases | Exact status, reason, and returned-byte expectations |
 | [Evaluation runner](../../crates/eval/src/lib.rs) | Total and per-category pass counts, redacted failures, and acceptable-transformation coverage | Deterministic development gate |
 | [Hybrid scorecard](../../crates/eval/src/hybrid_scorecard.rs) | Exact two-suite execution, corpus and policy binding, plan-bound two-order observations, redacted normalization, and hard-gate precedence | Deterministic gate plus non-authoritative triage contract |
 | [Neutral judge output](../../crates/inference/src/local_judge.rs) | Strict choice, rubric-clause, and cited byte-span contract with bounded parser | Structural output validation only |
@@ -31,7 +31,7 @@ scorecard foundation:
 | [Local model protocol](2026-08-13-local-model-evaluation.md) | Smoke, development, locked, repeatability, human review, and resource methodology | Design contract pending trusted runtime execution |
 
 Together, the checked-in deterministic and synthetic editorial foundations contain
-169 cases. The 120 editorial cases validate corpus labels and controls; they are not
+180 cases. The 120 editorial cases validate corpus labels and controls; they are not
 model outputs and do not imply that a live lint scanner exists.
 
 The serializable version 1 scorecard still consumes and labels a strict

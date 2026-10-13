@@ -4,7 +4,8 @@ use std::path::Path;
 
 use rewrite_app::{
     DocumentReviewError, DocumentReviewRequest, DocumentReviewService, EditorialReview,
-    MAX_CANDIDATE_CHECK_BYTES, PlainTextInventory, TextEncoding, inspect_plain_text,
+    LineEndingKind, MAX_CANDIDATE_CHECK_BYTES, PlainTextInventory, TextEncoding,
+    inspect_plain_text,
 };
 use rewrite_types::{CancellationToken, RewriteRecord};
 
@@ -63,8 +64,9 @@ impl Snapshot {
             self.inspection.byte_size
         )];
         findings.push(format!(
-            "Source inventory: UTF-8; BOM: {}; line endings: {:?}.",
-            self.inspection.utf8_bom, self.inspection.line_endings
+            "Source inventory: UTF-8; BOM: {}; line endings: {}.",
+            self.inspection.utf8_bom,
+            line_ending_label(self.inspection.line_endings)
         ));
         findings.push(format!("Source digest: {}", self.inspection.digest));
         if let Some(inventory) = &self.candidate_inspection {
@@ -176,6 +178,16 @@ pub(super) fn load_bytes(
         check: review.check,
         editorial: review.editorial,
     })
+}
+
+fn line_ending_label(kind: Option<LineEndingKind>) -> &'static str {
+    match kind {
+        None | Some(LineEndingKind::None) => "none",
+        Some(LineEndingKind::Lf) => "lf",
+        Some(LineEndingKind::CrLf) => "crlf",
+        Some(LineEndingKind::Cr) => "cr",
+        Some(LineEndingKind::Mixed) => "mixed",
+    }
 }
 
 fn read_document(path: &Path, cancellation: &CancellationToken) -> Result<Vec<u8>, RunFailure> {

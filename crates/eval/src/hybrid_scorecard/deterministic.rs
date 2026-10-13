@@ -415,7 +415,7 @@ mod tests {
             candidate: "No change".to_owned(),
             protected_terms: Vec::new(),
             reference_judgment: ReferenceJudgment::Identity,
-            expected_status: RewriteStatus::UnchangedNoEligibleContent,
+            expected_status: RewriteStatus::UnchangedIdentical,
             expected_reason: None,
             expected_output: ExpectedOutput::Source,
         };
@@ -456,7 +456,7 @@ mod tests {
             r#"{"schema_version":2,"cases":[{"id":"same-content","category":"identity","#,
             r#""source":"No change","candidate":"No change","protected_terms":[],"#,
             r#""reference_judgment":"identity","expected_status":"#,
-            r#""unchanged_no_eligible_content","expected_reason":null,"expected_output":"source"}]}"#,
+            r#""unchanged_identical","expected_reason":null,"expected_output":"source"}]}"#,
         );
         assert_eq!(
             canonical_suite_bytes(&candidate_a).expect("suite encodes"),
@@ -489,7 +489,7 @@ mod tests {
             super::suite_pair_digest(&candidate_a, &candidate_b)
                 .expect("suite pair digest derives")
                 .as_str(),
-            "880f6e870661bee0c84c21bb355a2e9824a05a8b5af84a91660e8fdebd0df806"
+            "d8cb0470d93b6ddc9479124078344da0b5dd01e25ad20cf9c0d357583ad5ac2a"
         );
         assert_eq!(
             legacy_report_pair_digest(

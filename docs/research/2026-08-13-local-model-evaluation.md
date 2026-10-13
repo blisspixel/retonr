@@ -6,7 +6,7 @@ Status: proposed development protocol. No model, runtime, quantization, hardware
 class, or operating system is qualified by this document. No model was downloaded
 or run for this review, and external API spend was zero.
 
-Post-plan status: the checked-in development foundation has grown to 49 deterministic
+Post-plan status: the checked-in development foundation has grown to 60 deterministic
 fidelity and structure cases plus 120 synthetic editorial cases across five groups.
 The 25-case core and 39-case editorial references below describe the frozen initial
 projection at this document's evidence cutoff, not current repository totals. The

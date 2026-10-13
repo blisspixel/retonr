@@ -10,10 +10,12 @@ static EMAIL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
         .expect("static email regex must compile")
 });
-static NUMBER_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[$€£]?(?:\.\d+|(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)%?")
-        .expect("static number regex must compile")
+static NUMBER_BODY: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?:[$€£])?(?:\.\d+|(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)")
+        .expect("static number body regex must compile")
 });
+
+const COMPARISON_OPERATORS: [&str; 7] = ["!=", "==", "<=", ">=", "<", ">", "="];
 
 const MAX_PROTECTION_MATCH_SPANS: usize = MAX_PROTECTED_OCCURRENCES * 4;
 
@@ -101,8 +103,102 @@ pub(super) fn is_exact_typed_span(
 fn add_typed_spans(spans: &mut Vec<MatchSpan>, source: &str) -> Result<(), ProtectionError> {
     add_url_matches(spans, source)?;
     add_regex_matches(spans, source, &EMAIL_PATTERN, ProtectedKind::Email)?;
-    add_regex_matches(spans, source, &NUMBER_PATTERN, ProtectedKind::Number)?;
+    add_number_matches(spans, source)?;
+    add_comparison_matches(spans, source)?;
     Ok(())
+}
+
+fn add_number_matches(spans: &mut Vec<MatchSpan>, source: &str) -> Result<(), ProtectionError> {
+    let mut index = 0;
+    while index < source.len() {
+        if let Some(end) = number_span_end(source, index) {
+            add_match_span(
+                spans,
+                MatchSpan {
+                    start: index,
+                    end,
+                    kind: ProtectedKind::Number,
+                },
+            )?;
+            index = end;
+            continue;
+        }
+        index += next_char_len(source, index);
+    }
+    Ok(())
+}
+
+fn number_span_end(source: &str, index: usize) -> Option<usize> {
+    let rest = &source[index..];
+    let first = rest.chars().next()?;
+    let body_offset = if is_number_sign(first) {
+        if preceded_by_alphanumeric(source, index) {
+            return None;
+        }
+        first.len_utf8()
+    } else {
+        0
+    };
+    let body = NUMBER_BODY.find(&rest[body_offset..])?;
+    let mut end = index + body_offset + body.end();
+    loop {
+        let after = source.get(end..)?;
+        if !after.starts_with('/') {
+            break;
+        }
+        let Some(next) = NUMBER_BODY.find(&after[1..]) else {
+            break;
+        };
+        if next.end() == 0 {
+            break;
+        }
+        end += 1 + next.end();
+    }
+    if source.get(end..).is_some_and(|tail| tail.starts_with('%')) {
+        end += 1;
+    }
+    Some(end)
+}
+
+fn add_comparison_matches(spans: &mut Vec<MatchSpan>, source: &str) -> Result<(), ProtectionError> {
+    let mut index = 0;
+    while index < source.len() {
+        let rest = &source[index..];
+        if let Some(operator) = COMPARISON_OPERATORS
+            .iter()
+            .copied()
+            .find(|operator| rest.starts_with(operator))
+        {
+            let end = index + operator.len();
+            add_match_span(
+                spans,
+                MatchSpan {
+                    start: index,
+                    end,
+                    kind: ProtectedKind::Number,
+                },
+            )?;
+            index = end;
+            continue;
+        }
+        index += next_char_len(source, index);
+    }
+    Ok(())
+}
+
+fn is_number_sign(character: char) -> bool {
+    matches!(character, '-' | '+' | '\u{2212}')
+}
+
+fn preceded_by_alphanumeric(source: &str, index: usize) -> bool {
+    source[..index]
+        .chars()
+        .next_back()
+        .is_some_and(char::is_alphanumeric)
+}
+
+fn next_char_len(source: &str, index: usize) -> usize {
+    source[index..].chars().next().map_or(1, char::len_utf8)
 }
 
 fn add_url_matches(spans: &mut Vec<MatchSpan>, source: &str) -> Result<(), ProtectionError> {

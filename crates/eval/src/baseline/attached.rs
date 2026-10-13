@@ -271,7 +271,7 @@ mod tests {
         assert_eq!(report.statuses.failed, 0);
         assert_eq!(
             report.cases[0].status,
-            Some(RewriteStatus::UnchangedNoEligibleContent)
+            Some(RewriteStatus::UnchangedIdentical)
         );
         let serialized = serde_json::to_string(&report).expect("serialize report");
         assert!(!serialized.contains("Hello world"));

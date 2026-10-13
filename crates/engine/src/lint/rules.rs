@@ -118,6 +118,7 @@ fn collect_rules(text: &str, maximum: usize) -> FindingCollector {
 
     style_rules::check_conversational_residue(text, &quotes, &mut findings);
     style_rules::check_throat_clearing(text, &quotes, &mut findings);
+    super::residue::check_folded_residue(text, &quotes, &mut findings);
     style_rules::check_canned_transition(text, &quotes, &mut findings);
     style_rules::check_repeated_conclusion(text, &quotes, &mut findings);
     style_rules::check_vague_attribution(text, &quotes, &mut findings);
