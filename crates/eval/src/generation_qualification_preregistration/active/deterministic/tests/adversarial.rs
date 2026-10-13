@@ -5,7 +5,7 @@ fn source_drift_and_independent_batch_finalizer_failures_never_publish_results()
     for source_drift in [false, true] {
         with_synthetic_generation_qualification_fixture(
             SyntheticGenerationQualificationScenario::TrafficEligible,
-            |input, platform_owners, license_proof, license_policy, production_policy| {
+            |mut input, platform_owners, license_proof, license_policy, production_policy| {
                 let source = input.case_authorities[0]
                     .source
                     .with_source_bytes(&CancellationToken::new(), <[u8]>::to_vec)
@@ -71,7 +71,7 @@ fn source_drift_and_independent_batch_finalizer_failures_never_publish_results()
 fn evaluation_transaction_abort_leaves_only_inert_committed_parent_receipt_sets() {
     with_synthetic_generation_qualification_fixture(
         SyntheticGenerationQualificationScenario::TrafficEligible,
-        |input, platform_owners, license_proof, license_policy, production_policy| {
+        |mut input, platform_owners, license_proof, license_policy, production_policy| {
             let source = input.case_authorities[0]
                 .source
                 .with_source_bytes(&CancellationToken::new(), <[u8]>::to_vec)
@@ -150,7 +150,7 @@ fn evaluation_transaction_abort_leaves_only_inert_committed_parent_receipt_sets(
 fn foreign_baseline_subject_cannot_write_even_with_identical_portable_scope() {
     with_synthetic_generation_qualification_fixture(
         SyntheticGenerationQualificationScenario::TrafficEligible,
-        |input, platform_owners, license_proof, license_policy, production_policy| {
+        |mut input, platform_owners, license_proof, license_policy, production_policy| {
             let source = input.case_authorities[0]
                 .source
                 .with_source_bytes(&CancellationToken::new(), <[u8]>::to_vec)
@@ -221,7 +221,7 @@ fn foreign_baseline_subject_cannot_write_even_with_identical_portable_scope() {
 fn corrupted_evaluation_readback_fails_closed_after_an_initial_success() {
     with_synthetic_generation_qualification_fixture(
         SyntheticGenerationQualificationScenario::TrafficEligible,
-        |input, platform_owners, license_proof, license_policy, production_policy| {
+        |mut input, platform_owners, license_proof, license_policy, production_policy| {
             let source = input.case_authorities[0]
                 .source
                 .with_source_bytes(&CancellationToken::new(), <[u8]>::to_vec)

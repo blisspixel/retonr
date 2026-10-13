@@ -25,6 +25,13 @@ macro_rules! prepare_active {
             rewrite_app::CandidateGenerationEvidenceRepository::initialize($directory.path())
                 .expect("evidence root");
         let $cancellation = CancellationToken::new();
+        // The 10s synthetic fixture expires on a busy Windows runner before
+        // these cohort tests finish storage. 120s is the budget the other
+        // heavy cohort tests already declare. Every gate still runs.
+        $input.operation_policy_input.limits =
+            crate::generation_qualification_preregistration::active::receipt_set::tests::positive::test_elapsed_limits(
+                $input.operation_policy_input.limits,
+            );
         let projected = GenerationQualificationOperationDraft::begin(
             $input.operation_policy_relations,
             $input.operation_policy_input,
@@ -65,11 +72,30 @@ macro_rules! prepare_active {
 }
 pub(crate) use prepare_active;
 
+pub(crate) fn test_elapsed_limits(
+    limits: rewrite_model::GenerationQualificationOperationLimitsV1,
+) -> rewrite_model::GenerationQualificationOperationLimitsV1 {
+    rewrite_model::GenerationQualificationOperationLimitsV1::new(
+        limits.maximum_source_bytes(),
+        limits.maximum_complete_input_bytes(),
+        limits.maximum_context_tokens(),
+        limits.maximum_output_tokens(),
+        limits.maximum_output_bytes(),
+        limits.maximum_candidates_per_completion(),
+        limits.maximum_candidate_bytes(),
+        limits.maximum_aggregate_candidate_bytes(),
+        limits.maximum_predeclared_attempts(),
+        limits.maximum_concurrent_attempts(),
+        120_000,
+    )
+    .expect("valid synthetic operation limits")
+}
+
 #[test]
 fn same_subject_exact_ledger_publishes_reads_back_and_replays_without_duplicate_rows() {
     with_synthetic_generation_qualification_fixture(
         SyntheticGenerationQualificationScenario::TrafficEligible,
-        |input, platform_owners, license_proof, license_policy, production_policy| {
+        |mut input, platform_owners, license_proof, license_policy, production_policy| {
             prepare_active!(
                 input,
                 platform_owners,
@@ -190,7 +216,7 @@ fn same_subject_baseline_and_missing_terminal_parents_cannot_publish() {
     for baseline in [false, true] {
         with_synthetic_generation_qualification_fixture(
             SyntheticGenerationQualificationScenario::TrafficEligible,
-            |input, platform_owners, license_proof, license_policy, production_policy| {
+            |mut input, platform_owners, license_proof, license_policy, production_policy| {
                 prepare_active!(
                     input,
                     platform_owners,
