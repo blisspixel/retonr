@@ -14,6 +14,29 @@ use extract::{
     typed_counts,
 };
 
+/// One selected protected span, without copying its surface.
+pub(crate) struct ProtectedOccurrence {
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    pub(crate) kind: ProtectedKind,
+}
+
+pub(crate) fn protected_occurrences(
+    text: &str,
+    declared_terms: &[String],
+) -> Result<Vec<ProtectedOccurrence>, ProtectionError> {
+    Ok(
+        select_non_overlapping(collect_source_spans(text, declared_terms)?)?
+            .into_iter()
+            .map(|span| ProtectedOccurrence {
+                start: span.start,
+                end: span.end,
+                kind: span.kind,
+            })
+            .collect(),
+    )
+}
+
 static SENTINEL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\{\{PROTECTED_[A-Z_]+_\d{4}\}\}").expect("static sentinel regex must compile")
 });
@@ -38,7 +61,8 @@ pub enum ProtectedKind {
     Url,
     /// Email address.
     Email,
-    /// Numeric literal, optionally including currency or percent markers.
+    /// Numeric literal, optionally including a leading sign, currency, percent,
+    /// fraction slash, or a comparison operator kept as its own surface.
     Number,
 }
 

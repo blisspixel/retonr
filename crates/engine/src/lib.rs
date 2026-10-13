@@ -28,6 +28,7 @@ mod selection;
 mod semantic;
 #[cfg(test)]
 mod semantic_binding_tests;
+mod span_report;
 mod structure;
 
 pub use claim_comparison::{ClaimComparisonError, ClaimEvidenceComparator};

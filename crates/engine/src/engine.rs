@@ -1,7 +1,7 @@
 use rewrite_types::{
     AcceptedEdit, Atomicity, CandidateAssessment, CandidateTextKind, DocumentError, DocumentIr,
-    GateResult, GateStatus, GeneratedCandidate, ReasonCode, RewriteOptions, RewriteStatus,
-    RewriteUnit, RewriteUnitId, Severity,
+    GateEvidenceDetails, GateResult, GateStatus, GeneratedCandidate, ReasonCode, RewriteOptions,
+    RewriteStatus, RewriteUnit, RewriteUnitId, Severity,
 };
 use thiserror::Error;
 
@@ -168,10 +168,12 @@ impl<'a> RewriteEngine<'a> {
             return Ok(EngineOutcome::abstained(ReasonCode::Cancelled, assessments));
         }
 
-        let status = if edits.is_empty() {
+        let status = if !edits.is_empty() {
+            RewriteStatus::Rewritten
+        } else if document.rewrite_units.is_empty() {
             RewriteStatus::UnchangedNoEligibleContent
         } else {
-            RewriteStatus::Rewritten
+            RewriteStatus::UnchangedIdentical
         };
         Ok(EngineOutcome {
             status,
@@ -300,14 +302,7 @@ impl<'a> RewriteEngine<'a> {
                 masked
             }
             Err(error) => {
-                gates.push(protection_failure(SENTINEL_GATE, &error));
-                return ineligible(
-                    candidate,
-                    unit.id.clone(),
-                    String::new(),
-                    gates,
-                    protection_reason(&error),
-                );
+                return reject_unprotected(candidate, unit, options, &error, gates);
             }
         };
 
@@ -329,8 +324,9 @@ impl<'a> RewriteEngine<'a> {
         };
 
         let structure = self.structure.validate(unit, &restored);
-        let (structure_gate, structure_reason) = crate::structure::retained_gate(structure);
+        let (mut structure_gate, structure_reason) = crate::structure::retained_gate(structure);
         let structure_passed = structure == StructureAssessment::Preserved;
+        annotate_structure_gate(&mut structure_gate, structure, &unit.text, &restored);
         gates.push(structure_gate);
         if !structure_passed {
             self.attach_claim_shadow(&unit.id, &unit.text, &restored, &mut gates);
@@ -438,5 +434,60 @@ impl<'a> RewriteEngine<'a> {
         } else {
             (gate, passed, reason)
         }
+    }
+}
+
+fn reject_unprotected(
+    candidate: GeneratedCandidate,
+    unit: &RewriteUnit,
+    options: &RewriteOptions,
+    error: &ProtectionError,
+    mut gates: Vec<GateResult>,
+) -> EvaluatedCandidate {
+    let mut gate = protection_failure(SENTINEL_GATE, error);
+    if *error == ProtectionError::ProtectedOccurrenceCount
+        && candidate.text_kind == CandidateTextKind::Raw
+    {
+        attach_span_details(
+            &mut gate,
+            crate::span_report::protection_details(
+                &unit.text,
+                &candidate.text,
+                &options.protected_terms,
+            ),
+        );
+    }
+    gates.push(gate);
+    ineligible(
+        candidate,
+        unit.id.clone(),
+        String::new(),
+        gates,
+        protection_reason(error),
+    )
+}
+
+fn annotate_structure_gate(
+    gate: &mut GateResult,
+    structure: StructureAssessment,
+    source: &str,
+    restored: &str,
+) {
+    if structure == StructureAssessment::Preserved {
+        return;
+    }
+    let details = match structure {
+        StructureAssessment::UnsafeText => crate::span_report::unsafe_details(source, restored),
+        StructureAssessment::Changed => crate::span_report::structure_details(source, restored),
+        StructureAssessment::Preserved => None,
+    };
+    attach_span_details(gate, details);
+}
+
+fn attach_span_details(gate: &mut GateResult, details: Option<GateEvidenceDetails>) {
+    if let Some(details) = details
+        && let Some(evidence) = gate.evidence.first_mut()
+    {
+        evidence.details = Some(details);
     }
 }

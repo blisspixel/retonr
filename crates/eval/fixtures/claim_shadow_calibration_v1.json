@@ -64,7 +64,7 @@
       "id": "identity-absent",
       "source": "No change",
       "candidate": "No change",
-      "expected_status": "unchanged_no_eligible_content",
+      "expected_status": "unchanged_identical",
       "expected_reason": null,
       "expected_shadow": "absent"
     },
@@ -80,7 +80,7 @@
       "id": "identity-conflict",
       "source": "No change",
       "candidate": "No change",
-      "expected_status": "unchanged_no_eligible_content",
+      "expected_status": "unchanged_identical",
       "expected_reason": null,
       "expected_shadow": "conflict",
       "source_predicate": "same-state",

@@ -464,7 +464,7 @@ mod tests {
         let suite = parse_suite(CORE_SUITE).expect("checked-in suite is valid");
         let report = run_suite(&suite);
         assert!(report.is_success(), "failures: {:?}", report.failures);
-        assert_eq!(report.total, 49);
+        assert_eq!(report.total, 60);
         assert_eq!(report.passed, report.total);
         assert_eq!(report.transformation_coverage.acceptable, 9);
         assert_eq!(report.transformation_coverage.rewritten, 4);
@@ -483,6 +483,139 @@ mod tests {
                 .iter()
                 .any(|category| category.category == "semantic_hard_negative")
         );
+    }
+
+    #[test]
+    fn abstentions_locate_failed_spans_without_echoing_them() {
+        use rewrite_app::{CandidateCheckRequest, CandidateCheckService};
+        use rewrite_types::ReasonCode;
+
+        let suite = parse_suite(CORE_SUITE).expect("checked-in suite is valid");
+        for case in &suite.cases {
+            let Some(reason) = case.expected_reason else {
+                continue;
+            };
+            if !matches!(
+                reason,
+                ReasonCode::ProtectedValueChanged
+                    | ReasonCode::StructureChanged
+                    | ReasonCode::UnsafeText
+            ) {
+                continue;
+            }
+            let result = CandidateCheckService::check(CandidateCheckRequest::new(
+                case.source.as_bytes().to_vec(),
+                case.candidate.clone(),
+                case.protected_terms.clone(),
+            ))
+            .expect("check");
+            let failures = span_failures(&result.record);
+            assert!(!failures.is_empty(), "{}", case.id);
+            let encoded = serde_json::to_string(&result.record).expect("record json");
+            assert_locations_in_range(&case.source, &case.candidate, &failures, &case.id);
+            assert!(
+                !encoded.contains(&case.source) || case.source.chars().count() < 12,
+                "{} record echoed source",
+                case.id
+            );
+        }
+
+        let marker = "zzMARKER9f3k";
+        let source = format!("Visit https://example.com/{marker} today.");
+        let candidate = format!("Visit https://example.org/{marker} today.");
+        let result = CandidateCheckService::check(CandidateCheckRequest::new(
+            source.as_bytes().to_vec(),
+            candidate,
+            Vec::new(),
+        ))
+        .expect("url check");
+        let encoded = serde_json::to_string(&result.record).expect("url record");
+        assert!(!encoded.contains(marker), "{encoded}");
+        let url = span_failures(&result.record)
+            .into_iter()
+            .find(|failure| failure.kind == "url")
+            .expect("url failure");
+        let point = url.source.expect("url source point");
+        assert_eq!(
+            byte_index(&source, point.line, point.column),
+            source.find("https")
+        );
+
+        let source = format!("Keep {marker} stable.");
+        let result = CandidateCheckService::check(CandidateCheckRequest::new(
+            source.as_bytes().to_vec(),
+            "Keep other stable.".to_owned(),
+            vec![marker.to_owned()],
+        ))
+        .expect("term check");
+        let encoded = serde_json::to_string(&result.record).expect("term record");
+        assert!(!encoded.contains(marker), "{encoded}");
+        let term = span_failures(&result.record)
+            .into_iter()
+            .find(|failure| failure.kind == "declared_term")
+            .expect("declared term failure");
+        assert_eq!(term.ordinal, Some(1));
+        let point = term.source.expect("term source point");
+        assert_eq!(
+            byte_index(&source, point.line, point.column),
+            source.find(marker)
+        );
+    }
+
+    fn span_failures(record: &rewrite_types::RewriteRecord) -> Vec<rewrite_types::SpanFailure> {
+        let mut failures = Vec::new();
+        for assessment in &record.assessments {
+            for gate in &assessment.gates {
+                for evidence in &gate.evidence {
+                    if let Some(rewrite_types::GateEvidenceDetails::SpanFailures {
+                        failures: found,
+                    }) = &evidence.details
+                    {
+                        failures.extend(found.iter().cloned());
+                    }
+                }
+            }
+        }
+        failures
+    }
+
+    fn assert_locations_in_range(
+        source: &str,
+        candidate: &str,
+        failures: &[rewrite_types::SpanFailure],
+        id: &str,
+    ) {
+        for failure in failures {
+            if let Some(point) = failure.source {
+                let index = byte_index(source, point.line, point.column)
+                    .unwrap_or_else(|| panic!("{id} source location"));
+                assert!(source.is_char_boundary(index), "{id}");
+            }
+            if let Some(point) = failure.candidate {
+                let index = byte_index(candidate, point.line, point.column)
+                    .unwrap_or_else(|| panic!("{id} candidate location"));
+                assert!(candidate.is_char_boundary(index), "{id}");
+            }
+        }
+    }
+
+    fn byte_index(text: &str, line: u32, column: u32) -> Option<usize> {
+        let mut current = 1u32;
+        let mut start = 0usize;
+        for (index, byte) in text.bytes().enumerate() {
+            if current == line && u32::try_from(index - start + 1).ok()? == column {
+                return Some(index);
+            }
+            if byte == b'\n' {
+                current = current.checked_add(1)?;
+                start = index + 1;
+            }
+        }
+        if current == line && u32::try_from(text.len() - start + 1).ok()? == column {
+            Some(text.len())
+        } else {
+            None
+        }
     }
 
     #[test]

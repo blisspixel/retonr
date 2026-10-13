@@ -1,5 +1,28 @@
 use super::*;
 
+fn host_busybox() -> Option<File> {
+    match File::open("/bin/busybox") {
+        Ok(file) => Some(file),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            assert!(
+                std::env::var("RETONR_REQUIRE_HOST_BUSYBOX").ok().as_deref() != Some("1"),
+                "RETONR_REQUIRE_HOST_BUSYBOX is set but /bin/busybox is missing"
+            );
+            report_missing_busybox();
+            None
+        }
+        Err(error) => panic!("test host BusyBox: {error}"),
+    }
+}
+
+#[expect(
+    clippy::print_stderr,
+    reason = "skip message is the absent-BusyBox signal"
+)]
+fn report_missing_busybox() {
+    eprintln!("skipping: test host BusyBox is not installed at /bin/busybox");
+}
+
 fn limits() -> ArchiveLimits {
     ArchiveLimits {
         entries: 8,
@@ -277,7 +300,9 @@ fn link_count_target_bytes_and_resolution_depth_are_bounded() {
 fn validated_hardlinks_are_materialized_as_independent_regular_bytes() {
     use std::os::unix::fs::MetadataExt as _;
 
-    let busybox = File::open("/bin/busybox").expect("test host BusyBox");
+    let Some(busybox) = host_busybox() else {
+        return;
+    };
     let destination = tempfile::tempdir().expect("destination");
     let summary = extract(
         &busybox,
@@ -313,7 +338,9 @@ fn exact_official_alpine_archive_fixture() {
     let Some(path) = std::env::var_os("RETONR_TEST_ALPINE_MINIROOTFS") else {
         return;
     };
-    let busybox = File::open("/bin/busybox").expect("test host BusyBox");
+    let Some(busybox) = host_busybox() else {
+        return;
+    };
     let archive = File::open(path).expect("official Alpine archive");
     let destination = tempfile::tempdir().expect("extraction destination");
     let exact_limits = ArchiveLimits {
@@ -367,7 +394,9 @@ fn exact_official_alpine_archive_fixture() {
 
 #[test]
 fn exact_official_rust_gzip_archives_reject_links_and_extract_with_retained_busybox() {
-    let busybox = File::open("/bin/busybox").expect("test host BusyBox");
+    let Some(busybox) = host_busybox() else {
+        return;
+    };
     for (variable, root, required, expected_bytes) in [
         (
             "RETONR_TEST_RUST_CARGO_DIST",
@@ -425,7 +454,9 @@ fn exact_official_rust_gzip_archives_reject_links_and_extract_with_retained_busy
 #[test]
 fn retained_executable_drives_bounded_uncompressed_extraction() {
     let temporary = tempfile::tempdir().expect("temporary directory");
-    let busybox = File::open("/bin/busybox").expect("test host BusyBox");
+    let Some(busybox) = host_busybox() else {
+        return;
+    };
     let destination = temporary.path().join("output");
     fs::create_dir(&destination).expect("destination");
     let summary = extract(
@@ -469,7 +500,9 @@ fn retained_executable_failure_and_stream_quota_fail_closed() {
         )
         .is_err()
     );
-    let overflow = File::open("/bin/busybox").expect("test host BusyBox");
+    let Some(overflow) = host_busybox() else {
+        return;
+    };
     let bounded = temporary.path().join("bounded-output");
     fs::create_dir(&bounded).expect("bounded destination");
     let mut strict = limits();

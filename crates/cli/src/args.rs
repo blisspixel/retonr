@@ -19,7 +19,18 @@ Examples:
 
 /// Fidelity-gated rewriting prototype.
 #[derive(Debug, Parser)]
-#[command(name = "retonr", version, about, after_help = EXAMPLES)]
+#[command(
+    name = "retonr",
+    version = concat!(
+        env!("CARGO_PKG_VERSION"),
+        " commit=",
+        env!("RETONR_COMMIT"),
+        " snapshot=",
+        env!("RETONR_SNAPSHOT_TAG")
+    ),
+    about,
+    after_help = EXAMPLES
+)]
 pub(crate) struct Cli {
     /// json for machines, text for humans. A terminal defaults to text.
     #[arg(
@@ -161,7 +172,7 @@ pub(crate) enum Command {
         /// Write the redacted rewrite record to a new file.
         #[arg(long, value_name = "PATH")]
         trace: Option<PathBuf>,
-        /// Degree of editorial freedom (touch-up, voice-pass, rewrite, reconstruct).
+        /// Requested editorial freedom. Check reports the effective level; only touch-up is enforced.
         #[arg(long = "edit-level", value_enum, value_name = "LEVEL")]
         edit_level: Option<EditLevelArg>,
         /// Maximum allowed character count.
@@ -219,7 +230,10 @@ pub(crate) enum Command {
     /// JSON reports the name, section, and page. Text writes the raw manual
     /// page without a machine envelope.
     Man,
-    /// Inspect plain text for editorial style patterns, conversational residue, and AI slop.
+    /// Inspect plain text against an early, narrow pattern list.
+    ///
+    /// A clean result means none of those patterns matched. It does not mean the
+    /// text has no assistant residue.
     Lint {
         /// UTF-8 file or directory to inspect, or - for standard input.
         #[arg(value_name = "SOURCE")]

@@ -63,7 +63,8 @@ fn standard_input_is_read_to_end_of_file_without_trimming() {
             .success();
         let report = String::from_utf8(assertion.get_output().stdout.clone()).expect("UTF-8");
         assert!(
-            report.contains("status: unchanged_no_eligible_content")
+            report.contains("status: unchanged_identical")
+                || report.contains("status: unchanged_no_eligible_content")
                 || report.contains("status: rewritten"),
             "{name}: unexpected report {report}"
         );

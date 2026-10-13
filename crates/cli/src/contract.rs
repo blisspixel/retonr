@@ -238,18 +238,28 @@ pub enum ErrorCode {
     OperationCancelled,
 }
 
-/// Content-free error details for a failed command.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct ErrorBody {
-    category: ErrorCategory,
-    code: ErrorCode,
-    retryable: bool,
+/// Optional locators kept off the `Result` error path.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+struct ErrorExtensions {
     #[serde(skip_serializing_if = "Option::is_none")]
     recovery_selection: Option<ArtifactSelectionDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     set_recovery_selection: Option<set::ArtifactSetSelectionDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     migration_backup_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diagnostic: Option<String>,
+}
+
+/// Content-free error details for a failed command.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ErrorBody {
+    category: ErrorCategory,
+    code: ErrorCode,
+    retryable: bool,
+    /// Recovery selectors and redacted locators. Absent from JSON when empty.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    extensions: Option<Box<ErrorExtensions>>,
 }
 
 impl ErrorBody {
@@ -260,31 +270,58 @@ impl ErrorBody {
             category,
             code,
             retryable,
-            recovery_selection: None,
-            set_recovery_selection: None,
-            migration_backup_key: None,
+            extensions: None,
         }
+    }
+
+    /// Attaches a bounded locator that is not document content.
+    #[must_use]
+    pub fn with_diagnostic(mut self, diagnostic: &str) -> Self {
+        let mut bounded = String::new();
+        for character in diagnostic.chars() {
+            let next = character.len_utf8();
+            if bounded.len() + next > 512 {
+                break;
+            }
+            bounded.push(character);
+        }
+        if !bounded.is_empty() {
+            self.extensions_mut().diagnostic = Some(bounded);
+        }
+        self
+    }
+
+    /// Returns the bounded locator, when one was attached.
+    #[must_use]
+    pub(crate) fn diagnostic(&self) -> Option<&str> {
+        self.extensions
+            .as_ref()
+            .and_then(|extensions| extensions.diagnostic.as_deref())
     }
 
     /// Attaches the exact prepared generation required for safe recovery.
     #[must_use]
     pub fn with_recovery_selection(mut self, selection: ArtifactSelectionDto) -> Self {
-        self.recovery_selection = Some(selection);
+        self.extensions_mut().recovery_selection = Some(selection);
         self
     }
 
     /// Attaches the exact prepared set generation required for safe recovery.
     #[must_use]
     pub fn with_set_recovery_selection(mut self, selection: set::ArtifactSetSelectionDto) -> Self {
-        self.set_recovery_selection = Some(selection);
+        self.extensions_mut().set_recovery_selection = Some(selection);
         self
     }
 
     /// Attaches the repository-owned backup key retained after a migration failure.
     #[must_use]
     pub fn with_migration_backup_key(mut self, backup_key: String) -> Self {
-        self.migration_backup_key = Some(backup_key);
+        self.extensions_mut().migration_backup_key = Some(backup_key);
         self
+    }
+
+    fn extensions_mut(&mut self) -> &mut ErrorExtensions {
+        self.extensions.get_or_insert_with(Box::default)
     }
 }
 

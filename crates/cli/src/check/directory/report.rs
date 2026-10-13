@@ -6,7 +6,7 @@ use crate::{
     inspect_source::directory::SkippedEntry,
     render::{escape_inline_for_display, to_safe_pretty_json},
 };
-use rewrite_types::RewriteRecord;
+use rewrite_types::{EditLevel, RewriteRecord};
 use serde::Serialize;
 use std::{
     fmt::Write as _,
@@ -40,6 +40,12 @@ pub(super) struct DirectoryCheckReport {
     pub(super) unmatched: Vec<UnmatchedPath>,
     pub(super) source_skipped: Vec<SkippedEntry>,
     pub(super) candidate_skipped: Vec<SkippedEntry>,
+    semantic_evaluator: &'static str,
+    edit_level_effective: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    edit_level_requested: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    edit_level_note: Option<&'static str>,
 }
 
 impl DirectoryCheckReport {
@@ -48,7 +54,9 @@ impl DirectoryCheckReport {
         maximum_total_bytes: usize,
         source_skipped: Vec<SkippedEntry>,
         candidate_skipped: Vec<SkippedEntry>,
+        edit_level: Option<EditLevel>,
     ) -> Self {
+        let fidelity = crate::check::report::fidelity_for(edit_level);
         Self {
             scope: "directory",
             mode: "dry_run",
@@ -62,6 +70,10 @@ impl DirectoryCheckReport {
             unmatched: Vec::new(),
             source_skipped,
             candidate_skipped,
+            semantic_evaluator: fidelity.semantic_evaluator,
+            edit_level_effective: fidelity.edit_level_effective,
+            edit_level_requested: fidelity.edit_level_requested,
+            edit_level_note: fidelity.note,
         }
     }
 
@@ -95,6 +107,11 @@ impl DirectoryCheckReport {
             self.unmatched.len(),
             self.skipped_count
         );
+        let _ = writeln!(text, "semantic_evaluator: {}", self.semantic_evaluator);
+        let _ = writeln!(text, "edit_level_effective: {}", self.edit_level_effective);
+        if let Some(note) = self.edit_level_note {
+            let _ = writeln!(text, "note: {note}");
+        }
         for pair in &self.pairs {
             let _ = writeln!(
                 text,
@@ -108,6 +125,11 @@ impl DirectoryCheckReport {
                     "  reason: {}",
                     crate::check::report::reason_name(reason)
                 );
+            }
+            let mut locations = String::new();
+            crate::check::report::append_span_lines(&mut locations, &pair.record);
+            for line in locations.lines() {
+                let _ = writeln!(text, "  {line}");
             }
         }
         for unmatched in &self.unmatched {

@@ -1,4 +1,4 @@
-use std::{io, process::ExitCode};
+use std::{io, path::Path, process::ExitCode};
 
 use rewrite_app::{AppError, ClaimExtractionError, EngineError, ProtectionError};
 
@@ -71,6 +71,21 @@ impl RunFailure {
 
     pub fn check_read(error: &io::Error) -> Self {
         Self::input_read(CommandName::Check, error)
+    }
+
+    /// Names which check input could not be read, without echoing document bytes.
+    pub fn check_read_at(role: InputRole, path: &Path, error: &io::Error) -> Self {
+        let mut failure = Self::check_read(error);
+        if failure.message == "input could not be read" {
+            failure.message = match role {
+                InputRole::Source => "source could not be read",
+                InputRole::Candidate => "candidate could not be read",
+            };
+            if let Some(diagnostic) = path_diagnostic(path) {
+                failure.body = failure.body.with_diagnostic(&diagnostic);
+            }
+        }
+        failure
     }
 
     pub fn input_read(command: CommandName, error: &io::Error) -> Self {
@@ -156,8 +171,8 @@ impl RunFailure {
             },
             AppError::GroundedUnavailable => Self {
                 command,
-                body: ErrorBody::new(ErrorCategory::Compatibility, ErrorCode::Unsupported, false),
-                exit_code: ExitCode::from(EXIT_COMPATIBILITY),
+                body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false),
+                exit_code: ExitCode::from(crate::contract::EXIT_POLICY),
                 message: "grounded rewrite requires a selected qualified local artifact",
             },
             AppError::GroundedSelectionMismatch => Self {
@@ -228,6 +243,33 @@ impl RunFailure {
             message: error.message,
         }
     }
+}
+
+fn path_diagnostic(path: &Path) -> Option<String> {
+    let text = path.to_str()?;
+    let escaped = crate::render::escape_inline_for_display(text);
+    let mut bounded = String::new();
+    for character in escaped.chars() {
+        let next = character.len_utf8();
+        if bounded.len() + next > 512 {
+            break;
+        }
+        bounded.push(character);
+    }
+    if bounded.is_empty() {
+        None
+    } else {
+        Some(bounded)
+    }
+}
+
+/// Which paired document a check input error refers to.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum InputRole {
+    /// The original document.
+    Source,
+    /// The supplied candidate.
+    Candidate,
 }
 
 #[cfg(test)]

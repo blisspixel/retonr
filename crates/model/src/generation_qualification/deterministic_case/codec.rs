@@ -140,6 +140,7 @@ const fn rewrite_status_tag(value: RewriteStatus) -> u8 {
         RewriteStatus::UnchangedNoEligibleContent => 1,
         RewriteStatus::Abstained => 2,
         RewriteStatus::Failed => 3,
+        RewriteStatus::UnchangedIdentical => 4,
     }
 }
 

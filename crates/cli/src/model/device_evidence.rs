@@ -20,7 +20,7 @@ const MAXIMUM_DETAIL_TEXT_BYTES: usize = 1_024;
 const MAXIMUM_NEEDS: usize = 128;
 const MAXIMUM_SERVES: usize = 128;
 const DISCLAIMER: &str = "This is a fitr measurement of one model on one device. It is not a retonr qualification, activation, or license decision.";
-const ALLOWED_NEED_STATES: [&str; 5] = ["PASS", "FAIL", "SKIP", "n/a", "BLKD"];
+const ALLOWED_NEED_STATES: [&str; 6] = ["PASS", "FAIL", "SKIP", "n/a", "BLKD", "INCONCLUSIVE"];
 
 /// Path to one fitr.retonr.evidence.v1 document.
 #[derive(Debug, clap::Args)]
@@ -78,7 +78,7 @@ fn inspect(source: &Path) -> Result<DeviceEvidenceReport, RunFailure> {
         .into_iter()
         .map(|(name, observation)| {
             if !ALLOWED_NEED_STATES.contains(&observation.state.as_str()) {
-                return Err(invalid_evidence());
+                return Err(unsupported_need_state(&name, &observation.state));
             }
             Ok(NeedObservation {
                 name: required_text(&name, MAXIMUM_SHORT_TEXT_BYTES)?,
@@ -189,6 +189,24 @@ fn number_string(value: f64) -> String {
         .trim_end_matches('0')
         .trim_end_matches('.')
         .to_owned()
+}
+
+fn unsupported_need_state(name: &str, state: &str) -> RunFailure {
+    let mut failure = invalid_evidence();
+    if safe_token(name) && safe_token(state) {
+        failure.body = failure
+            .body
+            .with_diagnostic(&format!("needs.{name}.state: unsupported value {state}"));
+    }
+    failure
+}
+
+fn safe_token(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
 fn invalid_evidence() -> RunFailure {
@@ -334,6 +352,10 @@ impl super::ModelOutput {
             .expect("writing to a String cannot fail");
         writeln!(text, "model: {}", escape_inline_for_display(&report.model))
             .expect("writing to a String cannot fail");
+        if let Some(level) = &report.level {
+            writeln!(text, "level: {}", escape_inline_for_display(level))
+                .expect("writing to a String cannot fail");
+        }
         writeln!(text, "disclaimer: {}", report.disclaimer)
             .expect("writing to a String cannot fail");
         if let Some(quant) = &report.quant {
@@ -356,6 +378,22 @@ impl super::ModelOutput {
             writeln!(text, "runtime: {}", escape_inline_for_display(runtime))
                 .expect("writing to a String cannot fail");
         }
+        if let Some(ram_gb) = &report.device.ram_gb {
+            writeln!(text, "ram_gb: {}", escape_inline_for_display(ram_gb))
+                .expect("writing to a String cannot fail");
+        }
+        if let Some(vram_gb) = &report.device.vram_gb {
+            writeln!(text, "vram_gb: {}", escape_inline_for_display(vram_gb))
+                .expect("writing to a String cannot fail");
+        }
+        if let Some(inference_device) = &report.device.inference_device {
+            writeln!(
+                text,
+                "inference_device: {}",
+                escape_inline_for_display(inference_device)
+            )
+            .expect("writing to a String cannot fail");
+        }
         for need in &report.needs {
             match &need.why {
                 Some(why) => writeln!(
@@ -374,6 +412,14 @@ impl super::ModelOutput {
                 )
                 .expect("writing to a String cannot fail"),
             }
+        }
+        for served in &report.serves {
+            writeln!(text, "serves: {}", escape_inline_for_display(served))
+                .expect("writing to a String cannot fail");
+        }
+        if let Some(use_for) = &report.use_for {
+            writeln!(text, "use_for: {}", escape_inline_for_display(use_for))
+                .expect("writing to a String cannot fail");
         }
         Self {
             value: serde_json::to_value(report).expect("device evidence serializes"),
@@ -513,5 +559,69 @@ mod tests {
             failure.body,
             ErrorBody::new(ErrorCategory::Usage, ErrorCode::InvalidManifest, false)
         );
+    }
+
+    #[test]
+    fn inconclusive_need_is_accepted_measurement() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("gemma.retonr.json");
+        let mut value = sample();
+        value["fitr_version"] = json!("0.11.3");
+        value["model"] = json!("gemma4:e4b-it-qat");
+        value["needs"]["fast_and_decent"] = json!({
+            "state": "INCONCLUSIVE",
+            "why": "no cache receipt"
+        });
+        std::fs::write(&path, value.to_string()).expect("write evidence");
+        let report = inspect(&path).expect("inconclusive evidence");
+        assert!(
+            report
+                .needs
+                .iter()
+                .any(|need| { need.name == "fast_and_decent" && need.state == "INCONCLUSIVE" })
+        );
+        let text = ModelOutput::device_evidence(&report).text;
+        assert!(text.contains("level: full"));
+        assert!(text.contains("ram_gb: 32"));
+        assert!(text.contains("vram_gb: 8"));
+        assert!(text.contains("inference_device: GPU 100%"));
+        assert!(text.contains("serves: structured_output"));
+        assert!(text.contains("use_for: JSON pipelines"));
+        assert!(text.contains("state=INCONCLUSIVE"));
+        assert!(!text.contains("secret"));
+    }
+
+    #[test]
+    fn unsupported_need_state_names_only_a_safe_token() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("maybe.json");
+        let mut value = sample();
+        value["needs"]["fast_and_decent"] = json!({
+            "state": "MAYBE",
+            "why": "secret-why-text"
+        });
+        std::fs::write(&path, value.to_string()).expect("write");
+        let Err(failure) = inspect(&path) else {
+            panic!("unknown state must be refused");
+        };
+        assert_eq!(failure.exit_code, std::process::ExitCode::from(EXIT_USAGE));
+        assert_eq!(
+            failure.body.diagnostic(),
+            Some("needs.fast_and_decent.state: unsupported value MAYBE")
+        );
+        assert!(!failure.message.contains("secret-why-text"));
+
+        let mut value = sample();
+        value["needs"]["fast_and_decent"] = json!({
+            "state": "secret prose should stay hidden",
+            "why": "also hidden"
+        });
+        std::fs::write(&path, value.to_string()).expect("write unsafe state");
+        let Err(failure) = inspect(&path) else {
+            panic!("unsafe state must be refused");
+        };
+        assert!(failure.body.diagnostic().is_none());
+        assert!(!failure.message.contains("secret prose"));
+        assert!(!failure.message.contains("also hidden"));
     }
 }

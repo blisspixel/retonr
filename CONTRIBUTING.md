@@ -53,6 +53,15 @@ cargo check --locked --manifest-path fuzz/Cargo.toml --all-targets
 cargo build --locked --workspace --all-features --release
 ```
 
+Linux archive-extraction tests open `/bin/busybox` as a retained host executable.
+Install one of these packages when you want those tests to run:
+
+- Debian or Ubuntu: `busybox` or `busybox-static`
+- Arch Linux: `busybox`
+- Fedora: `busybox`
+
+If `/bin/busybox` is absent, those tests print `skipping: test host BusyBox is not installed at /bin/busybox` and return. Set `RETONR_REQUIRE_HOST_BUSYBOX=1` to fail instead of skipping. The Linux CI job sets that variable so a missing BusyBox fails closed there.
+
 The repository policy script also runs under the in-box Windows PowerShell 5.1 when
 PowerShell 7 is unavailable:
 

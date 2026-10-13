@@ -14,7 +14,7 @@ use crate::{
         CommandName, EXIT_CANCELLED, EXIT_POLICY, ReportFormat, STANDARD_STREAM_PATH,
         read_input_bounded,
     },
-    failure::RunFailure,
+    failure::{InputRole, RunFailure},
 };
 
 mod directory;
@@ -106,9 +106,11 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         .map_err(|_| RunFailure::operational(CommandName::Check))?;
 
     let source_bytes = read_input_bounded(&request.source, MAX_CANDIDATE_CHECK_BYTES)
-        .map_err(|error| RunFailure::check_read(&error))?;
+        .map_err(|error| RunFailure::check_read_at(InputRole::Source, &request.source, &error))?;
     let candidate_bytes = read_input_bounded(&request.candidate, MAX_CANDIDATE_CHECK_BYTES)
-        .map_err(|error| RunFailure::check_read(&error))?;
+        .map_err(|error| {
+            RunFailure::check_read_at(InputRole::Candidate, &request.candidate, &error)
+        })?;
     let candidate =
         String::from_utf8(candidate_bytes).map_err(|_| RunFailure::check_invalid_utf8())?;
     let source_for_diff = request.inspection.diff.then(|| source_bytes.clone());
@@ -158,6 +160,7 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         format,
         destination_report_target(&destination),
         backup.as_deref(),
+        Some(report::fidelity_for(request.edit_level)),
     )
     .map_err(|_| RunFailure::operational(CommandName::Check))?;
     Ok(exit_status(
@@ -344,6 +347,7 @@ pub(crate) fn exit_status(
         RewriteStatus::Abstained if fail_on_abstain => ExitCode::from(EXIT_POLICY),
         RewriteStatus::Rewritten
         | RewriteStatus::UnchangedNoEligibleContent
+        | RewriteStatus::UnchangedIdentical
         | RewriteStatus::Abstained => ExitCode::SUCCESS,
     }
 }

@@ -65,6 +65,8 @@ jobs:
 
   rust:
     name: rust (${{ matrix.os }})
+    env:
+      RETONR_REQUIRE_HOST_BUSYBOX: ${{ matrix.os == 'ubuntu-latest' && '1' || '0' }}
     strategy:
       fail-fast: false
       matrix:

@@ -73,10 +73,6 @@ fn main() -> ExitCode {
 }
 
 #[expect(
-    clippy::result_large_err,
-    reason = "RunFailure carries the typed CLI report contract"
-)]
-#[expect(
     clippy::too_many_lines,
     reason = "each command arm owns its clap-derived request"
 )]
@@ -292,7 +288,13 @@ fn write_failure(error: &RunFailure, format: ReportFormat) -> io::Result<()> {
             bytes.push(b'\n');
             bytes
         }
-        ReportFormat::Text => format!("error: {}\n", error.message).into_bytes(),
+        ReportFormat::Text => {
+            let line = match error.body.diagnostic() {
+                Some(diagnostic) => format!("error: {}: {diagnostic}\n", error.message),
+                None => format!("error: {}\n", error.message),
+            };
+            line.into_bytes()
+        }
     };
     io::stderr().lock().write_all(&bytes)
 }

@@ -273,6 +273,8 @@ pub enum RewriteStatus {
     Abstained,
     /// Processing failed before a safe decision could be completed.
     Failed,
+    /// Eligible content was present and the candidate matched it exactly.
+    UnchangedIdentical,
 }
 
 /// Stable machine-readable explanation for abstention or failure.

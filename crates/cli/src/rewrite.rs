@@ -136,6 +136,7 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
         request.format,
         destination_report_target(&destination),
         backup.as_deref(),
+        None,
     )
     .map_err(|_| RunFailure::operational(CommandName::Rewrite))?;
     Ok(crate::check::exit_status(
@@ -151,14 +152,20 @@ mod tests {
 
     use rewrite_app::AppError;
 
-    use crate::contract::{CommandName, EXIT_COMPATIBILITY};
+    use crate::contract::{
+        CommandName, EXIT_COMPATIBILITY, EXIT_POLICY, ErrorBody, ErrorCategory, ErrorCode,
+    };
     use crate::failure::RunFailure;
 
     #[test]
-    fn missing_selection_is_a_compatibility_refusal() {
+    fn missing_selection_is_a_policy_refusal() {
         let failure = RunFailure::app(CommandName::Rewrite, &AppError::GroundedUnavailable);
         assert_eq!(failure.command, CommandName::Rewrite);
-        assert_eq!(failure.exit_code, ExitCode::from(EXIT_COMPATIBILITY));
+        assert_eq!(failure.exit_code, ExitCode::from(EXIT_POLICY));
+        assert_eq!(
+            failure.body,
+            ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false)
+        );
         assert!(failure.message.contains("qualified local artifact"));
     }
 

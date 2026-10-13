@@ -435,7 +435,9 @@ fn failed_case(
 fn update_counts(counts: &mut BaselineStatusCounts, result: &BaselineCaseResult) {
     match result.status {
         Some(RewriteStatus::Rewritten) => counts.rewritten += 1,
-        Some(RewriteStatus::UnchangedNoEligibleContent) => counts.unchanged += 1,
+        Some(RewriteStatus::UnchangedNoEligibleContent | RewriteStatus::UnchangedIdentical) => {
+            counts.unchanged += 1;
+        }
         Some(RewriteStatus::Abstained) => counts.abstained += 1,
         Some(RewriteStatus::Failed) | None => counts.failed += 1,
     }

@@ -880,6 +880,8 @@ semantics, nor qualification.
   result paths stay out of the report. The 64 KiB document boundary is joined
   by per-field text and collection bounds, unique served capabilities, positive
   memory measurements, and refusal of terminal-affecting forwarded text.
+  Need states are PASS, FAIL, SKIP, n/a, BLKD, and INCONCLUSIVE. An unsupported
+  state names `needs.<name>.state` when the name and state are short safe tokens.
   Missing fitr is not an error.
   `rewrite` accepts one source file or standard input under the same
   output and inspection policy as `check`, including `--diff`, `--dry-run`,
@@ -893,7 +895,8 @@ semantics, nor qualification.
   When the recovered qualification names the retained fake backend, `rewrite`
   attaches in-process conformance, generates an identity candidate, and runs
   the common gates. It does not start a runtime, pull a model, or use the
-  network. Any other recovered backend still fails closed. A recovered binding
+  network. Without a selected qualified local artifact it exits 3 as a policy
+  refusal and writes no output. Any other recovered backend still fails closed. A recovered binding
   is not activation, a lease, or a qualification producer.
 - `check` accepts either document from standard input, read to end of file without
   trimming, and preserves the byte order mark, newline kind, blank lines, surrounding
@@ -1391,7 +1394,7 @@ checkpoint remains the concurrency barrier after this read-only admission check.
    later dependency-complete schema cohort in order, then compile
    `VerifiedGenerationQualification` from fresh durable readbacks and every required
    live authority. Only after that compiler exists,
-   project the 49 deterministic and 120 editorial development cases into
+   project the 60 deterministic and 120 editorial development cases into
    preregistered smoke, calibration, and locked manifests. Deterministic gates remain
    the only machine acceptance authority, and human adjudication remains the release
    authority.

@@ -94,7 +94,6 @@ cargo run --locked -p retonr-cli -- tui draft.txt --candidate candidate.txt --pr
 cargo run --locked -p retonr-cli -- tui draft.txt --plain --format json
 cargo run --locked -p retonr-cli -- tui drafts/ --candidate candidates/ --recursive
 cargo run --locked -p retonr-cli -- tui drafts/ --recursive --document notes/draft.txt --plain --format json
-cargo run --locked -p retonr-cli -- rewrite fixtures/cli/source.txt
 cargo run --locked -p retonr-cli -- inspect fixtures/cli/source.txt
 cargo run --locked -p retonr-cli -- doctor
 cargo run --locked -p retonr-cli -- model --help
@@ -108,10 +107,12 @@ candidate can be written to a new destination; an abstention returns the exact
 original. Optional `--edit-level`, character budget, expansion ceiling, and line budget
 flags enforce layout constraints. Read-only folder checks pair documents by exact
 relative path and report missing or skipped counterparts. `lint` inspects one document or a bounded folder,
-or compares one document with a candidate, for conversational residue, cliches,
-and synthetic patterns. Folder recursion is explicit and reports skipped entries.
-`rewrite`
-runs the current model-free transaction and never starts a runtime. `inspect`
+or compares one document with a candidate, for an early narrow list of
+conversational residue, cliches, and synthetic patterns. A clean lint result
+means none of those patterns matched. It does not mean the text has no
+assistant residue. Folder recursion is explicit and reports skipped entries.
+`rewrite` refuses unless a qualified local artifact is selected, and it does
+not start a runtime. `inspect`
 performs pre-model inventory. The implemented `model` commands manage
 caller-selected local artifacts without network access, qualification, or
 activation. Evaluation commands run checked-in development suites and do not
