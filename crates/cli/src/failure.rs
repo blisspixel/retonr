@@ -217,6 +217,21 @@ impl RunFailure {
         failure
     }
 
+    /// Names which lint input could not be read, without echoing document bytes.
+    pub fn lint_read_at(role: InputRole, path: &Path, error: &io::Error) -> Self {
+        let mut failure = Self::lint_read(error);
+        if failure.message == "input could not be read" {
+            failure.message = match role {
+                InputRole::Source => "source could not be read",
+                InputRole::Candidate => "candidate could not be read",
+            };
+            if let Some(diagnostic) = path_diagnostic(path) {
+                failure.body = failure.body.with_diagnostic(&diagnostic);
+            }
+        }
+        failure
+    }
+
     pub fn lint_invalid_utf8() -> Self {
         Self {
             command: CommandName::Lint,
@@ -278,7 +293,7 @@ mod tests {
 
     use rewrite_app::{AppError, EngineError, ProtectionError};
 
-    use super::RunFailure;
+    use super::{InputRole, RunFailure};
     use crate::contract::{
         CommandName, EXIT_CANCELLED, EXIT_COMPATIBILITY, EXIT_OPERATIONAL, ErrorBody,
         ErrorCategory, ErrorCode,
@@ -381,5 +396,27 @@ mod tests {
             unavailable.body,
             ErrorBody::new(ErrorCategory::Compatibility, ErrorCode::Unsupported, false)
         );
+    }
+
+    #[test]
+    fn lint_read_at_attaches_diagnostic_and_input_role_message() {
+        let missing = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
+        let source_failure = RunFailure::lint_read_at(
+            InputRole::Source,
+            std::path::Path::new("missing.txt"),
+            &missing,
+        );
+        assert_eq!(source_failure.command, CommandName::Lint);
+        assert_eq!(source_failure.message, "source could not be read");
+        assert_eq!(source_failure.body.diagnostic(), Some("missing.txt"));
+
+        let candidate_failure = RunFailure::lint_read_at(
+            InputRole::Candidate,
+            std::path::Path::new("candidate.txt"),
+            &missing,
+        );
+        assert_eq!(candidate_failure.command, CommandName::Lint);
+        assert_eq!(candidate_failure.message, "candidate could not be read");
+        assert_eq!(candidate_failure.body.diagnostic(), Some("candidate.txt"));
     }
 }

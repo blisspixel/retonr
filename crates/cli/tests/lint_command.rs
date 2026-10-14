@@ -381,3 +381,84 @@ fn comparative_lint_counts_removed_and_introduced_repeated_findings() {
         .code(3)
         .stdout(predicate::str::contains("\"introduced_count\": 2"));
 }
+
+#[test]
+fn missing_lint_inputs_name_the_unreadable_side_and_path() {
+    let directory = tempdir().expect("temporary directory");
+    let missing_source = directory.path().join("missing_source.txt");
+    let missing_candidate = directory.path().join("missing_candidate.txt");
+    let real_file = directory.path().join("real.txt");
+    fs::write(&real_file, "A clear sentence.").expect("write real file");
+
+    // Single document lint in text format.
+    Command::cargo_bin("retonr")
+        .expect("binary")
+        .args(["--format", "text", "lint"])
+        .arg(&missing_source)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("error: source could not be read:"))
+        .stderr(predicate::str::contains("missing_source.txt"));
+
+    // Single document lint in JSON format.
+    Command::cargo_bin("retonr")
+        .expect("binary")
+        .args(["--format", "json", "lint"])
+        .arg(&missing_source)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("\"code\": \"input_unreadable\""))
+        .stderr(predicate::str::contains("\"diagnostic\":"))
+        .stderr(predicate::str::contains("missing_source.txt"));
+
+    // Comparative lint with missing candidate in text format.
+    Command::cargo_bin("retonr")
+        .expect("binary")
+        .args(["--format", "text", "lint"])
+        .arg(&real_file)
+        .arg("--candidate")
+        .arg(&missing_candidate)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains(
+            "error: candidate could not be read:",
+        ))
+        .stderr(predicate::str::contains("missing_candidate.txt"));
+
+    // Comparative lint with missing candidate in JSON format.
+    Command::cargo_bin("retonr")
+        .expect("binary")
+        .args(["--format", "json", "lint"])
+        .arg(&real_file)
+        .arg("--candidate")
+        .arg(&missing_candidate)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("\"code\": \"input_unreadable\""))
+        .stderr(predicate::str::contains("\"diagnostic\":"))
+        .stderr(predicate::str::contains("missing_candidate.txt"));
+
+    // Comparative lint with missing source in text and JSON format.
+    Command::cargo_bin("retonr")
+        .expect("binary")
+        .args(["--format", "text", "lint"])
+        .arg(&missing_source)
+        .arg("--candidate")
+        .arg(&real_file)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("error: source could not be read:"))
+        .stderr(predicate::str::contains("missing_source.txt"));
+
+    Command::cargo_bin("retonr")
+        .expect("binary")
+        .args(["--format", "json", "lint"])
+        .arg(&missing_source)
+        .arg("--candidate")
+        .arg(&real_file)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("\"code\": \"input_unreadable\""))
+        .stderr(predicate::str::contains("\"diagnostic\":"))
+        .stderr(predicate::str::contains("missing_source.txt"));
+}

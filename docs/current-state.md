@@ -25,6 +25,12 @@ passes on both platforms, with strict Windows workspace lint and documentation.
 These shared services prepare native presentation; no desktop window, accessibility
 qualification, generation capability, or runtime admission is established.
 
+CLI editorial lint now reports unreadable input diagnostics matching check, naming
+the unreadable source or candidate path across single, comparative, and directory
+inspections without leaking document content. Native Linux managed observation tests
+bind replacement descriptors deterministically onto closed diagnostics numbers,
+preventing parallel test descriptor allocation contention.
+
 TUI catalog selection now consumes shared intake too, including digest revalidation
 and decisions for sidecars added after discovery. A headless presentation state
 owns its review bridge, tracks accepted input byte counts and explicit lifecycle

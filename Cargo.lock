@@ -2015,6 +2015,7 @@ dependencies = [
 name = "rewrite-runtime-attestor"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "rewrite-model",
  "rewrite-types",
  "rustix",

@@ -13,7 +13,7 @@ use serde::Serialize;
 use super::{DocumentLintReport, LintRequest};
 use crate::{
     contract::{CommandName, EXIT_POLICY, ReportFormat, SuccessEnvelope},
-    failure::RunFailure,
+    failure::{InputRole, RunFailure},
     inspect_source::directory::{SkippedEntry, discover_cancellable},
     render::{escape_inline_for_display, to_safe_pretty_json},
 };
@@ -80,8 +80,8 @@ fn build_report(
             continue;
         }
         let path = request.source.join(&document.relative_path);
-        let metadata =
-            std::fs::symlink_metadata(&path).map_err(|error| RunFailure::lint_read(&error))?;
+        let metadata = std::fs::symlink_metadata(&path)
+            .map_err(|error| RunFailure::lint_read_at(InputRole::Source, &path, &error))?;
         if metadata.file_type().is_symlink() || !metadata.is_file() {
             return Err(RunFailure::concurrent_modification(CommandName::Lint));
         }
@@ -93,7 +93,7 @@ fn build_report(
             std::path::Path::new(&document.relative_path),
             remaining,
         )
-        .map_err(|error| RunFailure::lint_read(&error))?;
+        .map_err(|error| RunFailure::lint_read_at(InputRole::Source, &path, &error))?;
         total_bytes = check_budget(total_bytes, bytes.len(), MAXIMUM_TOTAL_BYTES)?;
         if Digest::sha256(&bytes).as_str() != document.digest {
             return Err(RunFailure::concurrent_modification(CommandName::Lint));

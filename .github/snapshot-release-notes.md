@@ -22,6 +22,12 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 - `retonr rewrite` without a selected qualified local artifact exits 3 as
   `policy_refusal` and does not start a runtime. Identical accepted text is
   `unchanged_identical`. `--version` includes the commit and snapshot.
+- `retonr lint` on an unreadable source or candidate now attaches a diagnostic
+  naming the path and reports whether the source or candidate failed to read,
+  matching `retonr check`.
+- Managed Linux process observation tests use deterministic descriptor duplication
+  when verifying closed diagnostics rejection, eliminating test race conditions
+  during parallel test execution.
 - Adds an experimental read-only terminal workbench: `retonr tui SOURCE`, with
   optional `--candidate FILE` and repeated `--protect TERM`. The three panes show
   findings, source, and candidate. `--plain` provides bounded text or JSON previews

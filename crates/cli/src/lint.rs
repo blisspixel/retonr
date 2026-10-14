@@ -19,7 +19,7 @@ use crate::{
         CommandName, EXIT_POLICY, ReportFormat, STANDARD_STREAM_PATH, SuccessEnvelope,
         read_input_bounded,
     },
-    failure::RunFailure,
+    failure::{InputRole, RunFailure},
 };
 
 /// Owned arguments for editorial lint inspection.
@@ -90,7 +90,7 @@ fn run_single(
     format: ReportFormat,
 ) -> Result<ExitCode, RunFailure> {
     let source_bytes = read_input_bounded(source_path, MAX_CANDIDATE_CHECK_BYTES)
-        .map_err(|error| RunFailure::lint_read(&error))?;
+        .map_err(|error| RunFailure::lint_read_at(InputRole::Source, source_path, &error))?;
     let source_text =
         String::from_utf8(source_bytes).map_err(|_| RunFailure::lint_invalid_utf8())?;
 
@@ -128,12 +128,12 @@ fn run_comparative(
     }
 
     let source_bytes = read_input_bounded(source_path, MAX_CANDIDATE_CHECK_BYTES)
-        .map_err(|error| RunFailure::lint_read(&error))?;
+        .map_err(|error| RunFailure::lint_read_at(InputRole::Source, source_path, &error))?;
     let source_text =
         String::from_utf8(source_bytes).map_err(|_| RunFailure::lint_invalid_utf8())?;
 
     let candidate_bytes = read_input_bounded(candidate_path, MAX_CANDIDATE_CHECK_BYTES)
-        .map_err(|error| RunFailure::lint_read(&error))?;
+        .map_err(|error| RunFailure::lint_read_at(InputRole::Candidate, candidate_path, &error))?;
     let candidate_text =
         String::from_utf8(candidate_bytes).map_err(|_| RunFailure::lint_invalid_utf8())?;
 

@@ -952,10 +952,31 @@ fn helper_path() -> std::path::PathBuf {
 }
 
 fn fixture_executable() -> std::path::PathBuf {
-    std::env::var_os("REWRITE_ISOLATION_TEST_TARGET").map_or_else(
-        || std::env::current_exe().expect("managed fixture executable"),
-        std::path::PathBuf::from,
-    )
+    if let Some(target) = std::env::var_os("REWRITE_ISOLATION_TEST_TARGET") {
+        return std::path::PathBuf::from(target);
+    }
+    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        let musl_deps = std::path::Path::new(&manifest_dir)
+            .parent()
+            .and_then(std::path::Path::parent)
+            .map(|p| p.join("target/x86_64-unknown-linux-musl/debug/deps"));
+        if let Some(deps) = musl_deps
+            && let Ok(entries) = std::fs::read_dir(deps)
+        {
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                if path.extension().is_none()
+                    && path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .is_some_and(|name| name.starts_with("linux_managed-"))
+                {
+                    return path;
+                }
+            }
+        }
+    }
+    std::env::current_exe().expect("managed fixture executable")
 }
 
 fn proc_start_token(pid: u32) -> Option<u64> {

@@ -4,7 +4,7 @@ use std::{
     net::{Ipv4Addr, TcpListener, TcpStream},
     num::NonZeroU32,
     os::{
-        fd::{AsRawFd, OwnedFd},
+        fd::{AsRawFd, FromRawFd, OwnedFd},
         unix::fs::MetadataExt,
     },
     process::{Command, Stdio},
@@ -419,16 +419,15 @@ fn closed_diagnostics_number_cannot_authorize_a_reused_file() {
     };
     drop(lease);
 
-    let mut retained = Vec::new();
-    for _attempt in 0..32 {
-        let replacement = tempfile::tempfile().expect("replacement file");
-        if replacement.as_raw_fd() == diagnostics_number {
-            assert!(super::SockDiagSession::from_file(replacement).is_err());
-            return;
-        }
-        retained.push(replacement);
-    }
-    panic!("closed diagnostics number was not reused within the bounded test");
+    let replacement = tempfile::tempfile().expect("replacement file");
+    let candidate = if replacement.as_raw_fd() == diagnostics_number {
+        replacement
+    } else {
+        let duplicated = unsafe { libc::dup2(replacement.as_raw_fd(), diagnostics_number) };
+        assert_eq!(duplicated, diagnostics_number);
+        unsafe { File::from_raw_fd(diagnostics_number) }
+    };
+    assert!(super::SockDiagSession::from_file(candidate).is_err());
 }
 
 fn current_expectation(
