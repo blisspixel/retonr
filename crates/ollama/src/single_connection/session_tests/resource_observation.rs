@@ -3,9 +3,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rewrite_inference::{
-    InferenceErrorKind, OperationContext, StructuredCompletionRequest, StructuredCompletionResponse,
-};
+use rewrite_inference::{InferenceErrorKind, OperationContext};
+#[cfg(feature = "test-support")]
+use rewrite_inference::{StructuredCompletionRequest, StructuredCompletionResponse};
 use rewrite_types::CancellationToken;
 
 use super::{OllamaResponseObservationPhase, assert_session_error};
