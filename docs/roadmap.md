@@ -329,9 +329,14 @@ qualified generation, or desktop requirements.
 - Interpretable style observations with confidence and sample counts
 - User-declared rules, enforcement levels, conflict detection, and channel overlays
 - Versioned editorial-lint rules with exact findings, context exclusions, profile
-  overrides, explanations, and source versus output reports
+  overrides, explanations, and source versus output reports, targeting modern AI writing
+  residue: conversational openings, sycophancy, throat-clearing, contrastive framing,
+  superficial structure, hollow transition markers, prefabricated metaphors, em dash
+  overuse, passive assertion, and rule-of-three cliches
 - A bounded editorial pattern graph with stable relationship IDs, canonical ordering,
-  explicit exclusions, and no detector, watermark, model-family, or authorship fields
+  explicit exclusions, and no detector, watermark, model-family, or authorship fields;
+  explicit rejection of stochastic "humanizer" synonym scrambling in favor of deterministic
+  fidelity preservation and authentic personal voice transfer
 - A versioned editorial-quality corpus with positive findings, clean contextual
   counterexamples, protected contexts, and no authorship labels
 - Bounded retrieval with exact embedding identity, eligibility filters, diversity

@@ -656,3 +656,31 @@ fn lint_file_detects_slop_patterns_as_a_process() {
         .stdout(predicate::str::contains("prefabricated_scene_setting"))
         .stdout(predicate::str::contains("contrastive_reframe"));
 }
+
+#[test]
+fn checked_in_suite_passes_with_bounded_workers() {
+    let suite = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures/core.json");
+    let default_output = Command::cargo_bin("rewrite-eval")
+        .expect("compiled evaluation runner")
+        .arg(&suite)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let concurrent_output = Command::cargo_bin("rewrite-eval")
+        .expect("compiled evaluation runner")
+        .args(["--workers", "4"])
+        .arg(&suite)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert_eq!(
+        default_output, concurrent_output,
+        "concurrent evaluation with --workers 4 must produce bit-for-bit identical output to serial"
+    );
+}

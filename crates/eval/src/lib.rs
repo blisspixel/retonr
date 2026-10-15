@@ -182,9 +182,10 @@ pub use local_ollama_preflight::{
     run_local_ollama_preflight_with_receipt,
 };
 pub use suite::{
-    CategoryResult, EVALUATION_SCHEMA_VERSION, EvaluationError, EvaluationFailure,
-    EvaluationReport, EvaluationSuite, MAX_EVALUATION_CASES, MAX_EVALUATION_SUITE_BYTES,
-    TransformationCoverage, parse_suite, run_suite,
+    CategoryResult, DEFAULT_EVALUATION_WORKER_CAP, EVALUATION_SCHEMA_VERSION, EvaluationError,
+    EvaluationFailure, EvaluationReport, EvaluationSuite, MAX_EVALUATION_CASES,
+    MAX_EVALUATION_SUITE_BYTES, MAX_EVALUATION_WORKER_CAP, TransformationCoverage, parse_suite,
+    run_suite, run_suite_with_concurrency,
 };
 pub use verified_candidate_batch::{
     VerifiedCandidateBatch, VerifiedCandidateBatchError, VerifiedCandidateBatchRelationship,

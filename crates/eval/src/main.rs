@@ -13,18 +13,18 @@ use std::{
 
 use clap::Parser;
 use rewrite_eval::{
-    MAX_BASELINE_DEFINITION_BYTES, MAX_CLAIM_SHADOW_CALIBRATION_BYTES, MAX_EDITORIAL_CORPUS_BYTES,
-    MAX_EVALUATION_SUITE_BYTES, MAX_HYBRID_SCORECARD_BYTES,
-    MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES, MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES,
-    MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES, MAX_WATERMARK_RESEARCH_BYTES,
-    MAX_WRITING_SAMPLE_LIBRARY_BYTES, evaluate_corpus_against_linter, lint_text,
-    parse_baseline_definition, parse_claim_shadow_calibration, parse_editorial_corpus,
+    DEFAULT_EVALUATION_WORKER_CAP, MAX_BASELINE_DEFINITION_BYTES,
+    MAX_CLAIM_SHADOW_CALIBRATION_BYTES, MAX_EDITORIAL_CORPUS_BYTES, MAX_EVALUATION_SUITE_BYTES,
+    MAX_HYBRID_SCORECARD_BYTES, MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES,
+    MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES,
+    MAX_WATERMARK_RESEARCH_BYTES, MAX_WRITING_SAMPLE_LIBRARY_BYTES, evaluate_corpus_against_linter,
+    lint_text, parse_baseline_definition, parse_claim_shadow_calibration, parse_editorial_corpus,
     parse_hybrid_scorecard_plan, parse_judge_observation_batch,
     parse_local_ollama_attested_preflight_plan, parse_local_ollama_bound_preflight_plan,
     parse_local_ollama_preflight_plan, parse_suite, parse_watermark_research_corpus,
     parse_writing_sample_library, run_attached_baseline, run_claim_shadow_calibration,
     run_hybrid_scorecard, run_local_ollama_attested_preflight, run_local_ollama_bound_preflight,
-    run_local_ollama_preflight, run_suite,
+    run_local_ollama_preflight, run_suite_with_concurrency,
 };
 use rewrite_model::ArtifactId;
 use rewrite_types::{CancellationToken, Digest};
@@ -276,6 +276,9 @@ struct Cli {
         ]
     )]
     lint: Option<PathBuf>,
+    /// Bounded evaluation worker thread count.
+    #[arg(long, value_name = "COUNT", default_value_t = DEFAULT_EVALUATION_WORKER_CAP)]
+    workers: usize,
 }
 
 fn main() -> ExitCode {
@@ -313,18 +316,26 @@ fn run(mut cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
     run_suite_and_baseline(cli)
 }
 
-fn run_ollama_preflight_command(path: &Path) -> Result<ExitCode, Box<dyn Error>> {
-    let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES)?;
-    let plan = parse_local_ollama_preflight_plan(&input)?;
-    let cancellation = CancellationToken::new();
+fn block_on_with_cancellation<T: serde::Serialize, E: Into<Box<dyn Error>>>(
+    future: impl std::future::Future<Output = Result<T, E>>,
+    cancellation: &CancellationToken,
+) -> Result<ExitCode, Box<dyn Error>> {
     let signal_cancellation = cancellation.clone();
     ctrlc::try_set_handler(move || signal_cancellation.cancel())?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
-    let report = runtime.block_on(run_local_ollama_preflight(&plan, &cancellation))?;
+    let report = runtime.block_on(future).map_err(Into::into)?;
     print_json(&report)?;
     Ok(ExitCode::SUCCESS)
+}
+
+fn run_ollama_preflight_command(path: &Path) -> Result<ExitCode, Box<dyn Error>> {
+    let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_PREFLIGHT_PLAN_BYTES)?;
+    let plan = parse_local_ollama_preflight_plan(&input)?;
+    let cancellation = CancellationToken::new();
+    let future = run_local_ollama_preflight(&plan, &cancellation);
+    block_on_with_cancellation(future, &cancellation)
 }
 
 fn run_corpus_commands(cli: &Cli) -> Result<Option<ExitCode>, Box<dyn Error>> {
@@ -407,7 +418,7 @@ fn run_suite_and_baseline(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
             ExitCode::FAILURE
         });
     }
-    let report = run_suite(&suite);
+    let report = run_suite_with_concurrency(&suite, cli.workers);
     print_json(&report)?;
     Ok(if report.is_success() {
         ExitCode::SUCCESS
@@ -468,28 +479,16 @@ fn run_ollama_attested_preflight_command(path: &Path) -> Result<ExitCode, Box<dy
     let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_ATTESTED_PREFLIGHT_PLAN_BYTES)?;
     let plan = parse_local_ollama_attested_preflight_plan(&input)?;
     let cancellation = CancellationToken::new();
-    let signal_cancellation = cancellation.clone();
-    ctrlc::try_set_handler(move || signal_cancellation.cancel())?;
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-    let report = runtime.block_on(run_local_ollama_attested_preflight(&plan, &cancellation))?;
-    print_json(&report)?;
-    Ok(ExitCode::SUCCESS)
+    let future = run_local_ollama_attested_preflight(&plan, &cancellation);
+    block_on_with_cancellation(future, &cancellation)
 }
 
 fn run_ollama_bound_preflight_command(path: &Path) -> Result<ExitCode, Box<dyn Error>> {
     let input = read_bounded_bytes(path, MAX_LOCAL_OLLAMA_BOUND_PREFLIGHT_PLAN_BYTES)?;
     let plan = parse_local_ollama_bound_preflight_plan(&input)?;
     let cancellation = CancellationToken::new();
-    let signal_cancellation = cancellation.clone();
-    ctrlc::try_set_handler(move || signal_cancellation.cancel())?;
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-    let report = runtime.block_on(run_local_ollama_bound_preflight(&plan, &cancellation))?;
-    print_json(&report)?;
-    Ok(ExitCode::SUCCESS)
+    let future = run_local_ollama_bound_preflight(&plan, &cancellation);
+    block_on_with_cancellation(future, &cancellation)
 }
 
 fn parse_artifact_id(value: &str) -> Result<ArtifactId, Box<dyn Error>> {
