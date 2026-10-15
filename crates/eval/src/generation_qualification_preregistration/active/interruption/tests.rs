@@ -47,6 +47,15 @@ fn active_compiles_and_freshly_revalidates_exact_interruption_closure() {
     with_synthetic_generation_qualification_fixture(
         SyntheticGenerationQualificationScenario::TrafficEligible,
         |input, platform_owners, license_proof, license_policy, production_policy| {
+            // Provision fixture dependencies before capturing the operation clock.
+            let directory = tempdir().expect("temporary repository directory");
+            let mut repository = GenerationQualificationPreregistrationRepository::open(
+                &directory.path().join("qualification.db"),
+            )
+            .expect("durable repository");
+            let evidence =
+                rewrite_app::CandidateGenerationEvidenceRepository::initialize(directory.path())
+                    .expect("evidence root");
             let cancellation = CancellationToken::new();
             let draft = GenerationQualificationOperationDraft::begin(
                 input.operation_policy_relations,
@@ -71,11 +80,6 @@ fn active_compiles_and_freshly_revalidates_exact_interruption_closure() {
                 &cancellation,
             )
             .expect("license assessment");
-            let directory = tempdir().expect("temporary repository directory");
-            let mut repository = GenerationQualificationPreregistrationRepository::open(
-                &directory.path().join("qualification.db"),
-            )
-            .expect("durable repository");
             let prepared = projected
                 .finish(
                     &mut repository,
@@ -87,9 +91,6 @@ fn active_compiles_and_freshly_revalidates_exact_interruption_closure() {
                     &cancellation,
                 )
                 .expect("prepared operation");
-            let evidence =
-                rewrite_app::CandidateGenerationEvidenceRepository::initialize(directory.path())
-                    .expect("evidence root");
             let mut active = prepared
                 .activate(&repository, &evidence, &cancellation)
                 .expect("active operation");
