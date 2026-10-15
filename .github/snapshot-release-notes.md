@@ -66,8 +66,11 @@ Milestone 0.2 is still in progress, and no milestone has been released.
   repeatability terminal result, one qualification record, one invalidation, and
   one selection. Each write is its own immediate transaction. A stored row grants
   no qualification, activation, or live-use authority.
-- Updates current-state, planning, roadmap, and readme documentation. The final
-  qualification compiler, activation decisions, and active generation bindings are
+- Adds terminal generation qualification closeout for Passed and PolicyDenied
+  outcomes and compiles the eval-owned `VerifiedGenerationQualification` authority
+  from fresh durable readbacks and live authorities.
+- Updates current-state, planning, roadmap, and readme documentation.
+  Activation decisions and active generation bindings are
   not implemented. No model and runtime combination is qualified.
 
 ## What these artifacts are

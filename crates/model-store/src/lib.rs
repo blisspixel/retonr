@@ -93,7 +93,7 @@ pub use store::generation_qualification_selection::{
     GenerationQualificationSelectionV1TransactionError,
 };
 pub use store::generation_qualification_terminal_evidence::{
-    GenerationQualificationTerminalEvidenceV1Input,
+    GenerationQualificationTerminalCloseoutV1Input, GenerationQualificationTerminalEvidenceV1Input,
     GenerationQualificationTerminalEvidenceV1ReadInput,
     GenerationQualificationTerminalEvidenceV1TransactionError,
     GenerationQualificationTerminalEvidenceV1WriteDisposition, GenerationResourceRejectionV1Input,

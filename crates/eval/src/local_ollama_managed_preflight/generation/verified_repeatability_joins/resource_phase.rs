@@ -8,8 +8,9 @@ use rewrite_app::{
 use rewrite_model::{
     GenerationQualificationOperationPolicyV1, GenerationQualificationPhaseEvidenceError,
     GenerationQualificationPhaseScopeV1, GenerationQualificationPhaseStatusV1,
-    GenerationResourceAttemptResultRecordV1, GenerationResourceEvidenceManifestV1,
-    GenerationResourceEvidenceManifestV1Relations, GenerationResourceExceededLimitV1,
+    GenerationQualificationPlanV1, GenerationResourceAttemptResultRecordV1,
+    GenerationResourceEvidenceManifestV1, GenerationResourceEvidenceManifestV1Relations,
+    GenerationResourceExceededLimitV1, GenerationSuiteManifestV1, GenerationSystemRecordV1,
     MAX_GENERATION_QUALIFICATION_PHASE_ITEMS,
 };
 use rewrite_types::CancellationToken;
@@ -127,6 +128,30 @@ impl VerifiedGenerationQualificationResourcePhase<'_, '_, '_, '_> {
         &self,
     ) -> &rewrite_model::GenerationRepeatabilityEvidenceManifestV1 {
         self.repeatability.repeatability_manifest()
+    }
+
+    /// Returns the target generation-system record.
+    #[must_use]
+    pub const fn target_generation_system(&self) -> &GenerationSystemRecordV1 {
+        self.repeatability.target_generation_system()
+    }
+
+    /// Returns the exact preregistered operation policy.
+    #[must_use]
+    pub const fn operation_policy(&self) -> &GenerationQualificationOperationPolicyV1 {
+        self.repeatability.operation_policy()
+    }
+
+    /// Returns the exact qualification plan.
+    #[must_use]
+    pub const fn qualification_plan(&self) -> &GenerationQualificationPlanV1 {
+        self.repeatability.qualification_plan()
+    }
+
+    /// Returns the exact suite manifest.
+    #[must_use]
+    pub const fn suite_manifest(&self) -> &GenerationSuiteManifestV1 {
+        self.repeatability.suite()
     }
 
     /// Freshly revalidates both live authorities and the complete derived manifest.

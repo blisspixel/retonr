@@ -26,6 +26,7 @@ mod attempt_ledger;
 mod candidate;
 mod candidate_closeout;
 mod candidate_settlement;
+mod closeout;
 mod deterministic;
 mod interruption;
 mod judge;
@@ -33,6 +34,9 @@ mod judge_settlement;
 mod repeatability_settlement;
 mod resource_rejection;
 mod resource_settlement;
+pub use closeout::{
+    ActiveGenerationHumanAdjudicationOutcome, ActiveGenerationQualificationCloseoutError,
+};
 pub use judge_settlement::ActiveGenerationQualificationJudgeSettlementError;
 pub use repeatability_settlement::ActiveGenerationQualificationRepeatabilitySettlementError;
 pub use resource_settlement::ActiveGenerationQualificationResourceSettlementError;

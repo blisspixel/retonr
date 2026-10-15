@@ -8,7 +8,7 @@ mod projected;
 mod repository;
 
 pub use active::{
-    ActiveGenerationQualificationAttemptLedgerClosure,
+    ActiveGenerationHumanAdjudicationOutcome, ActiveGenerationQualificationAttemptLedgerClosure,
     ActiveGenerationQualificationAttemptLedgerError,
     ActiveGenerationQualificationAttemptLedgerErrorKind,
     ActiveGenerationQualificationCandidateCloseoutError,
@@ -20,6 +20,7 @@ pub use active::{
     ActiveGenerationQualificationCandidateRunOutcome,
     ActiveGenerationQualificationCandidateSettlementError,
     ActiveGenerationQualificationCandidateSettlementErrorKind,
+    ActiveGenerationQualificationCloseoutError,
     ActiveGenerationQualificationDeterministicSettlementError,
     ActiveGenerationQualificationJudgeRunError, ActiveGenerationQualificationJudgeRunErrorKind,
     ActiveGenerationQualificationJudgeRunInput, ActiveGenerationQualificationJudgeSettlementError,

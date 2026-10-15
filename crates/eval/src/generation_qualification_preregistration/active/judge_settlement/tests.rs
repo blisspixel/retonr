@@ -97,6 +97,33 @@ fn resource_rejection_initial_finalizer_failure_is_not_counted_twice() {
     exercise_scenarios(&["rejection_initial_finalization"]);
 }
 
+#[test]
+fn terminal_closeout_qualifies_rejects_and_refuses_corruption_and_cancellation() {
+    exercise_scenarios(&[
+        "closeout_ok",
+        "closeout_rejected_review",
+        "closeout_foreign",
+        "closeout_unsettled",
+        "closeout_substituted_execution",
+        "closeout_wrong_execution",
+        "closeout_no_acquisition",
+        "closeout_missing_ledger",
+        "closeout_missing_resource",
+        "closeout_corrupt_parent",
+        "closeout_abort",
+        "closeout_tamper",
+        "closeout_cancel",
+        "closeout_deadline",
+        "closeout_postcommit_cancel",
+        "closeout_postcommit_finalization",
+    ]);
+}
+
+#[test]
+fn terminal_closeout_initial_finalizer_failure_is_not_counted_twice() {
+    exercise_scenarios(&["closeout_initial_finalization"]);
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "one synthetic retained authority fixture exercises exact durable cohort boundaries"
@@ -138,7 +165,10 @@ fn exercise_scenarios(failures: &[&str]) {
                     &active,
                     "qualification-closure-passing",
                 );
-                if failure.starts_with("resource_") || failure.starts_with("rejection_") {
+                if failure.starts_with("resource_")
+                    || failure.starts_with("rejection_")
+                    || failure.starts_with("closeout_")
+                {
                     pair.attach_resource_observations(
                         input.foundation.plan_foundation,
                         input.operation_policy_relations,
@@ -355,6 +385,18 @@ fn exercise_scenarios(failures: &[&str]) {
                     );
                 }
                 assert_eq!(active.next_judge_settlement, 1);
+                if failure.starts_with("closeout_") {
+                    super::super::closeout::tests::exercise(
+                        active,
+                        &mut repository,
+                        join,
+                        &db,
+                        failure,
+                        &cancellation,
+                        &repeatability_failure_control,
+                    );
+                    return;
+                }
                 if failure.starts_with("rejection_") {
                     super::super::resource_rejection::tests::exercise(
                         active,
@@ -436,23 +478,19 @@ const COHORT_TABLES: [&str; 7] = [
 #[test]
 fn terminal_gate_has_deadline_and_cancellation_priority_with_finalization_failures() {
     use ActiveGenerationQualificationJudgeSettlementError as Error;
-    for primary in [Ok(7), Err(Error::OperationScope)] {
-        assert_eq!(
-            finish_settlement(primary, true, Err(Error::DeadlineExceeded)),
-            Err(Error::DeadlineAndFinalization)
-        );
-        assert_eq!(
-            finish_settlement(primary, true, Err(Error::Cancelled)),
-            Err(Error::CancelledAndFinalization)
-        );
-        assert_eq!(
-            finish_settlement(primary, false, Err(Error::DeadlineExceeded)),
-            Err(Error::DeadlineExceeded)
-        );
-        assert_eq!(
-            finish_settlement(primary, false, Err(Error::Cancelled)),
-            Err(Error::Cancelled)
-        );
+    for (fin, err, expected) in [
+        (
+            true,
+            Error::DeadlineExceeded,
+            Error::DeadlineAndFinalization,
+        ),
+        (true, Error::Cancelled, Error::CancelledAndFinalization),
+        (false, Error::DeadlineExceeded, Error::DeadlineExceeded),
+        (false, Error::Cancelled, Error::Cancelled),
+    ] {
+        for primary in [Ok(7), Err(Error::OperationScope)] {
+            assert_eq!(finish_settlement(primary, fin, Err(err)), Err(expected));
+        }
     }
     assert_eq!(
         finish_settlement(Ok(7), true, Ok(())),

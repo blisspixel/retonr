@@ -9,9 +9,11 @@ use super::GenerationQualificationTerminalEvidenceV1WriteDisposition;
 use super::codec::PreparedCohort;
 use super::text;
 
+mod closeout;
 mod confirm;
 mod resource_rejection;
 use crate::{StoreError, StoreResult, WriteDisposition};
+pub(super) use closeout::insert_closeout_suffix;
 pub(super) use resource_rejection::insert_suffix;
 
 #[derive(Clone, Copy)]

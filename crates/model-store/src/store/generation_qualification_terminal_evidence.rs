@@ -25,6 +25,7 @@ use super::generation_qualification_preregistration::{
 use super::{ArtifactStateStore, WriteDisposition};
 use crate::{StoreError, StoreResult};
 
+mod closeout;
 mod codec;
 mod context;
 mod read;
@@ -32,6 +33,7 @@ mod resource_rejection;
 mod rows;
 mod text;
 mod write;
+pub use closeout::GenerationQualificationTerminalCloseoutV1Input;
 pub use resource_rejection::GenerationResourceRejectionV1Input;
 
 /// Borrowed terminal-evidence records and the independent facts that rederive them.

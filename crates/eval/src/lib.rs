@@ -24,6 +24,7 @@ mod local_ollama_preflight;
 mod suite;
 mod verified_candidate_batch;
 mod verified_candidate_batch_set;
+mod verified_generation_qualification;
 mod watermark_research;
 mod writing_sample_library;
 
@@ -72,7 +73,7 @@ pub use generation_case_material::{
     VerifiedGenerationCaseMaterialTraversalError,
 };
 pub use generation_qualification_preregistration::{
-    ActiveGenerationQualificationAttemptLedgerClosure,
+    ActiveGenerationHumanAdjudicationOutcome, ActiveGenerationQualificationAttemptLedgerClosure,
     ActiveGenerationQualificationAttemptLedgerError,
     ActiveGenerationQualificationAttemptLedgerErrorKind,
     ActiveGenerationQualificationCandidateCloseoutError,
@@ -84,6 +85,7 @@ pub use generation_qualification_preregistration::{
     ActiveGenerationQualificationCandidateRunOutcome,
     ActiveGenerationQualificationCandidateSettlementError,
     ActiveGenerationQualificationCandidateSettlementErrorKind,
+    ActiveGenerationQualificationCloseoutError,
     ActiveGenerationQualificationDeterministicSettlementError,
     ActiveGenerationQualificationJudgeRunError, ActiveGenerationQualificationJudgeRunErrorKind,
     ActiveGenerationQualificationJudgeRunInput, ActiveGenerationQualificationJudgeSettlementError,
@@ -191,6 +193,10 @@ pub use verified_candidate_batch::{
 pub use verified_candidate_batch_set::{
     VerifiedCandidateBatchSet, VerifiedCandidateBatchSetError, VerifiedCandidateBatchSetInput,
     VerifiedCandidateBatchSetRelationship,
+};
+pub use verified_generation_qualification::{
+    VerifiedGenerationQualification, VerifiedGenerationQualificationCompiler,
+    VerifiedGenerationQualificationCompilerInput, VerifiedGenerationQualificationError,
 };
 pub use watermark_research::{
     MAX_WATERMARK_RESEARCH_BYTES, WATERMARK_RESEARCH_SCHEMA_VERSION, WatermarkResearchCorpus,

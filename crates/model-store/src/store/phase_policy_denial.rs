@@ -23,6 +23,21 @@ mod write;
 
 use record::DenialRecord;
 
+pub(crate) fn write_human_denial_on_connection(
+    connection: &rusqlite::Connection,
+    record: &GenerationHumanAdjudicationPolicyDenialRecordV1,
+    relations: GenerationHumanAdjudicationPolicyDenialRecordV1Relations<'_>,
+) -> crate::StoreResult<WriteDisposition> {
+    write::write_one(connection, record, relations)
+}
+
+pub(crate) fn load_human_denial_on_connection(
+    connection: &rusqlite::Connection,
+    relations: GenerationHumanAdjudicationPolicyDenialRecordV1Relations<'_>,
+) -> crate::StoreResult<Option<GenerationHumanAdjudicationPolicyDenialRecordV1>> {
+    read::load(connection, relations)
+}
+
 /// Borrowed resource-policy denial and the relations that must revalidate it.
 #[derive(Clone, Copy)]
 pub struct GenerationResourcePolicyDenialV1Input<'a> {

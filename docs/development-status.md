@@ -33,8 +33,9 @@ application are not implemented.
 
 The shared headless document services now serve CLI and terminal review, including
 bounded catalogs, retained intake, metadata decisions, and cancellable asynchronous
-review. Failed resource qualification has an atomic inert rejection closeout;
-positive qualification remains pending. The latest runtime diagnostic identified
+review. Terminal qualification closeout is implemented for both Passed and
+PolicyDenied outcomes with atomic inert persistence and readback, and the eval-owned
+`VerifiedGenerationQualification` compiler is implemented. The latest runtime diagnostic identified
 and fixed bootstrap preparation using the startup deadline. Existing phase limits
 remain intact, and a fresh exact-source runtime build is the next evidence task.
 See [Current state](current-state.md) for the completed tests and evidence limits.
@@ -230,9 +231,8 @@ The application also compiles and publishes a fixed runtime-admission evidence t
 from a source-build-bound foundation and bounded opaque snapshots, then independently
 reacquires its retained byte closure. Other members remain opaque until their
 independent semantic controls are verified. Durable managed judge settlement and
-the final verifier follow. Production Approved roots remain
-empty, no runtime has been admitted for this path, and the final `VerifiedGenerationQualification` compiler is not
-implemented.
+the `VerifiedGenerationQualification` compiler are implemented. Production Approved roots remain
+empty, and no runtime has been admitted for this path.
 
 The authoritative crate inventory, CLI contract, evidence limits, and platform matrix
 are in [Current state](current-state.md). Planned work is described in the [Roadmap](roadmap.md) and [phase plans](planning/README.md).

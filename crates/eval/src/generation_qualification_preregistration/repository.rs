@@ -25,6 +25,7 @@ use super::{GenerationQualificationPreparationError, check_gate};
 
 mod activation_admission;
 mod candidate_execution;
+mod closeout;
 mod deterministic;
 mod judge;
 mod receipt_set;

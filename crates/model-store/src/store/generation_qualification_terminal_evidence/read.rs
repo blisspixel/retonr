@@ -24,6 +24,7 @@ use super::{
 use crate::{StoreError, StoreResult};
 
 mod check;
+pub(super) mod closeout;
 pub(super) mod resource_rejection;
 
 struct Keys<'a> {

@@ -474,8 +474,8 @@ strict exceedances, and emits no manifest for missing or invalid observations. T
 strict runner preserves Prepared's one absolute operation deadline across launch,
 preflight, generation, final observation, joins, and mandatory finalization. It is
 not production-complete, and
-production Approved roots remain empty. The final
-`VerifiedGenerationQualification` compiler is not implemented.
+production Approved roots remain empty. The eval-owned
+`VerifiedGenerationQualification` compiler is implemented.
 
 ### Historical local real source-build validation
 
@@ -733,7 +733,7 @@ can leave inert parent rows. It cannot return a settled result or confer
 qualification. Target, baseline, case-material, and Prepared finalization run
 independently with fresh uncancelled tokens; the original deadline and cancellation
 are sampled afterward. Replay is idempotent, and corrupt or substituted rows fail
-closed. The final qualification compiler remains outstanding.
+closed. The final `VerifiedGenerationQualification` compiler is implemented.
 
 ### Active managed judge cohort settlement
 
@@ -786,7 +786,7 @@ commands require the exact supported schema and never migrate implicitly.
 Each listed cohort or individual write uses one immediate transaction. Canonical
 readback and relationship validation remain required. A stored record grants no
 qualification, activation, or live-use authority and cannot reconstruct a live
-operation. The final generation-qualification compiler is still planned.
+operation. The final eval-owned `VerifiedGenerationQualification` compiler is implemented.
 
 ## Verification
 
@@ -1396,10 +1396,9 @@ checkpoint remains the concurrency barrier after this read-only admission check.
    Schema 11 now retains successful target attempt ledgers and complete repeatability
    phase manifests; schema 16 retains Passed repetition results.
    A positive human authority requires a reviewed V2
-   policy and explicit reviewer-governance and evidence-retention decisions. Add each
-   later dependency-complete schema cohort in order, then compile
-   `VerifiedGenerationQualification` from fresh durable readbacks and every required
-   live authority. Only after that compiler exists,
+   policy and explicit reviewer-governance and evidence-retention decisions. The eval-owned
+   `VerifiedGenerationQualification` compiler is implemented from fresh durable readbacks
+   and every required live authority. Next,
    project the 60 deterministic and 120 editorial development cases into
    preregistered smoke, calibration, and locked manifests. Deterministic gates remain
    the only machine acceptance authority, and human adjudication remains the release
