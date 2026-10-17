@@ -25,8 +25,8 @@ during the rewrite lifecycle.
   mandate.
 - Watermarking hidden meaning in content is wrong: embedding unconsented tracking
   payloads into prose compromises creative expression and user privacy.
-- Rewriting in your voice provides creative agency and directly rejects unconsented
-  hidden tracking.
+- Editing a draft into your own voice is an exercise of creative agency. Retonr is a
+  light-touch copy editor, not a tool for removing hidden marks.
 - Avoid detector optimization: tuning output against third-party AI classifiers turns
   an unreliable detector into an optimization objective and violates fidelity
   principles.
@@ -61,9 +61,9 @@ exclusively around the speaker's personal voice, document brief, and explicit
 constraints under the common validation cascade. Do not protect statistical marks,
 and do not optimize against detectors.
 
-- Pros: Codifies clear ethical boundaries; dismantles unconsented tracking through
-  legitimate personal re-expression; keeps candidate ranking grounded in fidelity and
-  voice; maintains strict fail-closed handling for explicit cryptographic bindings.
+- Pros: Codifies clear ethical boundaries; keeps the product a copy editor focused on
+  the speaker's style rather than on source signals; keeps candidate ranking grounded in
+  fidelity and voice; maintains strict fail-closed handling for explicit cryptographic bindings.
 - Cons: Requires clear user education that Retonr does not offer a detector-evasion or
   untraceability guarantee.
 
@@ -88,8 +88,8 @@ Select Option C.
 ### Positive
 
 - Core architecture remains focused on fidelity, voice, and document structure.
-- Re-expression legitimately eliminates unconsented tracking without participating in
-  detector cat-and-mouse dynamics.
+- Editing stays focused on the speaker's style and fidelity, without participating in
+  detector cat-and-mouse dynamics or claiming any effect on source signals.
 - Interface contracts remain clean, rejecting deceptive claims of guaranteed human
   authorship or detector immunity.
 
