@@ -7,6 +7,9 @@ Reviewed: August 12, 2026.
 Research cutoff: August 12, 2026. This is a current evidence snapshot, not a
 prediction of provider behavior later in 2026.
 
+Update: October 17, 2026, for OpenAI text marking only. The rest of this review
+keeps its August 12 cutoff.
+
 Scope: provider-deployed text marking, file and media provenance, detector
 availability, provider-side records, open-weight behavior, and regulatory
 commitments. The companion [text watermark science review](./2026-08-12-text-watermark-science.md)
@@ -81,7 +84,8 @@ The following source rules govern those classifications:
 | Supported Claude text carries a model-level embedded watermark | Provider statement with undisclosed mechanism | Claude Help Center, modified August 10, 2026 | Exact model IDs, algorithm, keys, detector, thresholds, languages, and performance are not published | No. A third party cannot reproduce or validate Anthropic's exact hosted mark from the public material |
 | Anthropic was exploring watermarking rather than documenting deployed text marking | Changed or dated policy | Anthropic Transparency Hub, updated January 29, 2026 | Superseded by the August 10 Claude marking article. Reading the January page as current creates a false contradiction | The page state is archived, but it does not describe an implementation |
 | Gemini app and web text uses SynthID Text | Verified official behavior | Google DeepMind product announcement, May 14, 2024; Nature article, version of record published October 23, 2024; current SynthID product page reviewed August 12, 2026 | These sources do not establish automatic coverage for Gemini API, AI Studio, Vertex AI, Workspace, or resellers | Partly. The method, reference code, evaluation data, and a compatible implementation are public. Google's production keys and exact hosted detector are not |
-| OpenAI had no satisfactory deployed text provenance solution | Changed or dated policy | UK consultation response submitted February 25, 2025, with summary dated April 2, 2025 | This was OpenAI's stated position before signing the Article 50 Code. OpenAI's guidance updated August 11, 2026 still names image and audio SynthID, but does not expressly confirm or deny a new text mark | No exact OpenAI hosted text behavior can be reproduced because current implementation status is unknown |
+| OpenAI had no satisfactory deployed text provenance solution | Changed or dated policy | UK consultation response submitted February 25, 2025, with summary dated April 2, 2025 | This was OpenAI's stated position before signing the Article 50 Code. OpenAI's guidance updated August 11, 2026 still names image and audio SynthID, but does not expressly confirm or deny a new text mark | No exact OpenAI hosted text behavior can be reproduced because current implementation status is unknown. Superseded for hosted text by the October 5, 2026 textGrain announcement in the next row |
+| OpenAI marks eligible hosted text with textGrain: on for eligible ChatGPT and Codex output in the EU, opt-in for API customers globally | Provider statement with undisclosed mechanism | OpenAI announcement, October 5, 2026; OpenAI Help Center provenance article and textGrain technical report, reviewed October 17, 2026 | The method is described in a technical report, but production keys, the detector, and the exact model roster are not public. The EU ChatGPT and Codex rollout was announced as occurring over the following weeks. API watermarking is off by default. Detector access is limited to approved researchers and expert organizations | No. Without the production key and detector, a third party cannot test hosted text for the mark |
 | Microsoft 365 adds AI metadata to video and audio even when visible marks are off | Changed or dated policy | Microsoft Learn page updated August 7, 2026 | The same page says metadata is currently added only to images. The narrower image-only statement controls this review until Microsoft resolves the internal contradiction | Image C2PA can be inspected. Video and audio metadata coverage cannot be established from the contradictory page |
 | Meta, Mistral, and Cohere hosted text output has a deployed machine-readable mark | Unknown | Section 1 Code signatures listed by the Commission, page updated August 12, 2026 | A commitment is not product implementation evidence. No current first-party text-marking specification was found | No provider-specific hosted text mark is available to reproduce from the reviewed material |
 | Open-weight text output is necessarily unmarked | Inference rejected | Current Llama, Mistral, Command A+, and gpt-oss deployment materials expose operator-controlled inference | Weights do not force one universal runtime policy. An operator can add or omit a logits processor, post-processor, metadata layer, or log | Yes for one exact local stack. Inspect and hash the runtime, activate or omit a known processor, and test that configuration. The result does not generalize to every host |
@@ -153,7 +157,7 @@ text mark.
 | --- | --- | --- | --- | --- |
 | Anthropic | Provider statement with undisclosed mechanism: supported Claude models | Signed C2PA metadata for supported generated files | Forthcoming, not currently documented as available | No downloadable Claude weights; the mark is asserted across named hosted surfaces and cloud partners |
 | Google | Verified official behavior: SynthID Text for Gemini app and web | SynthID across image, audio, and video products | No public Gemini text check documented; open-source detector components exist for operator-configured marks | Inference: SynthID Text is optional runtime instrumentation, not an inherent property of Gemma or other weights |
-| OpenAI | Unknown: no current hosted text deployment is identified or denied in current product guidance | C2PA and SynthID for specified image, audio, and video paths; public verification tooling | No public text detector documented | Inference: `gpt-oss` runs in operator-controlled runtimes and the reviewed reference path identifies no mandatory text mark |
+| OpenAI | Provider statement (October 5, 2026): textGrain for eligible EU ChatGPT and Codex text and opt-in API text; unknown in the August 12 review | C2PA and SynthID for specified image, audio, and video paths; public verification tooling | No public text detector; access limited to approved researchers and expert organizations | Inference: `gpt-oss` runs in operator-controlled runtimes and the reviewed reference path identifies no mandatory text mark |
 | Microsoft | Unknown: no current Copilot or Azure text watermark identified in public product documentation | Microsoft 365 media labels and image metadata; Azure OpenAI image C2PA | No public text detector documented | Inference: open-weight or third-party local models remain subject to the operator's runtime and output policy |
 | Meta | Unknown: no current Meta AI or Llama API text watermark identified in public product documentation | Platform labels, image provenance work, and a Meta AI image detection research demo | No public text detector documented | Inference: downloaded Llama weights run under operator-controlled sampling and post-processing |
 | Mistral | Unknown: no current hosted text watermark identified in public product documentation | No current text-specific provenance implementation identified | No public text detector documented | Inference: Mistral supports local open-weight deployment and the selected runtime controls marking |
@@ -295,6 +299,37 @@ logits processor, post-processor, metadata layer, or log.
 Independent reproducibility: OpenAI's C2PA image manifests can be inspected and its
 public verification path can be exercised on supported media. The reviewed sources
 provide no equivalent controlled test for hosted text.
+
+#### Update: October 17, 2026 (textGrain)
+
+The paragraphs above record the August 12 review and are kept as dated history.
+
+On October 5, 2026, OpenAI published [Our approach to EU text provenance rules](https://openai.com/index/eu-text-provenance/).
+It states that:
+
+- API customers globally can opt in to text watermarking for select models, and
+  text watermarking remains off by default in the API.
+- OpenAI would add an invisible watermark to eligible ChatGPT and Codex text output
+  in the European Union over the following weeks, and is not making it a global
+  default at launch.
+- Text detector access is open by application and initially limited to approved
+  researchers and expert organizations. The detector is not publicly available.
+
+OpenAI's [provenance signals help article](https://help.openai.com/en/articles/8912793-provenance-signals-in-openai-generated-content), reviewed October 17, 2026, lists
+text as "textGrain watermarks (EU only)", describes API activation through project
+and organization settings, and says the mark changes word-choice randomness rather
+than adding hidden characters. The [textGrain technical report](https://cdn.openai.com/pdf/e9508624-d767-41b6-a26d-e34ca798ada6/textgrain-entropy-calibrated-watermarking-for-language-model-text.pdf) describes the
+generation and detection procedures; the production key and detector are not public.
+
+Provider-reported limits, not independently reproduced here: detection is lower for
+short and low-flexibility text such as mathematics and code, varies by language,
+and weakens with editing and translation. OpenAI states that a detected mark does not
+establish authorship, ownership, or responsibility, and that the absence of a
+detected mark does not prove human authorship.
+
+Watch triage: `provider_statement`, `contradicts` the August 12 status of "unknown"
+for OpenAI hosted text. Resolution of affected claims and records follows the
+[external change watch](../external-change-watch.md) process.
 
 ### Microsoft
 

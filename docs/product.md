@@ -2,9 +2,11 @@
 
 ## Verdict
 
-The idea makes sense as a local-first, fidelity-gated re-expression engine for
-machine-generated and rough drafts. Its primary job is to reconstruct eligible prose
-in the user's own voice while protecting meaning, structure, and declared constraints.
+The idea makes sense as a local-first, fidelity-gated copy editor for
+machine-generated and rough drafts. Its primary job is a light, subtle pass that
+removes AI-slop wording and tunes eligible prose toward the user's own voice,
+changing a small fraction of the text while protecting meaning, structure, and
+declared constraints.
 Upstream wording and supported artifacts are inputs to inspect, not permanent claims
 on the finished draft. The strongest product is not a general style imitator or
 detector bypass. It is a conservative control plane that combines personal style
@@ -133,8 +135,10 @@ because it was accepted.
 
 Speech belongs to the speaker. Upstream wording produced by a model or draft has zero
 authority over downstream expression. Watermarking hidden meaning, tracking tokens, or
-statistical distributions into content without consent is wrong. Rewriting in the
-speaker's voice provides creative agency and directly rejects unconsented hidden tracking.
+statistical distributions into content without consent is wrong. Editing a draft
+into the speaker's own voice is an exercise of creative agency. Retonr is a copy
+editor, not a tool for removing hidden marks, and the project does not position it
+as one.
 
 The user's work and final expression remain under the user's control. Core operation
 does not add mandatory provider attribution, generated-by labels, hidden source
