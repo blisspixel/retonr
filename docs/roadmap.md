@@ -31,7 +31,8 @@ that removes the named defects. It is not a regeneration tool.
 In this roadmap, "rewrite" names the operation and the `rewrite` command, not a
 heavy rewrite. The default edit level is `touch-up`. Larger edit levels
 (`voice-pass`, `rewrite`, `reconstruct`) remain opt-in, bounded by the same fidelity
-gates and edit budgets, and are never the default.
+gates and layout budgets (character, expansion, and line limits), and are never the
+default. A budget on the fraction of text changed is not implemented.
 
 More natural wording may also make edited text read as less machine-like. That is a
 welcome side effect of better editing, not a roadmap objective. No milestone targets
