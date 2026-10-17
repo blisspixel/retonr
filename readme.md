@@ -2,21 +2,33 @@
 
 Own the final expression.
 
-Retonr is a local-first editorial engine for authorized generated, delegated, and
-rough drafts. It makes bounded changes to eligible prose while treating source
-claims, quantities, structure, formatting, links, protected terms, and other
-required content as constraints.
+Retonr is a local-first copy editor for AI-assisted and rough drafts. Think of a
+grammar checker such as Grammarly, but tuned toward your own style and focused on
+cutting AI-slop wording: stock openers, filler transitions, hollow emphasis, and
+other phrasing that makes prose read as generated. Retonr is an independent project
+and is not affiliated with Grammarly.
+
+Retonr is a light-touch pass, not a rewriter. It makes slight, subtle refinements
+that change a small fraction of the text and leave the rest exactly as written. Meaning
+and voice are preserved. Source claims, quantities, structure, formatting, links,
+protected terms, and other required content are treated as constraints, and the
+lightest edit level is the default.
 
 The intended workflow is simple:
 
 - Bring a draft, document, or folder you are authorized to edit.
 - Use a local or explicitly selected model runtime under your control.
-- Make bounded editorial changes instead of regenerating the whole artifact.
+- Make small, targeted copy edits instead of regenerating the whole artifact.
 - Preserve the source, write separately by default, and report what changed.
 - Reject a candidate or leave a unit unchanged when fidelity checks do not pass.
 
 Generation proposes. Retonr validates, selects, or abstains. The user remains the
 final editor.
+
+Because it replaces stock AI phrasing with more natural wording, edited text may
+also read as less machine-like. That is a side effect of better editing, not the
+product's goal or a promise. Retonr does not target detectors, does not market or
+offer watermark removal, and does not claim any detection result.
 
 Retonr does not treat provider signals or detector results as ownership claims or
 fidelity targets. It does not establish that a source claim is true, erase provider
@@ -27,9 +39,9 @@ decide legal and disclosure obligations.
 
 Speech belongs to the speaker. Upstream wording produced by a model or rough draft
 has zero authority over downstream expression. Watermarking hidden meaning,
-tracking tokens, or statistical distributions into content is wrong. Rewriting in
-your own voice provides creative agency and directly rejects unconsented hidden
-tracking.
+tracking tokens, or statistical distributions into content is wrong. Editing a draft
+into your own voice is an exercise of creative agency. It is not a tool for
+removing hidden marks, and Retonr does not position it as one.
 
 Retonr is biased toward privacy, freedom of expression, creative agency, and user
 control. It rejects provider paternalism as a product default: mandatory remote
@@ -104,8 +116,10 @@ cargo run --locked -p rewrite-eval -- --lint draft.txt
 
 `check` validates a complete candidate without invoking a model. An accepted
 candidate can be written to a new destination; an abstention returns the exact
-original. Optional `--edit-level`, character budget, expansion ceiling, and line budget
-flags enforce layout constraints. Read-only folder checks pair documents by exact
+original. `check` enforces only `touch-up`, the lightest copy-edit tier. Larger
+`--edit-level` tiers (`voice-pass`, `rewrite`, `reconstruct`) are opt-in, are not
+yet enforced, and currently report `touch-up` as effective. Optional character
+budget, expansion ceiling, and line budget flags enforce layout constraints. Read-only folder checks pair documents by exact
 relative path and report missing or skipped counterparts. `lint` inspects one document or a bounded folder,
 or compares one document with a candidate, for an early narrow list of
 conversational residue, cliches, and synthetic patterns. A clean lint result
@@ -151,9 +165,9 @@ flowchart LR
     Decision -->|No| Original["Exact original or unchanged unit"]
 ```
 
-Style quality never compensates for a fidelity failure. Probabilistic semantic
-evidence cannot provide a formal preservation guarantee or override deterministic
-hard gates.
+Each pass aims for the smallest diff that removes the named defects. Style quality
+never compensates for a fidelity failure. Probabilistic semantic evidence cannot
+provide a formal preservation guarantee or override deterministic hard gates.
 
 ## Installation and releases
 

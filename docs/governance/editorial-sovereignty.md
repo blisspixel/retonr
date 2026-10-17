@@ -21,8 +21,9 @@ about a specific contract or jurisdiction.
 Watermarking hidden meaning, tracking tokens, or statistical distributions into
 content without explicit user consent is wrong. Inserting covert signals into text
 infringes upon the speaker's creative autonomy and turns ordinary prose into an
-unconsented tracking channel. Rewriting a draft in your own voice is an exercise of
-creative agency that directly rejects and dismantles unconsented hidden tracking.
+unconsented tracking channel. Editing a draft into your own voice is an exercise of
+creative agency. Retonr is a copy editor, not a tool for removing hidden marks, and
+the project does not position it as one.
 
 The project is intentionally privacy-first and viewpoint-neutral. Core operation is
 local, network-denied after explicit setup, and independent of any provider account.
