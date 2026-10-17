@@ -20,6 +20,25 @@ The [current-state document](current-state.md) is the only authority for impleme
 behavior. Roadmap content is planned until that document records exact verification
 evidence.
 
+## Product purpose
+
+Retonr is a local-first copy editor. Its primary job is a light, subtle pass over
+AI-assisted and rough drafts that removes AI-slop wording and tunes the text toward
+the user's own style, while preserving meaning, voice, facts, and structure. Each
+pass should change only a small fraction of the text and produce the smallest diff
+that removes the named defects. It is not a regeneration tool.
+
+In this roadmap, "rewrite" names the operation and the `rewrite` command, not a
+heavy rewrite. The default edit level is `touch-up`. Larger edit levels
+(`voice-pass`, `rewrite`, `reconstruct`) remain opt-in, bounded by the same fidelity
+gates and layout budgets (character, expansion, and line limits), and are never the
+default. A budget on the fraction of text changed is not implemented.
+
+More natural wording may also make edited text read as less machine-like. That is a
+welcome side effect of better editing, not a roadmap objective. No milestone targets
+detector results or watermark removal, and the standing rules against detector
+optimization below apply to every phase.
+
 ## Order of operations
 
 ```mermaid
@@ -173,7 +192,8 @@ This sequencing makes three independent outcomes visible in every release report
 - Fidelity: facts, literals, structure, formatting, and protected content remain
   within the qualified contract.
 - Editorial quality: accepted output contains fewer named, explainable slop patterns
-  without introducing neighboring defects.
+  without introducing neighboring defects, through minimal edits rather than broad
+  regeneration.
 - Personal fit: accepted output better follows authorized user evidence and explicit
   preferences than the strongest simpler baseline.
 
@@ -642,7 +662,8 @@ reproducible, and supported by retained cross-platform evidence.
 ## 1.0: Reference-grade local re-expression product
 
 Version 1.0 is the first stable contract, not the point where the first useful build
-appears.
+appears. "Re-expression" here means a light copy-edit pass by default; larger edit
+levels remain opt-in and bounded.
 
 ### Required capabilities
 
@@ -650,7 +671,7 @@ appears.
 - Interactive terminal UI sharing the CLI's application operations and evidence
 - Accessible native desktop application built without a browser-based frontend
 - Inspectable, reversible, provenance-backed personal profiles
-- Qualified plain text, declared Markdown, and bounded DOCX rewriting
+- Qualified plain text, declared Markdown, and bounded DOCX copy editing
 - Non-destructive file and folder transactions with bounded long-document passes,
   staged output, explicit atomicity, recovery, and exact change reports
 - Deterministic gates, calibrated semantic assessment, lexicographic selection, and
