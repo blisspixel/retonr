@@ -249,6 +249,12 @@ struct ErrorExtensions {
     migration_backup_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     diagnostic: Option<String>,
+    /// `source` or `candidate` for an input that could not be read.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    input_role: Option<String>,
+    /// Stable policy cause, such as `no_qualified_artifact`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<String>,
 }
 
 /// Content-free error details for a failed command.
@@ -297,6 +303,27 @@ impl ErrorBody {
         self.extensions
             .as_ref()
             .and_then(|extensions| extensions.diagnostic.as_deref())
+    }
+
+    /// Records whether the unreadable input was the source or the candidate.
+    #[must_use]
+    pub(crate) fn with_input_role(mut self, role: &'static str) -> Self {
+        self.extensions_mut().input_role = Some(role.to_owned());
+        self
+    }
+
+    /// Attaches a stable `snake_case` policy cause. Document text is never a reason.
+    #[must_use]
+    pub(crate) fn with_reason(mut self, reason: &'static str) -> Self {
+        if !reason.is_empty()
+            && reason.len() <= 64
+            && reason
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+        {
+            self.extensions_mut().reason = Some(reason.to_owned());
+        }
+        self
     }
 
     /// Attaches the exact prepared generation required for safe recovery.

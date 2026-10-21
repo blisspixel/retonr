@@ -1,6 +1,8 @@
 //! Pre-model inventory of encoding, BOM, controls, and possible C2PA wrappers.
 
-use rewrite_types::Digest;
+use rewrite_types::{
+    Digest, is_bidi_mark, is_other_invisible_mark, is_variation_selector, is_zero_width_mark,
+};
 use serde::Serialize;
 
 use super::{
@@ -191,45 +193,23 @@ fn classify(character: char) -> Option<ControlClass> {
     if matches!(character, '\t' | '\n' | '\r') {
         return None;
     }
-    let code = u32::from(character);
-    if matches!(
-        code,
-        0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069
-    ) {
+    if is_bidi_mark(character) {
         return Some(ControlClass::Bidi);
     }
-    if matches!(code, 0xFE00..=0xFE0F | 0xE0100..=0xE01EF) {
+    if is_variation_selector(character) {
         return Some(ControlClass::VariationSelector);
     }
-    if matches!(code, 0x200B..=0x200D | 0x2060 | 0xFEFF | 0x180E) {
+    if is_zero_width_mark(character) {
         return Some(ControlClass::ZeroWidth);
     }
+    let code = u32::from(character);
     if (0x80..=0x9F).contains(&code) {
         return Some(ControlClass::C1);
     }
     if character.is_control() || character == '\u{7f}' {
         return Some(ControlClass::C0);
     }
-    if matches!(
-        code,
-        0x00AD
-            | 0x034F
-            | 0x115F
-            | 0x1160
-            | 0x17B4
-            | 0x17B5
-            | 0x180B..=0x180D
-            | 0x2028
-            | 0x2029
-            | 0x202F
-            | 0x2061..=0x2064
-            | 0x206A..=0x206F
-            | 0x3164
-            | 0xFFA0
-            | 0xFFF9..=0xFFFB
-            | 0xE0001
-            | 0xE0020..=0xE007F
-    ) {
+    if is_other_invisible_mark(character) {
         return Some(ControlClass::OtherFormat);
     }
     None

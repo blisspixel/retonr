@@ -14,6 +14,7 @@ mod lint;
 pub mod profile;
 mod record;
 mod rewrite;
+mod text_safety;
 mod validation;
 
 pub use cancellation::{CancellationToken, Cancelled};
@@ -50,6 +51,11 @@ pub use rewrite::{
     AcceptedEdit, Atomicity, CandidateId, CandidateIdError, CandidateRank, CandidateTextKind,
     CharacterBudget, EditLevel, GeneratedCandidate, LayoutConstraints, LineBudget, PlannedUnit,
     ReasonCode, RewriteMode, RewriteOptions, RewriteStatus, TransformationPlan,
+};
+pub use text_safety::{
+    TextSafetyFault, first_text_safety_fault, is_bidi_mark, is_hard_unsafe_text_character,
+    is_other_invisible_mark, is_retained_invisible_character, is_variation_selector,
+    is_zero_width_mark, replacement_preserves_text_safety,
 };
 pub use validation::{
     CandidateAssessment, EvidenceContractError, GateEvidence, GateEvidenceDetails, GateResult,

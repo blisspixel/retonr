@@ -70,12 +70,13 @@ fn coherent_read_detects_stale_digest_and_aggregate_overflow() {
     };
     let mut total = MAXIMUM_TOTAL_BYTES - 5;
     assert_eq!(
-        read_coherent(root.path(), &document, &mut total).expect("exact boundary"),
+        read_coherent(root.path(), &document, &mut total, InputRole::Source)
+            .expect("exact boundary"),
         b"draft"
     );
-    assert!(read_coherent(root.path(), &document, &mut total).is_err());
+    assert!(read_coherent(root.path(), &document, &mut total, InputRole::Source).is_err());
     fs::write(&path, "other").expect("modify");
-    let Err(failure) = read_coherent(root.path(), &document, &mut 0) else {
+    let Err(failure) = read_coherent(root.path(), &document, &mut 0, InputRole::Source) else {
         panic!("stale digest")
     };
     assert_eq!(

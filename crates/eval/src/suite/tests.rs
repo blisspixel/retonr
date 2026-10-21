@@ -12,17 +12,17 @@ fn core_regression_suite_has_zero_failures() {
     let suite = parse_suite(CORE_SUITE).expect("checked-in suite is valid");
     let report = run_suite(&suite);
     assert!(report.is_success(), "failures: {:?}", report.failures);
-    assert_eq!(report.total, 60);
+    assert_eq!(report.total, 74);
     assert_eq!(report.passed, report.total);
-    assert_eq!(report.transformation_coverage.acceptable, 9);
-    assert_eq!(report.transformation_coverage.rewritten, 4);
+    assert_eq!(report.transformation_coverage.acceptable, 12);
+    assert_eq!(report.transformation_coverage.rewritten, 7);
     assert_eq!(
         report
             .categories
             .iter()
             .find(|category| category.category == "unsafe_text_negative")
             .map(|category| category.total),
-        Some(10),
+        Some(21),
         "invisible and directional coverage must not regress"
     );
     assert!(
@@ -81,6 +81,7 @@ fn abstentions_locate_failed_spans_without_echoing_them() {
             ReasonCode::ProtectedValueChanged
                 | ReasonCode::StructureChanged
                 | ReasonCode::UnsafeText
+                | ReasonCode::SemanticUncertain
         ) {
             continue;
         }

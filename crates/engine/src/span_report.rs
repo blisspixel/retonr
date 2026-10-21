@@ -2,7 +2,10 @@
 
 use std::collections::{BTreeMap, VecDeque};
 
-use rewrite_types::{GateEvidenceDetails, SpanChange, SpanFailure, TextPoint};
+use rewrite_types::{
+    GateEvidenceDetails, SpanChange, SpanFailure, TextPoint, TextSafetyFault,
+    first_text_safety_fault,
+};
 
 use crate::protection::{ProtectedKind, ProtectedOccurrence, protected_occurrences};
 
@@ -31,6 +34,39 @@ pub(crate) fn structure_details(source: &str, candidate: &str) -> Option<GateEvi
 
 pub(crate) fn unsafe_details(source: &str, candidate: &str) -> Option<GateEvidenceDetails> {
     details(unsafe_failures(source, candidate))
+}
+
+pub(crate) fn literal_token_details(source: &str, candidate: &str) -> Option<GateEvidenceDetails> {
+    let failure = match crate::semantic::first_literal_token_change(source, candidate)? {
+        crate::semantic::LiteralTokenChange::Altered {
+            source_at,
+            candidate_at,
+        } => SpanFailure {
+            kind: "word_changed".to_owned(),
+            ordinal: None,
+            source: point_at(source, source_at),
+            candidate: point_at(candidate, candidate_at),
+            change: SpanChange::Altered,
+        },
+        crate::semantic::LiteralTokenChange::Missing { source_at } => SpanFailure {
+            kind: "word_changed".to_owned(),
+            ordinal: None,
+            source: point_at(source, source_at),
+            candidate: None,
+            change: SpanChange::Missing,
+        },
+        crate::semantic::LiteralTokenChange::Added { candidate_at } => SpanFailure {
+            kind: "word_changed".to_owned(),
+            ordinal: None,
+            source: None,
+            candidate: point_at(candidate, candidate_at),
+            change: SpanChange::Added,
+        },
+    };
+    if failure.source.is_none() && failure.candidate.is_none() {
+        return None;
+    }
+    details(vec![failure])
 }
 
 fn details(failures: Vec<SpanFailure>) -> Option<GateEvidenceDetails> {
@@ -315,14 +351,15 @@ fn newline_events(text: &str) -> Vec<NewlineEvent> {
 }
 
 fn unsafe_failures(source: &str, candidate: &str) -> Vec<SpanFailure> {
-    if !source.chars().any(is_unsafe_text_character)
-        && let Some(at) = first_unsafe(candidate)
-    {
-        return one_unsafe(source, candidate, SpanChange::Introduced, None, Some(at));
+    match first_text_safety_fault(source, candidate) {
+        Some(
+            TextSafetyFault::HardIntroduced { at } | TextSafetyFault::InvisibleIntroduced { at },
+        ) => one_unsafe(source, candidate, SpanChange::Introduced, None, Some(at)),
+        Some(TextSafetyFault::HardAltered { at }) => {
+            one_unsafe(source, candidate, SpanChange::Altered, Some(at), Some(at))
+        }
+        None => Vec::new(),
     }
-    first_difference(source, candidate)
-        .map(|at| one_unsafe(source, candidate, SpanChange::Altered, Some(at), Some(at)))
-        .unwrap_or_default()
 }
 
 fn one_unsafe(
@@ -346,17 +383,6 @@ fn one_unsafe(
     }
 }
 
-fn first_unsafe(text: &str) -> Option<usize> {
-    let mut offset = 0;
-    for character in text.chars() {
-        if is_unsafe_text_character(character) {
-            return Some(offset);
-        }
-        offset += character.len_utf8();
-    }
-    None
-}
-
 fn first_difference(left: &str, right: &str) -> Option<usize> {
     let mut offset = 0;
     for (left_char, right_char) in left.chars().zip(right.chars()) {
@@ -370,15 +396,6 @@ fn first_difference(left: &str, right: &str) -> Option<usize> {
     } else {
         Some(offset.min(left.len()).min(right.len()))
     }
-}
-
-fn is_unsafe_text_character(character: char) -> bool {
-    let codepoint = u32::from(character);
-    (character.is_control() && !matches!(character, '\n' | '\r' | '\t'))
-        || matches!(
-            codepoint,
-            0x061C | 0x200B..=0x200F | 0x2028..=0x202E | 0x2060..=0x206F | 0xFEFF
-        )
 }
 
 fn point_at(text: &str, byte_index: usize) -> Option<TextPoint> {

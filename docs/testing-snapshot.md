@@ -89,11 +89,13 @@ including unmatched and skipped entries. A resource-limit refusal returns exit 4
 
 When `status` is `abstained`, `reason` explains which gate failed. The common
 ones are `protected_value_changed` (a number, URL, email, identifier, or declared
-term differs), `structure_changed` (paragraph or newline shape differs), and
-`unsafe_text` (the candidate introduced control characters). Those three also
-list each failed span as `line`, `column`, and kind. The report does not echo
-the protected text. A sign, fraction slash, or comparison operator is part of
-the protected quantity.
+term differs), `structure_changed` (paragraph or newline shape differs),
+`unsafe_text` (the candidate introduced a hard control or an invisible run the
+source did not already contain), and `semantic_uncertain` (the literal token
+sequence changed). Those four list the failed span as `line`, `column`, and kind.
+A wording change reports `word_changed` at the first differing token and does not
+echo that token. The report does not echo the protected text. A sign, fraction
+slash, or comparison operator is part of the protected quantity.
 
 The check report names the semantic evaluator `literal-token-sequence-v1` and
 the effective edit level `touch-up`. Requesting `voice-pass`, `rewrite`, or
@@ -103,17 +105,20 @@ the build is an exact tag, the snapshot tag.
 
 An abstention is a success, not an error. The command still exits 0 unless you
 passed `--fail-on-abstain`. Exit 1 means an input could not be read. The message
-names source or candidate and includes the path. Exit 2 means the invocation was
-wrong. Exit 3 means a policy refusal, including `--fail-on-abstain` and a
-`rewrite` with no selected qualified local artifact. Exit 4 means an input
-exceeded a limit, or the request needs an unsupported schema, format, capability,
-runtime, or protocol.
+names source or candidate and includes the path. JSON errors for that failure
+include `input_role` (`source` or `candidate`) and, when a path is known, `diagnostic`.
+Exit 2 means the invocation was wrong. Exit 3 means a policy refusal, including
+`--fail-on-abstain`, overlapping directory roots, an output directory that collides
+with the source, and a `rewrite` with no selected qualified local artifact. JSON
+for those refusals includes a stable `reason` such as `no_qualified_artifact`.
+Exit 4 means an input exceeded a limit, or the request needs an unsupported schema,
+format, capability, runtime, or protocol.
 
 ## Development evaluation corpus
 
-The source repository's evaluation tool runs 60 deterministic fidelity and structure
+The source repository's evaluation tool runs 74 deterministic fidelity and structure
 cases with exact status, reason, and output expectations. It separately validates 120
-synthetic editorial cases across five groups, for 180 development cases total. The
+synthetic editorial cases across five groups, for 194 development cases total. The
 hybrid scorecard executes two exact
 deterministic suite inputs before it accepts blinded, order-swapped structured judge
 observations. The serializable scorecard keeps those observations caller-declared and

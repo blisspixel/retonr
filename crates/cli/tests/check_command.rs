@@ -164,6 +164,7 @@ fn missing_source_is_an_unreadable_input_not_a_retryable_failure() {
         .code(1)
         .stderr(predicate::str::contains("\"category\": \"operational\""))
         .stderr(predicate::str::contains("\"code\": \"input_unreadable\""))
+        .stderr(predicate::str::contains("\"input_role\": \"source\""))
         .stderr(predicate::str::contains("\"retryable\": false"));
 }
 
@@ -508,6 +509,53 @@ fn missing_input_names_the_unreadable_side_and_path() {
             "error: candidate could not be read:",
         ))
         .stderr(predicate::str::contains("absent.txt"));
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "json", "check"])
+        .arg(&source)
+        .arg(directory.path().join("absent.txt"))
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("\"input_role\": \"candidate\""))
+        .stderr(predicate::str::contains("\"diagnostic\":"))
+        .stderr(predicate::str::contains("absent.txt"));
+}
+
+#[test]
+fn semantic_abstention_locates_the_changed_word_without_echoing_it() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("orig.txt");
+    let candidate = directory.path().join("cand.txt");
+    fs::write(
+        &source,
+        "The quarterly budget rose by 4.5% to $12,400, and the team shipped 3 releases before March 1.\nRevenue was -2% year over year, which is better than the -7% we forecast.\n",
+    )
+    .expect("write source");
+    fs::write(
+        &candidate,
+        "The quarterly budget rose by 4.5% to $12,400, and the team shipped 3 releases before March 1.\nRevenue was -2% year over year, better than the -7% we forecast.\n",
+    )
+    .expect("write candidate");
+
+    let text = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["--format", "text", "check", "--diff"])
+        .arg(&source)
+        .arg(&candidate)
+        .output()
+        .expect("run check");
+    let stdout = String::from_utf8(text.stdout).expect("stdout");
+    let stderr = String::from_utf8(text.stderr).expect("stderr");
+    assert!(text.status.success(), "abstention exits 0");
+    assert!(stdout.contains("status: abstained"));
+    assert!(stdout.contains("reason: semantic_uncertain"));
+    assert!(stdout.contains("line 2 col 33: word_changed altered"));
+    assert!(stderr.contains("diff: unchanged"));
+    assert!(!stdout.contains("which"));
+    assert!(!stdout.contains("better"));
+    assert!(!stderr.contains("which"));
+    assert!(!stderr.contains("better"));
 }
 
 #[test]

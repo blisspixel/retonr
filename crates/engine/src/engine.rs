@@ -417,7 +417,7 @@ impl<'a> RewriteEngine<'a> {
         } else {
             ReasonCode::SemanticUncertain
         };
-        let gate = GateResult {
+        let mut gate = GateResult {
             gate_id: SEMANTIC_GATE.to_owned(),
             gate_version: self.semantic.id().to_owned(),
             status,
@@ -429,6 +429,17 @@ impl<'a> RewriteEngine<'a> {
                 .collect(),
             confidence: semantic.confidence,
         };
+        if !passed
+            && gate
+                .evidence
+                .iter()
+                .any(|item| item.code == "literal_tokens_changed")
+        {
+            attach_span_details(
+                &mut gate,
+                crate::span_report::literal_token_details(source, candidate),
+            );
+        }
         if gate.validate().is_err() {
             invalid_semantic_gate()
         } else {

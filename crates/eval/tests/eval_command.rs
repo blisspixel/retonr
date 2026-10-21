@@ -173,7 +173,7 @@ fn checked_in_no_rewrite_baseline_runs_offline() {
             "\"baseline_id\": \"no-rewrite-v1\"",
         ))
         .stdout(predicate::str::contains("\"kind\": \"no_rewrite\""))
-        .stdout(predicate::str::contains("\"unchanged\": 60"))
+        .stdout(predicate::str::contains("\"unchanged\": 74"))
         .stdout(predicate::str::contains("\"failed\": 0"))
         .stdout(predicate::str::contains("Hello world").not());
 }
@@ -211,9 +211,9 @@ fn checked_in_suite_passes_as_a_process() {
         .arg(suite)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"passed\": 60"))
-        .stdout(predicate::str::contains("\"acceptable\": 9"))
-        .stdout(predicate::str::contains("\"rewritten\": 4"))
+        .stdout(predicate::str::contains("\"passed\": 74"))
+        .stdout(predicate::str::contains("\"acceptable\": 12"))
+        .stdout(predicate::str::contains("\"rewritten\": 7"))
         .stdout(predicate::str::contains("\"failures\": []"));
 }
 

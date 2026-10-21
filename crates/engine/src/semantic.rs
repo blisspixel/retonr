@@ -76,36 +76,122 @@ const fn evidence(code: SemanticEvidenceCode) -> SemanticEvidence {
     SemanticEvidence::new(code, None)
 }
 
+/// The first literal token that differs, without the token text.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum LiteralTokenChange {
+    /// Both sides have a token here and the tokens differ.
+    Altered {
+        /// Byte offset of the source token.
+        source_at: usize,
+        /// Byte offset of the candidate token.
+        candidate_at: usize,
+    },
+    /// The source has a token the candidate does not.
+    Missing {
+        /// Byte offset of the source token.
+        source_at: usize,
+    },
+    /// The candidate has a token the source does not.
+    Added {
+        /// Byte offset of the candidate token.
+        candidate_at: usize,
+    },
+}
+
+pub(crate) fn first_literal_token_change(
+    source: &str,
+    candidate: &str,
+) -> Option<LiteralTokenChange> {
+    let source_tokens = lexical_token_spans(source);
+    let candidate_tokens = lexical_token_spans(candidate);
+    for index in 0..source_tokens.len().max(candidate_tokens.len()) {
+        match (source_tokens.get(index), candidate_tokens.get(index)) {
+            (Some(left), Some(right)) if left.text != right.text => {
+                return Some(LiteralTokenChange::Altered {
+                    source_at: left.at,
+                    candidate_at: right.at,
+                });
+            }
+            (Some(left), None) => {
+                return Some(LiteralTokenChange::Missing { source_at: left.at });
+            }
+            (None, Some(right)) => {
+                return Some(LiteralTokenChange::Added {
+                    candidate_at: right.at,
+                });
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+struct LexicalToken {
+    text: String,
+    at: usize,
+}
+
 fn lexical_tokens(text: &str) -> Vec<String> {
+    lexical_token_spans(text)
+        .into_iter()
+        .map(|token| token.text)
+        .collect()
+}
+
+fn lexical_token_spans(text: &str) -> Vec<LexicalToken> {
     let mut tokens = Vec::new();
     let mut current = String::new();
-    let mut characters = text.chars().peekable();
-    while let Some(character) = characters.next() {
+    let mut current_at = 0;
+    let mut index = 0;
+    while let Some((character, width)) = char_at(text, index) {
         if character.is_alphanumeric() {
+            if current.is_empty() {
+                current_at = index;
+            }
             current.extend(character.to_lowercase());
+            index += width;
             continue;
         }
-        if character == '.'
-            && current.is_empty()
-            && characters.peek().is_some_and(char::is_ascii_digit)
-        {
+        let next_is_digit =
+            char_at(text, index + width).is_some_and(|(next, _)| next.is_ascii_digit());
+        if character == '.' && current.is_empty() && next_is_digit {
+            current_at = index;
             current.push('.');
+            index += width;
             continue;
         }
         if !current.is_empty() {
-            tokens.push(core::mem::take(&mut current));
+            tokens.push(LexicalToken {
+                text: core::mem::take(&mut current),
+                at: current_at,
+            });
         }
         if character == '\r' || character == '\n' {
-            if character == '\r' && characters.peek() == Some(&'\n') {
-                characters.next();
+            let newline_at = index;
+            index += width;
+            if character == '\r' && char_at(text, index).is_some_and(|(next, _)| next == '\n') {
+                index += 1;
             }
-            tokens.push("\n".to_owned());
+            tokens.push(LexicalToken {
+                text: "\n".to_owned(),
+                at: newline_at,
+            });
+            continue;
         }
+        index += width;
     }
     if !current.is_empty() {
-        tokens.push(current);
+        tokens.push(LexicalToken {
+            text: current,
+            at: current_at,
+        });
     }
     tokens
+}
+
+fn char_at(text: &str, index: usize) -> Option<(char, usize)> {
+    let character = text.get(index..)?.chars().next()?;
+    Some((character, character.len_utf8()))
 }
 
 #[cfg(test)]
@@ -135,6 +221,18 @@ mod tests {
         let moved_newline =
             evaluator.evaluate("Hello\nworld\n", "Hello world\n\n", RewriteMode::Literal);
         assert_eq!(moved_newline.status, GateStatus::Uncertain);
+
+        let source = "Revenue was -2% year over year, which is better than the -7% we forecast.\n";
+        let candidate = "Revenue was -2% year over year, better than the -7% we forecast.\n";
+        let change = super::first_literal_token_change(source, candidate).expect("token change");
+        assert_eq!(
+            change,
+            super::LiteralTokenChange::Altered {
+                source_at: source.find("which").expect("source word"),
+                candidate_at: candidate.find("better").expect("candidate word"),
+            }
+        );
+        assert!(super::first_literal_token_change("Hello world", "Hello, world!").is_none());
 
         let leading_decimal =
             evaluator.evaluate("Value is .5.", "Value is 5.", RewriteMode::Literal);

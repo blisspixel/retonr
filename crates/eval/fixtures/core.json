@@ -353,6 +353,146 @@
       "expected_output": "source"
     },
     {
+      "id": "tag-characters-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\uDB40\uDC68\uDB40\uDC69\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "language-tag-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\uDB40\uDC01\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "variation-selector-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\uFE0F\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "variation-selector-supplement-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\uDB40\uDD00\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "mongolian-vowel-separator-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\u180E\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "combining-grapheme-joiner-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\u034F\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "soft-hyphen-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\u00AD\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "khmer-inherent-vowel-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\u17B4\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "mongolian-free-variation-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\u180B\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "interlinear-annotation-introduced",
+      "category": "unsafe_text_negative",
+      "source": "The meeting is at noon.\n",
+      "candidate": "The meeting is at noon.\uFFF9\n",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "lengthened-tag-run",
+      "category": "unsafe_text_negative",
+      "source": "See \uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F today.",
+      "candidate": "See \uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F today.\uDB40\uDC61\uDB40\uDC62\uDB40\uDC63\uDB40\uDC64",
+      "reference_judgment": "unacceptable",
+      "expected_status": "abstained",
+      "expected_reason": "unsafe_text",
+      "expected_output": "source"
+    },
+    {
+      "id": "kept-emoji-selector",
+      "category": "positive_literal",
+      "source": "I \u2764\uFE0F the plan.  It is good.",
+      "candidate": "I \u2764\uFE0F the plan. It is good.",
+      "reference_judgment": "acceptable",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_output": "candidate"
+    },
+    {
+      "id": "kept-subdivision-flag",
+      "category": "positive_literal",
+      "source": "See \uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F today.",
+      "candidate": "See \uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F today!",
+      "reference_judgment": "acceptable",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_output": "candidate"
+    },
+    {
+      "id": "removed-emoji-selector",
+      "category": "positive_literal",
+      "source": "I \u2764\uFE0F the plan.",
+      "candidate": "I the plan.",
+      "reference_judgment": "acceptable",
+      "expected_status": "rewritten",
+      "expected_reason": null,
+      "expected_output": "candidate"
+    },
+    {
       "id": "date-day-changed",
       "category": "protected_value_negative",
       "source": "Ship the release on 2026-01-09.",

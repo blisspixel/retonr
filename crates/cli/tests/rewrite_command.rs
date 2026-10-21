@@ -26,7 +26,10 @@ fn rewrite_fails_closed_without_a_qualified_artifact() {
         .code(3)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains("\"command\": \"rewrite\""))
-        .stderr(predicate::str::contains("\"code\": \"policy_refusal\""));
+        .stderr(predicate::str::contains("\"code\": \"policy_refusal\""))
+        .stderr(predicate::str::contains(
+            "\"reason\": \"no_qualified_artifact\"",
+        ));
     assert!(!output.exists(), "failure must not create --output");
     assert_eq!(fs::read(&source).expect("source remains"), b"Hello world\n");
 }

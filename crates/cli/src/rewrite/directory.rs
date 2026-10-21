@@ -79,13 +79,22 @@ fn refuse_unsafe_output_root(source: &Path, output: &Path) -> Result<(), RunFail
     let source_key = resolved_planned_path(source)?;
     let output_key = resolved_planned_path(output)?;
     if same_path(&source_key, &output_key) {
-        return Err(policy("output-dir cannot be the source directory"));
+        return Err(policy(
+            "output_dir_is_source",
+            "output-dir cannot be the source directory",
+        ));
     }
     if is_nested(&source_key, &output_key) {
-        return Err(policy("output-dir cannot be inside the source directory"));
+        return Err(policy(
+            "output_dir_inside_source",
+            "output-dir cannot be inside the source directory",
+        ));
     }
     if is_nested(&output_key, &source_key) {
-        return Err(policy("output-dir cannot contain the source directory"));
+        return Err(policy(
+            "output_dir_contains_source",
+            "output-dir cannot contain the source directory",
+        ));
     }
     Ok(())
 }
@@ -259,10 +268,11 @@ fn usage(message: &'static str) -> RunFailure {
     }
 }
 
-fn policy(message: &'static str) -> RunFailure {
+fn policy(reason: &'static str, message: &'static str) -> RunFailure {
     RunFailure {
         command: CommandName::Rewrite,
-        body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false),
+        body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false)
+            .with_reason(reason),
         exit_code: ExitCode::from(EXIT_POLICY),
         message,
     }

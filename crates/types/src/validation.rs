@@ -142,7 +142,7 @@ pub struct TextPoint {
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SpanFailure {
-    /// Closed category such as `number`, `url`, or `structure`.
+    /// Closed category such as `number`, `url`, `structure`, or `word_changed`.
     pub kind: String,
     /// One-based index in the caller-declared term list.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -423,7 +423,7 @@ fn validate_span_failure(failure: &SpanFailure) -> Result<(), EvidenceContractEr
 fn is_span_kind(kind: &str) -> bool {
     matches!(
         kind,
-        "number" | "url" | "email" | "declared_term" | "unsafe_text" | "structure"
+        "number" | "url" | "email" | "declared_term" | "unsafe_text" | "structure" | "word_changed"
     )
 }
 

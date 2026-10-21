@@ -165,6 +165,7 @@ mod tests {
         assert_eq!(
             failure.body,
             ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false)
+                .with_reason("no_qualified_artifact")
         );
         assert!(failure.message.contains("qualified local artifact"));
     }

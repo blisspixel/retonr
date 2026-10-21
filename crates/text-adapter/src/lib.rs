@@ -262,18 +262,15 @@ impl TextAdapter {
             == parsed.document.structure
     }
 
-    /// Rejects newly introduced terminal controls, invisible separators, and
-    /// bidirectional formatting characters.
+    /// Rejects hard controls and invisible runs the source did not already have.
     ///
-    /// A source that already contains one of these characters is eligible only
-    /// for byte-identical output in the current adapter capability.
+    /// A source that already contains a hard control, bidi mark, or zero-width
+    /// joiner is eligible only for byte-identical output. Variation selectors,
+    /// tag characters, and other retained invisible marks may be kept or removed,
+    /// but not added or lengthened.
     #[must_use]
     pub fn replacement_preserves_text_safety(source: &str, replacement: &str) -> bool {
-        if source.chars().any(is_unsafe_text_character) {
-            source == replacement
-        } else {
-            !replacement.chars().any(is_unsafe_text_character)
-        }
+        rewrite_types::replacement_preserves_text_safety(source, replacement)
     }
 }
 
@@ -316,19 +313,6 @@ fn structural_fingerprint(text: &str, has_utf8_bom: bool) -> StructuralFingerpri
         kind: "plain-text-newline-skeleton-v1".to_owned(),
         digest: Digest::sha256(&bytes),
     }
-}
-
-fn is_unsafe_text_character(character: char) -> bool {
-    let codepoint = u32::from(character);
-    (character.is_control() && !matches!(character, '\n' | '\r' | '\t'))
-        || matches!(
-            codepoint,
-            0x061C
-                | 0x200B..=0x200F
-                | 0x2028..=0x202E
-                | 0x2060..=0x206F
-                | 0xFEFF
-        )
 }
 
 fn newline_signature(text: &str) -> Vec<u8> {
@@ -461,6 +445,14 @@ mod tests {
         assert!(TextAdapter::replacement_preserves_text_safety(
             "safe\ttext",
             "safe\ttext."
+        ));
+        assert!(!TextAdapter::replacement_preserves_text_safety(
+            "The meeting is at noon.\n",
+            "The meeting is at noon.\u{E0068}\u{E0069}\n"
+        ));
+        assert!(TextAdapter::replacement_preserves_text_safety(
+            "I \u{2764}\u{FE0F} the plan.  It is good.",
+            "I \u{2764}\u{FE0F} the plan. It is good."
         ));
     }
 

@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, fs, path::Path, process::ExitCode};
 use rewrite_app::{
     CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES, TextEncoding,
 };
-use rewrite_types::{CancellationToken, Digest, ReasonCode, RewriteStatus};
+use rewrite_types::{CancellationToken, Digest, ReasonCode, RewriteRecord, RewriteStatus};
 
 use super::{CheckRequest, replace, require_not_cancelled};
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
         CommandName, EXIT_COMPATIBILITY, EXIT_POLICY, ErrorBody, ErrorCategory, ErrorCode,
         ReportFormat,
     },
-    failure::RunFailure,
+    failure::{InputRole, RunFailure},
     inspect_source::directory::{DiscoveredDocument, discover_cancellable},
 };
 
@@ -74,7 +74,8 @@ fn validate_request(request: &CheckRequest) -> Result<(), RunFailure> {
     if source.starts_with(&candidate) || candidate.starts_with(&source) {
         return Err(RunFailure {
             command: CommandName::Check,
-            body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false),
+            body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false)
+                .with_reason("overlapping_directory_roots"),
             exit_code: ExitCode::from(EXIT_POLICY),
             message: "directory check requires separate nonoverlapping roots",
         });
@@ -146,31 +147,12 @@ fn build_report(
             });
             continue;
         }
-        let source_bytes = read_coherent(&request.source, &source, &mut total_bytes)?;
-        let candidate_bytes = read_coherent(&request.candidate, &candidate, &mut total_bytes)?;
-        let candidate_text = String::from_utf8(candidate_bytes)
-            .map_err(|_| RunFailure::concurrent_modification(CommandName::Check))?;
-        let result = CandidateCheckService::check_with_cancellation(
-            CandidateCheckRequest {
-                source: source_bytes,
-                candidate: candidate_text,
-                protected_terms: request.protected_terms.clone(),
-                layout: request.layout,
-                edit_level: request.edit_level,
-            },
-            cancellation,
-        )
-        .map_err(|error| RunFailure::check_app(&error))?;
-        if result.record.reason == Some(ReasonCode::Cancelled) {
-            return Err(RunFailure::cancelled(CommandName::Check));
-        }
-        if result.record.status == RewriteStatus::Failed {
-            return Err(RunFailure::operational(CommandName::Check));
-        }
-        report.abstained_count += usize::from(result.record.status == RewriteStatus::Abstained);
+        let record =
+            check_discovered_pair(request, &source, &candidate, &mut total_bytes, cancellation)?;
+        report.abstained_count += usize::from(record.status == RewriteStatus::Abstained);
         report.pairs.push(PairReport {
             relative_path: source.relative_path,
-            record: result.record,
+            record,
         });
     }
     for (_, candidate) in candidates {
@@ -188,10 +170,47 @@ fn build_report(
     Ok(report)
 }
 
+fn check_discovered_pair(
+    request: &CheckRequest,
+    source: &DiscoveredDocument,
+    candidate: &DiscoveredDocument,
+    total_bytes: &mut usize,
+    cancellation: &CancellationToken,
+) -> Result<RewriteRecord, RunFailure> {
+    let source_bytes = read_coherent(&request.source, source, total_bytes, InputRole::Source)?;
+    let candidate_bytes = read_coherent(
+        &request.candidate,
+        candidate,
+        total_bytes,
+        InputRole::Candidate,
+    )?;
+    let candidate_text = String::from_utf8(candidate_bytes)
+        .map_err(|_| RunFailure::concurrent_modification(CommandName::Check))?;
+    let result = CandidateCheckService::check_with_cancellation(
+        CandidateCheckRequest {
+            source: source_bytes,
+            candidate: candidate_text,
+            protected_terms: request.protected_terms.clone(),
+            layout: request.layout,
+            edit_level: request.edit_level,
+        },
+        cancellation,
+    )
+    .map_err(|error| RunFailure::check_app(&error))?;
+    if result.record.reason == Some(ReasonCode::Cancelled) {
+        return Err(RunFailure::cancelled(CommandName::Check));
+    }
+    if result.record.status == RewriteStatus::Failed {
+        return Err(RunFailure::operational(CommandName::Check));
+    }
+    Ok(result.record)
+}
+
 fn read_coherent(
     root: &Path,
     document: &DiscoveredDocument,
     total_bytes: &mut usize,
+    role: InputRole,
 ) -> Result<Vec<u8>, RunFailure> {
     let path = root.join(&document.relative_path);
     let mut parent = path.parent();
@@ -224,7 +243,7 @@ fn read_coherent(
         Path::new(&document.relative_path),
         remaining,
     )
-    .map_err(|error| RunFailure::check_read(&error))?;
+    .map_err(|error| RunFailure::check_read_at(role, &path, &error))?;
     *total_bytes = total_bytes
         .checked_add(bytes.len())
         .filter(|total| *total <= MAXIMUM_TOTAL_BYTES)

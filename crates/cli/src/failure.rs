@@ -76,14 +76,17 @@ impl RunFailure {
     /// Names which check input could not be read, without echoing document bytes.
     pub fn check_read_at(role: InputRole, path: &Path, error: &io::Error) -> Self {
         let mut failure = Self::check_read(error);
+        failure.body = failure.body.with_input_role(role_name(role));
         if failure.message == "input could not be read" {
             failure.message = match role {
                 InputRole::Source => "source could not be read",
                 InputRole::Candidate => "candidate could not be read",
             };
-            if let Some(diagnostic) = path_diagnostic(path) {
-                failure.body = failure.body.with_diagnostic(&diagnostic);
-            }
+        }
+        if failure.body.diagnostic().is_none()
+            && let Some(diagnostic) = path_diagnostic(path)
+        {
+            failure.body = failure.body.with_diagnostic(&diagnostic);
         }
         failure
     }
@@ -171,7 +174,8 @@ impl RunFailure {
             },
             AppError::GroundedUnavailable => Self {
                 command,
-                body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false),
+                body: ErrorBody::new(ErrorCategory::Policy, ErrorCode::PolicyRefusal, false)
+                    .with_reason("no_qualified_artifact"),
                 exit_code: ExitCode::from(crate::contract::EXIT_POLICY),
                 message: "grounded rewrite requires a selected qualified local artifact",
             },
@@ -211,24 +215,10 @@ impl RunFailure {
         }
     }
 
-    pub fn lint_read(error: &io::Error) -> Self {
-        let mut failure = Self::check_read(error);
-        failure.command = CommandName::Lint;
-        failure
-    }
-
     /// Names which lint input could not be read, without echoing document bytes.
     pub fn lint_read_at(role: InputRole, path: &Path, error: &io::Error) -> Self {
-        let mut failure = Self::lint_read(error);
-        if failure.message == "input could not be read" {
-            failure.message = match role {
-                InputRole::Source => "source could not be read",
-                InputRole::Candidate => "candidate could not be read",
-            };
-            if let Some(diagnostic) = path_diagnostic(path) {
-                failure.body = failure.body.with_diagnostic(&diagnostic);
-            }
-        }
+        let mut failure = Self::check_read_at(role, path, error);
+        failure.command = CommandName::Lint;
         failure
     }
 
@@ -257,6 +247,13 @@ impl RunFailure {
             exit_code: error.exit_code,
             message: error.message,
         }
+    }
+}
+
+const fn role_name(role: InputRole) -> &'static str {
+    match role {
+        InputRole::Source => "source",
+        InputRole::Candidate => "candidate",
     }
 }
 
@@ -408,7 +405,16 @@ mod tests {
         );
         assert_eq!(source_failure.command, CommandName::Lint);
         assert_eq!(source_failure.message, "source could not be read");
-        assert_eq!(source_failure.body.diagnostic(), Some("missing.txt"));
+        assert_eq!(
+            source_failure.body,
+            ErrorBody::new(
+                ErrorCategory::Operational,
+                ErrorCode::InputUnreadable,
+                false
+            )
+            .with_input_role("source")
+            .with_diagnostic("missing.txt")
+        );
 
         let candidate_failure = RunFailure::lint_read_at(
             InputRole::Candidate,
@@ -417,6 +423,15 @@ mod tests {
         );
         assert_eq!(candidate_failure.command, CommandName::Lint);
         assert_eq!(candidate_failure.message, "candidate could not be read");
-        assert_eq!(candidate_failure.body.diagnostic(), Some("candidate.txt"));
+        assert_eq!(
+            candidate_failure.body,
+            ErrorBody::new(
+                ErrorCategory::Operational,
+                ErrorCode::InputUnreadable,
+                false
+            )
+            .with_input_role("candidate")
+            .with_diagnostic("candidate.txt")
+        );
     }
 }

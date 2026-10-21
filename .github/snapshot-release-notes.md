@@ -7,6 +7,19 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 
 ## Changes in this snapshot
 
+- `retonr check` rejects a candidate that adds or lengthens a retained invisible
+  run the source did not already contain. That includes tag characters, variation
+  selectors, the Mongolian vowel separator, and the other inventoried format marks
+  that are not already hard-unsafe. Deleting such a run is still allowed. A source
+  that already contains a hard control, bidi mark, or zero-width joiner must stay
+  byte-identical.
+- A `semantic_uncertain` abstention names the first changed literal token as
+  `line N col M: word_changed altered` (or `missing` or `added`) and does not echo
+  the token. `--diff` still compares the source with the accepted output, so an
+  abstention remains `diff: unchanged`.
+- JSON errors for an unreadable check or lint input include `input_role`. Policy
+  refusals for a missing qualified artifact, overlapping directory roots, and an
+  output directory that collides with the source include a stable `reason`.
 - A changed quantity now abstains with `protected_value_changed`. A dropped or
   flipped sign, a unicode minus, a dropped currency sign, a removed fraction
   slash, and a flipped comparison are protected. Decimal points, percent signs,
