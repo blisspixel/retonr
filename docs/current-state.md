@@ -14,8 +14,11 @@ kept or removed. A source that already contains a hard control, bidi mark, or
 zero-width joiner stays byte-identical. A `semantic_uncertain` abstention names
 the first changed literal token as a line and column and does not echo the token.
 JSON errors for an unreadable input include `input_role`, and selected policy
-refusals include a stable `reason`. The deterministic evaluation suite contains
-74 cases. This does not admit a runtime or widen production approval.
+refusals include a stable `reason`. `retonr inspect` counts tag characters on
+their own, and opt-in `--locate` and `--decode-tags` report positions and an
+escaped tag mapping without source text. A clean inspect result states that
+statistical watermarks in word choice can still exist. The deterministic evaluation suite
+contains 74 cases. This does not admit a runtime or widen production approval.
 
 ## Implemented
 

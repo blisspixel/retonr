@@ -140,7 +140,8 @@ pub use reviewed_ollama_runtime_import::{
 };
 pub use rewrite_engine::{ClaimShadowObserver, EngineError, ProtectionError};
 pub use rewrite_text_adapter::{
-    CarrierPresence, ControlCounts, LineEndingKind, PlainTextInventory, TextEncoding,
+    CarrierPresence, ControlCounts, DecodedTagMapping, InvisibleInventoryDetail, InvisibleLocation,
+    LineEndingKind, PlainTextInventory, TextEncoding, locate_invisible,
 };
 pub use rewrite_types::{
     CharacterBudget, EditLevel, EditorialComparison, EditorialFinding, LayoutConstraints,

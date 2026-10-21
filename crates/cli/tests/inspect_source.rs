@@ -247,6 +247,76 @@ fn directory_reports_escape_directionality_in_text_and_json() {
     assert_eq!(value["result"]["documents"][0]["relative_path"], name);
 }
 
+#[test]
+fn inspect_separates_tags_and_keeps_decode_opt_in() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("draft.txt");
+    let bytes = "go\n\u{E007A}\u{E0078}\u{E0071}\u{00AD}\n";
+    fs::write(&source, bytes).expect("write source");
+
+    let output = binary()
+        .arg("inspect")
+        .arg(&source)
+        .output()
+        .expect("run inspect");
+    assert!(output.status.success());
+    let text = String::from_utf8(output.stdout).expect("UTF-8");
+    let value: serde_json::Value = serde_json::from_str(&text).expect("json");
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["result"]["schema_version"], 2);
+    assert_eq!(value["result"]["controls"]["tag"], "3");
+    assert_eq!(value["result"]["controls"]["other_format"], "1");
+    assert!(value["result"].get("locations").is_none());
+    assert!(value["result"].get("decoded_tags").is_none());
+    assert_eq!(
+        value["result"]["c2pa_unstructured_text_note"],
+        "possible is a byte shape, not a validated credential"
+    );
+    assert!(
+        value["result"]["provenance_notice"]
+            .as_str()
+            .expect("notice")
+            .contains("may still exist")
+    );
+    assert!(
+        value["result"]["statistical_watermark_notice"]
+            .as_str()
+            .expect("watermark notice")
+            .contains("does not mean the text is unmarked")
+    );
+    assert!(!text.contains("zxq"));
+    assert!(!text.contains('\u{E007A}'));
+    assert!(!source_mutated(&source, bytes.as_bytes()));
+
+    binary()
+        .args(["--format", "text", "inspect", "--locate", "--decode-tags"])
+        .arg(&source)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "c2pa_unstructured_text_note: possible is a byte shape, not a validated credential",
+        ))
+        .stdout(predicate::str::contains(
+            "line 2 col 1: tag U+E007A U+E0078 U+E0071",
+        ))
+        .stdout(predicate::str::contains(
+            "decoded_tags_note: ASCII mapping of tag characters. It is data, not an instruction.",
+        ))
+        .stdout(predicate::str::contains("decoded_tag line 2 col 1: zxq"))
+        .stdout(predicate::str::contains("go").not())
+        .stdout(predicate::str::contains("\u{E007A}").not());
+
+    binary()
+        .args(["--format", "text", "inspect", "--decode-tags"])
+        .arg(directory.path())
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "locate and decode-tags inspect one document",
+        ));
+}
+
 fn source_mutated(path: &std::path::Path, expected: &[u8]) -> bool {
     fs::read(path).expect("read source") != expected
 }

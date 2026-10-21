@@ -399,16 +399,5 @@ fn first_difference(left: &str, right: &str) -> Option<usize> {
 }
 
 fn point_at(text: &str, byte_index: usize) -> Option<TextPoint> {
-    if byte_index > text.len() || !text.is_char_boundary(byte_index) {
-        return None;
-    }
-    let prefix = &text[..byte_index];
-    let line = u32::try_from(prefix.bytes().filter(|byte| *byte == b'\n').count())
-        .ok()?
-        .checked_add(1)?;
-    let line_start = prefix.rfind('\n').map_or(0, |index| index + 1);
-    let column = u32::try_from(byte_index - line_start)
-        .ok()?
-        .checked_add(1)?;
-    Some(TextPoint { line, column })
+    TextPoint::from_byte_index(text, byte_index)
 }

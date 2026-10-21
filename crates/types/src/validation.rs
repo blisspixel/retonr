@@ -138,6 +138,28 @@ pub struct TextPoint {
     pub column: u32,
 }
 
+impl TextPoint {
+    /// Locates a char boundary. `byte_index == text.len()` is the end point.
+    ///
+    /// A mid-character index returns `None`. The column counts bytes, not
+    /// graphemes, so a report can name a position without copying the text.
+    #[must_use]
+    pub fn from_byte_index(text: &str, byte_index: usize) -> Option<Self> {
+        if byte_index > text.len() || !text.is_char_boundary(byte_index) {
+            return None;
+        }
+        let prefix = &text[..byte_index];
+        let line = u32::try_from(prefix.bytes().filter(|byte| *byte == b'\n').count())
+            .ok()?
+            .checked_add(1)?;
+        let line_start = prefix.rfind('\n').map_or(0, |index| index + 1);
+        let column = u32::try_from(byte_index - line_start)
+            .ok()?
+            .checked_add(1)?;
+        Some(Self { line, column })
+    }
+}
+
 /// One redacted location for a failed protected, structural, or safety span.
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

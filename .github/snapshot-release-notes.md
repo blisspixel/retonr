@@ -7,6 +7,16 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 
 ## Changes in this snapshot
 
+- `retonr --help` states that Retonr is a local-first copy editor. It makes small,
+  checked copy edits toward the writer's own style. It adds no watermark, tracking,
+  or attribution, and it makes no claim about detectors, authorship, or disclosure.
+- `retonr inspect` counts tag characters separately from other format marks.
+  The inspect result schema is 2. `--locate` reports line, column, and escaped
+  code points for invisible runs. `--decode-tags` is off unless requested and
+  prints an escaped ASCII mapping, marked as data rather than an instruction.
+  `possible` on the unstructured text carrier is a byte shape, not a validated
+  credential. Every inspect report includes the provenance notice and states
+  that Retonr cannot detect statistical watermarks in word choice.
 - `retonr check` rejects a candidate that adds or lengthens a retained invisible
   run the source did not already contain. That includes tag characters, variation
   selectors, the Mongolian vowel separator, and the other inventoried format marks

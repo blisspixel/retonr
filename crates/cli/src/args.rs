@@ -15,6 +15,10 @@ Examples:
   retonr check originals/ candidates/ -r --dry-run
   retonr tui draft.txt --candidate edited.txt
   retonr -D .retonr model list
+
+Retonr makes small, checked copy edits toward your own style. It adds no watermark,
+tracking, or attribution. It does not test text against detectors and makes no claim
+about detection results, authorship, or disclosure duties.
 ";
 
 /// Fidelity-gated rewriting prototype.
@@ -28,7 +32,7 @@ Examples:
         " snapshot=",
         env!("RETONR_SNAPSHOT_TAG")
     ),
-    about,
+    about = "Retonr is a local-first copy editor for AI-assisted and rough drafts.",
     after_help = EXAMPLES
 )]
 pub(crate) struct Cli {
@@ -198,7 +202,9 @@ pub(crate) enum Command {
     /// required. A directory is a discovery manifest. Recursion is bounded,
     /// does not follow links, and skips hidden names plus `target` and
     /// `node_modules`. It does not parse Content Credentials, follow
-    /// external references, or strip bytes.
+    /// external references, or strip bytes. `possible` on the unstructured
+    /// text carrier is a byte shape, not a validated credential. Tag
+    /// characters are counted separately from other format marks.
     Inspect {
         /// UTF-8 source file, directory, or - for standard input.
         #[arg(value_name = "SOURCE")]
@@ -206,6 +212,17 @@ pub(crate) enum Command {
         /// Recurse into real child directories without following links.
         #[arg(short, long)]
         recursive: bool,
+        /// Report line, column, and escaped code points for each invisible class.
+        ///
+        /// One document only. The report does not include source text.
+        #[arg(long)]
+        locate: bool,
+        /// Show the escaped ASCII mapping of tag characters.
+        ///
+        /// Off unless requested. The mapping is data, not an instruction.
+        /// One document only.
+        #[arg(long = "decode-tags")]
+        decode_tags: bool,
     },
     /// Administer exact local model artifacts without network access.
     Model {

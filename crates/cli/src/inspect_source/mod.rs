@@ -17,15 +17,31 @@ pub(crate) fn requires_derivative_decision(
     bytes: &[u8],
     command: CommandName,
 ) -> Result<bool, RunFailure> {
-    report::inventory_report(source, command, bytes)
-        .map(|(report, _)| report.derivative() == "explicit_decision_required")
+    report::inventory_report(
+        source,
+        command,
+        bytes,
+        &report::InspectDetail::counts_only(),
+    )
+    .map(|(report, _)| report.derivative() == "explicit_decision_required")
+}
+
+/// Flags for one inspect invocation.
+pub(crate) struct InspectOptions {
+    pub(crate) recursive: bool,
+    pub(crate) locate: bool,
+    pub(crate) decode_tags: bool,
 }
 
 /// Inventories one source file, standard input, or directory.
 pub(crate) fn run(
     source: &Path,
-    recursive: bool,
+    options: &InspectOptions,
 ) -> Result<(CommandName, ModelOutput, ExitCode), RunFailure> {
+    if (options.locate || options.decode_tags) && is_real_directory(source) {
+        return Err(detail_requires_one_document());
+    }
+    let recursive = options.recursive;
     if recursive {
         if source.as_os_str() == STANDARD_STREAM_PATH {
             return Err(recursive_requires_directory());
@@ -44,7 +60,11 @@ pub(crate) fn run(
     {
         return directory::inspect(source, false);
     }
-    let report = report::inspect_file(source, CommandName::Inspect)?;
+    let detail = report::InspectDetail {
+        locate: options.locate,
+        decode_tags: options.decode_tags,
+    };
+    let report = report::inspect_file(source, CommandName::Inspect, &detail)?;
     Ok((
         CommandName::Inspect,
         ModelOutput {
@@ -54,6 +74,22 @@ pub(crate) fn run(
         },
         ExitCode::SUCCESS,
     ))
+}
+
+fn is_real_directory(source: &Path) -> bool {
+    source.as_os_str() != STANDARD_STREAM_PATH
+        && fs::symlink_metadata(source)
+            .ok()
+            .is_some_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
+}
+
+fn detail_requires_one_document() -> RunFailure {
+    RunFailure {
+        command: CommandName::Inspect,
+        body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InvalidInvocation, false),
+        exit_code: ExitCode::from(EXIT_USAGE),
+        message: "locate and decode-tags inspect one document",
+    }
 }
 
 fn recursive_requires_directory() -> RunFailure {

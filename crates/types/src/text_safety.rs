@@ -70,6 +70,12 @@ pub fn is_variation_selector(character: char) -> bool {
     matches!(u32::from(character), 0xFE00..=0xFE0F | 0xE0100..=0xE01EF)
 }
 
+/// Unicode tag characters. These are not variation selectors and do not freeze a source.
+#[must_use]
+pub fn is_tag_character(character: char) -> bool {
+    matches!(u32::from(character), 0xE0001 | 0xE0020..=0xE007F)
+}
+
 /// Zero-width marks, including the Mongolian vowel separator.
 #[must_use]
 pub fn is_zero_width_mark(character: char) -> bool {
@@ -79,7 +85,7 @@ pub fn is_zero_width_mark(character: char) -> bool {
     )
 }
 
-/// Other inventoried invisible marks that are not controls or selectors.
+/// Other inventoried invisible marks that are not controls, selectors, or tag characters.
 #[must_use]
 pub fn is_other_invisible_mark(character: char) -> bool {
     matches!(
@@ -99,8 +105,6 @@ pub fn is_other_invisible_mark(character: char) -> bool {
             | 0x3164
             | 0xFFA0
             | 0xFFF9..=0xFFFB
-            | 0xE0001
-            | 0xE0020..=0xE007F
     )
 }
 
@@ -110,6 +114,7 @@ pub fn is_retained_invisible_character(character: char) -> bool {
     !is_hard_unsafe_text_character(character)
         && (is_variation_selector(character)
             || is_zero_width_mark(character)
+            || is_tag_character(character)
             || is_other_invisible_mark(character))
 }
 
@@ -345,5 +350,12 @@ mod tests {
         assert!(introduced(flag, &lengthened));
         assert!(is_retained_invisible_character('\u{FE0F}'));
         assert!(!is_retained_invisible_character('\u{200B}'));
+        assert!(super::is_tag_character('\u{E0068}'));
+        assert!(super::is_tag_character('\u{E0001}'));
+        assert!(super::is_tag_character('\u{E007F}'));
+        assert!(!super::is_tag_character('\u{FE0F}'));
+        assert!(!super::is_tag_character('\u{00AD}'));
+        assert!(!super::is_other_invisible_mark('\u{E0068}'));
+        assert!(super::is_other_invisible_mark('\u{00AD}'));
     }
 }

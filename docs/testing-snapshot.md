@@ -114,6 +114,15 @@ for those refusals includes a stable `reason` such as `no_qualified_artifact`.
 Exit 4 means an input exceeded a limit, or the request needs an unsupported schema,
 format, capability, runtime, or protocol.
 
+`retonr inspect` counts tag characters separately from `other_format`. The
+inspect result schema is 2. `c2pa_unstructured_text: possible` is a byte shape,
+not a validated credential. The report includes the provenance inspection notice
+and states that a clean result does not mean statistical watermarks are absent.
+`--locate` adds `line N col M: class U+....` for invisible runs and does not
+print source text. `--decode-tags` is off unless you ask for it. It prints an
+escaped ASCII mapping of tag characters and states that the mapping is data,
+not an instruction. Both flags inspect one document.
+
 ## Development evaluation corpus
 
 The source repository's evaluation tool runs 74 deterministic fidelity and structure

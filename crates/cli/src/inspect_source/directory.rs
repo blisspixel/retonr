@@ -42,6 +42,9 @@ pub(super) fn inspect(
         "not_required"
     };
     let result = DirectoryReport {
+        schema_version: super::report::INSPECT_RESULT_SCHEMA_VERSION,
+        provenance_notice: super::report::PROVENANCE_NOTICE,
+        statistical_watermark_notice: super::report::STATISTICAL_WATERMARK_NOTICE,
         scope: "directory",
         recursion: if recursive { "bounded" } else { "none" },
         links: "not_followed",
@@ -238,6 +241,9 @@ pub(crate) struct SkippedEntry {
 
 #[derive(Serialize)]
 struct DirectoryReport {
+    schema_version: u32,
+    provenance_notice: &'static str,
+    statistical_watermark_notice: &'static str,
     scope: &'static str,
     recursion: &'static str,
     links: &'static str,
@@ -254,6 +260,12 @@ struct DirectoryReport {
 impl DirectoryReport {
     fn text(&self) -> String {
         let mut lines = vec![
+            format!("provenance_notice: {}", super::report::PROVENANCE_NOTICE),
+            format!(
+                "statistical_watermark_notice: {}",
+                super::report::STATISTICAL_WATERMARK_NOTICE
+            ),
+            format!("schema_version: {}", self.schema_version),
             format!("scope: {}", self.scope),
             format!("recursion: {}", self.recursion),
             format!("links: {}", self.links),

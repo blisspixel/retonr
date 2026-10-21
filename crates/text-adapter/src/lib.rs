@@ -16,7 +16,11 @@ pub(crate) const UTF16_LE_BOM: &[u8] = b"\xFF\xFE";
 pub(crate) const UTF16_BE_BOM: &[u8] = b"\xFE\xFF";
 
 mod inventory;
+mod locate;
 pub use inventory::{CarrierPresence, ControlCounts, PlainTextInventory, TextEncoding};
+pub use locate::{
+    DecodedTagMapping, InvisibleInventoryDetail, InvisibleLocation, locate_invisible,
+};
 
 /// Maximum accepted plain-text source size in bytes.
 pub const MAX_PLAIN_TEXT_BYTES: usize = 16 * 1024 * 1024;

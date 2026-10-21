@@ -60,7 +60,19 @@ fn help_lists_completions_and_man() {
         .stdout(predicate::str::contains(
             "retonr rewrite docs/ -r --output-dir rewritten --dry-run",
         ))
-        .stdout(predicate::str::contains("-D .retonr model list"));
+        .stdout(predicate::str::contains("-D .retonr model list"))
+        .stdout(predicate::str::contains(
+            "Retonr is a local-first copy editor for AI-assisted and rough drafts.",
+        ))
+        .stdout(predicate::str::contains(
+            "Retonr makes small, checked copy edits toward your own style. It adds no watermark,",
+        ))
+        .stdout(predicate::str::contains(
+            "tracking, or attribution. It does not test text against detectors and makes no claim",
+        ))
+        .stdout(predicate::str::contains(
+            "about detection results, authorship, or disclosure duties.",
+        ));
 }
 
 #[test]

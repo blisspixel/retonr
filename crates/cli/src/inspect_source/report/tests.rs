@@ -28,7 +28,7 @@ fn non_utf8_selected_paths_detect_each_exact_adjacent_sidecar() {
             error.raw_os_error(),
             Some(rustix::io::Errno::ILSEQ.raw_os_error())
         );
-        let failure = inspect_file(&path, CommandName::Inspect)
+        let failure = inspect_file(&path, CommandName::Inspect, &InspectDetail::counts_only())
             .err()
             .expect("unrepresentable selected path must be refused");
         assert_eq!(
@@ -48,7 +48,7 @@ fn non_utf8_selected_paths_detect_each_exact_adjacent_sidecar() {
         return;
     }
     assert_eq!(
-        inspect_file(&path, CommandName::Inspect)
+        inspect_file(&path, CommandName::Inspect, &InspectDetail::counts_only())
             .expect("plain file")
             .derivative(),
         "not_required"
@@ -59,7 +59,8 @@ fn non_utf8_selected_paths_detect_each_exact_adjacent_sidecar() {
         let sidecar = root.path().join(sidecar_name);
         fs::write(&sidecar, fixture["sidecar"].as_str().expect("sidecar"))
             .expect("adjacent sidecar");
-        let report = inspect_file(&path, CommandName::Inspect).expect("inventory");
+        let report = inspect_file(&path, CommandName::Inspect, &InspectDetail::counts_only())
+            .expect("inventory");
         assert_eq!(report.sidecars.status, "complete");
         assert_eq!(report.sidecars.present.len(), 1);
         assert!(report.sidecars.present[0].ends_with(suffix));
@@ -88,7 +89,8 @@ fn incomplete_sidecar_scan_is_visible_and_requires_a_derivative_decision() {
     let path = root.path().join(name);
     let bytes = fixture["document"].as_str().expect("document").as_bytes();
     fs::write(&path, bytes).expect("maximum legal filename");
-    let report = inspect_file(&path, CommandName::Inspect).expect("honest inventory");
+    let report = inspect_file(&path, CommandName::Inspect, &InspectDetail::counts_only())
+        .expect("honest inventory");
     assert_eq!(
         report.sidecars.status,
         fixture["expected_scan"].as_str().expect("status")
@@ -110,8 +112,13 @@ fn incomplete_sidecar_scan_is_visible_and_requires_a_derivative_decision() {
 
 #[test]
 fn stdin_metadata_policy_and_io_error_mapping_remain_presentation_owned() {
-    let (report, count) = inventory_report(Path::new("-"), CommandName::Inspect, b"Hello\n")
-        .expect("stream inventory");
+    let (report, count) = inventory_report(
+        Path::new("-"),
+        CommandName::Inspect,
+        b"Hello\n",
+        &InspectDetail::counts_only(),
+    )
+    .expect("stream inventory");
     assert_eq!(count, 6);
     assert_eq!(report.sidecars.status, "not_applicable");
     assert_eq!(report.derivative(), "not_required");

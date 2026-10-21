@@ -197,9 +197,21 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             )
             .map_err(|error| (error, format))
         }
-        Command::Inspect { source, recursive } => {
-            let (command, output, exit_code) =
-                inspect_source::run(&source, recursive).map_err(|error| (error, format))?;
+        Command::Inspect {
+            source,
+            recursive,
+            locate,
+            decode_tags,
+        } => {
+            let (command, output, exit_code) = inspect_source::run(
+                &source,
+                &inspect_source::InspectOptions {
+                    recursive,
+                    locate,
+                    decode_tags,
+                },
+            )
+            .map_err(|error| (error, format))?;
             write_model_report(command, &output, format)
                 .map_err(|_| (RunFailure::operational(command), format))?;
             Ok(exit_code)

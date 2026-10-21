@@ -1,7 +1,8 @@
 //! Pre-model inventory of encoding, BOM, controls, and possible C2PA wrappers.
 
 use rewrite_types::{
-    Digest, is_bidi_mark, is_other_invisible_mark, is_variation_selector, is_zero_width_mark,
+    Digest, is_bidi_mark, is_other_invisible_mark, is_tag_character, is_variation_selector,
+    is_zero_width_mark,
 };
 use serde::Serialize;
 
@@ -49,6 +50,8 @@ pub struct ControlCounts {
     pub variation_selectors: u64,
     /// Zero-width and word-joiner characters, including ZWNBSP.
     pub zero_width: u64,
+    /// Unicode tag characters, including the language tag and the cancel tag.
+    pub tag: u64,
     /// Other format and invisible marks that are not in the classes above.
     pub other_format: u64,
 }
@@ -167,12 +170,13 @@ fn undecoded(
 fn count_controls(text: &str) -> ControlCounts {
     let mut counts = ControlCounts::default();
     for character in text.chars() {
-        match classify(character) {
+        match control_class(character) {
             Some(ControlClass::C0) => counts.c0 += 1,
             Some(ControlClass::C1) => counts.c1 += 1,
             Some(ControlClass::Bidi) => counts.bidi += 1,
             Some(ControlClass::VariationSelector) => counts.variation_selectors += 1,
             Some(ControlClass::ZeroWidth) => counts.zero_width += 1,
+            Some(ControlClass::Tag) => counts.tag += 1,
             Some(ControlClass::OtherFormat) => counts.other_format += 1,
             None => {}
         }
@@ -180,16 +184,32 @@ fn count_controls(text: &str) -> ControlCounts {
     counts
 }
 
-enum ControlClass {
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(crate) enum ControlClass {
     C0,
     C1,
     Bidi,
     VariationSelector,
     ZeroWidth,
+    Tag,
     OtherFormat,
 }
 
-fn classify(character: char) -> Option<ControlClass> {
+impl ControlClass {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::C0 => "c0",
+            Self::C1 => "c1",
+            Self::Bidi => "bidi",
+            Self::VariationSelector => "variation_selectors",
+            Self::ZeroWidth => "zero_width",
+            Self::Tag => "tag",
+            Self::OtherFormat => "other_format",
+        }
+    }
+}
+
+pub(crate) fn control_class(character: char) -> Option<ControlClass> {
     if matches!(character, '\t' | '\n' | '\r') {
         return None;
     }
@@ -208,6 +228,9 @@ fn classify(character: char) -> Option<ControlClass> {
     }
     if character.is_control() || character == '\u{7f}' {
         return Some(ControlClass::C0);
+    }
+    if is_tag_character(character) {
+        return Some(ControlClass::Tag);
     }
     if is_other_invisible_mark(character) {
         return Some(ControlClass::OtherFormat);
@@ -265,8 +288,13 @@ mod tests {
         assert_eq!(report.controls.c1, 1);
         assert_eq!(report.controls.bidi, 1);
         assert_eq!(report.controls.zero_width, 1);
+        assert_eq!(report.controls.tag, 0);
         assert_eq!(report.controls.other_format, 1);
         assert_eq!(report.controls.variation_selectors, 0);
+        let tagged =
+            TextAdapter::inventory("note\u{E0001}\u{E0068}\u{E0069}".as_bytes()).expect("tags");
+        assert_eq!(tagged.controls.tag, 3);
+        assert_eq!(tagged.controls.other_format, 0);
     }
 
     #[test]
