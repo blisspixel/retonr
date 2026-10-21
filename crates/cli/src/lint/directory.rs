@@ -216,14 +216,7 @@ impl DirectoryLintReport {
                 document.report.findings_count
             );
             for finding in &document.report.findings {
-                let _ = writeln!(
-                    text,
-                    "  - [{}] '{}' (occurrence {}): {}",
-                    finding.rule_id,
-                    escape_inline_for_display(&finding.evidence),
-                    finding.occurrence,
-                    finding.message
-                );
+                let _ = writeln!(text, "{}", super::format_finding_line(finding));
             }
         }
         for skipped in &self.skipped {

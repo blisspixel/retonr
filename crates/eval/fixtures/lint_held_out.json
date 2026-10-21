@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "intentionally_exact": [],
+  "families": [
+    {
+      "rule_id": "prefabricated_scene_setting",
+      "positive": {
+        "text": "In today's crowded climate, the review slipped.",
+        "evidence": ["In today's crowded climate"]
+      },
+      "clean": "The afternoon climate reading stayed within the recorded range.",
+      "quoted": "The memo quotes \"In today's crowded climate\" and then gives the numbers.",
+      "near_miss": "Today's climate data arrived at noon and matched the log."
+    },
+    {
+      "rule_id": "contrastive_reframe",
+      "positive": {
+        "text": "The patch is not only a rename, but a stricter read.",
+        "evidence": ["not only a rename, but"]
+      },
+      "clean": "The limit is not 5 seconds but 7 seconds.",
+      "quoted": "She wrote \"not only a rename, but a new path\" in the margin.",
+      "near_miss": "The patch is not only a rename."
+    },
+    {
+      "rule_id": "stacked_tricolon",
+      "positive": {
+        "text": "The draft is clear, short, and specific. It names, checks, and records.",
+        "evidence": ["clear, short, and specific", "names, checks, and records"]
+      },
+      "clean": "The buffer is small.",
+      "quoted": "The slogan was \"clear, short, and specific.\" It also said \"names, checks, and records.\"",
+      "near_miss": "The job checks size, encoding, and line endings."
+    },
+    {
+      "rule_id": "promotional_puffery",
+      "positive": {
+        "text": "This checker is truly unparalleled at catching broken links.",
+        "evidence": ["truly unparalleled"]
+      },
+      "clean": "The checker catches broken links.",
+      "quoted": "The ad said \"truly unparalleled\" and ended.",
+      "near_miss": "The game-changing update shipped on Monday."
+    },
+    {
+      "rule_id": "ornamental_abstraction",
+      "positive": {
+        "text": "Those anecdotes nestled within the annual report.",
+        "evidence": ["nestled within"]
+      },
+      "clean": "The annual report lists two incidents.",
+      "quoted": "The caption reads \"nestled within\" beside the photo.",
+      "near_miss": "The museum moved a seventeenth-century tapestry."
+    },
+    {
+      "rule_id": "reader_segmentation",
+      "positive": {
+        "text": "Whether you are a veteran operator or just new to the tool, start with the read.",
+        "evidence": ["Whether you are a veteran operator or just new"]
+      },
+      "clean": "Start with the read.",
+      "quoted": "The guide says \"Whether you are a veteran operator or just new to the tool.\"",
+      "near_miss": "Whether the artifact is active or inactive, the digest is checked."
+    },
+    {
+      "rule_id": "performative_question_answer",
+      "positive": {
+        "text": "The answer? A seamless handoff between the two checks.",
+        "evidence": ["The answer? A seamless"]
+      },
+      "clean": "The handoff has two checks.",
+      "quoted": "The slide asked \"The answer? A seamless handoff\" and moved on.",
+      "near_miss": "The result? A checksum mismatch at byte 12."
+    },
+    {
+      "rule_id": "empty_significance",
+      "positive": {
+        "text": "The import path hits a pivotal moment this week.",
+        "evidence": ["pivotal moment"]
+      },
+      "clean": "The import path rejects an empty file.",
+      "quoted": "The poster said \"pivotal moment\" in large type.",
+      "near_miss": "The milestone field stores the release name."
+    },
+    {
+      "rule_id": "summary_pileup",
+      "positive": {
+        "text": "In summary the drill failed. Ultimately the drill stopped. In conclusion the drill is closed.",
+        "evidence": ["In summary", "Ultimately", "In conclusion"]
+      },
+      "clean": "The drill failed after two minutes.",
+      "quoted": "The labels \"In summary\" \"Ultimately\" and \"In conclusion\" are the words under discussion.",
+      "near_miss": "In summary the drill failed."
+    },
+    {
+      "rule_id": "generic_positive_close",
+      "positive": {
+        "text": "From here the sky is the limit for the pilot group.",
+        "evidence": ["the sky is the limit"]
+      },
+      "clean": "The pilot group meets on Tuesday.",
+      "quoted": "The banner said \"the sky is the limit\" and came down.",
+      "near_miss": "The sky over the pilot group cleared by noon."
+    },
+    {
+      "rule_id": "transition_pileup",
+      "positive": {
+        "text": "Moreover the latch held. Furthermore the seal held. Additionally the log held.",
+        "evidence": ["Moreover", "Furthermore", "Additionally"]
+      },
+      "clean": "The latch and the seal and the log held.",
+      "quoted": "The draft contains the words \"Moreover\" \"Furthermore\" and \"Additionally\".",
+      "near_miss": "Moreover the latch held."
+    },
+    {
+      "rule_id": "performative_collaboration",
+      "positive": {
+        "text": "Join me on this journey toward stricter diffs.",
+        "evidence": ["Join me on this journey"]
+      },
+      "clean": "Stricter diffs start with a read.",
+      "quoted": "The poster says \"Join me on this journey\" above the door.",
+      "near_miss": "The journey toward stricter diffs starts with a read."
+    },
+    {
+      "rule_id": "conversational_residue",
+      "positive": {
+        "text": "Sure, the backup finished before dawn.",
+        "evidence": ["Sure"]
+      },
+      "clean": "The backup finished before dawn.",
+      "quoted": "The margin says \"Sure, the backup finished before dawn.\"",
+      "near_miss": "Surely the backup finished before dawn."
+    },
+    {
+      "rule_id": "throat_clearing",
+      "positive": {
+        "text": "It should be noted that the cache is optional.",
+        "evidence": ["It should be noted that"]
+      },
+      "clean": "The cache is optional.",
+      "quoted": "The comment says \"It should be noted that the cache is optional.\"",
+      "near_miss": "The operator noted that the cache is optional."
+    },
+    {
+      "rule_id": "canned_transition",
+      "positive": {
+        "text": "That being said, the checksum still matches.",
+        "evidence": ["That being said"]
+      },
+      "clean": "The checksum still matches.",
+      "quoted": "The transcript includes \"That being said, the checksum still matches.\"",
+      "near_miss": "The person that said the checksum matches was wrong."
+    },
+    {
+      "rule_id": "repeated_conclusion",
+      "positive": {
+        "text": "The cache stores each digest. To conclude, the cache stores each digest.",
+        "evidence": ["To conclude, the cache stores each digest."]
+      },
+      "clean": "The cache stores each digest.",
+      "quoted": "The example repeats \"To conclude, the cache stores each digest.\" as a sample.",
+      "near_miss": "To conclude, the parser rejects empty input."
+    },
+    {
+      "rule_id": "vague_attribution",
+      "positive": {
+        "text": "Research shows that local checks reduce wait time.",
+        "evidence": ["Research shows"]
+      },
+      "clean": "Local checks reduce wait time.",
+      "quoted": "The slide claimed \"Research shows that local checks reduce wait time.\"",
+      "near_miss": "The research paper shows the wait time fell."
+    },
+    {
+      "rule_id": "redundant_qualifier",
+      "positive": {
+        "text": "The crews worked in close proximity during the drill.",
+        "evidence": ["close proximity"]
+      },
+      "clean": "The crews worked in the same room during the drill.",
+      "quoted": "The manual defines \"close proximity\" as less than one meter.",
+      "near_miss": "The crews worked in proximity during the drill."
+    },
+    {
+      "rule_id": "excessive_exclamation",
+      "positive": {
+        "text": "Ship the patch!!! The window closes Friday.",
+        "evidence": ["!!!"]
+      },
+      "clean": "Ship the patch. The window closes Friday.",
+      "quoted": "The ticket ends with \"Ship the patch!!!\" and a date.",
+      "near_miss": "Ship the patch! The window closes Friday."
+    },
+    {
+      "rule_id": "excessive_dash_density",
+      "positive": {
+        "text": "The plan -- which is final -- starts Monday -- without delay.",
+        "evidence": [" -- ", " -- ", " -- "]
+      },
+      "clean": "The final plan starts Monday without delay.",
+      "quoted": "The style sheet shows \" -- \" \" -- \" \" -- \" as examples.",
+      "near_miss": "The plan -- which is final -- starts Monday."
+    },
+    {
+      "rule_id": "excessive_emoji_density",
+      "positive": {
+        "text": "Status \uD83D\uDE00 \uD83D\uDCA1 \u2705 after the run.",
+        "evidence": ["\uD83D\uDE00", "\uD83D\uDCA1", "\u2705"]
+      },
+      "clean": "Status after the run.",
+      "quoted": "The log stores \"\uD83D\uDE00 \uD83D\uDCA1 \u2705\" as samples.",
+      "near_miss": "Status \uD83D\uDE00 \u2705 after the run."
+    }
+  ]
+}

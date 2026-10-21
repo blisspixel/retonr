@@ -54,6 +54,19 @@ fn document_with_findings_detects_patterns() {
         ))
         .stdout(predicate::str::contains("\"findings_count\": 2"))
         .stdout(predicate::str::contains("conversational_residue"))
+        .stdout(predicate::str::contains("prefabricated_scene_setting"))
+        .stdout(predicate::str::contains("\"span\""))
+        .stdout(predicate::str::contains("\"line\": 1"));
+
+    Command::cargo_bin("retonr")
+        .expect("compiled retonr binary")
+        .args(["--format", "text", "lint"])
+        .arg(&file)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "line 1 col 1: [conversational_residue] 'Certainly!'",
+        ))
         .stdout(predicate::str::contains("prefabricated_scene_setting"));
 
     Command::cargo_bin("retonr")

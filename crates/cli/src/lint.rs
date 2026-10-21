@@ -173,6 +173,20 @@ fn is_standard_stream(path: &Path) -> bool {
     path.as_os_str() == STANDARD_STREAM_PATH
 }
 
+pub(super) fn format_finding_line(finding: &EditorialFinding) -> String {
+    let location = finding
+        .span
+        .map(|span| format!("line {} col {}: ", span.line, span.column))
+        .unwrap_or_default();
+    format!(
+        "  - {location}[{}] '{}' (occurrence {}): {}",
+        finding.rule_id,
+        crate::render::escape_inline_for_display(&finding.evidence),
+        finding.occurrence,
+        finding.message
+    )
+}
+
 fn write_single_report(report: &DocumentLintReport, format: ReportFormat) -> io::Result<()> {
     let bytes = match format {
         ReportFormat::Json => {
@@ -189,14 +203,7 @@ fn write_single_report(report: &DocumentLintReport, format: ReportFormat) -> io:
             let _ = writeln!(text, "status: {}", report.status);
             let _ = writeln!(text, "findings: {}", report.findings_count);
             for finding in &report.findings {
-                let _ = writeln!(
-                    text,
-                    "  - [{}] '{}' (occurrence {}): {}",
-                    finding.rule_id,
-                    crate::render::escape_inline_for_display(&finding.evidence),
-                    finding.occurrence,
-                    finding.message
-                );
+                let _ = writeln!(text, "{}", format_finding_line(finding));
             }
             text.into_bytes()
         }
@@ -234,14 +241,7 @@ fn write_comparative_report(
             if !report.comparison.introduced_findings.is_empty() {
                 let _ = writeln!(text, "introduced_findings:");
                 for finding in &report.comparison.introduced_findings {
-                    let _ = writeln!(
-                        text,
-                        "  - [{}] '{}' (occurrence {}): {}",
-                        finding.rule_id,
-                        crate::render::escape_inline_for_display(&finding.evidence),
-                        finding.occurrence,
-                        finding.message
-                    );
+                    let _ = writeln!(text, "{}", format_finding_line(finding));
                 }
             }
             text.into_bytes()
@@ -250,4 +250,33 @@ fn write_comparative_report(
     let mut stdout = io::stdout().lock();
     stdout.write_all(&bytes)?;
     stdout.flush()
+}
+
+#[cfg(test)]
+mod tests {
+    use rewrite_types::{EditorialFinding, FindingSpan};
+
+    use super::format_finding_line;
+
+    #[test]
+    fn finding_line_names_the_phrase_location_and_escapes_evidence() {
+        let mut finding = EditorialFinding::new(
+            "conversational_residue",
+            "Sure\nthing",
+            0,
+            "Conversational residue opening",
+        );
+        finding.span = Some(FindingSpan {
+            start: 0,
+            end: 9,
+            line: 2,
+            column: 4,
+        });
+        let line = format_finding_line(&finding);
+        assert_eq!(
+            line,
+            "  - line 2 col 4: [conversational_residue] 'Sure\\nthing' (occurrence 0): Conversational residue opening"
+        );
+        assert!(!line.contains('\n'));
+    }
 }

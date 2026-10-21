@@ -42,6 +42,49 @@ Deterministic findings are labeled deterministic. Learned findings disclose the
 exact artifact and calibrated scope. Model self-assessment is not presented as
 confidence.
 
+## Shipped report
+
+A lint finding reports `rule_id` (the family), the matched phrase as `evidence`,
+the zero-based `occurrence` of that phrase, a short `message`, and a `span`.
+The span is the phrase: byte `start` and `end`, plus the one-based line and
+byte column of `start`. Text output prints `line N col M` and escapes the
+evidence. JSON includes `rule_id` and `span`.
+
+Comparison identity stays `rule_id`, `evidence`, and `occurrence`. The span
+locates the phrase.
+
+Patterns that started as one corpus sentence also match a bounded variant.
+The original sentence still produces its original evidence. A variant does not
+add a second finding on that same span.
+
+Dash density counts U+2014, U+2013, and the spaced hyphen pair ` -- `. Emoji
+density counts a bounded set of pictograph blocks plus U+2705. It does not
+count skin-tone modifiers, variation selectors, or joiners as separate marks,
+and it is not the Unicode emoji property. Stacked tricolons are two or more
+single-token lists of the form "word, word, and word". Contrastive reframes
+match "not just", "not merely", or "not only" followed within 80 characters by
+"; it is", ", but", or "; but".
+
+A document under 1,000 words uses an absolute floor: 3 for dashes and emoji,
+2 for stacked tricolons, and 1 for a contrastive reframe. A longer document
+also requires a per-1,000-word rate of 3 for dashes and emoji, and 2 for
+stacked tricolons and contrastive reframes. Counts below the floor stay quiet
+at every length. One tricolon, and one or two dashes or emoji, stay clean. A
+repeated conclusion
+matches when "in conclusion", "to conclude", or "in closing" repeats an earlier
+four-word sequence. The reported span is that conclusion sentence.
+
+`crates/eval/fixtures/lint_held_out.json` is independent of the development
+corpora. Every catalog family has a positive that is absent from those
+fixtures, plus a clean control, a quoted control, and a near miss. Held-out
+recall is 1 and the false-positive rate on those controls is 0. Those rates
+are evaluation checks. They are not an authorship score, a detector score, or
+an AI-likelihood.
+
+No catalog family is intentionally exact. Disabling one rule removes that
+rule's held-out positive and leaves the other positives in place. The lint
+command runs the full catalog.
+
 ## Initial rule families
 
 The initial lint catalog should cover:

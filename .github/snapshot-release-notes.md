@@ -7,6 +7,13 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 
 ## Changes in this snapshot
 
+- `retonr lint` findings include the family id and a phrase span. Text output
+  prints `line N col M` and escapes the evidence. Single-sentence families also
+  match bounded variants. Dashes (em dash, en dash, and ` -- `), a bounded emoji
+  set, stacked tricolons, and "not just/merely/only" formulas use a
+  short-document floor and a per-1,000-word rate. Emoji matching is that block
+  list, not the Unicode emoji property. An independent held-out set covers every
+  catalog family. Lint still makes no authorship or detector claim.
 - `retonr --help` states that Retonr is a local-first copy editor. It makes small,
   checked copy edits toward the writer's own style. It adds no watermark, tracking,
   or attribution, and it makes no claim about detectors, authorship, or disclosure.

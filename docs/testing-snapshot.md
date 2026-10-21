@@ -147,6 +147,11 @@ retonr lint drafts/ --recursive --fail-on-findings
 retonr lint source.txt --candidate candidate.txt --fail-on-findings
 ```
 
+Text output names `line N col M` for each finding and escapes the matched phrase.
+JSON includes the family id and that phrase span. A clean result is not an
+authorship or detector result. Dashes, emoji, stacked tricolons, and contrastive
+formulas are density checks: a few in a long document stay quiet.
+
 Folder reports sort documents by portable relative path and include skipped-entry
 reasons. Recursion is explicit; hidden entries, build directories, links, and
 unsupported encodings are skipped. The walk visits at most 4,096 entries through

@@ -36,7 +36,7 @@ pub use extractor::{
     EXTRACTOR_MANIFEST_SCHEMA_VERSION, ExtractorManifest, ExtractorManifestError,
     MAX_EXTRACTOR_MANIFEST_JSON_BYTES,
 };
-pub use lint::{EditorialComparison, EditorialFinding};
+pub use lint::{EditorialComparison, EditorialFinding, FindingSpan};
 pub use profile::{
     BRAND_CONSTRAINT_PROFILE_SCHEMA_VERSION, BrandConstraintProfile, CopyRules, DirectnessLevel,
     EDITORIAL_BRIEF_SCHEMA_VERSION, EditorialBrief, FormalityLevel,

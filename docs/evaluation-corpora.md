@@ -41,6 +41,10 @@ repository license:
   canned notability blurbs, leftover template placeholders, scientific-register
   padding, roast asides, decorative bold header lists, leftover role disclaimers,
   and empty it-depends scaffolds) with one paired clean control per rule.
+- `lint_held_out.json` is the independent lint set. Each shipped catalog family
+  has one positive absent from the development fixtures, plus a clean control,
+  a quoted control, and a near miss. Its recall and false-positive rate are
+  evaluation checks, not an authorship score.
 
 Every group pairs each targeted rule with a clean control, and a single test enforces
 that invariant for all five. Longer labeled impressions and licensed pre-2000

@@ -4,8 +4,6 @@ use std::ops::Range;
 
 use super::collector::FindingCollector;
 
-use rewrite_types::EditorialFinding;
-
 use super::rules::{RuleCatalog, add_finding, is_inside_quotes};
 
 pub(crate) fn check_conversational_residue(
@@ -63,6 +61,7 @@ pub(crate) fn check_throat_clearing(
             "Non-substantive throat-clearing preamble",
         );
     }
+    super::patterns::throat_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_canned_transition(
@@ -83,6 +82,7 @@ pub(crate) fn check_canned_transition(
             "Canned conversational transition",
         );
     }
+    super::patterns::canned_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_repeated_conclusion(
@@ -90,19 +90,7 @@ pub(crate) fn check_repeated_conclusion(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    let pattern = "In conclusion, the tool preserves the source file.";
-    if let Some(pos) = text.find(pattern)
-        && !is_inside_quotes(pos, pos + pattern.len(), quotes)
-    {
-        add_finding(
-            findings,
-            text,
-            RuleCatalog::RepeatedConclusion,
-            pattern,
-            pos,
-            "Verbatim repetition of an earlier statement as a conclusion",
-        );
-    }
+    super::conclusion::repeated_conclusions(text, quotes, findings);
 }
 
 pub(crate) fn check_vague_attribution(
@@ -123,6 +111,7 @@ pub(crate) fn check_vague_attribution(
             "Vague or unreferenced attribution formula",
         );
     }
+    super::patterns::attribution_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_redundant_qualifier(
@@ -144,6 +133,7 @@ pub(crate) fn check_redundant_qualifier(
             "Redundant modifying qualifier",
         );
     }
+    super::patterns::qualifier_variants(text, quotes, findings);
 }
 
 fn is_definitional_context(text: &str, start: usize, end: usize) -> bool {
@@ -174,15 +164,7 @@ pub(crate) fn check_excessive_dash_density(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    repeated_findings(
-        text,
-        quotes,
-        findings,
-        RuleCatalog::ExcessiveDashDensity,
-        "\u{2014}",
-        3,
-        "Excessive em-dash density",
-    );
+    super::density::dash_density(text, quotes, findings);
 }
 
 pub(crate) fn check_excessive_emoji_density(
@@ -190,15 +172,7 @@ pub(crate) fn check_excessive_emoji_density(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    repeated_findings(
-        text,
-        quotes,
-        findings,
-        RuleCatalog::ExcessiveEmojiDensity,
-        "\u{2705}",
-        3,
-        "Excessive emoji density",
-    );
+    super::density::emoji_density(text, quotes, findings);
 }
 
 fn repeated_findings(
@@ -217,12 +191,13 @@ fn repeated_findings(
             continue;
         }
         eligible += 1;
-        let finding = EditorialFinding::new(
+        let mut finding = rewrite_types::EditorialFinding::new(
             rule.id(),
             evidence,
             u16::try_from(occurrence).unwrap_or(u16::MAX),
             message,
         );
+        finding.span = findings.locate(text, start, start.saturating_add(evidence.len()));
         if eligible < minimum {
             pending.push(finding);
         } else {

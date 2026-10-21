@@ -4,8 +4,6 @@ use std::ops::Range;
 
 use super::collector::FindingCollector;
 
-use rewrite_types::EditorialFinding;
-
 use super::rules::{RuleCatalog, add_finding, is_inside_quotes};
 
 pub(crate) fn check_prefabricated_scene_setting(
@@ -26,6 +24,7 @@ pub(crate) fn check_prefabricated_scene_setting(
             "Prefabricated introductory scene-setting cliche",
         );
     }
+    super::patterns::scene_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_contrastive_reframe(
@@ -46,6 +45,7 @@ pub(crate) fn check_contrastive_reframe(
             "Artificial contrastive reframing",
         );
     }
+    super::patterns::contrastive_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_stacked_tricolon(
@@ -66,6 +66,7 @@ pub(crate) fn check_stacked_tricolon(
             "Stacked tricolons and parallel list accumulation",
         );
     }
+    super::patterns::tricolon_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_promotional_puffery(
@@ -86,6 +87,7 @@ pub(crate) fn check_promotional_puffery(
             "Promotional puffery and unsubstantiated superlatives",
         );
     }
+    super::patterns::puffery_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_ornamental_abstraction(
@@ -106,6 +108,7 @@ pub(crate) fn check_ornamental_abstraction(
             "Ornamental metaphorical abstraction",
         );
     }
+    super::patterns::ornamental_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_reader_segmentation(
@@ -126,6 +129,7 @@ pub(crate) fn check_reader_segmentation(
             "Formulaic reader segmentation cliche",
         );
     }
+    super::patterns::reader_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_performative_question_answer(
@@ -146,6 +150,7 @@ pub(crate) fn check_performative_question_answer(
             "Performative rhetorical question-and-answer pair",
         );
     }
+    super::patterns::question_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_empty_significance(
@@ -166,6 +171,7 @@ pub(crate) fn check_empty_significance(
             "Empty claim of historic significance",
         );
     }
+    super::patterns::significance_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_summary_pileup(
@@ -192,13 +198,16 @@ pub(crate) fn check_summary_pileup(
     }
     if matches.len() >= 3 {
         matches.sort_by_key(|&(pos, _, _)| pos);
-        for (_, marker, occurrence) in matches {
-            findings.push(EditorialFinding::new(
-                RuleCatalog::SummaryPileup.id(),
+        for (position, marker, occurrence) in matches {
+            super::rules::push_finding(
+                findings,
+                text,
+                RuleCatalog::SummaryPileup,
                 marker,
+                position,
                 occurrence,
                 "Excessive density of summary markers",
-            ));
+            );
         }
     }
 }
@@ -221,6 +230,7 @@ pub(crate) fn check_generic_positive_close(
             "Ungrounded generic optimistic ending",
         );
     }
+    super::patterns::close_variants(text, quotes, findings);
 }
 
 pub(crate) fn check_transition_pileup(
@@ -247,13 +257,16 @@ pub(crate) fn check_transition_pileup(
     }
     if matches.len() >= 3 {
         matches.sort_by_key(|&(pos, _, _)| pos);
-        for (_, marker, occurrence) in matches {
-            findings.push(EditorialFinding::new(
-                RuleCatalog::TransitionPileup.id(),
+        for (position, marker, occurrence) in matches {
+            super::rules::push_finding(
+                findings,
+                text,
+                RuleCatalog::TransitionPileup,
                 marker,
+                position,
                 occurrence,
                 "Pile-up of sentence-initial transitional adverbs",
-            ));
+            );
         }
     }
 }
@@ -276,4 +289,5 @@ pub(crate) fn check_performative_collaboration(
             "Performative invitation to embark on a journey",
         );
     }
+    super::patterns::collaboration_variants(text, quotes, findings);
 }

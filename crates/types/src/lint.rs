@@ -5,7 +5,29 @@ use std::collections::BTreeMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Half-open location of the matched phrase.
+///
+/// `start` and `end` are byte offsets. `line` and `column` locate `start`.
+/// The column counts bytes in the line. The span is the phrase a later edit
+/// can change. It is not a sentence copy and it is not an authorship signal.
+#[derive(Clone, Copy, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FindingSpan {
+    /// Inclusive byte offset of the matched phrase.
+    pub start: u32,
+    /// Exclusive byte offset of the matched phrase.
+    pub end: u32,
+    /// One-based line of `start`.
+    pub line: u32,
+    /// One-based byte column of `start`.
+    pub column: u32,
+}
+
 /// Diagnostic finding identified by deterministic editorial rules.
+///
+/// `rule_id` is the family identifier. Comparison identity is `rule_id`,
+/// `evidence`, and `occurrence`. The span locates the phrase and is not part
+/// of that identity.
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 pub struct EditorialFinding {
     /// Identifier of the violated rule.
@@ -17,6 +39,9 @@ pub struct EditorialFinding {
     pub occurrence: u16,
     /// Human-readable explanation of why this pattern is flagged.
     pub message: String,
+    /// Phrase location. Absent when a caller built the finding without one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub span: Option<FindingSpan>,
 }
 
 impl EditorialFinding {
@@ -33,6 +58,7 @@ impl EditorialFinding {
             evidence: evidence.into(),
             occurrence,
             message: message.into(),
+            span: None,
         }
     }
 }
@@ -148,6 +174,27 @@ mod tests {
         let serialized = serde_json::to_string(&finding).expect("serialize");
         let deserialized: EditorialFinding =
             serde_json::from_str(&serialized).expect("deserialize");
+        assert_eq!(finding, deserialized);
+        assert!(deserialized.span.is_none());
+    }
+
+    #[test]
+    fn finding_span_round_trips_and_old_json_defaults_to_none() {
+        let legacy = r#"{"rule_id":"r","evidence":"e","occurrence":0,"message":"m"}"#;
+        let restored: EditorialFinding = serde_json::from_str(legacy).expect("legacy finding");
+        assert!(restored.span.is_none());
+
+        let mut finding = EditorialFinding::new("r", "e", 0, "m");
+        finding.span = Some(FindingSpan {
+            start: 4,
+            end: 5,
+            line: 2,
+            column: 3,
+        });
+        let serialized = serde_json::to_string(&finding).expect("serialize span");
+        assert!(serialized.contains("\"start\":4"));
+        let deserialized: EditorialFinding =
+            serde_json::from_str(&serialized).expect("deserialize span");
         assert_eq!(finding, deserialized);
     }
 

@@ -50,7 +50,7 @@ pub enum RuleCatalog {
     RedundantQualifier,
     /// Excessive exclamation marks.
     ExcessiveExclamation,
-    /// Excessive em-dash punctuation density.
+    /// Excessive dash punctuation density.
     ExcessiveDashDensity,
     /// Excessive emoji density.
     ExcessiveEmojiDensity,
@@ -84,50 +84,140 @@ impl RuleCatalog {
             Self::ExcessiveEmojiDensity => "excessive_emoji_density",
         }
     }
+
+    /// Every catalog family, in matcher order.
+    pub const ALL: [Self; 21] = [
+        Self::PrefabricatedSceneSetting,
+        Self::ContrastiveReframe,
+        Self::StackedTricolon,
+        Self::PromotionalPuffery,
+        Self::OrnamentalAbstraction,
+        Self::ReaderSegmentation,
+        Self::PerformativeQuestionAnswer,
+        Self::EmptySignificance,
+        Self::SummaryPileup,
+        Self::GenericPositiveClose,
+        Self::TransitionPileup,
+        Self::PerformativeCollaboration,
+        Self::ConversationalResidue,
+        Self::ThroatClearing,
+        Self::CannedTransition,
+        Self::RepeatedConclusion,
+        Self::VagueAttribution,
+        Self::RedundantQualifier,
+        Self::ExcessiveExclamation,
+        Self::ExcessiveDashDensity,
+        Self::ExcessiveEmojiDensity,
+    ];
 }
 
 /// Applies all rule checks against input text.
 #[must_use]
 pub fn apply_all_rules(text: &str) -> Vec<EditorialFinding> {
-    collect_rules(text, usize::MAX).into_findings()
+    collect_rules(text, usize::MAX, None).into_findings()
+}
+
+pub(super) fn apply_rules_except(text: &str, excluded: RuleCatalog) -> Vec<EditorialFinding> {
+    collect_rules(text, usize::MAX, Some(excluded)).into_findings()
 }
 
 pub(super) fn apply_bounded_rules(
     text: &str,
     maximum: usize,
 ) -> Result<Vec<EditorialFinding>, super::FindingLimitExceeded> {
-    collect_rules(text, maximum).finish()
+    collect_rules(text, maximum, None).finish()
 }
 
-fn collect_rules(text: &str, maximum: usize) -> FindingCollector {
+fn collect_rules(text: &str, maximum: usize, excluded: Option<RuleCatalog>) -> FindingCollector {
     let quotes = quoted_spans(text);
-    let mut findings = FindingCollector::new(maximum);
-
-    slop_rules::check_prefabricated_scene_setting(text, &quotes, &mut findings);
-    slop_rules::check_contrastive_reframe(text, &quotes, &mut findings);
-    slop_rules::check_stacked_tricolon(text, &quotes, &mut findings);
-    slop_rules::check_promotional_puffery(text, &quotes, &mut findings);
-    slop_rules::check_ornamental_abstraction(text, &quotes, &mut findings);
-    slop_rules::check_reader_segmentation(text, &quotes, &mut findings);
-    slop_rules::check_performative_question_answer(text, &quotes, &mut findings);
-    slop_rules::check_empty_significance(text, &quotes, &mut findings);
-    slop_rules::check_summary_pileup(text, &quotes, &mut findings);
-    slop_rules::check_generic_positive_close(text, &quotes, &mut findings);
-    slop_rules::check_transition_pileup(text, &quotes, &mut findings);
-    slop_rules::check_performative_collaboration(text, &quotes, &mut findings);
-
-    style_rules::check_conversational_residue(text, &quotes, &mut findings);
-    style_rules::check_throat_clearing(text, &quotes, &mut findings);
-    super::residue::check_folded_residue(text, &quotes, &mut findings);
-    style_rules::check_canned_transition(text, &quotes, &mut findings);
-    style_rules::check_repeated_conclusion(text, &quotes, &mut findings);
-    style_rules::check_vague_attribution(text, &quotes, &mut findings);
-    style_rules::check_redundant_qualifier(text, &quotes, &mut findings);
-    style_rules::check_excessive_exclamation(text, &quotes, &mut findings);
-    style_rules::check_excessive_dash_density(text, &quotes, &mut findings);
-    style_rules::check_excessive_emoji_density(text, &quotes, &mut findings);
-
+    let mut findings = FindingCollector::new(text, maximum);
+    collect_slop(text, &quotes, &mut findings, excluded);
+    collect_style(text, &quotes, &mut findings, excluded);
     findings
+}
+
+fn enabled(excluded: Option<RuleCatalog>, rule: RuleCatalog) -> bool {
+    excluded != Some(rule)
+}
+
+fn collect_slop(
+    text: &str,
+    quotes: &[Range<usize>],
+    findings: &mut FindingCollector,
+    excluded: Option<RuleCatalog>,
+) {
+    if enabled(excluded, RuleCatalog::PrefabricatedSceneSetting) {
+        slop_rules::check_prefabricated_scene_setting(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::ContrastiveReframe) {
+        slop_rules::check_contrastive_reframe(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::StackedTricolon) {
+        slop_rules::check_stacked_tricolon(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::PromotionalPuffery) {
+        slop_rules::check_promotional_puffery(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::OrnamentalAbstraction) {
+        slop_rules::check_ornamental_abstraction(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::ReaderSegmentation) {
+        slop_rules::check_reader_segmentation(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::PerformativeQuestionAnswer) {
+        slop_rules::check_performative_question_answer(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::EmptySignificance) {
+        slop_rules::check_empty_significance(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::SummaryPileup) {
+        slop_rules::check_summary_pileup(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::GenericPositiveClose) {
+        slop_rules::check_generic_positive_close(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::TransitionPileup) {
+        slop_rules::check_transition_pileup(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::PerformativeCollaboration) {
+        slop_rules::check_performative_collaboration(text, quotes, findings);
+    }
+}
+
+fn collect_style(
+    text: &str,
+    quotes: &[Range<usize>],
+    findings: &mut FindingCollector,
+    excluded: Option<RuleCatalog>,
+) {
+    if enabled(excluded, RuleCatalog::ConversationalResidue) {
+        style_rules::check_conversational_residue(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::ThroatClearing) {
+        style_rules::check_throat_clearing(text, quotes, findings);
+    }
+    super::residue::check_folded_residue(text, quotes, findings, excluded);
+    if enabled(excluded, RuleCatalog::CannedTransition) {
+        style_rules::check_canned_transition(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::RepeatedConclusion) {
+        style_rules::check_repeated_conclusion(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::VagueAttribution) {
+        style_rules::check_vague_attribution(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::RedundantQualifier) {
+        style_rules::check_redundant_qualifier(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::ExcessiveExclamation) {
+        style_rules::check_excessive_exclamation(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::ExcessiveDashDensity) {
+        style_rules::check_excessive_dash_density(text, quotes, findings);
+    }
+    if enabled(excluded, RuleCatalog::ExcessiveEmojiDensity) {
+        style_rules::check_excessive_emoji_density(text, quotes, findings);
+    }
 }
 
 pub(crate) fn quoted_spans(text: &str) -> Vec<Range<usize>> {
@@ -172,12 +262,33 @@ pub(crate) fn add_finding(
     message: &str,
 ) {
     let occurrence = count_previous_occurrences(text, evidence, match_start);
-    findings.push(EditorialFinding::new(
-        rule.id(),
+    push_finding(
+        findings,
+        text,
+        rule,
         evidence,
+        match_start,
         occurrence,
         message,
-    ));
+    );
+}
+
+pub(crate) fn push_finding(
+    findings: &mut FindingCollector,
+    text: &str,
+    rule: RuleCatalog,
+    evidence: &str,
+    match_start: usize,
+    occurrence: u16,
+    message: &str,
+) {
+    let mut finding = EditorialFinding::new(rule.id(), evidence, occurrence, message);
+    finding.span = findings.locate(
+        text,
+        match_start,
+        match_start.saturating_add(evidence.len()),
+    );
+    findings.push(finding);
 }
 
 fn count_previous_occurrences(text: &str, evidence: &str, match_start: usize) -> u16 {

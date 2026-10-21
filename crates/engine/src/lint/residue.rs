@@ -26,12 +26,22 @@ pub(crate) fn check_folded_residue(
     text: &str,
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
+    excluded: Option<RuleCatalog>,
 ) {
-    let covered = exact_covers(text, quotes);
+    let base = exact_covers(text, quotes);
     for pattern in folded_patterns() {
+        if excluded == Some(pattern.rule) {
+            continue;
+        }
+        let mut covered = base.clone();
+        covered.extend(findings.ranges_for(pattern.rule.id()));
         scan_pattern(text, quotes, &covered, findings, pattern);
     }
-    scan_todays_world(text, quotes, &covered, findings);
+    if excluded != Some(RuleCatalog::PrefabricatedSceneSetting) {
+        let mut covered = base;
+        covered.extend(findings.ranges_for(RuleCatalog::PrefabricatedSceneSetting.id()));
+        scan_todays_world(text, quotes, &covered, findings);
+    }
 }
 
 fn folded_patterns() -> &'static [FoldedPattern] {
@@ -216,7 +226,7 @@ fn world_within(text: &str, from: usize) -> Option<usize> {
     None
 }
 
-fn char_limited_end(text: &str, from: usize, limit: usize) -> usize {
+pub(crate) fn char_limited_end(text: &str, from: usize, limit: usize) -> usize {
     let mut end = from;
     for (seen, character) in text[from..].chars().enumerate() {
         if seen == limit {
@@ -264,7 +274,7 @@ fn exact_covers(text: &str, quotes: &[Range<usize>]) -> Vec<(usize, usize)> {
     covered
 }
 
-fn match_folded(text: &str, start: usize, pattern: &str) -> Option<usize> {
+pub(crate) fn match_folded(text: &str, start: usize, pattern: &str) -> Option<usize> {
     let mut end = start;
     for expected in pattern.chars() {
         let character = text[end..].chars().next()?;
@@ -288,7 +298,7 @@ fn at_line_start(text: &str, index: usize) -> bool {
     text[line_start..index].chars().all(char::is_whitespace)
 }
 
-fn word_bounded(text: &str, start: usize, end: usize) -> bool {
+pub(crate) fn word_bounded(text: &str, start: usize, end: usize) -> bool {
     let before = text[..start].chars().next_back();
     let after = text[end..].chars().next();
     before.is_none_or(|character| !character.is_alphanumeric())
@@ -301,6 +311,6 @@ fn overlaps(start: usize, end: usize, covered: &[(usize, usize)]) -> bool {
         .any(|(covered_start, covered_end)| start < *covered_end && end > *covered_start)
 }
 
-fn next_char_len(text: &str, index: usize) -> usize {
+pub(crate) fn next_char_len(text: &str, index: usize) -> usize {
     text[index..].chars().next().map_or(1, char::len_utf8)
 }

@@ -41,6 +41,23 @@ fn marker_ordinals_count_quoted_matches_and_saturate_without_quadratic_rescannin
 }
 
 #[test]
+fn finding_span_follows_the_line_that_contains_the_evidence() {
+    let text = "caf\u{00e9}\nCertainly! The file stayed.\n";
+    let findings = lint_text(text);
+    let finding = findings
+        .iter()
+        .find(|item| item.evidence == "Certainly!")
+        .expect("residue");
+    let span = finding.span.expect("span");
+    assert_eq!((span.line, span.column), (2, 1));
+    let start = usize::try_from(span.start).expect("start");
+    let end = usize::try_from(span.end).expect("end");
+    assert_eq!(&text[start..end], "Certainly!");
+    let point = rewrite_types::TextPoint::from_byte_index(text, start).expect("point");
+    assert_eq!((span.line, span.column), (point.line, point.column));
+}
+
+#[test]
 fn clean_text_produces_no_findings() {
     let clean = "Retonr verifies each rewrite unit against structural and layout constraints.";
     assert!(lint_text(clean).is_empty());

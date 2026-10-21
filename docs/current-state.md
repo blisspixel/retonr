@@ -972,6 +972,16 @@ semantics, nor qualification.
   repeated prefix scans and checks quoted contexts through a sorted index.
   The engine uses deterministic finding counts in candidate ranking after hard
   fidelity gates. This behavior is not model or semantic qualification.
+  Each finding includes the family id and a phrase span (byte range, line, and
+  column). Text output prints the location and escapes the evidence. Families
+  that began as one sentence also match a bounded variant without a second
+  finding on the original sentence. Dashes (U+2014, U+2013, and ` -- `), a
+  bounded emoji set, stacked single-token tricolons, and contrastive "not
+  just/merely/only" formulas use a short-document floor and a per-1,000-word
+  rate. Emoji matching is that block list, not the Unicode emoji property.
+  `crates/eval/fixtures/lint_held_out.json` reports per-family recall and a
+  false-positive rate for an independent set. Those rates are not an
+  authorship or detector score.
   A separate writing-sample library holds licensed pre-2018
   human excerpts and synthetic model-style impressions. A research-only watermark file
   refuses style-as-mark folklore and does not contain generated marks.

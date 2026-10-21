@@ -3,6 +3,11 @@
 use rewrite_types::{EditorialComparison, EditorialFinding};
 
 mod collector;
+mod conclusion;
+mod density;
+#[cfg(test)]
+mod held_out;
+mod patterns;
 mod residue;
 mod rules;
 mod slop_rules;
@@ -34,6 +39,15 @@ pub fn lint_text_bounded(
 #[must_use]
 pub fn lint_text(text: &str) -> Vec<EditorialFinding> {
     rules::apply_all_rules(text)
+}
+
+/// Lints text with one catalog rule omitted.
+///
+/// Evaluation uses this to show that a fixture depends on that rule and that
+/// every other fixture still matches. The lint command runs the full catalog.
+#[must_use]
+pub fn lint_text_excluding(text: &str, excluded: RuleCatalog) -> Vec<EditorialFinding> {
+    rules::apply_rules_except(text, excluded)
 }
 
 /// Evaluates source and candidate text and computes comparative editorial findings.
