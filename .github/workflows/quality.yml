@@ -11,10 +11,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: quality-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   repository-policy:
     name: repository policy (${{ matrix.os }})
