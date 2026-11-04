@@ -14,6 +14,8 @@ use crate::{
     failure::RunFailure,
 };
 
+mod protection;
+
 const BACKUP_SUFFIX: &str = ".retonr-backup";
 const STAGING_SUFFIX: &str = ".retonr-staging";
 
@@ -157,8 +159,9 @@ pub(crate) fn commit(
     let staging_path = sibling(source, STAGING_SUFFIX, command)?;
     require_unoccupied_path(&backup_path, command)?;
     require_unoccupied_path(&staging_path, command)?;
-    write_exclusive(&backup_path, original, command)?;
-    write_exclusive(&staging_path, accepted, command)?;
+    let protection = protection::Protection::capture(source, command)?;
+    protection.write(&backup_path, original, command)?;
+    protection.write(&staging_path, accepted, command)?;
     let staged = crate::file_input::read_direct_unaliased_bounded(
         &staging_path,
         accepted.len().saturating_add(1),
@@ -167,7 +170,11 @@ pub(crate) fn commit(
     if staged != accepted {
         return Err(RunFailure::operational(command));
     }
+    protection.verify_source(source, command)?;
+    protection.verify_path(&backup_path, command)?;
+    protection.verify_path(&staging_path, command)?;
     install_verified(source, &staging_path, original, accepted, command)?;
+    protection.verify_path(source, command)?;
     let replaced =
         crate::file_input::read_direct_unaliased_bounded(source, accepted.len().saturating_add(1))
             .map_err(|_| RunFailure::operational(command))?;

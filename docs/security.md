@@ -237,7 +237,15 @@ Controls:
 - Resolve and inspect exact targets before in-place work.
 - Create the temporary file in the destination directory.
 - Flush and use a platform-tested replacement operation.
-- Preserve permissions intentionally.
+- Preserve permissions intentionally. Changed in-place commits currently support
+  Linux regular files with basic mode/owner/group metadata only. Backup and staging
+  files start with mode 0600 before content, then receive the captured source
+  mode and ownership, which are verified before replacement. Extended attributes
+  (including ACLs and security labels), inherited artifact ACLs, special permission
+  bits, and unsupported platforms are refused before document content is written.
+  Windows/macOS changed in-place commits remain unavailable until native access
+  metadata preservation is implemented and qualified. Identical-byte no-ops and
+  separately selected new output files retain their existing behavior.
 - Reject ambiguous symlink and case-collision situations.
 - Provide a recoverable backup policy.
 - Test Windows file locks and replacement behavior explicitly.

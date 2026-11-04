@@ -1,6 +1,111 @@
 use super::*;
 use tempfile::tempdir;
 
+#[cfg(target_os = "linux")]
+#[test]
+fn protected_artifacts_preserve_mode_and_reject_policy_drift() {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    let root = tempdir().expect("fixture");
+    let source = root.path().join("source");
+    let staging = root.path().join("staging");
+    fs::write(&source, b"secret").expect("source");
+    fs::set_permissions(&source, fs::Permissions::from_mode(0o600)).expect("private source");
+    let protection = protection::Protection::capture(&source, CommandName::Check).expect("capture");
+    protection
+        .write(&staging, b"changed", CommandName::Check)
+        .expect("protected write");
+    let before = fs::metadata(&source).expect("source metadata");
+    let after = fs::metadata(&staging).expect("staging metadata");
+    assert_eq!(
+        (after.mode() & 0o777, after.uid(), after.gid()),
+        (0o600, before.uid(), before.gid())
+    );
+    fs::set_permissions(&source, fs::Permissions::from_mode(0o640)).expect("policy drift");
+    assert!(
+        protection
+            .verify_source(&source, CommandName::Check)
+            .is_err()
+    );
+    assert_eq!(fs::read(&source).expect("source intact"), b"secret");
+    assert_eq!(
+        fs::metadata(&staging).expect("retained staging").mode() & 0o777,
+        0o600
+    );
+    fs::set_permissions(&staging, fs::Permissions::from_mode(0o644)).expect("staging drift");
+    assert!(
+        protection
+            .verify_path(&staging, CommandName::Check)
+            .is_err()
+    );
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn extended_metadata_refused_before_document_artifacts() {
+    use rustix::fs::{XattrFlags, fsetxattr};
+    let root = tempdir().expect("fixture");
+    let source = root.path().join("source");
+    fs::write(&source, b"secret").expect("source");
+    let file = fs::File::open(&source).expect("open source");
+    fsetxattr(
+        &file,
+        "user.retonr-test",
+        b"retained metadata",
+        XattrFlags::empty(),
+    )
+    .expect("fixture xattr");
+    assert!(commit(&source, b"secret", b"changed", CommandName::Check).is_err());
+    assert_eq!(fs::read(&source).expect("intact source"), b"secret");
+    assert!(!root.path().join("source.retonr-backup").exists());
+    assert!(!root.path().join("source.retonr-staging").exists());
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn inherited_acl_is_refused_before_writing_content() {
+    use rustix::fs::{XattrFlags, fsetxattr};
+    let root = tempdir().expect("fixture");
+    let source = root.path().join("source");
+    fs::write(&source, b"secret").expect("source");
+    let protection = protection::Protection::capture(&source, CommandName::Check).expect("capture");
+    let mut acl = 2_u32.to_le_bytes().to_vec();
+    for (tag, perms, id) in [
+        (1_u16, 7_u16, u32::MAX),
+        (2, 4, 65534),
+        (4, 0, u32::MAX),
+        (16, 4, u32::MAX),
+        (32, 0, u32::MAX),
+    ] {
+        acl.extend(tag.to_le_bytes());
+        acl.extend(perms.to_le_bytes());
+        acl.extend(id.to_le_bytes());
+    }
+    let dir = fs::File::open(root.path()).expect("directory");
+    fsetxattr(&dir, "system.posix_acl_default", &acl, XattrFlags::empty())
+        .expect("default ACL fixture");
+    let staging = root.path().join("staging");
+    assert!(
+        protection
+            .write(&staging, b"secret", CommandName::Check)
+            .is_err()
+    );
+    assert_eq!(fs::metadata(&staging).expect("empty artifact").len(), 0);
+    assert_eq!(fs::read(&source).expect("source intact"), b"secret");
+}
+
+#[cfg(not(target_os = "linux"))]
+#[test]
+fn unsupported_access_policy_refuses_changed_commit_without_artifacts() {
+    let root = tempdir().expect("fixture");
+    let source = root.path().join("source");
+    fs::write(&source, b"secret").expect("source");
+    let error =
+        commit(&source, b"secret", b"changed", CommandName::Check).expect_err("unsupported policy");
+    assert!(error.message.contains("access protection is unsupported"));
+    assert_eq!(fs::read(&source).expect("source intact"), b"secret");
+    assert_eq!(fs::read_dir(root.path()).expect("artifacts").count(), 1);
+}
+
 const fn flags(requested: bool, backup: bool) -> InPlaceFlags {
     InPlaceFlags { requested, backup }
 }
@@ -131,6 +236,7 @@ fn unchanged_commit_rejects_a_source_changed_after_validation() {
     assert!(!directory.path().join("draft.txt.retonr-staging").exists());
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn commit_retains_a_backup_and_replaces_the_source() {
     let directory = tempdir().expect("temporary directory");

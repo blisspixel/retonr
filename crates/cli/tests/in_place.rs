@@ -10,6 +10,61 @@ fn binary() -> Command {
     Command::cargo_bin("retonr").expect("built binary")
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn private_in_place_source_stays_private_under_permissive_umask() {
+    use std::os::unix::fs::PermissionsExt;
+    let root = tempdir().expect("fixture");
+    let source = root.path().join("draft.txt");
+    let candidate = root.path().join("candidate.txt");
+    fs::write(&source, b"Hello world\n").expect("source");
+    fs::write(&candidate, b"Hello, world!\n").expect("candidate");
+    fs::set_permissions(&source, fs::Permissions::from_mode(0o600)).expect("private source");
+    let output = std::process::Command::new("/bin/sh")
+        .args(["-c", "umask 022; exec \"$@\"", "permission-fixture"])
+        .arg(assert_cmd::cargo::cargo_bin("retonr"))
+        .args(["check", "--in-place"])
+        .arg(&source)
+        .arg(&candidate)
+        .output()
+        .expect("run fixture");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    for path in [&source, &root.path().join("draft.txt.retonr-backup")] {
+        assert_eq!(
+            fs::metadata(path)
+                .expect("private artifact")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+#[test]
+fn unsupported_platform_in_place_refuses_without_mutation() {
+    let root = tempdir().expect("fixture");
+    let source = root.path().join("draft.txt");
+    let candidate = root.path().join("candidate.txt");
+    fs::write(&source, b"Hello world\n").expect("source");
+    fs::write(&candidate, b"Hello, world!\n").expect("candidate");
+    binary()
+        .args(["check", "--in-place"])
+        .arg(&source)
+        .arg(&candidate)
+        .assert()
+        .code(2);
+    assert_eq!(fs::read(&source).expect("source intact"), b"Hello world\n");
+    assert!(!root.path().join("draft.txt.retonr-backup").exists());
+    assert!(!root.path().join("draft.txt.retonr-staging").exists());
+}
+
+#[cfg(target_os = "linux")]
 #[test]
 fn check_in_place_implies_backup() {
     let directory = tempdir().expect("temporary directory");
@@ -96,6 +151,7 @@ fn check_in_place_on_standard_input_is_usage() {
         .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn check_in_place_replaces_the_source_and_retains_a_sibling_backup() {
     let directory = tempdir().expect("temporary directory");
@@ -127,6 +183,7 @@ fn check_in_place_replaces_the_source_and_retains_a_sibling_backup() {
     assert!(!directory.path().join("draft.txt.retonr-staging").exists());
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn in_place_report_escapes_directionality_in_the_backup_name() {
     let directory = tempdir().expect("temporary directory");
