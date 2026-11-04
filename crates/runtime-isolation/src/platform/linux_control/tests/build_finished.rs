@@ -28,6 +28,37 @@ fn maximum_success() -> ControlledBuildOutput {
 }
 
 #[test]
+fn readable_final_frame_survives_sender_exit() {
+    let output = maximum_success();
+    let payload = encode_finished(&output).expect("encode finished output");
+    let (sender, receiver) = pair().expect("control pair");
+    send(
+        sender.as_fd(),
+        MessageKind::BuildFinished,
+        &payload,
+        &[],
+        deadline(),
+        None,
+    )
+    .expect("send final frame");
+    drop(sender);
+    // Force the poll path used when the receiver was waiting before the send.
+    super::super::wait(
+        receiver.as_fd(),
+        rustix::event::PollFlags::IN,
+        deadline(),
+        None,
+    )
+    .expect("readable final frame despite peer hangup");
+    let frame = receive(receiver.as_fd(), deadline(), None).expect("receive final frame");
+    assert_eq!(decode_finished(&frame.payload), Some(output));
+    assert!(matches!(
+        receive(receiver.as_fd(), deadline(), None),
+        Err(ControlError::Closed)
+    ));
+}
+
+#[test]
 fn finished_build_transports_both_maximum_streams_and_verified_tree() {
     let output = maximum_success();
     let payload = encode_finished(&output).expect("encode finished output");
@@ -41,6 +72,35 @@ fn finished_build_transports_both_maximum_streams_and_verified_tree() {
         assert_eq!(frame.payload, payload);
         assert_eq!(decode_finished(&frame.payload), Some(output.clone()));
     }
+}
+
+#[test]
+fn peer_exit_does_not_make_malformed_frames_or_writes_valid() {
+    let (sender, receiver) = pair().expect("control pair");
+    let frame = exact_header(255, 0, 0);
+    rustix::net::send(sender.as_fd(), &frame, rustix::net::SendFlags::empty())
+        .expect("send malformed final frame");
+    drop(sender);
+    super::super::wait(
+        receiver.as_fd(),
+        rustix::event::PollFlags::IN,
+        deadline(),
+        None,
+    )
+    .expect("readable malformed frame remains available for validation");
+    assert!(matches!(
+        receive(receiver.as_fd(), deadline(), None),
+        Err(ControlError::Invalid)
+    ));
+    assert_eq!(
+        super::super::wait(
+            receiver.as_fd(),
+            rustix::event::PollFlags::OUT,
+            deadline(),
+            None
+        ),
+        Err(ControlError::Closed)
+    );
 }
 
 #[test]

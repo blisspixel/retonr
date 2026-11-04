@@ -322,7 +322,13 @@ fn wait(
         }
         Ok(_) => {
             let returned = descriptors[0].revents();
-            if returned.intersects(PollFlags::ERR | PollFlags::HUP | PollFlags::NVAL) {
+            if returned.intersects(PollFlags::ERR | PollFlags::NVAL) {
+                Err(ControlError::Closed)
+            } else if events == PollFlags::IN && returned.contains(PollFlags::IN) {
+                // A peer can send its final frame and close before poll returns.
+                // Drain readable data through recvmsg before treating HUP as EOF.
+                Ok(())
+            } else if returned.contains(PollFlags::HUP) {
                 Err(ControlError::Closed)
             } else if returned.contains(events) {
                 Ok(())
