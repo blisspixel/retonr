@@ -11,10 +11,14 @@ use std::{
 };
 
 /// Supported source policy, captured before creating document-bearing files.
+#[cfg(target_os = "linux")]
 pub(super) struct Protection {
-    #[cfg(target_os = "linux")]
     metadata: std::fs::Metadata,
 }
+
+// Unsupported platforms cannot produce a protection capability.
+#[cfg(not(target_os = "linux"))]
+pub(super) enum Protection {}
 
 fn unsupported(command: CommandName) -> RunFailure {
     usage(
@@ -83,8 +87,8 @@ impl Protection {
         }
         #[cfg(not(target_os = "linux"))]
         {
-            let _ = (path, bytes);
-            Err(unsupported(command))
+            let _ = (path, bytes, command);
+            match *self {}
         }
     }
 
@@ -106,8 +110,8 @@ impl Protection {
         }
         #[cfg(not(target_os = "linux"))]
         {
-            let _ = path;
-            Err(unsupported(command))
+            let _ = (path, command);
+            match *self {}
         }
     }
 
@@ -134,8 +138,8 @@ impl Protection {
         }
         #[cfg(not(target_os = "linux"))]
         {
-            let _ = file;
-            Err(unsupported(command))
+            let _ = (file, command);
+            match *self {}
         }
     }
 }
