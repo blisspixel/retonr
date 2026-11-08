@@ -37,7 +37,8 @@ default. A budget on the fraction of text changed is not implemented.
 More natural wording may also make edited text read as less machine-like. That is a
 welcome side effect of better editing, not a roadmap objective. No milestone targets
 detector results or watermark removal, and the standing rules against detector
-optimization below apply to every phase.
+optimization below apply to every phase. A light-touch edit is not designed to, and
+is not claimed to, remove a provider mark, and Retonr does not test for one.
 
 ## Order of operations
 
@@ -63,6 +64,42 @@ This order encodes five deliberate choices:
    extension alone.
 5. The native desktop application consumes proven contracts and contains no second
    implementation of the product.
+
+## Execution waves
+
+This is the operating order for the remaining product. It is a dependency order.
+It contains no duration estimates and no calendar. A wave starts after the waves
+it depends on. Model-free waves may land while the Linux runtime evidence attempt
+continues. None of those waves completes a qualified rewrite, and none of them
+claims that one exists.
+
+| Wave | Depends on | Work | Done when |
+| --- | --- | --- | --- |
+| 0. Claims and ledger | None | Record reviewed provider-marking changes. Say, next to the edit levels, that a light-touch edit is not mark removal | The ledger matches the reviewed primary sources, and the edit-level and inspect notices say Retonr does not remove or test for a provider mark |
+| 1. Lint ordinals | The generalized lint families | Keep phrase and window evidence ordinals exact without rescanning the preceding input for every hit. Stop later emission after the finding cap is known | Dense repeated prose stays linear in ordinal work, and a cap of one stops further emission |
+| 2. Edit measurement | The model-free `check` report | Report the share of text changed. An optional change budget can abstain. A first in-memory style distance has no acceptance authority | Fixtures cover a small change and a larger one. Style distance cannot accept or rank a candidate |
+| 3. CLI voice | Model-free `check` and `lint` reports | Usage errors name the problem. Reports lead with the verdict. A one-line fidelity receipt states what was preserved | Text and JSON reports agree, and help leads with working examples |
+| 4. TUI review | Wave 3 verdict language and the experimental read-only TUI | Show the same located, wrapped verdict in the terminal workbench | The TUI and CLI agree on shared fixtures, and Escape closes help |
+| 5. Link hygiene | A report that can name a located finding | Report tracking parameters. Remove a documented referral tag only when the user asks | Unasked checks leave the link bytes unchanged |
+| 6. Edit receipt | Wave 2 change share | Opt-in local receipt for a `check` the user keeps | The receipt records the local transformation. It is not an authorship certificate |
+| 7. Policy and housekeeping | Wave 0 claim text | Provenance-policy notes for the reviewed US items, and session rules that look for unfinished work | The policy states the legal boundary without turning it into a product promise |
+| 8. Toolchain | None. Land it before a retained runtime build if the pin will change | Move to the newest maintained stable Rust that passes the quality gates, and fix the new findings | The pin, lockfile, and clean lint are on main. A later runtime build uses that pin |
+| 9. Runtime mark disclosure | The `doctor` surface, before any path is called qualified | Show `unresolved` when marking assurance is missing. Do not treat a missing assurance record as unmarked | Every current path stays unresolved until a reviewed record says otherwise |
+| 10. Qualified plain-text rewrite | Waves 0 and 9 for honest claims. Wave 8 when the pin changes first | The build-queue evidence below: fresh runtime build, reviewed observations, terminal qualification, one exact Linux pair, and the CLI offline repeat | A clean install rewrites one real UTF-8 document and repeats offline. No earlier wave is a substitute |
+| 11. Polished CLI beta | Wave 10, and waves 2 through 6 | Files, folders, budgets, progress, cancellation, safe output, recovery, and the same fixtures on supported platforms | The generation workflow is documented and recoverable without a second engine |
+| 12. Profiles and terminal workbench | Wave 11 | Finish 0.3 profiles, interviews, and the interactive workbench. Then paste plain text, run the light pass, and copy the accepted result | Profile gain is measured without a fidelity regression. Paste uses the qualified operation |
+| 13. Bounded Markdown | The plain-text fidelity gates | Graduate one Markdown capability at a time under 0.4 | Advertised fixtures preserve structure and non-target bytes |
+| 14. Quality and runtime breadth | One qualified path | 0.5 calibration, a second runtime, and the fuller marking-capability matrix | Two paths pass their matrices. Marking diagnostics stay off the live ranking path |
+| 15. Agent tool | The CLI machine contract from the polished beta | 0.6 standard-input MCP, skills, and the portable plugin package | Equivalent requests agree across the advertised interfaces, with outbound network blocked |
+| 16. Bounded DOCX | The Markdown graduation method | 0.7 declared DOCX subset, then cross-format folder transactions | Unsupported packages fail with no partial output |
+| 17. Native desktop | Proven CLI and TUI contracts | 0.8 accessible native application, then desktop drop, paste, and copy | The desktop adds no second validation or generation implementation |
+| 18. Contract freeze | The required 1.0 capabilities | 0.9 schema freeze and signed release qualification on Linux, macOS, and Windows | Every advertised combination has an exact qualification record |
+| 19. Reference 1.0 | Wave 18 | The 1.0 gates in this roadmap | Stable contracts, three surfaces, and two qualified runtime paths |
+| 20. After 1.0 | The stable core | Broaden one qualified capability at a time. Bounded PPTX waits until the DOCX package contract exists, and it is outside 1.0 | Each added capability has its own preservation evidence |
+
+Waves 1 through 7 do not block the runtime evidence attempt inside wave 10. They
+are the model-free work that makes the current CLI honest and usable. Wave 10
+still requires its own retained runtime and qualification evidence.
 
 ## Product delivery checkpoints
 
@@ -99,8 +136,9 @@ Milestone 0.1 technical evidence is complete, and reversible 0.2 implementation 
 active under the roadmap's run-ahead policy. Milestone 0.1 remains open until its
 release closeout is tagged and published. INV-Q04 applies from the first completed
 0.2 closeout. The 1.0 include list lives in the
-[product 1.0 capability table](product.md#10-product-boundary). Work
-proceeds in the dependency order below. The completed reversible
+[product 1.0 capability table](product.md#10-product-boundary). The
+[execution waves](#execution-waves) are the operating order. The numbered list
+below is the wave 10 evidence sequence and the milestones that follow it. The completed reversible
 [evidence closure and CLI batch](planning/0.2-evidence-and-cli-batch.md) closes
 three independent implementation gaps:
 
@@ -147,10 +185,13 @@ native window and accessibility experiment, followed by actual platform evidence
 these headless components do not close the native desktop checkpoint.
 
 1. Retain fresh controlled-build evidence for the real Linux runtime candidate.
-   The historical source build is not retained evidence. Run the frozen-input build,
-   independent byte comparison, publication, and cold readback before review.
-   Preserve the original preparation, startup, child-execution, and whole-operation
-   limits, and derive retained budget metadata directly from the verified plan.
+   The historical source build is not retained evidence. The helper now keeps the
+   preparation deadline separate from the child handshake and drains a final
+   control frame before reporting peer hangup. Those fixes do not replace the
+   retained build. Run the frozen-input build, independent byte comparison,
+   publication, and cold readback before review. Preserve the original
+   preparation, startup, child-execution, and whole-operation limits, and derive
+   retained budget metadata directly from the verified plan.
 2. Complete real managed observations and semantic runtime review. Preserve the
    unreviewed observation path and require independently reviewed cloud-disable,
    startup, native-load, source-lineage, isolation, and cleanup relationships before

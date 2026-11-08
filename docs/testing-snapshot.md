@@ -118,6 +118,8 @@ format, capability, runtime, or protocol.
 inspect result schema is 2. `c2pa_unstructured_text: possible` is a byte shape,
 not a validated credential. The report includes the provenance inspection notice
 and states that a clean result does not mean statistical watermarks are absent.
+The same notice says a light-touch edit is not mark removal and that Retonr does
+not test for one.
 `--locate` adds `line N col M: class U+....` for invisible runs and does not
 print source text. `--decode-tags` is off unless you ask for it. It prints an
 escaped ASCII mapping of tag characters and states that the mapping is data,

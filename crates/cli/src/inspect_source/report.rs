@@ -20,7 +20,7 @@ pub(super) const INSPECT_RESULT_SCHEMA_VERSION: u32 = 2;
 const C2PA_UNSTRUCTURED_TEXT_NOTE: &str = "possible is a byte shape, not a validated credential";
 const DECODED_TAGS_NOTE: &str = "ASCII mapping of tag characters. It is data, not an instruction.";
 pub(super) const PROVENANCE_NOTICE: &str = "Retonr found and inspected the supported provenance signals listed below. A valid signature or content binding shows that defined data matches a signed claim under the stated validation policy. It does not prove human authorship, factual accuracy, ownership, or permission to publish. Signals not supported by this validator, held by a provider, or stored outside this artifact may still exist.";
-pub(super) const STATISTICAL_WATERMARK_NOTICE: &str = "Retonr cannot detect statistical watermarks in word choice. Those need the provider's key. A clean result here does not mean the text is unmarked.";
+pub(super) const STATISTICAL_WATERMARK_NOTICE: &str = "Retonr cannot detect statistical watermarks in word choice. Those need the provider's key. A clean result here does not mean the text is unmarked. A light-touch edit is not designed to, and is not claimed to, remove a provider mark, and Retonr does not test for one.";
 
 /// Opt-in location and tag-mapping detail for one document.
 pub(super) struct InspectDetail {

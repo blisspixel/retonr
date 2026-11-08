@@ -7,8 +7,12 @@ Reviewed: August 12, 2026.
 Research cutoff: August 12, 2026. This is a current evidence snapshot, not a
 prediction of provider behavior later in 2026.
 
-Update: October 17, 2026, for OpenAI text marking only. The rest of this review
-keeps its August 12 cutoff.
+Update: October 17, 2026, for OpenAI text marking only.
+
+Update: November 7, 2026, for the xAI API text-marking statement, the Anthropic
+model roster and detector-access statement, and Google's public SynthID Detector
+expansion. August 12 findings stay in place except where a later update names the
+point it supersedes.
 
 Scope: provider-deployed text marking, file and media provenance, detector
 availability, provider-side records, open-weight behavior, and regulatory
@@ -44,6 +48,17 @@ Provider behavior is not uniform enough to support a provider-wide `marked` or
 - A detected mark is evidence about a particular signal and processing path. It is
   not proof of authorship, misconduct, truth, or complete provenance. A negative
   result is not proof that a person wrote the text.
+
+The bullets above are the August 12 judgment. Later primary-source reviews
+supersede the named points:
+
+- October 17, 2026: OpenAI documents textGrain for eligible EU ChatGPT and Codex
+  text, and opt-in API text. See the OpenAI update.
+- November 7, 2026: the xAI API documentation states that seven named Grok model
+  IDs watermark text by default from that date. The Anthropic help article now
+  lists a model roster and describes watermark detection as a private preview,
+  not as a public detector. Google's October 7, 2026 SynthID Detector expansion
+  covers image, video, and audio, not text.
 
 Retonr should treat marking as provenance state to preserve and report, never as a
 score to defeat. The defensible product claim is local, fidelity-gated
@@ -85,7 +100,9 @@ The following source rules govern those classifications:
 | Anthropic was exploring watermarking rather than documenting deployed text marking | Changed or dated policy | Anthropic Transparency Hub, updated January 29, 2026 | Superseded by the August 10 Claude marking article. Reading the January page as current creates a false contradiction | The page state is archived, but it does not describe an implementation |
 | Gemini app and web text uses SynthID Text | Verified official behavior | Google DeepMind product announcement, May 14, 2024; Nature article, version of record published October 23, 2024; current SynthID product page reviewed August 12, 2026 | These sources do not establish automatic coverage for Gemini API, AI Studio, Vertex AI, Workspace, or resellers | Partly. The method, reference code, evaluation data, and a compatible implementation are public. Google's production keys and exact hosted detector are not |
 | OpenAI had no satisfactory deployed text provenance solution | Changed or dated policy | UK consultation response submitted February 25, 2025, with summary dated April 2, 2025 | This was OpenAI's stated position before signing the Article 50 Code. OpenAI's guidance updated August 11, 2026 still names image and audio SynthID, but does not expressly confirm or deny a new text mark | No exact OpenAI hosted text behavior can be reproduced because current implementation status is unknown. Superseded for hosted text by the October 5, 2026 textGrain announcement in the next row |
-| OpenAI marks eligible hosted text with textGrain: on for eligible ChatGPT and Codex output in the EU, opt-in for API customers globally | Provider statement with undisclosed mechanism | OpenAI announcement, October 5, 2026; OpenAI Help Center provenance article and textGrain technical report, reviewed October 17, 2026 | The method is described in a technical report, but production keys, the detector, and the exact model roster are not public. The EU ChatGPT and Codex rollout was announced as occurring over the following weeks. API watermarking is off by default. Detector access is limited to approved researchers and expert organizations | No. Without the production key and detector, a third party cannot test hosted text for the mark |
+| OpenAI marks eligible hosted text with textGrain: on for eligible ChatGPT and Codex output in the EU, opt-in for API customers globally | Provider statement with undisclosed mechanism | OpenAI announcement, October 5, 2026; OpenAI Help Center provenance article and textGrain technical report, reviewed October 17, 2026 | The method is described in a technical report, but production keys, the detector, and the exact model roster are not public. The EU ChatGPT and Codex rollout was announced as occurring over the following weeks. A November 7, 2026 check of that announcement found no later first-party statement that the rollout had finished. API watermarking is off by default. Detector access is limited to approved researchers and expert organizations | No. Without the production key and detector, a third party cannot test hosted text for the mark |
+| xAI API text from seven named Grok model IDs carries a default-on watermark from November 7, 2026 | Provider statement with undisclosed mechanism | SpaceXSI output-watermarking page, last updated October 31, 2026, reviewed November 7, 2026 | The page names the API surfaces, model IDs, and `x-watermark` response header. It does not publish the algorithm, key, or a public detector. Team-level per-model scope means the mark is not on every request. The header statement applies to that API response, not to copied prose that no longer has the header | No. Detector access is by application, and the production key is not public |
+| Anthropic's help article lists which Claude models carry a text watermark | Provider statement with undisclosed mechanism | Claude Help Center marking article, reviewed November 7, 2026, showing "Updated this week" | This supersedes the August 12 statement that the article listed no model roster. Detection is described as a private preview for eligible organizations, which supersedes "forthcoming" as the access description. The algorithm, keys, thresholds, and performance evidence remain unpublished. Opus 4.6, Opus 4.5, Sonnet 4.5, and Haiku 4.5 have an empty text-watermark cell on this review | No. The private-preview detector and production key are not public |
 | Microsoft 365 adds AI metadata to video and audio even when visible marks are off | Changed or dated policy | Microsoft Learn page updated August 7, 2026 | The same page says metadata is currently added only to images. The narrower image-only statement controls this review until Microsoft resolves the internal contradiction | Image C2PA can be inspected. Video and audio metadata coverage cannot be established from the contradictory page |
 | Meta, Mistral, and Cohere hosted text output has a deployed machine-readable mark | Unknown | Section 1 Code signatures listed by the Commission, page updated August 12, 2026 | A commitment is not product implementation evidence. No current first-party text-marking specification was found | No provider-specific hosted text mark is available to reproduce from the reviewed material |
 | Open-weight text output is necessarily unmarked | Inference rejected | Current Llama, Mistral, Command A+, and gpt-oss deployment materials expose operator-controlled inference | Weights do not force one universal runtime policy. An operator can add or omit a logits processor, post-processor, metadata layer, or log | Yes for one exact local stack. Inspect and hash the runtime, activate or omit a known processor, and test that configuration. The result does not generalize to every host |
@@ -155,7 +172,8 @@ text mark.
 
 | Provider | Hosted text claim status | File or media provenance documented | Public text detector | Downloadable or local behavior |
 | --- | --- | --- | --- | --- |
-| Anthropic | Provider statement with undisclosed mechanism: supported Claude models | Signed C2PA metadata for supported generated files | Forthcoming, not currently documented as available | No downloadable Claude weights; the mark is asserted across named hosted surfaces and cloud partners |
+| Anthropic | Provider statement with undisclosed mechanism: the November 7, 2026 help table names the Claude models with a text-watermark cell. Opus 4.6, Opus 4.5, Sonnet 4.5, and Haiku 4.5 are not in that set | Signed C2PA metadata for supported generated files | Private preview for eligible organizations; not a public detector | No downloadable Claude weights; the mark is asserted across named hosted surfaces and cloud partners |
+| xAI API | Provider statement with undisclosed mechanism: default-on text for grok-4.7, grok-4.6, grok-4.5, grok-4.3, grok-4.20-reasoning, grok-4.20-non-reasoning, and grok-4.20-multi-agent from November 7, 2026, on every documented API endpoint, subject to team-level per-model scope | Not established by the watermarking page | By application; not public. The page says `x-watermark: true` means that API response was generated with the watermark, and that any other value or a missing header means that request was not | No downloadable-weight claim is made on the watermarking page. Consumer Grok surfaces are outside that page |
 | Google | Verified official behavior: SynthID Text for Gemini app and web | SynthID across image, audio, and video products | No public Gemini text check documented; open-source detector components exist for operator-configured marks | Inference: SynthID Text is optional runtime instrumentation, not an inherent property of Gemma or other weights |
 | OpenAI | Provider statement (October 5, 2026): textGrain for eligible EU ChatGPT and Codex text and opt-in API text; unknown in the August 12 review | C2PA and SynthID for specified image, audio, and video paths; public verification tooling | No public text detector; access limited to approved researchers and expert organizations | Inference: `gpt-oss` runs in operator-controlled runtimes and the reviewed reference path identifies no mandatory text mark |
 | Microsoft | Unknown: no current Copilot or Azure text watermark identified in public product documentation | Microsoft 365 media labels and image metadata; Azure OpenAI image C2PA | No public text detector documented | Inference: open-weight or third-party local models remain subject to the operator's runtime and output policy |
@@ -171,8 +189,9 @@ text mark.
 Claim status: provider statement with undisclosed mechanism.
 
 Anthropic's current [Claude marking documentation](https://support.claude.com/en/articles/16266773-how-claude-marks-ai-generated-content)
-was modified August 10, 2026 and is the clearest provider statement of a deployed
-text watermark in this review.
+was modified August 10, 2026 and was the clearest provider statement of a deployed
+text watermark in the August 12 review. The November 7 roster update and the xAI
+API section below are later primary sources.
 
 - Claude models launched in the EU on or after August 2, 2026 support
   machine-readable marking at launch. Generated text carries an embedded watermark,
@@ -211,10 +230,105 @@ exploring. That dated statement is superseded for supported models by the August
 help article. The change is material and explains why older summaries saying Claude
 does not watermark text are no longer reliable.
 
-Independent reproducibility: none for the exact Claude mark as of the cutoff. A
-third party cannot reproduce a controlled test without the algorithm,
-supported-model list, key material, detector, and threshold. The file-level C2PA
-layer will be independently inspectable where a supported signed file is available.
+Independent reproducibility: none for the exact Claude mark as of the August 12
+cutoff. A third party cannot reproduce a controlled test without the algorithm,
+key material, detector, and threshold. The November 7, 2026 update below records
+the later model roster. The file-level C2PA layer will be independently
+inspectable where a supported signed file is available.
+
+#### Update: November 7, 2026 (model roster and detector access)
+
+The August 12 section remains the historical review. On November 7, 2026 the same
+[Claude marking article](https://support.claude.com/en/articles/16266773-how-claude-marks-ai-generated-content)
+showed "Updated this week" and a model table. That table supersedes the earlier
+statement that the article listed no model identifiers.
+
+Text-watermark cells are marked for first-party Claude output, and for the named
+cloud partners unless a footnote says otherwise, on these rows: Fable 5.1, Fable 5,
+Mythos 5.1, Mythos 5, Opus 5.5, Opus 5, Opus 4.8, Opus 4.7, Sonnet 5.5, Sonnet 5,
+Sonnet 4.6, and Haiku 5.5.
+
+The text-watermark cells are empty, while the file Content Credentials cell is
+marked, for Opus 4.6, Opus 4.5, Sonnet 4.5, and Haiku 4.5. This review does not
+treat secondary reports of a later date for those empty rows as a provider
+statement.
+
+Footnotes on the reviewed page: Amazon Bedrock rollout for Mythos 5, Opus 4.7, and
+Sonnet 4.6 is stated to complete by November 10, 2026. For Sonnet 4.6, outputs may
+not reliably carry the text watermark when temperature, top_p, or top_k is set to
+a non-default value. That sampling condition is a coverage fact, not a Retonr
+control.
+
+Watermark detection is described as a private preview for eligible organizations,
+including enterprises checking their own Claude outputs. It is not documented as a
+public detector. The algorithm, keys, thresholds, languages, and performance
+evidence remain unpublished. A detected mark remains a processing-history signal.
+The categorical statement that all Claude text is watermarked is still false on
+Anthropic's own table.
+
+Watch item `W-2026-11-07-anthropic-roster`. Domain: provider text marking.
+Discovery and research cutoff: November 7, 2026. Primary page reviewed that day;
+the page says "Updated this week" and is mutable. Evidence state:
+`provider_statement`. Triage: `narrows` the August 12 "no roster" and "detector
+forthcoming" descriptions, and leaves the undisclosed mechanism in place. No
+qualification record changes, because no runtime is admitted. Product effect: the
+ledger and the public edit-level notice. No detector is added to the live product.
+
+### xAI API
+
+Claim status: provider statement with undisclosed mechanism for the named API
+surfaces. Unknown for consumer Grok products and for model IDs the page does not
+list.
+
+The [output watermarking page](https://docs.x.ai/developers/advanced-api-usage/watermarking),
+last updated October 31, 2026 and reviewed November 7, 2026, is published under
+the name SpaceXSI. It is the primary source for this row. Secondary news reports
+are not.
+
+The page states that, starting November 7, 2026, responses from these model IDs
+include a watermark and that it is on by default: `grok-4.7`, `grok-4.6`,
+`grok-4.5`, `grok-4.3`, `grok-4.20-reasoning`, `grok-4.20-non-reasoning`, and
+`grok-4.20-multi-agent`. It says watermarking is enabled on every SpaceXSI API
+endpoint, including `https://api.x.ai` and regional endpoints, for the Responses
+API and the Chat Completions API. Covered output is ordinary text, structured
+output, and tool-call arguments.
+
+The page says the mark is applied while the model generates text by shaping token
+choice, and that it adds no characters, markup, or hidden text. It also says
+watermarking does not change response quality or speed. That quality and speed
+statement is a provider claim. This review did not test it.
+
+The page says `x-watermark: true` on the API response means that request's output
+was generated with the watermark, and that any other value, or no header, means
+it was not. That statement is about the HTTP response for that request. Copied
+prose does not carry the header. A local document with no header is not a case of
+the provider saying that document is unmarked.
+
+Detection of an arbitrary passage is by application. The page says the detector
+reports watermarked, not watermarked, or uncertain, and that longer text gives a
+stronger signal. The detector is not public. The algorithm and key are not
+published.
+
+Scope condition, recorded as a fact about when the provider says the mark applies:
+watermarking is controlled per model for the whole team, so it is not a property
+of every API key in isolation. A team admin can turn it off for a model after
+confirming that an exception under applicable law applies, and some models may be
+locked on. Changes apply to new requests. This review does not describe how to
+change that setting. Retonr does not use the condition as an objective.
+
+The page does not establish marking for the Grok consumer applications, for model
+IDs it does not name, or for downloadable weights. A Code of Practice signature
+was not rechecked for this update, so signature status stays unknown.
+
+Independent reproducibility: none for the hosted mark. There is no public
+detector or production key.
+
+Watch item `W-2026-11-07-xai-api-text`. Domain: provider text marking. Discovery
+date of the page update: October 31, 2026. Effective date stated by the provider:
+November 7, 2026. Research cutoff: November 7, 2026. Evidence state:
+`provider_statement`. Triage: `new`. No qualification record exists to invalidate.
+Product effect: ledger only. The live engine does not call this API, does not read
+`x-watermark`, and does not rank candidates by any detector result.
 
 ### Google Gemini and SynthID Text
 
@@ -263,6 +377,16 @@ surface-by-surface rollout cannot be independently reproduced.
 Google's Article 50 [Code signature statement](https://blog.google/company-news/outreach-and-initiatives/public-policy/eu-ai-act-transparency-code-of-practice/)
 is dated July 24, 2026. It adds a regulatory commitment but does not broaden the
 documented text coverage beyond the named Gemini app and web sources.
+
+#### Update: November 7, 2026 (SynthID Detector expansion)
+
+Google's [SynthID Detector announcement](https://blog.google/innovation-and-ai/models-and-research/google-deepmind/synth-id-ai-content/),
+dated October 7, 2026 and updated October 29, 2026, opens a public detector for
+image, video, and audio watermarks from Google and named partners. The reviewed
+announcement does not add a public text check and does not change the Gemini app
+and web text claim above. An independent October 21, 2026 probing note about
+Gemini API text is not a Google product document, so it does not move API text
+coverage out of `unknown`.
 
 ### OpenAI
 
@@ -330,6 +454,10 @@ detected mark does not prove human authorship.
 Watch triage: `provider_statement`, `contradicts` the August 12 status of "unknown"
 for OpenAI hosted text. Resolution of affected claims and records follows the
 [external change watch](../external-change-watch.md) process.
+
+A November 7, 2026 reread of the October 5 announcement found no later first-party
+statement that the EU ChatGPT and Codex rollout had finished. The "following weeks"
+limit stays in force. API text marking remains off by default on that announcement.
 
 ### Microsoft
 
@@ -583,11 +711,14 @@ applicable role, jurisdiction, publication, and workflow.
 - `A detected provider mark indicates possible processing by that marked system; it
   does not establish authorship or misconduct.`
 - `A missing mark or negative detector result does not establish human authorship.`
+- `A light-touch edit is not a provider-mark removal operation, and Retonr does not test for a provider mark.`
 - `Retonr cannot erase records already retained by an upstream provider.`
 
 ### Claims that must not be made
 
-- `Retonr removes Claude, SynthID, or other AI watermarks.`
+- `Retonr removes Claude, SynthID, xAI, or other AI watermarks.`
+- `A light edit, or any other edit level, removes a provider mark.`
+- `A missing response header, or a header that is absent from copied prose, proves the text is unmarked.`
 - `Retonr makes AI text undetectable.`
 - `Retonr guarantees a human detector result.`
 - `No watermark means a person wrote the text.`

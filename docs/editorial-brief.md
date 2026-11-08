@@ -85,12 +85,13 @@ strategies:
 - `Voice pass` employs constrained grounded strategies with strict structural sentinels.
 - `Rewrite` enables grounded restructuring across whole paragraph units.
 - `Reconstruct` decomposes the source into extracted claims and synthesizes a fresh
-  expression, completely eliminating upstream phrasing and any unconsented tracking
-  artifacts.
+  expression from those claims.
 
 Regardless of the edit level selected, INV-P02 holds: fidelity dominates style. A higher
 edit level increases stylistic divergence, but never permits alteration of protected
-facts, dates, quantities, names, or non-negotiable commitments.
+facts, dates, quantities, names, or non-negotiable commitments. A light-touch edit is
+not designed to, and is not claimed to, remove a provider mark, and Retonr does not
+test for one. The same limit holds for every larger edit level.
 
 ## Profile separation: personal voice vs brand constraints
 

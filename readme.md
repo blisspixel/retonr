@@ -116,9 +116,11 @@ cargo run --locked -p rewrite-eval -- --lint draft.txt
 
 `check` validates a complete candidate without invoking a model. An accepted
 candidate can be written to a new destination; an abstention returns the exact
-original. `check` enforces only `touch-up`, the lightest copy-edit tier. Larger
-`--edit-level` tiers (`voice-pass`, `rewrite`, `reconstruct`) are opt-in, are not
-yet enforced, and currently report `touch-up` as effective. Optional character
+original. `check` enforces only `touch-up`, the lightest copy-edit tier. A light-touch edit
+is not designed to, and is not claimed to, remove a provider mark, and Retonr does
+not test for one. Larger `--edit-level` tiers (`voice-pass`, `rewrite`,
+`reconstruct`) are opt-in, are not yet enforced, and currently report `touch-up`
+as effective. Optional character
 budget, expansion ceiling, and line budget flags enforce layout constraints. Read-only folder checks pair documents by exact
 relative path and report missing or skipped counterparts. `lint` inspects one document or a bounded folder,
 or compares one document with a candidate, for an early narrow list of
