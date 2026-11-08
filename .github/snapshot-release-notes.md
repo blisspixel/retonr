@@ -18,12 +18,15 @@ Milestone 0.2 is still in progress, and no milestone has been released.
   checked copy edits toward the writer's own style. It adds no watermark, tracking,
   or attribution, and it makes no claim about detectors, authorship, or disclosure.
 - `retonr inspect` counts tag characters separately from other format marks.
-  The inspect result schema is 2. `--locate` reports line, column, and escaped
+  The inspect result schema is 3. `--locate` reports line, column, and escaped
   code points for invisible runs. `--decode-tags` is off unless requested and
   prints an escaped ASCII mapping, marked as data rather than an instruction.
   `possible` on the unstructured text carrier is a byte shape, not a validated
-  credential. Every inspect report includes the provenance notice and states
-  that Retonr cannot detect statistical watermarks in word choice.
+  credential. `http_links` counts protected http(s) URLs and names listed query
+  parameters. It does not fetch those URLs and does not print them. Every
+  inspect report includes the provenance notice. The notice states that Retonr
+  cannot detect statistical watermarks in word choice, and that a light-touch
+  edit is not a provider-mark removal operation.
 - `retonr check` rejects a candidate that adds or lengthens a retained invisible
   run the source did not already contain. That includes tag characters, variation
   selectors, the Mongolian vowel separator, and the other inventoried format marks
@@ -49,6 +52,32 @@ Milestone 0.2 is still in progress, and no milestone has been released.
 - `retonr check --edit-level` reports `semantic_evaluator:
   literal-token-sequence-v1` and `edit_level_effective: touch-up`. A wider
   requested level notes that only punctuation and capitalization are accepted.
+- The same check report includes `changed_token_pct` and `changed_char_pct`.
+  Those percentages compare word occurrences. Whitespace is only a separator,
+  and a pure reordering measures as no change. `--max-change-pct N` abstains
+  with `change_budget_exceeded` when either rounded percentage is greater than
+  N. Without the flag, the share is reported and does not abstain.
+  `--style-sample PATH` reports `style_distance`. That distance is not an
+  authorship verdict, and it does not accept or rank a candidate.
+- A text check leads with a verdict, wraps to the terminal, and ends with a
+  one-line fidelity receipt. Usage errors name the bad argument, print a usage
+  line, and point at help. The read-only TUI status uses the same verdict word
+  and the first located span. JSON keeps the versioned record.
+- `retonr check --receipt PATH` writes receipt schema 1 only when asked. The
+  file nests the rewrite record at schema 2 and adds the tool version, commit,
+  UTC time, effective edit level, and the two change percentages. Its notice
+  says: "The report is evidence of Retonr's process. It is not an authorship
+  certificate, legal opinion, publisher approval, or proof of compliance." The
+  file contains no source text. Omitting the flag writes no receipt.
+  `--dry-run` still writes the receipt and does not write the document. A
+  directory check refuses the flag.
+- `retonr links clean` writes a new copy, or only a report with `--dry-run`.
+  The default removes the exact pair `utm_source=chatgpt.com`. `--campaign`,
+  `--tracking`, `--source-chatgpt`, and `--sz-32` add separate families. A
+  supported signature query is left unchanged and reported as `signed_query`,
+  without the URL or the query value. Reports do not contain full URLs or
+  query values. Check still abstains with `protected_value_changed` when a
+  candidate edits a URL. The cleanup result schema is 1.
 - `retonr rewrite` without a selected qualified local artifact exits 3 as
   `policy_refusal` and does not start a runtime. Identical accepted text is
   `unchanged_identical`. `--version` includes the commit and snapshot.
@@ -137,7 +166,9 @@ without using a model. It reports whether the candidate preserved protected
 values, structure, and literal token content, and it can write the accepted
 bytes, or the exact original after an abstention, to a new file. A changed
 quantity abstains. Optional edit level, character budget, and expansion ceiling
-flags enforce layout bounds.
+flags enforce layout bounds. An optional change-share ceiling can abstain.
+`--receipt` writes a separate local receipt only when asked. `retonr links clean`
+copies a document and removes a documented referral parameter only when asked.
 
 `retonr lint` inspects one document, or compares it with a candidate, for
 conversational residue, cliches, and synthetic patterns. `retonr rewrite` runs
@@ -171,7 +202,9 @@ which is the only authority for implemented behavior.
 ## What this software does not claim
 
 Retonr does not erase upstream provider records, prove human authorship, defeat
-any classifier or detector, or satisfy an external disclosure obligation.
+any classifier or detector, or satisfy an external disclosure obligation. A
+light-touch edit is not designed to, and is not claimed to, remove a provider
+mark, and Retonr does not test for one.
 
 ## Reporting
 
