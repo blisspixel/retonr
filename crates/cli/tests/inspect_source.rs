@@ -15,6 +15,7 @@ fn inspect_reports_utf8_facts_without_source_text() {
     fs::write(&source, "Hello world\n").expect("write source");
 
     let output = binary()
+        .args(["--format", "json"])
         .arg("inspect")
         .arg(&source)
         .output()
@@ -50,6 +51,7 @@ fn inspect_names_a_sibling_sidecar_without_reading_it() {
     fs::write(&sidecar, "private credential bytes").expect("write sidecar");
 
     let output = binary()
+        .args(["--format", "json"])
         .arg("inspect")
         .arg(&source)
         .output()
@@ -72,6 +74,7 @@ fn inspect_records_utf16_without_decoding() {
     let source = directory.path().join("utf16.txt");
     fs::write(&source, b"\xFF\xFEa\0").expect("write utf-16");
     binary()
+        .args(["--format", "json"])
         .arg("inspect")
         .arg(&source)
         .assert()
@@ -86,7 +89,7 @@ fn inspect_records_utf16_without_decoding() {
 #[test]
 fn inspect_standard_input_skips_sidecar_scan() {
     binary()
-        .args(["inspect", "-"])
+        .args(["--format", "json", "inspect", "-"])
         .write_stdin("Hello world\n")
         .assert()
         .success()
@@ -106,6 +109,7 @@ fn inspect_inventories_a_directory_without_recursion_or_mutation() {
     fs::write(root.join(".hidden.txt"), "secret\n").expect("write hidden");
 
     let output = binary()
+        .args(["--format", "json"])
         .arg("inspect")
         .arg(root)
         .output()
@@ -154,7 +158,7 @@ fn inspect_recursive_includes_nested_files_and_skips_ignored_trees() {
     fs::write(root.join("target").join("built.txt"), "built\n").expect("write ignored");
 
     let output = binary()
-        .args(["inspect", "-r"])
+        .args(["--format", "json", "inspect", "-r"])
         .arg(root)
         .output()
         .expect("run recursive inspect");
@@ -188,7 +192,7 @@ fn inspect_recursive_on_a_file_is_usage() {
     let source = directory.path().join("a.txt");
     fs::write(&source, "alpha\n").expect("write a");
     binary()
-        .args(["inspect", "--recursive"])
+        .args(["--format", "json", "inspect", "--recursive"])
         .arg(&source)
         .assert()
         .code(2)
@@ -199,7 +203,7 @@ fn inspect_recursive_on_a_file_is_usage() {
 #[test]
 fn inspect_recursive_on_standard_input_is_usage() {
     binary()
-        .args(["inspect", "--recursive", "-"])
+        .args(["--format", "json", "inspect", "--recursive", "-"])
         .write_stdin("alpha\n")
         .assert()
         .code(2)
@@ -255,6 +259,7 @@ fn inspect_separates_tags_and_keeps_decode_opt_in() {
     fs::write(&source, bytes).expect("write source");
 
     let output = binary()
+        .args(["--format", "json"])
         .arg("inspect")
         .arg(&source)
         .output()

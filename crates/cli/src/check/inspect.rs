@@ -53,11 +53,10 @@ impl SafeDiff {
 
     pub(crate) fn render_text(&self) -> String {
         use std::fmt::Write as _;
-        let mut text = format!(
-            "diff: {}\nhunks: {}\n",
-            if self.changed { "changed" } else { "unchanged" },
-            self.hunks.len()
-        );
+        if !self.changed {
+            return "no diff: the original was kept\n".to_owned();
+        }
+        let mut text = format!("diff: changed\nhunks: {}\n", self.hunks.len());
         for hunk in &self.hunks {
             let _ = writeln!(
                 text,
@@ -248,7 +247,10 @@ mod tests {
         let diff = SafeDiff::compare(b"Hello world\n", b"Hello world\n");
         assert!(!diff.changed);
         assert!(diff.hunks.is_empty());
-        assert!(diff.render_text().contains("diff: unchanged"));
+        assert!(
+            diff.render_text()
+                .contains("no diff: the original was kept")
+        );
     }
 
     #[test]

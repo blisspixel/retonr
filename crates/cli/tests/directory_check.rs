@@ -32,6 +32,7 @@ fn command(source: &Path, candidate: &Path) -> Command {
 
 fn result(source: &Path, candidate: &Path, recursive: bool) -> serde_json::Value {
     let mut command = command(source, candidate);
+    command.args(["--format", "json"]);
     if recursive {
         command.arg("-r");
     }

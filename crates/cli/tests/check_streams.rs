@@ -63,9 +63,9 @@ fn standard_input_is_read_to_end_of_file_without_trimming() {
             .success();
         let report = String::from_utf8(assertion.get_output().stdout.clone()).expect("UTF-8");
         assert!(
-            report.contains("status: unchanged_identical")
-                || report.contains("status: unchanged_no_eligible_content")
-                || report.contains("status: rewritten"),
+            report.contains("source and candidate already match")
+                || report.contains("no eligible content")
+                || report.contains("accepted"),
             "{name}: unexpected report {report}"
         );
         assert_eq!(
@@ -85,13 +85,13 @@ fn the_source_may_also_be_read_from_standard_input() {
         .write_stdin(b"Hello world\n".to_vec())
         .assert()
         .success()
-        .stdout(predicates::str::contains("status: rewritten"));
+        .stdout(predicates::str::contains("nothing written (use -o)"));
 }
 
 #[test]
 fn both_documents_cannot_share_one_standard_input_stream() {
     binary()
-        .args(["check", "-", "-"])
+        .args(["--format", "json", "check", "-", "-"])
         .write_stdin(b"text".to_vec())
         .assert()
         .code(2)
@@ -174,7 +174,7 @@ fn an_abstention_writes_the_exact_original_bytes() {
         ])
         .assert()
         .success()
-        .stdout(predicates::str::contains("status: abstained"));
+        .stdout(predicates::str::contains("original kept unchanged"));
     assert_eq!(
         fs::read(&output).expect("accepted bytes"),
         b"Version 2 costs $10\n"
@@ -198,7 +198,7 @@ fn standard_output_carries_document_bytes_and_moves_the_report_to_standard_error
     assert_eq!(output.stdout, b"Hello, world!\n");
     let report = String::from_utf8(output.stderr.clone()).expect("UTF-8");
     assert!(
-        report.contains("status: rewritten"),
+        report.contains("accepted    candidate passed"),
         "report should move to standard error, got {report}"
     );
 }
@@ -211,6 +211,7 @@ fn missing_output_parent_is_rejected_before_document_input() {
     let output = directory.path().join("missing-parent").join("accepted.txt");
 
     binary()
+        .args(["--format", "json"])
         .arg("check")
         .arg(&missing_source)
         .arg(&missing_candidate)
@@ -253,6 +254,7 @@ fn dangling_output_link_is_rejected_before_document_input() {
     symlink(directory.path().join("missing.txt"), &output).expect("create dangling link");
 
     binary()
+        .args(["--format", "json"])
         .arg("check")
         .arg(directory.path().join("missing-source.txt"))
         .arg(directory.path().join("missing-candidate.txt"))

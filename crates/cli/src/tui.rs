@@ -76,7 +76,7 @@ pub(crate) fn run(
             &cancellation,
         )?;
         require_not_cancelled(&cancellation)?;
-        let format = ReportFormat::from_invocation(explicit_format, io::stdout().is_terminal());
+        let format = ReportFormat::from_invocation(explicit_format);
         let output = write_plain(&snapshot, format, &mut io::stdout().lock());
         finish_output(output, &cancellation)?;
         return Ok(ExitCode::SUCCESS);

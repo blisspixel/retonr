@@ -16,10 +16,6 @@ pub(crate) struct RunFailure {
 }
 
 impl RunFailure {
-    pub fn usage() -> Self {
-        Self::usage_for(CommandName::Cli)
-    }
-
     pub fn usage_for(command: CommandName) -> Self {
         Self {
             command,

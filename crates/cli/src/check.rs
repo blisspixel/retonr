@@ -37,6 +37,14 @@ pub(crate) enum OutputSink {
     Standard,
 }
 
+/// Human-report switches for one command.
+pub(crate) struct HumanReport {
+    /// Show short digests in the human report.
+    pub(crate) verbose: bool,
+    /// Color choice for the human report.
+    pub(crate) color: crate::presentation::ColorChoice,
+}
+
 /// Owned arguments for one candidate check.
 pub(crate) struct CheckRequest {
     pub(crate) source: PathBuf,
@@ -55,6 +63,8 @@ pub(crate) struct CheckRequest {
     pub(crate) max_change_percent: Option<u8>,
     /// Paths of authorized samples. Empty means no style-distance report.
     pub(crate) style_sample_paths: Vec<PathBuf>,
+    /// Human-report switches.
+    pub(crate) report: HumanReport,
 }
 
 /// Whether directory discovery visits children.
@@ -178,6 +188,38 @@ fn publish_check(
             CommandName::Check,
         )?
     };
+    if let Some(trace) = request.inspection.trace.as_ref() {
+        inspect::write_trace(trace, &result.record, CommandName::Check)?;
+    }
+    let target = destination_report_target(destination);
+    let stream_is_terminal = match target {
+        ReportTarget::Data => crate::presentation::stdout_is_terminal(),
+        ReportTarget::Diagnostic => crate::presentation::stderr_is_terminal(),
+    };
+    report::write(
+        CommandName::Check,
+        &result.record,
+        &report::ReportContext {
+            format,
+            target,
+            backup: backup.as_deref(),
+            fidelity: Some(report::fidelity_for(request.edit_level)),
+            measurement: Some(&report::CheckMeasurement {
+                changed_token_pct: result.change.changed_token_pct,
+                changed_char_pct: result.change.changed_char_pct,
+                changed_word_count: result.change.changed_word_count,
+                style_distance: result.style_distance.as_ref(),
+            }),
+            verbose: request.report.verbose,
+            color: crate::presentation::color_enabled(request.report.color, stream_is_terminal),
+            width: crate::presentation::terminal_width(stream_is_terminal),
+            emission: report::emission(
+                request.inspection.dry_run,
+                document_was_requested(destination),
+            ),
+        },
+    )
+    .map_err(|_| RunFailure::operational(CommandName::Check))?;
     if let Some(diff_source) = source_for_diff {
         inspect::write_diff(
             &inspect::SafeDiff::compare(diff_source, &result.output),
@@ -185,28 +227,15 @@ fn publish_check(
             CommandName::Check,
         )?;
     }
-    if let Some(trace) = request.inspection.trace.as_ref() {
-        inspect::write_trace(trace, &result.record, CommandName::Check)?;
-    }
-    report::write(
-        CommandName::Check,
-        &result.record,
-        format,
-        destination_report_target(destination),
-        backup.as_deref(),
-        Some(report::fidelity_for(request.edit_level)),
-        Some(&report::CheckMeasurement {
-            changed_token_pct: result.change.changed_token_pct,
-            changed_char_pct: result.change.changed_char_pct,
-            style_distance: result.style_distance.as_ref(),
-        }),
-    )
-    .map_err(|_| RunFailure::operational(CommandName::Check))?;
     Ok(exit_status(
         result.record.status,
         result.record.reason,
         request.fail_on_abstain,
     ))
+}
+
+fn document_was_requested(destination: &replace::Destination) -> bool {
+    !matches!(destination, replace::Destination::Sink(OutputSink::None))
 }
 
 fn load_style_samples(paths: &[PathBuf]) -> Result<Option<StyleSampleProfile>, RunFailure> {

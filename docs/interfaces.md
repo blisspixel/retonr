@@ -78,7 +78,7 @@ bytes after candidate validation and checks the source identity again immediatel
 before replacement. Source drift is a retryable `concurrent_modification` failure.
 Standard input, `--output`, symlinks, and multiply-linked files are refused.
 Unchanged accepted bytes leave the source untouched and create no backup. A terminal
-defaults to text reports; a pipe defaults to JSON. `--format` (`-f`) selects either.
+defaults to text reports. `--format json` (`-f`) or `RETONR_FORMAT=json` selects JSON. A pipe does not change the default.
 `--data-dir` (`-D` or `RETONR_DATA_DIR`) is the explicit repository root.
 
 Every planned new output, backup, staging, or trace path treats a dangling link as

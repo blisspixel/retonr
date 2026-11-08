@@ -259,6 +259,7 @@ mod tests {
             recursive: true,
             candidate: None,
             fail_on_findings: false,
+            color: crate::presentation::ColorChoice::Never,
         };
         let report =
             build_report(&request, &CancellationToken::new()).expect("exact combined ceiling");
@@ -306,6 +307,7 @@ mod tests {
             recursive: true,
             candidate: None,
             fail_on_findings: false,
+            color: crate::presentation::ColorChoice::Never,
         };
         let Err(failure) = build_report(&request, &cancellation) else {
             panic!("cancelled lint must refuse")

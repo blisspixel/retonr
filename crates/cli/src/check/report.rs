@@ -49,7 +49,44 @@ pub(crate) fn fidelity_for(level: Option<EditLevel>) -> FidelityReport {
 pub(crate) struct CheckMeasurement<'a> {
     pub(crate) changed_token_pct: u8,
     pub(crate) changed_char_pct: u8,
+    pub(crate) changed_word_count: u64,
     pub(crate) style_distance: Option<&'a StyleDistance>,
+}
+
+/// Human-report choices that do not change the JSON envelope.
+pub(crate) struct ReportContext<'a> {
+    pub(crate) format: ReportFormat,
+    pub(crate) target: ReportTarget,
+    pub(crate) backup: Option<&'a str>,
+    pub(crate) fidelity: Option<FidelityReport>,
+    pub(crate) measurement: Option<&'a CheckMeasurement<'a>>,
+    pub(crate) verbose: bool,
+    pub(crate) color: bool,
+    pub(crate) width: Option<usize>,
+    pub(crate) emission: ReportEmission,
+}
+
+/// Whether the accepted document was written, withheld by dry-run, or not requested.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ReportEmission {
+    /// The accepted bytes were written.
+    Written,
+    /// Dry-run computed the report and wrote nothing.
+    DryRun,
+    /// The caller did not ask for an output path.
+    NotRequested,
+}
+
+/// Chooses the human verdict from dry-run and whether an output was requested.
+#[must_use]
+pub(crate) const fn emission(dry_run: bool, writes_document: bool) -> ReportEmission {
+    if dry_run {
+        ReportEmission::DryRun
+    } else if writes_document {
+        ReportEmission::Written
+    } else {
+        ReportEmission::NotRequested
+    }
 }
 
 const fn edit_level_name(level: EditLevel) -> &'static str {
@@ -64,14 +101,10 @@ const fn edit_level_name(level: EditLevel) -> &'static str {
 pub(crate) fn write(
     command: CommandName,
     record: &RewriteRecord,
-    format: ReportFormat,
-    target: ReportTarget,
-    backup: Option<&str>,
-    fidelity: Option<FidelityReport>,
-    measurement: Option<&CheckMeasurement<'_>>,
+    context: &ReportContext<'_>,
 ) -> io::Result<()> {
-    let bytes = render(command, record, format, backup, fidelity, measurement)?;
-    match target {
+    let bytes = render(command, record, context)?;
+    match context.target {
         ReportTarget::Data => {
             let mut stream = io::stdout().lock();
             stream.write_all(&bytes)?;
@@ -88,32 +121,31 @@ pub(crate) fn write(
 fn render(
     command: CommandName,
     record: &RewriteRecord,
-    format: ReportFormat,
-    backup: Option<&str>,
-    fidelity: Option<FidelityReport>,
-    measurement: Option<&CheckMeasurement<'_>>,
+    context: &ReportContext<'_>,
 ) -> io::Result<Vec<u8>> {
-    match format {
+    match context.format {
         ReportFormat::Json => {
             let mut bytes = crate::render::to_safe_pretty_json(&SuccessEnvelope::new(
                 command,
                 DocumentReport {
                     record,
-                    backup,
-                    semantic_evaluator: fidelity.map(|item| item.semantic_evaluator),
-                    edit_level_effective: fidelity.map(|item| item.edit_level_effective),
-                    edit_level_requested: fidelity.and_then(|item| item.edit_level_requested),
-                    edit_level_note: fidelity.and_then(|item| item.note),
-                    changed_token_pct: measurement.map(|item| item.changed_token_pct),
-                    changed_char_pct: measurement.map(|item| item.changed_char_pct),
-                    style_distance: measurement.and_then(|item| item.style_distance),
+                    backup: context.backup,
+                    semantic_evaluator: context.fidelity.map(|item| item.semantic_evaluator),
+                    edit_level_effective: context.fidelity.map(|item| item.edit_level_effective),
+                    edit_level_requested: context
+                        .fidelity
+                        .and_then(|item| item.edit_level_requested),
+                    edit_level_note: context.fidelity.and_then(|item| item.note),
+                    changed_token_pct: context.measurement.map(|item| item.changed_token_pct),
+                    changed_char_pct: context.measurement.map(|item| item.changed_char_pct),
+                    style_distance: context.measurement.and_then(|item| item.style_distance),
                 },
             ))
             .map_err(io::Error::other)?;
             bytes.push(b'\n');
             Ok(bytes)
         }
-        ReportFormat::Text => Ok(render_text(record, backup, fidelity, measurement).into_bytes()),
+        ReportFormat::Text => Ok(render_text(record, context).into_bytes()),
     }
 }
 
@@ -139,12 +171,7 @@ struct DocumentReport<'a> {
     style_distance: Option<&'a StyleDistance>,
 }
 
-fn render_text(
-    record: &RewriteRecord,
-    backup: Option<&str>,
-    fidelity: Option<FidelityReport>,
-    measurement: Option<&CheckMeasurement<'_>>,
-) -> String {
+fn render_text(record: &RewriteRecord, context: &ReportContext<'_>) -> String {
     use std::fmt::Write as _;
 
     let eligible = record
@@ -153,12 +180,23 @@ fn render_text(
         .filter(|assessment| assessment.eligible)
         .count();
     let mut text = String::new();
-    let _ = writeln!(text, "status: {}", status_name(record.status));
+    let _ = writeln!(
+        text,
+        "{}",
+        verdict_line(record.status, eligible, context.emission)
+    );
     if let Some(reason) = record.reason {
         let _ = writeln!(text, "reason: {}", reason_name(reason));
     }
     append_span_lines(&mut text, record);
-    if let Some(fidelity) = fidelity {
+    if let Some(measurement) = context.measurement {
+        let _ = writeln!(text, "changed_token_pct: {}", measurement.changed_token_pct);
+        let _ = writeln!(text, "changed_char_pct: {}", measurement.changed_char_pct);
+        if let Some(style) = measurement.style_distance {
+            append_style_lines(&mut text, style);
+        }
+    }
+    if let Some(fidelity) = context.fidelity {
         let _ = writeln!(text, "semantic_evaluator: {}", fidelity.semantic_evaluator);
         let _ = writeln!(
             text,
@@ -172,25 +210,115 @@ fn render_text(
             let _ = writeln!(text, "note: {note}");
         }
     }
-    if let Some(measurement) = measurement {
-        let _ = writeln!(text, "changed_token_pct: {}", measurement.changed_token_pct);
-        let _ = writeln!(text, "changed_char_pct: {}", measurement.changed_char_pct);
-        if let Some(style) = measurement.style_distance {
-            append_style_lines(&mut text, style);
-        }
-    }
-    let _ = writeln!(text, "source_digest: {}", record.source_digest.as_str());
-    let _ = writeln!(text, "output_digest: {}", record.output_digest.as_str());
     let _ = writeln!(text, "candidates: {}", record.assessments.len());
     let _ = writeln!(text, "eligible_candidates: {eligible}");
-    if let Some(backup) = backup {
+    if let Some(backup) = context.backup {
         let _ = writeln!(
             text,
             "backup: {}",
             crate::render::escape_inline_for_display(backup)
         );
     }
-    text
+    if context.verbose {
+        append_digests(&mut text, record);
+    }
+    let _ = writeln!(text, "{}", receipt_line(record, context));
+    let wrapped = crate::presentation::wrap(&text, context.width);
+    crate::presentation::paint_report(&wrapped, context.color)
+}
+
+fn verdict_line(status: RewriteStatus, eligible: usize, emission: ReportEmission) -> String {
+    match status {
+        RewriteStatus::Rewritten if matches!(emission, ReportEmission::Written) => {
+            "accepted    candidate passed".to_owned()
+        }
+        RewriteStatus::Rewritten if matches!(emission, ReportEmission::DryRun) => {
+            "accepted    candidate passed; nothing written".to_owned()
+        }
+        RewriteStatus::Rewritten => {
+            let count = eligible.max(1);
+            let noun = if count == 1 {
+                "candidate"
+            } else {
+                "candidates"
+            };
+            format!("accepted    {count} {noun} passed; nothing written (use -o)")
+        }
+        RewriteStatus::Abstained => "abstained   original kept unchanged".to_owned(),
+        RewriteStatus::UnchangedIdentical => {
+            "unchanged   source and candidate already match".to_owned()
+        }
+        RewriteStatus::UnchangedNoEligibleContent => "unchanged   no eligible content".to_owned(),
+        RewriteStatus::Failed => "failed      the check did not finish".to_owned(),
+    }
+}
+
+fn append_digests(text: &mut String, record: &RewriteRecord) {
+    use std::fmt::Write as _;
+    let source = short_digest(record.source_digest.as_str());
+    if record.output_digest.as_str() == record.source_digest.as_str() {
+        let _ = writeln!(text, "output identical to source");
+        return;
+    }
+    let output = short_digest(record.output_digest.as_str());
+    let _ = writeln!(text, "source_digest: {source}");
+    let _ = writeln!(text, "output_digest: {output}");
+}
+
+fn receipt_line(record: &RewriteRecord, context: &ReportContext<'_>) -> String {
+    let summary = invariant_summary(record);
+    let protected = format!(
+        "{} numbers, {} urls, {} emails, {} terms",
+        summary.numbers, summary.urls, summary.emails, summary.declared_terms
+    );
+    match record.status {
+        RewriteStatus::Rewritten => match context.measurement {
+            Some(measurement) => {
+                let count = measurement.changed_word_count;
+                let noun = if count == 1 { "word" } else { "words" };
+                format!("passed    {count} {noun} changed; protected values intact: {protected}")
+            }
+            None => format!("passed    protected values intact: {protected}"),
+        },
+        RewriteStatus::Failed => "failed     no document was accepted".to_owned(),
+        RewriteStatus::Abstained
+        | RewriteStatus::UnchangedIdentical
+        | RewriteStatus::UnchangedNoEligibleContent => {
+            let digest = short_digest(record.source_digest.as_str());
+            let full = format!("kept      original, byte-identical (sha256 {digest})");
+            if context
+                .width
+                .is_some_and(|width| full.chars().count() > width)
+            {
+                "kept      original, byte-identical".to_owned()
+            } else {
+                full
+            }
+        }
+    }
+}
+
+fn invariant_summary(record: &RewriteRecord) -> rewrite_types::InvariantEvidenceSummary {
+    for assessment in &record.assessments {
+        for gate in &assessment.gates {
+            for evidence in &gate.evidence {
+                if let Some(GateEvidenceDetails::InvariantSummary(summary)) = &evidence.details {
+                    return *summary;
+                }
+            }
+        }
+    }
+    rewrite_types::InvariantEvidenceSummary {
+        declared_terms: 0,
+        urls: 0,
+        emails: 0,
+        numbers: 0,
+        total: 0,
+    }
+}
+
+fn short_digest(digest: &str) -> String {
+    digest.chars().take(12).collect()
 }
 
 pub(crate) fn append_style_lines(text: &mut String, style: &StyleDistance) {

@@ -18,7 +18,7 @@ fn rewrite_fails_closed_without_a_qualified_artifact() {
     fs::write(&source, "Hello world\n").expect("write source");
 
     binary()
-        .args(["rewrite"])
+        .args(["--format", "json", "rewrite"])
         .arg(&source)
         .arg("--output")
         .arg(&output)
@@ -43,7 +43,7 @@ fn rewrite_refuses_an_existing_destination_before_generation() {
     fs::write(&output, "keep\n").expect("write existing dest");
 
     binary()
-        .args(["rewrite"])
+        .args(["--format", "json", "rewrite"])
         .arg(&source)
         .arg("--output")
         .arg(&output)
@@ -62,7 +62,7 @@ fn rewrite_artifact_id_without_data_dir_is_usage() {
     let artifact_id = "0".repeat(64);
 
     binary()
-        .args(["rewrite"])
+        .args(["--format", "json", "rewrite"])
         .arg(&source)
         .args(["--artifact-id", &artifact_id])
         .assert()
@@ -81,7 +81,7 @@ fn rewrite_inspects_a_repository_without_starting_a_runtime() {
     binary()
         .arg("--data-dir")
         .arg(&data)
-        .args(["rewrite"])
+        .args(["--format", "json", "rewrite"])
         .arg(&source)
         .assert()
         .code(3)
@@ -98,14 +98,14 @@ fn rewrite_directory_requires_output_dir_and_dry_run() {
     fs::write(source.join("a.txt"), "alpha\n").expect("write a");
 
     binary()
-        .args(["rewrite"])
+        .args(["--format", "json", "rewrite"])
         .arg(&source)
         .assert()
         .code(2)
         .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
 
     binary()
-        .args(["rewrite"])
+        .args(["--format", "json", "rewrite"])
         .arg(&source)
         .arg("--output-dir")
         .arg(directory.path().join("out"))
@@ -128,7 +128,14 @@ fn rewrite_directory_dry_run_maps_destinations_without_mutation() {
     fs::write(source.join("target").join("built.txt"), "built\n").expect("write ignored");
 
     let result = binary()
-        .args(["rewrite", "-r", "--dry-run", "--output-dir"])
+        .args([
+            "--format",
+            "json",
+            "rewrite",
+            "-r",
+            "--dry-run",
+            "--output-dir",
+        ])
         .arg(&output)
         .arg(&source)
         .output()
@@ -180,7 +187,7 @@ fn rewrite_directory_dry_run_reports_collisions_and_refuses_nested_roots() {
     fs::write(output.join("a.txt"), "keep\n").expect("write collision");
 
     binary()
-        .args(["rewrite", "--dry-run", "--output-dir"])
+        .args(["--format", "json", "rewrite", "--dry-run", "--output-dir"])
         .arg(&output)
         .arg(&source)
         .assert()
@@ -193,7 +200,7 @@ fn rewrite_directory_dry_run_reports_collisions_and_refuses_nested_roots() {
     );
 
     binary()
-        .args(["rewrite", "--dry-run", "--output-dir"])
+        .args(["--format", "json", "rewrite", "--dry-run", "--output-dir"])
         .arg(source.join("nested-out"))
         .arg(&source)
         .assert()
@@ -211,7 +218,14 @@ fn rewrite_directory_rejects_in_place_and_file_output_dir() {
     fs::write(&file, "Hello world\n").expect("write file");
 
     binary()
-        .args(["rewrite", "-i", "--dry-run", "--output-dir"])
+        .args([
+            "--format",
+            "json",
+            "rewrite",
+            "-i",
+            "--dry-run",
+            "--output-dir",
+        ])
         .arg(directory.path().join("out"))
         .arg(&source)
         .assert()
@@ -219,7 +233,7 @@ fn rewrite_directory_rejects_in_place_and_file_output_dir() {
         .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
 
     binary()
-        .args(["rewrite", "--dry-run", "--output-dir"])
+        .args(["--format", "json", "rewrite", "--dry-run", "--output-dir"])
         .arg(directory.path().join("out"))
         .arg(&file)
         .assert()
@@ -277,7 +291,7 @@ fn rewrite_directory_blocks_dangling_destination_links() {
         .expect("create dangling destination link");
 
     binary()
-        .args(["rewrite", "--dry-run", "--output-dir"])
+        .args(["--format", "json", "rewrite", "--dry-run", "--output-dir"])
         .arg(&output)
         .arg(&source)
         .assert()
@@ -299,7 +313,7 @@ fn rewrite_directory_refuses_an_output_root_aliased_inside_source() {
     symlink(&source, &alias).expect("create source alias");
 
     binary()
-        .args(["rewrite", "--dry-run", "--output-dir"])
+        .args(["--format", "json", "rewrite", "--dry-run", "--output-dir"])
         .arg(alias.join("nested-output"))
         .arg(&source)
         .assert()
@@ -310,7 +324,7 @@ fn rewrite_directory_refuses_an_output_root_aliased_inside_source() {
 #[test]
 fn rewrite_standard_input_is_accepted_then_refused() {
     binary()
-        .args(["rewrite", "-"])
+        .args(["--format", "json", "rewrite", "-"])
         .write_stdin(b"Hello world\n".to_vec())
         .assert()
         .code(3)
@@ -444,7 +458,7 @@ fn rewrite_attaches_fake_conformance_to_a_recovered_binding() {
     let rewritten = binary()
         .arg("--data-dir")
         .arg(&data)
-        .args(["rewrite"])
+        .args(["--format", "json", "rewrite"])
         .arg(&source_doc)
         .arg("--output")
         .arg(&output)
@@ -474,7 +488,7 @@ fn rewrite_dry_run_diff_and_trace_are_safe_and_non_replacing() {
     binary()
         .arg("-D")
         .arg(&data)
-        .args(["rewrite", "--diff", "--dry-run"])
+        .args(["--format", "json", "rewrite", "--diff", "--dry-run"])
         .arg(&source_doc)
         .arg("-o")
         .arg(&output)
@@ -484,7 +498,7 @@ fn rewrite_dry_run_diff_and_trace_are_safe_and_non_replacing() {
         .success()
         .stdout(predicate::str::contains("\"command\": \"rewrite\""))
         .stdout(predicate::str::contains("Hello world").not())
-        .stderr(predicate::str::contains("diff: unchanged"));
+        .stderr(predicate::str::contains("no diff: the original was kept"));
     assert!(!output.exists(), "dry-run must not create --output");
     let trace_text = fs::read_to_string(&trace).expect("read trace");
     assert!(trace_text.contains("\"command\": \"rewrite\""));
@@ -498,7 +512,7 @@ fn rewrite_dry_run_diff_and_trace_are_safe_and_non_replacing() {
     binary()
         .arg("-D")
         .arg(&data)
-        .args(["rewrite"])
+        .args(["--format", "json", "rewrite"])
         .arg(&source_doc)
         .arg("-o")
         .arg(&output)
@@ -519,7 +533,7 @@ fn rewrite_in_place_dry_run_does_not_mutate() {
     binary()
         .arg("-D")
         .arg(&data)
-        .args(["rewrite", "-i", "--dry-run"])
+        .args(["--format", "json", "rewrite", "-i", "--dry-run"])
         .arg(&source_doc)
         .assert()
         .success()
