@@ -77,7 +77,7 @@ jobs:
           cp smoke-candidate.txt smoke-candidates/draft.txt
           "$binary" tui smoke-originals --candidate smoke-candidates \
             --recursive --document draft.txt --plain --format json > smoke-folder-review.json
-          python3 -c 'import json; r=json.load(open("smoke-folder-review.json", encoding="utf-8")); assert r["result"]["directory"]["total"] == 1; assert "Candidate check: rewritten" in r["result"]["summary"]'
+          python3 -c 'import json; r=json.load(open("smoke-folder-review.json", encoding="utf-8")); assert r["result"]["directory"]["total"] == 1; assert r["result"]["summary"] == "accepted", r["result"]["summary"]'
           if [ "${{ runner.os }}" != "Windows" ]; then
             python3 fixtures/cli/folder-review-pty.py "$binary"
           fi
