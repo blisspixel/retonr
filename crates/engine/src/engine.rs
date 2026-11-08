@@ -14,6 +14,7 @@ use crate::{
 
 mod support;
 
+use crate::change_share::validate_change_budget;
 use support::{
     EligibleCandidate, EvaluatedCandidate, PROTECTED_GATE, SEMANTIC_GATE, SENTINEL_GATE,
     UnitProgress, ineligible, invalid_semantic_gate, protected_values_pass, protection_failure,
@@ -64,6 +65,9 @@ pub enum EngineError {
     /// Layout budget bounds are invalid.
     #[error("layout budget bounds must be valid")]
     InvalidLayoutBudget,
+    /// The requested change-share budget is above 100 percent.
+    #[error("change budget percent must be from 0 through 100")]
+    InvalidChangeBudget,
     /// Document IR violates its versioned structural contract.
     #[error(transparent)]
     InvalidDocument(#[from] DocumentError),
@@ -346,6 +350,15 @@ impl<'a> RewriteEngine<'a> {
             gates.push(layout_gate);
             if !layout_passed {
                 return ineligible(candidate, unit.id.clone(), restored, gates, layout_reason);
+            }
+        }
+
+        if let Some((change_gate, change_reason)) = validate_change_budget(unit, &restored, options)
+        {
+            let change_passed = change_gate.status == GateStatus::Pass;
+            gates.push(change_gate);
+            if !change_passed {
+                return ineligible(candidate, unit.id.clone(), restored, gates, change_reason);
             }
         }
 

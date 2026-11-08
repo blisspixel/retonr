@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, fs, path::Path, process::ExitCode};
 use rewrite_app::{
     CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES, TextEncoding,
 };
-use rewrite_types::{CancellationToken, Digest, ReasonCode, RewriteRecord, RewriteStatus};
+use rewrite_types::{CancellationToken, Digest, ReasonCode, RewriteStatus};
 
 use super::{CheckRequest, replace, require_not_cancelled};
 use crate::{
@@ -27,13 +27,17 @@ pub(super) fn is_real_directory(path: &Path) -> bool {
         .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
 }
 
-pub(super) fn run(request: &CheckRequest, format: ReportFormat) -> Result<ExitCode, RunFailure> {
+pub(super) fn run(
+    request: &CheckRequest,
+    format: ReportFormat,
+    style_samples: Option<&rewrite_app::StyleSampleProfile>,
+) -> Result<ExitCode, RunFailure> {
     validate_request(request)?;
     let cancellation = CancellationToken::new();
     let signal = cancellation.clone();
     ctrlc::try_set_handler(move || signal.cancel())
         .map_err(|_| RunFailure::operational(CommandName::Check))?;
-    let report = build_report(request, &cancellation)?;
+    let report = build_report(request, &cancellation, style_samples)?;
     require_not_cancelled(&cancellation, CommandName::Check)?;
     report.write(format)?;
     Ok(
@@ -93,6 +97,7 @@ fn root_key(path: &Path) -> Result<std::path::PathBuf, RunFailure> {
 fn build_report(
     request: &CheckRequest,
     cancellation: &CancellationToken,
+    style_samples: Option<&rewrite_app::StyleSampleProfile>,
 ) -> Result<DirectoryCheckReport, RunFailure> {
     let source = discover_cancellable(
         &request.source,
@@ -147,12 +152,21 @@ fn build_report(
             });
             continue;
         }
-        let record =
-            check_discovered_pair(request, &source, &candidate, &mut total_bytes, cancellation)?;
-        report.abstained_count += usize::from(record.status == RewriteStatus::Abstained);
+        let checked = check_discovered_pair(
+            request,
+            &source,
+            &candidate,
+            &mut total_bytes,
+            cancellation,
+            style_samples,
+        )?;
+        report.abstained_count += usize::from(checked.record.status == RewriteStatus::Abstained);
         report.pairs.push(PairReport {
             relative_path: source.relative_path,
-            record,
+            record: checked.record,
+            changed_token_pct: checked.change.changed_token_pct,
+            changed_char_pct: checked.change.changed_char_pct,
+            style_distance: checked.style_distance,
         });
     }
     for (_, candidate) in candidates {
@@ -176,7 +190,8 @@ fn check_discovered_pair(
     candidate: &DiscoveredDocument,
     total_bytes: &mut usize,
     cancellation: &CancellationToken,
-) -> Result<RewriteRecord, RunFailure> {
+    style_samples: Option<&rewrite_app::StyleSampleProfile>,
+) -> Result<rewrite_app::CandidateCheckResult, RunFailure> {
     let source_bytes = read_coherent(&request.source, source, total_bytes, InputRole::Source)?;
     let candidate_bytes = read_coherent(
         &request.candidate,
@@ -193,6 +208,8 @@ fn check_discovered_pair(
             protected_terms: request.protected_terms.clone(),
             layout: request.layout,
             edit_level: request.edit_level,
+            max_change_percent: request.max_change_percent,
+            style_samples: style_samples.cloned(),
         },
         cancellation,
     )
@@ -203,7 +220,7 @@ fn check_discovered_pair(
     if result.record.status == RewriteStatus::Failed {
         return Err(RunFailure::operational(CommandName::Check));
     }
-    Ok(result.record)
+    Ok(result)
 }
 
 fn read_coherent(

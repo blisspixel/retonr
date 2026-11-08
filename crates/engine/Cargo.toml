@@ -12,6 +12,7 @@ publish = false
 aho-corasick.workspace = true
 regex.workspace = true
 rewrite-types = { path = "../types", version = "0.1.0" }
+serde.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

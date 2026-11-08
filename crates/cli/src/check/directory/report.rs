@@ -6,6 +6,7 @@ use crate::{
     inspect_source::directory::SkippedEntry,
     render::{escape_inline_for_display, to_safe_pretty_json},
 };
+use rewrite_app::StyleDistance;
 use rewrite_types::{EditLevel, RewriteRecord};
 use serde::Serialize;
 use std::{
@@ -17,6 +18,10 @@ use std::{
 pub(super) struct PairReport {
     pub(super) relative_path: String,
     pub(super) record: RewriteRecord,
+    pub(super) changed_token_pct: u8,
+    pub(super) changed_char_pct: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) style_distance: Option<StyleDistance>,
 }
 
 #[derive(Serialize)]
@@ -125,6 +130,15 @@ impl DirectoryCheckReport {
                     "  reason: {}",
                     crate::check::report::reason_name(reason)
                 );
+            }
+            let _ = writeln!(text, "  changed_token_pct: {}", pair.changed_token_pct);
+            let _ = writeln!(text, "  changed_char_pct: {}", pair.changed_char_pct);
+            if let Some(style) = &pair.style_distance {
+                let mut style_lines = String::new();
+                crate::check::report::append_style_lines(&mut style_lines, style);
+                for line in style_lines.lines() {
+                    let _ = writeln!(text, "  {line}");
+                }
             }
             let mut locations = String::new();
             crate::check::report::append_span_lines(&mut locations, &pair.record);

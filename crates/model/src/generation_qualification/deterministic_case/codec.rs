@@ -159,6 +159,7 @@ const fn reason_code_tag(value: ReasonCode) -> u8 {
         ReasonCode::UnsupportedAtomicity => 10,
         ReasonCode::CharacterBudgetExceeded => 11,
         ReasonCode::LineBudgetExceeded => 12,
+        ReasonCode::ChangeBudgetExceeded => 13,
     }
 }
 

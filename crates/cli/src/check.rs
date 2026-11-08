@@ -6,7 +6,9 @@ use std::{
     process::ExitCode,
 };
 
-use rewrite_app::{CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES};
+use rewrite_app::{
+    CandidateCheckRequest, CandidateCheckService, MAX_CANDIDATE_CHECK_BYTES, StyleSampleProfile,
+};
 use rewrite_types::{CancellationToken, ReasonCode, RewriteStatus};
 
 use crate::{
@@ -49,6 +51,10 @@ pub(crate) struct CheckRequest {
     pub(crate) inspection: CheckInspection,
     pub(crate) layout: Option<rewrite_types::LayoutConstraints>,
     pub(crate) edit_level: Option<rewrite_types::EditLevel>,
+    /// Inclusive change-share limit. Values above 100 are a usage error.
+    pub(crate) max_change_percent: Option<u8>,
+    /// Paths of authorized samples. Empty means no style-distance report.
+    pub(crate) style_sample_paths: Vec<PathBuf>,
 }
 
 /// Whether directory discovery visits children.
@@ -71,12 +77,21 @@ pub(crate) struct CheckInspection {
     pub(crate) trace: Option<PathBuf>,
 }
 
+const MAX_STYLE_SAMPLES: usize = 16;
+
 /// Validates one candidate and applies the explicit input and output policy.
-pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCode, RunFailure> {
+pub(crate) fn run(request: &CheckRequest, format: ReportFormat) -> Result<ExitCode, RunFailure> {
+    if request
+        .max_change_percent
+        .is_some_and(|percent| percent > 100)
+    {
+        return Err(RunFailure::usage_for(CommandName::Check));
+    }
+    let style_samples = load_style_samples(&request.style_sample_paths)?;
     if directory::is_real_directory(&request.source)
         && directory::is_real_directory(&request.candidate)
     {
-        return directory::run(&request, format);
+        return directory::run(request, format, style_samples.as_ref());
     }
     if request.traversal.recursive() {
         return Err(RunFailure::usage_for(CommandName::Check));
@@ -119,9 +134,11 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         CandidateCheckRequest {
             source: source_bytes.clone(),
             candidate,
-            protected_terms: request.protected_terms,
+            protected_terms: request.protected_terms.clone(),
             layout: request.layout,
             edit_level: request.edit_level,
+            max_change_percent: request.max_change_percent,
+            style_samples,
         },
         &cancellation,
     )
@@ -130,21 +147,38 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         return Err(RunFailure::cancelled(CommandName::Check));
     }
     require_not_cancelled(&cancellation, CommandName::Check)?;
+    publish_check(
+        format,
+        &destination,
+        request,
+        &source_bytes,
+        source_for_diff.as_deref(),
+        &result,
+    )
+}
 
+fn publish_check(
+    format: ReportFormat,
+    destination: &replace::Destination,
+    request: &CheckRequest,
+    source_bytes: &[u8],
+    source_for_diff: Option<&[u8]>,
+    result: &rewrite_app::CandidateCheckResult,
+) -> Result<ExitCode, RunFailure> {
     let backup = if request.inspection.dry_run {
         None
     } else {
         emit_destination(
-            &destination,
+            destination,
             &request.source,
-            &source_bytes,
+            source_bytes,
             &result.output,
             request.raw_terminal,
             request.confirmed,
             CommandName::Check,
         )?
     };
-    if let Some(diff_source) = source_for_diff.as_deref() {
+    if let Some(diff_source) = source_for_diff {
         inspect::write_diff(
             &inspect::SafeDiff::compare(diff_source, &result.output),
             ReportTarget::Diagnostic,
@@ -158,9 +192,14 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         CommandName::Check,
         &result.record,
         format,
-        destination_report_target(&destination),
+        destination_report_target(destination),
         backup.as_deref(),
         Some(report::fidelity_for(request.edit_level)),
+        Some(&report::CheckMeasurement {
+            changed_token_pct: result.change.changed_token_pct,
+            changed_char_pct: result.change.changed_char_pct,
+            style_distance: result.style_distance.as_ref(),
+        }),
     )
     .map_err(|_| RunFailure::operational(CommandName::Check))?;
     Ok(exit_status(
@@ -168,6 +207,28 @@ pub(crate) fn run(request: CheckRequest, format: ReportFormat) -> Result<ExitCod
         result.record.reason,
         request.fail_on_abstain,
     ))
+}
+
+fn load_style_samples(paths: &[PathBuf]) -> Result<Option<StyleSampleProfile>, RunFailure> {
+    if paths.is_empty() {
+        return Ok(None);
+    }
+    if paths.len() > MAX_STYLE_SAMPLES {
+        return Err(RunFailure::usage_for(CommandName::Check));
+    }
+    let mut remaining = MAX_CANDIDATE_CHECK_BYTES;
+    let mut texts = Vec::with_capacity(paths.len());
+    for path in paths {
+        let bytes = read_input_bounded(path, remaining)
+            .map_err(|error| RunFailure::check_read_at(InputRole::StyleSample, path, &error))?;
+        remaining = remaining.saturating_sub(bytes.len());
+        let text =
+            String::from_utf8(bytes).map_err(|_| RunFailure::check_invalid_style_sample())?;
+        texts.push(text);
+    }
+    Ok(Some(StyleSampleProfile::from_samples(
+        texts.iter().map(String::as_str),
+    )))
 }
 
 pub(crate) fn validate_trace_destination(

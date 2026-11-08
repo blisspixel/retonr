@@ -121,7 +121,9 @@ is not designed to, and is not claimed to, remove a provider mark, and Retonr do
 not test for one. Larger `--edit-level` tiers (`voice-pass`, `rewrite`,
 `reconstruct`) are opt-in, are not yet enforced, and currently report `touch-up`
 as effective. Optional character
-budget, expansion ceiling, and line budget flags enforce layout constraints. Read-only folder checks pair documents by exact
+budget, expansion ceiling, line budget, and `--max-change-pct` flags enforce caller
+limits. The change share is always reported. `--style-sample` adds an in-memory
+style-feature distance, stores nothing, and cannot accept a candidate. Read-only folder checks pair documents by exact
 relative path and report missing or skipped counterparts. `lint` inspects one document or a bounded folder,
 or compares one document with a candidate, for an early narrow list of
 conversational residue, cliches, and synthetic patterns. A clean lint result

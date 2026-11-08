@@ -21,6 +21,8 @@ fn request(source: &Path, candidate: &Path) -> CheckRequest {
         },
         layout: None,
         edit_level: None,
+        max_change_percent: None,
+        style_sample_paths: Vec::new(),
     }
 }
 
@@ -30,8 +32,11 @@ fn cancellation_returns_no_partial_pair_report() {
     let candidate = tempfile::tempdir().expect("candidate");
     let cancellation = CancellationToken::new();
     cancellation.cancel();
-    let Err(failure) = build_report(&request(source.path(), candidate.path()), &cancellation)
-    else {
+    let Err(failure) = build_report(
+        &request(source.path(), candidate.path()),
+        &cancellation,
+        None,
+    ) else {
         panic!("must cancel")
     };
     assert_eq!(

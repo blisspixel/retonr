@@ -27,6 +27,12 @@ pub fn validate_rewrite_options(options: &RewriteOptions) -> Result<(), EngineEr
     {
         return Err(EngineError::InvalidLayoutBudget);
     }
+    if options
+        .change_budget
+        .is_some_and(|budget| budget.max_change_percent > 100)
+    {
+        return Err(EngineError::InvalidChangeBudget);
+    }
     Ok(())
 }
 
@@ -92,12 +98,13 @@ pub(crate) const fn reason_priority(reason: ReasonCode) -> u8 {
         ReasonCode::StructureChanged => 3,
         ReasonCode::CharacterBudgetExceeded => 4,
         ReasonCode::LineBudgetExceeded => 5,
-        ReasonCode::SemanticMismatch => 6,
-        ReasonCode::SemanticUncertain => 7,
-        ReasonCode::InvalidCandidate => 8,
-        ReasonCode::NoCandidate => 9,
-        ReasonCode::ReassemblyVerification => 10,
-        ReasonCode::Cancelled => 11,
-        ReasonCode::UnsupportedAtomicity => 12,
+        ReasonCode::ChangeBudgetExceeded => 6,
+        ReasonCode::SemanticMismatch => 7,
+        ReasonCode::SemanticUncertain => 8,
+        ReasonCode::InvalidCandidate => 9,
+        ReasonCode::NoCandidate => 10,
+        ReasonCode::ReassemblyVerification => 11,
+        ReasonCode::Cancelled => 12,
+        ReasonCode::UnsupportedAtomicity => 13,
     }
 }

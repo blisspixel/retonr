@@ -100,7 +100,15 @@ slash, or comparison operator is part of the protected quantity.
 The check report names the semantic evaluator `literal-token-sequence-v1` and
 the effective edit level `touch-up`. Requesting `voice-pass`, `rewrite`, or
 `reconstruct` does not widen acceptance. The report says so instead of ignoring
-the flag. `retonr --version` and `retonr version` include the commit and, when
+the flag. The same report includes `changed_token_pct` and `changed_char_pct`.
+Those percentages compare word occurrences in the candidate with the source.
+Whitespace is only a separator, and a pure reordering measures as no change.
+`--max-change-pct N` abstains with `change_budget_exceeded` when either rounded
+percentage is greater than N. Without the flag, the share is reported and does
+not abstain. `--style-sample PATH` pools authorized samples in memory and reports
+`style_distance`. The notice says it is a style-feature distance, not an
+authorship verdict, and it does not accept or rank a candidate. Sample text is
+not copied into the report. `retonr --version` and `retonr version` include the commit and, when
 the build is an exact tag, the snapshot tag.
 
 An abstention is a success, not an error. The command still exits 0 unless you

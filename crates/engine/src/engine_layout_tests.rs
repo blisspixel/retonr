@@ -90,3 +90,71 @@ fn invalid_layout_budget_bounds_fail_validation() {
         Err(EngineError::InvalidLayoutBudget)
     );
 }
+
+#[test]
+fn change_budget_above_100_is_invalid() {
+    let mut options = literal_options();
+    options.change_budget = Some(rewrite_types::ChangeBudget {
+        max_change_percent: 101,
+    });
+    assert_eq!(
+        crate::validate_rewrite_options(&options),
+        Err(EngineError::InvalidChangeBudget)
+    );
+}
+
+#[test]
+fn change_budget_accepts_two_percent_and_abstains_at_ten() {
+    let (small_source, small_candidate) = case_edit(2);
+    let (large_source, large_candidate) = case_edit(10);
+    let mut options = literal_options();
+    options.change_budget = Some(rewrite_types::ChangeBudget {
+        max_change_percent: 2,
+    });
+    let accepted = RewriteEngine::new(
+        &ProvidedCandidateGenerator::new(vec![small_candidate]),
+        &LiteralSemanticEvaluator,
+        &PassStructure,
+    )
+    .run(
+        &document(&small_source),
+        &options,
+        &CancellationToken::new(),
+    )
+    .expect("deterministic ports succeed");
+    assert_eq!(accepted.status, RewriteStatus::Rewritten);
+    assert!(accepted.reason.is_none());
+
+    let rejected = RewriteEngine::new(
+        &ProvidedCandidateGenerator::new(vec![large_candidate]),
+        &LiteralSemanticEvaluator,
+        &PassStructure,
+    )
+    .run(
+        &document(&large_source),
+        &options,
+        &CancellationToken::new(),
+    )
+    .expect("deterministic ports succeed");
+    assert_eq!(rejected.status, RewriteStatus::Abstained);
+    assert_eq!(rejected.reason, Some(ReasonCode::ChangeBudgetExceeded));
+    assert!(rejected.edits.is_empty());
+}
+
+fn case_edit(changes: usize) -> (String, String) {
+    let mut source = String::new();
+    let mut candidate = String::new();
+    for index in 0..100 {
+        if index > 0 {
+            source.push(' ');
+            candidate.push(' ');
+        }
+        source.push_str("word");
+        if index < changes {
+            candidate.push_str("Word");
+        } else {
+            candidate.push_str("word");
+        }
+    }
+    (source, candidate)
+}

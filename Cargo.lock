@@ -1890,6 +1890,7 @@ dependencies = [
  "proptest",
  "regex",
  "rewrite-types",
+ "serde",
  "serde_json",
  "thiserror",
 ]

@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod change_share;
 mod claim_comparison;
 mod claim_shadow;
 mod engine;
@@ -30,7 +31,9 @@ mod semantic;
 mod semantic_binding_tests;
 mod span_report;
 mod structure;
+mod style_observation;
 
+pub use change_share::{ChangeShare, change_share};
 pub use claim_comparison::{ClaimComparisonError, ClaimEvidenceComparator};
 pub use claim_shadow::ClaimShadowObserver;
 pub use engine::{
@@ -50,3 +53,6 @@ pub use rewrite_types::CancellationToken;
 pub use selection::select_best;
 pub use semantic::{LiteralSemanticEvaluator, SemanticEvaluator};
 pub use structure::{StructureAssessment, StructureValidator};
+pub use style_observation::{
+    STYLE_DISTANCE_NOTICE, StyleDistance, StyleFeature, StyleSampleProfile,
+};
