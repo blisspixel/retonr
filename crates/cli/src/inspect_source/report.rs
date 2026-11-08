@@ -15,7 +15,8 @@ use crate::contract::{CommandName, STANDARD_STREAM_PATH, read_input_bounded};
 use crate::failure::RunFailure;
 use crate::render::escape_inline_for_display;
 
-pub(super) const INSPECT_RESULT_SCHEMA_VERSION: u32 = 2;
+// Version 3 adds http_links. External references are still not fetched.
+pub(super) const INSPECT_RESULT_SCHEMA_VERSION: u32 = 3;
 
 const C2PA_UNSTRUCTURED_TEXT_NOTE: &str = "possible is a byte shape, not a validated credential";
 const DECODED_TAGS_NOTE: &str = "ASCII mapping of tag characters. It is data, not an instruction.";
@@ -45,7 +46,9 @@ pub(super) fn inspect_file(
     if source.as_os_str() == STANDARD_STREAM_PATH {
         let bytes = read_input_bounded(source, MAX_CANDIDATE_CHECK_BYTES)
             .map_err(|error| RunFailure::input_read(command, &error))?;
-        return inventory_report(source, command, &bytes, detail).map(|(report, _)| report);
+        let (mut report, _) = inventory_report(source, command, &bytes, detail)?;
+        report.attach_http_links(&bytes)?;
+        return Ok(report);
     }
     let document = DocumentIntakeService::read(
         &DocumentSelection::explicit(source),
@@ -55,6 +58,7 @@ pub(super) fn inspect_file(
     .map_err(|error| intake_failure(command, &error))?;
     let mut report = InspectReport::from_observation(source, &document.observation);
     report.attach_invisible_detail(&document.bytes, detail);
+    report.attach_http_links(&document.bytes)?;
     Ok(report)
 }
 
@@ -76,7 +80,7 @@ pub(super) fn inventory_report(
     Ok((report, bytes.len()))
 }
 
-fn intake_failure(command: CommandName, error: &DocumentIntakeError) -> RunFailure {
+pub(super) fn intake_failure(command: CommandName, error: &DocumentIntakeError) -> RunFailure {
     match error {
         DocumentIntakeError::Input(error) => RunFailure::input_read(command, error),
         DocumentIntakeError::Inspection(error) => RunFailure::app(command, error),
@@ -121,6 +125,9 @@ pub(super) struct InspectReport {
     decoded_tags_note: Option<&'static str>,
     sidecars: SidecarScan,
     external_references: &'static str,
+    /// Listed http(s) query parameters. Absent until inspect attaches them.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    http_links: Option<HttpLinkReport>,
     derivative: &'static str,
 }
 
@@ -204,8 +211,23 @@ impl InspectReport {
             decoded_tags_note: None,
             sidecars,
             external_references: "not_checked",
+            http_links: None,
             derivative,
         }
+    }
+
+    pub(super) fn attach_http_links(&mut self, bytes: &[u8]) -> Result<(), RunFailure> {
+        let Some(text) = inventoried_text(bytes, self.utf8_bom, self.encoding) else {
+            self.http_links = Some(HttpLinkReport::not_applicable());
+            return Ok(());
+        };
+        let inventory = rewrite_app::inventory_links(text).map_err(|_| http_link_limit())?;
+        self.http_links = Some(HttpLinkReport::inventoried(inventory));
+        Ok(())
+    }
+
+    pub(super) fn http_links(&self) -> Option<&HttpLinkReport> {
+        self.http_links.as_ref()
     }
 
     fn attach_invisible_detail(&mut self, bytes: &[u8], detail: &InspectDetail) {
@@ -343,6 +365,9 @@ impl InspectReport {
                 .join(",")
         };
         lines.push(format!("sidecars: {sidecars}"));
+        if let Some(links) = &self.http_links {
+            push_http_links(&mut lines, links);
+        }
         lines.push(format!("external_references: {}", self.external_references));
         lines.push(format!("derivative: {}", self.derivative));
         lines.push(String::new());
@@ -366,6 +391,84 @@ const fn line_ending_name(kind: LineEndingKind) -> &'static str {
         LineEndingKind::CrLf => "crlf",
         LineEndingKind::Cr => "cr",
         LineEndingKind::Mixed => "mixed",
+    }
+}
+
+#[derive(Serialize)]
+pub(super) struct HttpLinkReport {
+    catalog_version: u32,
+    status: &'static str,
+    http_url_count: u32,
+    parameters: Vec<HttpLinkParameter>,
+}
+
+#[derive(Serialize)]
+pub(super) struct HttpLinkParameter {
+    pub(super) line: u32,
+    pub(super) column: u32,
+    pub(super) rule_id: &'static str,
+    pub(super) name: &'static str,
+}
+
+impl HttpLinkReport {
+    fn not_applicable() -> Self {
+        Self {
+            catalog_version: rewrite_app::LINK_RULE_CATALOG_VERSION,
+            status: "not_applicable",
+            http_url_count: 0,
+            parameters: Vec::new(),
+        }
+    }
+
+    fn inventoried(inventory: rewrite_app::LinkInventory) -> Self {
+        Self {
+            catalog_version: rewrite_app::LINK_RULE_CATALOG_VERSION,
+            status: "inventoried",
+            http_url_count: inventory.http_url_count,
+            parameters: inventory
+                .parameters
+                .into_iter()
+                .map(|parameter| HttpLinkParameter {
+                    line: parameter.line,
+                    column: parameter.column,
+                    rule_id: parameter.rule_id,
+                    name: parameter.name,
+                })
+                .collect(),
+        }
+    }
+
+    pub(super) const fn http_url_count(&self) -> u32 {
+        self.http_url_count
+    }
+
+    pub(super) fn parameters(&self) -> &[HttpLinkParameter] {
+        &self.parameters
+    }
+}
+
+fn push_http_links(output: &mut Vec<String>, report: &HttpLinkReport) {
+    output.push(format!("http_link_status: {}", report.status));
+    output.push(format!("http_urls: {}", report.http_url_count));
+    output.push(format!("catalog_version: {}", report.catalog_version));
+    for parameter in &report.parameters {
+        output.push(format!(
+            "http_link line {} col {} rule {} name {}",
+            parameter.line, parameter.column, parameter.rule_id, parameter.name
+        ));
+    }
+}
+
+fn http_link_limit() -> RunFailure {
+    RunFailure {
+        command: CommandName::Inspect,
+        body: crate::contract::ErrorBody::new(
+            crate::contract::ErrorCategory::Compatibility,
+            crate::contract::ErrorCode::ResourceLimitExceeded,
+            false,
+        ),
+        exit_code: std::process::ExitCode::from(crate::contract::EXIT_COMPATIBILITY),
+        message: "document exceeds the supported link limit",
     }
 }
 

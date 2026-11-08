@@ -28,6 +28,7 @@ mod failure;
 mod file_input;
 mod identity;
 mod inspect_source;
+mod links;
 mod lint;
 mod man;
 mod model;
@@ -226,6 +227,7 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 .map_err(|_| (RunFailure::operational(command), format))?;
             Ok(exit_code)
         }
+        Command::Links { action } => links::run(&action, format).map_err(|error| (error, format)),
         Command::Model { command } => {
             let command_name = command.name();
             let cancellation = CancellationToken::new();

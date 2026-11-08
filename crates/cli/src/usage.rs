@@ -128,6 +128,7 @@ fn command_name(command: Option<&str>) -> CommandName {
         Some("rewrite") => CommandName::Rewrite,
         Some("inspect") => CommandName::Inspect,
         Some("lint") => CommandName::Lint,
+        Some("links") => CommandName::LinksClean,
         Some("tui") => CommandName::Tui,
         Some("doctor") => CommandName::Doctor,
         Some("version") => CommandName::Version,
@@ -148,6 +149,7 @@ fn help_pointer(command: Option<&str>) -> String {
                     | "rewrite"
                     | "inspect"
                     | "lint"
+                    | "links"
                     | "tui"
                     | "doctor"
                     | "version"

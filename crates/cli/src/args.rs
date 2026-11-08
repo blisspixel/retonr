@@ -12,12 +12,14 @@ Examples:
   retonr lint draft.txt
   retonr tui draft.txt --candidate edited.txt
   retonr inspect draft.txt
+  retonr links clean draft.txt --dry-run
+  retonr links clean draft.txt -o cleaned.txt
   retonr rewrite draft.txt -o rewritten.txt
   retonr rewrite draft.txt -i
   retonr rewrite docs/ -r --output-dir rewritten --dry-run
   retonr -D .retonr model list
 
-check, lint, tui, and inspect run in this build. rewrite needs a qualified
+check, lint, tui, inspect, and links run in this build. rewrite needs a qualified
 local model and is not available in this build.
 
 Retonr makes small, checked copy edits toward your own style. It adds no watermark,
@@ -229,8 +231,9 @@ pub(crate) enum Command {
     /// sidecar presence, and whether an explicit derivative decision is
     /// required. A directory is a discovery manifest. Recursion is bounded,
     /// does not follow links, and skips hidden names plus `target` and
-    /// `node_modules`. It does not parse Content Credentials, follow
-    /// external references, or strip bytes. `possible` on the unstructured
+    /// `node_modules`. It names http(s) URLs and listed query parameters in
+    /// the file. It does not fetch those URLs, parse Content Credentials, or
+    /// strip bytes. `possible` on the unstructured
     /// text carrier is a byte shape, not a validated credential. Tag
     /// characters are counted separately from other format marks.
     Inspect {
@@ -251,6 +254,15 @@ pub(crate) enum Command {
         /// One document only.
         #[arg(long = "decode-tags")]
         decode_tags: bool,
+    },
+    /// Tidy selected http(s) query parameters in the writer's own text.
+    ///
+    /// Offline. This does not fetch, decode, or follow redirects. Check and
+    /// rewrite do not call it. The default cleanup removes only the exact pair
+    /// `utm_source=chatgpt.com`, and only from this command.
+    Links {
+        #[command(subcommand)]
+        action: crate::links::LinksAction,
     },
     /// Administer exact local model artifacts without network access.
     Model {

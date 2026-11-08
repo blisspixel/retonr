@@ -37,6 +37,28 @@ pub(crate) fn protected_occurrences(
     )
 }
 
+/// Byte ranges of the HTTP and HTTPS URLs check protects.
+///
+/// The extractor, trailing-punctuation trim, and non-overlapping selection are
+/// the same ones check uses. A URL check drops because another span covers it
+/// is absent here too. The ranges are char boundaries and do not include the
+/// surrounding sentence punctuation.
+///
+/// # Errors
+///
+/// Returns [`ProtectionError::ResourceLimit`] when the document or the match
+/// list exceeds a protection ceiling.
+pub fn protected_http_url_ranges(text: &str) -> Result<Vec<(usize, usize)>, ProtectionError> {
+    if text.len() > MAX_PROTECTED_TEXT_BYTES {
+        return Err(ProtectionError::ResourceLimit);
+    }
+    Ok(selected_typed_spans(text)?
+        .into_iter()
+        .filter(|span| span.kind == ProtectedKind::Url)
+        .map(|span| (span.start, span.end))
+        .collect())
+}
+
 static SENTINEL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\{\{PROTECTED_[A-Z_]+_\d{4}\}\}").expect("static sentinel regex must compile")
 });

@@ -30,6 +30,11 @@ fn inspect_reports_utf8_facts_without_source_text() {
     assert!(text.contains("\"c2pa_unstructured_text\": \"absent\""));
     assert!(text.contains("\"derivative\": \"not_required\""));
     assert!(text.contains("\"external_references\": \"not_checked\""));
+    assert!(
+        text.contains("\"http_link_status\": \"inventoried\"")
+            || text.contains("\"status\": \"inventoried\"")
+    );
+    assert!(text.contains("\"http_url_count\": 0"));
     assert!(!source_mutated(&source, b"Hello world\n"));
 
     binary()
@@ -268,7 +273,16 @@ fn inspect_separates_tags_and_keeps_decode_opt_in() {
     let text = String::from_utf8(output.stdout).expect("UTF-8");
     let value: serde_json::Value = serde_json::from_str(&text).expect("json");
     assert_eq!(value["schema_version"], 1);
-    assert_eq!(value["result"]["schema_version"], 2);
+    assert_eq!(value["result"]["schema_version"], 3);
+    assert_eq!(value["result"]["http_links"]["status"], "inventoried");
+    assert_eq!(value["result"]["http_links"]["http_url_count"], 0);
+    assert_eq!(
+        value["result"]["http_links"]["parameters"]
+            .as_array()
+            .expect("parameters")
+            .len(),
+        0
+    );
     assert_eq!(value["result"]["controls"]["tag"], "3");
     assert_eq!(value["result"]["controls"]["other_format"], "1");
     assert!(value["result"].get("locations").is_none());
