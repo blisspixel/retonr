@@ -81,10 +81,14 @@ impl DocumentReviewOperation {
     ///
     /// # Errors
     /// Returns Busy, Stopped, or identifier exhaustion without accepting work.
+    /// A requested shutdown is Stopped even when the mailbox lock is held.
     pub fn submit(
         &mut self,
         request: DocumentReviewOperationRequest,
     ) -> Result<DocumentReviewOperationId, DocumentReviewOperationSubmissionFailure> {
+        if self.shutdown_requested() {
+            return Err(Self::stopped(request));
+        }
         let Some(sequence) = self.sequence.checked_add(1) else {
             return Err(DocumentReviewOperationSubmissionFailure {
                 request,
@@ -94,15 +98,19 @@ impl DocumentReviewOperation {
         let id = DocumentReviewOperationId(sequence);
         let mut mailbox = match self.mailbox() {
             Ok(mailbox) => mailbox,
-            Err(error) => return Err(DocumentReviewOperationSubmissionFailure { request, error }),
+            Err(error) => {
+                return Err(DocumentReviewOperationSubmissionFailure {
+                    request,
+                    error: if self.shutdown_requested() {
+                        DocumentReviewOperationError::Stopped
+                    } else {
+                        error
+                    },
+                });
+            }
         };
-        if self.shared.shutdown.load(Ordering::Acquire)
-            || self.shared.stopped.load(Ordering::Acquire)
-        {
-            return Err(DocumentReviewOperationSubmissionFailure {
-                request,
-                error: DocumentReviewOperationError::Stopped,
-            });
+        if self.shutdown_requested() {
+            return Err(Self::stopped(request));
         }
         if let Some((_, cancellation)) = &self.latest {
             cancellation.cancel();
@@ -187,6 +195,19 @@ impl DocumentReviewOperation {
     #[must_use]
     pub fn is_stopped(&self) -> bool {
         self.shared.stopped.load(Ordering::Acquire)
+    }
+
+    fn shutdown_requested(&self) -> bool {
+        self.shared.shutdown.load(Ordering::Acquire) || self.shared.stopped.load(Ordering::Acquire)
+    }
+
+    fn stopped(
+        request: DocumentReviewOperationRequest,
+    ) -> DocumentReviewOperationSubmissionFailure {
+        DocumentReviewOperationSubmissionFailure {
+            request,
+            error: DocumentReviewOperationError::Stopped,
+        }
     }
 
     fn mailbox(&self) -> Result<std::sync::MutexGuard<'_, Mailbox>, DocumentReviewOperationError> {

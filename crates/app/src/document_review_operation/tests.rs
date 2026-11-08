@@ -169,6 +169,22 @@ fn cancellation_reports_once_and_discards_noncooperative_late_result() {
 }
 
 #[test]
+fn shutdown_during_mailbox_contention_refuses_without_accepting() {
+    let mut operation = DocumentReviewOperation::new().expect("worker");
+    let (release, holder) = operation.hold_mailbox_for_test();
+    operation.shutdown();
+    let failure = operation.submit(request(b"rejected")).expect_err("stopped");
+    assert!(matches!(
+        failure.error,
+        DocumentReviewOperationError::Stopped
+    ));
+    assert_eq!(failure.request.0.source, b"rejected");
+    assert_eq!(operation.sequence, 0);
+    release.send(()).expect("release");
+    holder.join().expect("holder");
+}
+
+#[test]
 fn contention_preserves_request_identity_and_original_token() {
     let mut operation = DocumentReviewOperation::new().expect("worker");
     let shared = Arc::clone(&operation.shared);
