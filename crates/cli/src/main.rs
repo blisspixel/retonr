@@ -122,6 +122,7 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 output_dir,
             },
             format,
+            report: check::HumanReport { verbose, color },
         })
         .map_err(|error| (error, format)),
         Command::Check {

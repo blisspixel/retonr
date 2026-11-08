@@ -696,6 +696,13 @@ fn abstention_reports_span_location_without_protected_text() {
     let stdout = String::from_utf8(text.stdout).expect("stdout");
     assert!(text.status.success());
     assert!(stdout.contains("line 1 col 6: declared_term"));
+    assert!(stdout.starts_with("abstained   original kept unchanged\n"));
+    let short = stdout
+        .split("sha256 ")
+        .nth(1)
+        .and_then(|rest| rest.split(')').next())
+        .expect("short digest");
+    assert_eq!(short.len(), 12);
     assert!(!stdout.contains(marker));
 
     let json = Command::cargo_bin("retonr")
@@ -708,6 +715,8 @@ fn abstention_reports_span_location_without_protected_text() {
     let body = String::from_utf8(json.stdout).expect("json stdout");
     assert!(json.status.success());
     assert!(body.contains("\"kind\": \"declared_term\""));
+    assert!(body.contains(&format!("\"source_digest\": \"{short}")));
+    assert!(!body.contains("changed_word_count"));
     assert!(!body.contains(marker));
 }
 
@@ -728,8 +737,11 @@ fn text_is_the_default_and_no_color_wins_over_always() {
         .expect("default check");
     let implicit_text = String::from_utf8(implicit.stdout).expect("text");
     assert!(implicit.status.success());
+    assert!(implicit_text.starts_with("accepted    "));
     assert!(implicit_text.contains("nothing written (use -o)"));
-    assert!(implicit_text.contains("kept") || implicit_text.contains("passed"));
+    assert!(implicit_text.contains(
+        "passed    2 words changed; protected values intact: 0 numbers, 0 urls, 0 emails, 0 terms"
+    ));
     assert!(!implicit_text.contains("schema_version"));
 
     let painted = Command::cargo_bin("retonr")

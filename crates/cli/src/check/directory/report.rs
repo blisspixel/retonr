@@ -7,7 +7,7 @@ use crate::{
     render::{escape_inline_for_display, to_safe_pretty_json},
 };
 use rewrite_app::StyleDistance;
-use rewrite_types::{EditLevel, RewriteRecord};
+use rewrite_types::{EditLevel, RewriteRecord, RewriteStatus};
 use serde::Serialize;
 use std::{
     fmt::Write as _,
@@ -20,6 +20,9 @@ pub(super) struct PairReport {
     pub(super) record: RewriteRecord,
     pub(super) changed_token_pct: u8,
     pub(super) changed_char_pct: u8,
+    /// Text receipt only. The directory JSON record stays free of this count.
+    #[serde(skip)]
+    pub(super) changed_word_count: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) style_distance: Option<StyleDistance>,
 }
@@ -82,7 +85,11 @@ impl DirectoryCheckReport {
         }
     }
 
-    pub(super) fn write(&self, format: ReportFormat) -> Result<(), RunFailure> {
+    pub(super) fn write(
+        &self,
+        format: ReportFormat,
+        human: &crate::check::HumanReport,
+    ) -> Result<(), RunFailure> {
         let bytes = match format {
             ReportFormat::Json => {
                 let mut bytes =
@@ -91,7 +98,17 @@ impl DirectoryCheckReport {
                 bytes.push(b'\n');
                 bytes
             }
-            ReportFormat::Text => self.text().into_bytes(),
+            ReportFormat::Text => {
+                let terminal = crate::presentation::stdout_is_terminal();
+                let width = crate::presentation::terminal_width(terminal);
+                let text = self.text(width);
+                let wrapped = crate::presentation::wrap(&text, width);
+                crate::presentation::paint_report(
+                    &wrapped,
+                    crate::presentation::color_enabled(human.color, terminal),
+                )
+                .into_bytes()
+            }
         };
         let mut stream = io::stdout().lock();
         stream
@@ -100,9 +117,10 @@ impl DirectoryCheckReport {
             .map_err(|_| RunFailure::operational(CommandName::Check))
     }
 
-    fn text(&self) -> String {
+    fn text(&self, width: Option<usize>) -> String {
         let mut text = format!(
-            "scope: {}\nmode: {}\nrecursion: {}\nlinks: {}\nchecked: {}\nabstained: {}\nunmatched: {}\nskipped: {}\n",
+            "{}\nscope: {}\nmode: {}\nrecursion: {}\nlinks: {}\nchecked: {}\nabstained: {}\nunmatched: {}\nskipped: {}\n",
+            directory_verdict(self),
             self.scope,
             self.mode,
             self.recursion,
@@ -145,6 +163,13 @@ impl DirectoryCheckReport {
             for line in locations.lines() {
                 let _ = writeln!(text, "  {line}");
             }
+            let receipt_width = width.map(|columns| columns.saturating_sub(2));
+            let receipt = crate::check::report::fidelity_receipt(
+                &pair.record,
+                Some(pair.changed_word_count),
+                receipt_width,
+            );
+            let _ = writeln!(text, "  {receipt}");
         }
         for unmatched in &self.unmatched {
             let _ = writeln!(
@@ -175,4 +200,34 @@ impl DirectoryCheckReport {
         }
         text
     }
+}
+
+fn directory_verdict(report: &DirectoryCheckReport) -> String {
+    if report
+        .pairs
+        .iter()
+        .any(|pair| pair.record.status == RewriteStatus::Failed)
+    {
+        return "failed      a directory check did not finish".to_owned();
+    }
+    if report.abstained_count > 0 {
+        return "abstained   original kept where a pair abstained".to_owned();
+    }
+    if report.pairs.is_empty() {
+        return "abstained   no pair was checked".to_owned();
+    }
+    let rewritten = report
+        .pairs
+        .iter()
+        .filter(|pair| pair.record.status == RewriteStatus::Rewritten)
+        .count();
+    if rewritten == report.pairs.len() {
+        let noun = if rewritten == 1 { "pair" } else { "pairs" };
+        return format!("accepted    {rewritten} {noun} passed");
+    }
+    if rewritten == 0 {
+        return "unchanged   directory pairs already match".to_owned();
+    }
+    let kept = report.pairs.len() - rewritten;
+    format!("accepted    {rewritten} passed; {kept} kept")
 }

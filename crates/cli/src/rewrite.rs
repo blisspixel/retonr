@@ -30,6 +30,7 @@ pub(crate) struct RewriteRequest {
     pub(crate) inspection: CheckInspection,
     pub(crate) directory: DirectoryFlags,
     pub(crate) format: ReportFormat,
+    pub(crate) report: crate::check::HumanReport,
 }
 
 /// Directory discovery and destination-root options.
@@ -156,11 +157,8 @@ fn publish_rewrite(
             backup,
             fidelity: None,
             measurement: None,
-            verbose: false,
-            color: crate::presentation::color_enabled(
-                crate::presentation::ColorChoice::Auto,
-                stream_is_terminal,
-            ),
+            verbose: request.report.verbose,
+            color: crate::presentation::color_enabled(request.report.color, stream_is_terminal),
             width: crate::presentation::terminal_width(stream_is_terminal),
             emission: report::emission(request.inspection.dry_run, writes_document),
         },

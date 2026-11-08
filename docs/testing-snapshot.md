@@ -108,9 +108,9 @@ percentage is greater than N. Without the flag, the share is reported and does
 not abstain. `--style-sample PATH` pools authorized samples in memory and reports
 `style_distance`. The notice says it is a style-feature distance, not an
 authorship verdict, and it does not accept or rank a candidate. Sample text is
-not copied into the report. The text report leads with a verdict, wraps to the
-terminal, and ends a check with a fidelity receipt. JSON keeps the versioned
-record. `retonr --version` and `retonr version` include the commit and, when
+not copied into the report. The text report, including a directory check,
+leads with a verdict, wraps to the terminal, and ends a check with a fidelity
+receipt. JSON keeps the versioned record. `retonr --version` and `retonr version` include the commit and, when
 the build is an exact tag, the snapshot tag.
 
 An abstention is a success, not an error. The command still exits 0 unless you

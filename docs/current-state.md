@@ -947,7 +947,7 @@ semantics, nor qualification.
   filesystem entry, including a dangling link, as reserved. A missing output parent
   is rejected before non-dry-run document work; dry-run output remains hypothetical.
   Text is the default. `--format json` or `RETONR_FORMAT=json` selects JSON. A pipe does not change the default. `-f` selects either.
-  Text check and lint reports lead with a verdict and wrap to the terminal width. A check ends with a fidelity receipt. JSON keeps the versioned envelope.
+  Text check and lint reports, including directory reports, lead with a verdict and wrap to the terminal width. A check ends with a fidelity receipt. JSON keeps the versioned envelope.
   `--data-dir` is also `-D` or `RETONR_DATA_DIR`.
   Exact bytes reach a terminal only after the
   `--raw-terminal --yes` double opt-in and a warning. Without that double opt-in,

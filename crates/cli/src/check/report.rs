@@ -222,7 +222,15 @@ fn render_text(record: &RewriteRecord, context: &ReportContext<'_>) -> String {
     if context.verbose {
         append_digests(&mut text, record);
     }
-    let _ = writeln!(text, "{}", receipt_line(record, context));
+    let _ = writeln!(
+        text,
+        "{}",
+        fidelity_receipt(
+            record,
+            context.measurement.map(|item| item.changed_word_count),
+            context.width,
+        )
+    );
     let wrapped = crate::presentation::wrap(&text, context.width);
     crate::presentation::paint_report(&wrapped, context.color)
 }
@@ -265,16 +273,19 @@ fn append_digests(text: &mut String, record: &RewriteRecord) {
     let _ = writeln!(text, "output_digest: {output}");
 }
 
-fn receipt_line(record: &RewriteRecord, context: &ReportContext<'_>) -> String {
+pub(crate) fn fidelity_receipt(
+    record: &RewriteRecord,
+    changed_word_count: Option<u64>,
+    width: Option<usize>,
+) -> String {
     let summary = invariant_summary(record);
     let protected = format!(
         "{} numbers, {} urls, {} emails, {} terms",
         summary.numbers, summary.urls, summary.emails, summary.declared_terms
     );
     match record.status {
-        RewriteStatus::Rewritten => match context.measurement {
-            Some(measurement) => {
-                let count = measurement.changed_word_count;
+        RewriteStatus::Rewritten => match changed_word_count {
+            Some(count) => {
                 let noun = if count == 1 { "word" } else { "words" };
                 format!("passed    {count} {noun} changed; protected values intact: {protected}")
             }
@@ -286,10 +297,7 @@ fn receipt_line(record: &RewriteRecord, context: &ReportContext<'_>) -> String {
         | RewriteStatus::UnchangedNoEligibleContent => {
             let digest = short_digest(record.source_digest.as_str());
             let full = format!("kept      original, byte-identical (sha256 {digest})");
-            if context
-                .width
-                .is_some_and(|width| full.chars().count() > width)
-            {
+            if width.is_some_and(|width| full.chars().count() > width) {
                 "kept      original, byte-identical".to_owned()
             } else {
                 full

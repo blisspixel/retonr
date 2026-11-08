@@ -63,6 +63,7 @@ fn document_with_findings_detects_patterns() {
         .arg(&file)
         .assert()
         .success()
+        .stdout(predicate::str::starts_with("2 findings\n"))
         .stdout(predicate::str::contains(
             "line 1 col 1  conversational_residue",
         ))

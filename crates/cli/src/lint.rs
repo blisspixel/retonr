@@ -197,7 +197,7 @@ pub(super) fn format_finding_line(finding: &EditorialFinding) -> String {
     )
 }
 
-fn findings_in_document_order(findings: &[EditorialFinding]) -> Vec<&EditorialFinding> {
+pub(super) fn findings_in_document_order(findings: &[EditorialFinding]) -> Vec<&EditorialFinding> {
     let mut ordered: Vec<&EditorialFinding> = findings.iter().collect();
     ordered.sort_by(|left, right| {
         let left_at = left
@@ -308,7 +308,7 @@ fn render_comparative_text(
     finish_lint_text(&text, color)
 }
 
-fn finish_lint_text(text: &str, color: crate::presentation::ColorChoice) -> String {
+pub(super) fn finish_lint_text(text: &str, color: crate::presentation::ColorChoice) -> String {
     let terminal = crate::presentation::stdout_is_terminal();
     let wrapped = crate::presentation::wrap(text, crate::presentation::terminal_width(terminal));
     crate::presentation::paint_report(
@@ -344,5 +344,26 @@ mod tests {
         );
         assert_eq!(line.matches('\n').count(), 1);
         assert!(!line.contains("Sure\nthing"));
+    }
+
+    #[test]
+    fn findings_are_ordered_by_line_then_column() {
+        let later = finding_at(3, 1, "later");
+        let earlier = finding_at(1, 4, "earlier");
+        let findings = [later, earlier];
+        let ordered = super::findings_in_document_order(&findings);
+        assert_eq!(ordered[0].evidence, "earlier");
+        assert_eq!(ordered[1].evidence, "later");
+    }
+
+    fn finding_at(line: u32, column: u32, evidence: &str) -> EditorialFinding {
+        let mut finding = EditorialFinding::new("rule", evidence, 0, "message");
+        finding.span = Some(FindingSpan {
+            start: 0,
+            end: 1,
+            line,
+            column,
+        });
+        finding
     }
 }

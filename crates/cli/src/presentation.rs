@@ -200,13 +200,15 @@ fn dim_secondary(line: &str) -> String {
 }
 
 fn dim_location(line: &str) -> String {
-    let Some(column_at) = line.find(" col ") else {
+    let indent = line.len() - line.trim_start_matches(' ').len();
+    let body = &line[indent..];
+    let Some(column_at) = body.find(" col ") else {
         return line.to_owned();
     };
-    if !line.starts_with("line ") {
+    if !body.starts_with("line ") {
         return line.to_owned();
     }
-    let after_column = &line[column_at + 5..];
+    let after_column = &body[column_at + 5..];
     let digits = after_column
         .find(|character: char| !character.is_ascii_digit())
         .unwrap_or(after_column.len());
@@ -214,13 +216,14 @@ fn dim_location(line: &str) -> String {
         return line.to_owned();
     }
     let mut split = column_at + 5 + digits;
-    if line[split..].starts_with(':') {
+    if body[split..].starts_with(':') {
         split += 1;
     }
     format!(
-        "{}{}",
-        paint(true, Role::Muted, &line[..split]),
-        &line[split..]
+        "{}{}{}",
+        &line[..indent],
+        paint(true, Role::Muted, &body[..split]),
+        &body[split..]
     )
 }
 
@@ -251,10 +254,12 @@ fn paint_receipt_word(line: &str) -> String {
 }
 
 fn paint_prefix(line: &str, word: &str, role: Role) -> String {
-    let Some(rest) = line.strip_prefix(word) else {
+    let indent = line.len() - line.trim_start_matches(' ').len();
+    let body = &line[indent..];
+    let Some(rest) = body.strip_prefix(word) else {
         return line.to_owned();
     };
-    format!("{}{rest}", paint(true, role, word))
+    format!("{}{}{rest}", &line[..indent], paint(true, role, word))
 }
 
 fn dim_after_marker(line: &str, marker: &str) -> String {
@@ -323,5 +328,8 @@ mod tests {
         assert!(painted.contains("\u{1b}[2mabcdef123456\u{1b}[0m"));
         assert!(painted.contains("\u{1b}[2mline 1 col 6:\u{1b}[0m"));
         assert!(painted.contains("declared_term altered"));
+        let indented = paint_report("  kept      original, byte-identical\n", true);
+        assert!(indented.contains("\u{1b}[33mkept\u{1b}[0m"));
+        assert!(indented.starts_with("  "));
     }
 }

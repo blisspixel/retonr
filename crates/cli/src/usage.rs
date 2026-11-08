@@ -107,10 +107,10 @@ fn command_token(arguments: &[OsString]) -> Option<String> {
         if text == "--" {
             break;
         }
-        if matches!(
-            text,
-            "--format" | "-f" | "--color" | "-D" | "--data-dir" | "--verbose"
-        ) {
+        if text == "--verbose" {
+            continue;
+        }
+        if matches!(text, "--format" | "-f" | "--color" | "-D" | "--data-dir") {
             skip_value = true;
             continue;
         }
@@ -209,5 +209,18 @@ mod tests {
             "{}",
             missing.more
         );
+
+        let verbose = parse(&["retonr", "--verbose", "check", "only-one"]);
+        assert!(
+            verbose.message.contains("missing required argument"),
+            "{}",
+            verbose.message
+        );
+        assert!(
+            verbose.more.contains("retonr check --help"),
+            "{}",
+            verbose.more
+        );
+        assert_eq!(verbose.failure.command, crate::contract::CommandName::Check);
     }
 }

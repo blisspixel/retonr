@@ -268,6 +268,21 @@ fn usage_errors_name_the_problem_and_exit_two() {
         .stderr(predicate::str::contains("missing required argument"))
         .stderr(predicate::str::contains("usage:"))
         .stderr(predicate::str::contains("retonr check --help"));
+    binary()
+        .args(["--format", "json", "--bogus"])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""))
+        .stderr(predicate::str::contains("\"diagnostic\": \"--bogus\""))
+        .stderr(predicate::str::contains("\"command\": \"cli\""));
+    binary()
+        .args(["--format", "json", "--verbose", "check", "only-one"])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"command\": \"check\""))
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
 }
 
 #[cfg(unix)]
@@ -278,9 +293,15 @@ fn help_and_check_reports_fit_a_sixty_column_terminal() {
     let candidate = directory.path().join("candidate.txt");
     std::fs::write(&source, "Hello world\n").expect("source");
     std::fs::write(&candidate, "Hello, world!\n").expect("candidate");
+    let lint_source = directory.path().join("lint.txt");
+    std::fs::write(
+        &lint_source,
+        "Certainly! This opening is conversational residue that runs past sixty columns easily.\n",
+    )
+    .expect("lint source");
     let script = r#"
 import fcntl, os, pty, re, select, struct, subprocess, sys, termios
-binary, source, candidate = sys.argv[1:]
+binary, source, candidate, lint_source = sys.argv[1:]
 
 def run(args):
     leader, follower = pty.openpty()
@@ -304,7 +325,7 @@ def run(args):
         if not ready:
             proc.kill()
             sys.stderr.write("timed out\n")
-            return 1, ["timed out"]
+            return 1, ["timed out"], "", ""
         try:
             data = os.read(leader, 65536)
         except OSError:
@@ -312,24 +333,30 @@ def run(args):
         if not data:
             break
         chunks.append(data)
-    text = re.sub(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])", "", b"".join(chunks).decode())
+    raw = b"".join(chunks).decode()
+    text = re.sub(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])", "", raw)
     long = [line for line in text.splitlines() if len(line) > 60]
-    return proc.wait(), long, text
+    return proc.wait(), long, text, raw
 
-code, long, text = run(["--help"])
-if code != 0 or long:
-    sys.stderr.write(f"help code {code}\n")
-    sys.stderr.write("\n".join(repr(line) for line in long[:30]) + "\n")
-    sys.stderr.write(text[-1500:])
-    sys.exit(1)
-code, long, text = run(
-    ["--format", "text", "check", source, candidate, "--edit-level", "voice-pass"]
-)
-if code != 0 or long:
-    sys.stderr.write(f"check code {code}\n")
+def fail(label, code, long, text):
+    sys.stderr.write(f"{label} code {code}\n")
     sys.stderr.write("\n".join(repr(line) for line in long[:30]) + "\n")
     sys.stderr.write(text[-2000:])
     sys.exit(1)
+
+code, long, text, raw = run(["--help"])
+if code != 0 or long:
+    fail("help", code, long, text)
+code, long, text, raw = run(
+    ["--format", "text", "check", source, candidate, "--edit-level", "voice-pass"]
+)
+if code != 0 or long or "\x1b[32maccepted" not in raw:
+    fail("check", code, long, text + "\n" + raw[-500:])
+if not text.startswith("accepted"):
+    fail("check verdict", code, long, text)
+code, long, text, raw = run(["--format", "text", "lint", lint_source])
+if code != 0 or long or not text.startswith("1 finding"):
+    fail("lint", code, long, text)
 "#;
     let output = std::process::Command::new("python3")
         .arg("-c")
@@ -337,6 +364,7 @@ if code != 0 or long:
         .arg(assert_cmd::cargo::cargo_bin("retonr"))
         .arg(&source)
         .arg(&candidate)
+        .arg(&lint_source)
         .output()
         .expect("run terminal fixture");
     assert!(
