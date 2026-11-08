@@ -14,7 +14,7 @@ fn accepts_utf8_bom_on_both_source_and_candidate_files() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .assert()
@@ -32,7 +32,7 @@ fn reports_rewritten_candidate_as_json() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .assert()
@@ -53,7 +53,7 @@ fn abstention_can_be_used_as_a_ci_failure() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .arg("--fail-on-abstain")
@@ -82,7 +82,7 @@ fn short_format_and_output_flags_match_the_long_forms() {
         .arg(&candidate)
         .assert()
         .success()
-        .stdout(predicate::str::contains("status: rewritten"));
+        .stdout(predicate::str::contains("accepted    candidate passed"));
     assert_eq!(
         fs::read(&output).expect("accepted bytes"),
         b"Hello, world!\n"
@@ -108,7 +108,7 @@ fn global_format_is_accepted_before_or_after_the_command() {
             .arg(&candidate)
             .assert()
             .success()
-            .stdout(predicate::str::contains("status: rewritten"));
+            .stdout(predicate::str::contains("nothing written (use -o)"));
     }
 }
 
@@ -122,13 +122,13 @@ fn text_report_never_contains_raw_document_content() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .args(["--format", "text"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("status: rewritten"))
+        .stdout(predicate::str::contains("nothing written (use -o)"))
         .stdout(predicate::str::contains("private phrase").not());
 }
 
@@ -140,7 +140,7 @@ fn directory_source_is_rejected_as_unreadable() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(directory.path())
         .arg(candidate)
         .assert()
@@ -157,7 +157,7 @@ fn missing_source_is_an_unreadable_input_not_a_retryable_failure() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(directory.path().join("missing.txt"))
         .arg(candidate)
         .assert()
@@ -178,7 +178,7 @@ fn oversized_candidate_is_a_resource_limit() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .assert()
@@ -200,7 +200,7 @@ fn invalid_utf8_source_is_usage() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .assert()
@@ -246,7 +246,7 @@ fn diff_dry_run_and_trace_are_safe_and_non_replacing() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(&source)
         .arg(&candidate)
         .args(["--diff", "--dry-run", "--format", "text"])
@@ -256,7 +256,7 @@ fn diff_dry_run_and_trace_are_safe_and_non_replacing() {
         .arg(&trace)
         .assert()
         .success()
-        .stdout(predicate::str::contains("status: rewritten"))
+        .stdout(predicate::str::contains("nothing written"))
         .stderr(predicate::str::contains("diff: changed"))
         .stderr(predicate::str::contains("replace"))
         .stderr(predicate::str::contains("Hello, world!"));
@@ -270,7 +270,7 @@ fn diff_dry_run_and_trace_are_safe_and_non_replacing() {
     fs::write(&output, b"keep existing").expect("write existing destination");
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(&source)
         .arg(&candidate)
         .args(["--dry-run", "--output"])
@@ -296,7 +296,7 @@ fn diff_neutralizes_controls_and_trace_refuses_to_replace() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(&source)
         .arg(&candidate)
         .arg("--diff")
@@ -306,7 +306,7 @@ fn diff_neutralizes_controls_and_trace_refuses_to_replace() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .arg("--trace")
@@ -329,7 +329,7 @@ fn existing_trace_is_refused_before_in_place_mutation() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(&source)
         .arg(&candidate)
         .args(["--in-place", "--trace"])
@@ -355,7 +355,7 @@ fn trace_cannot_share_a_primary_output_path() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(&source)
         .arg(&candidate)
         .arg("--output")
@@ -380,7 +380,7 @@ fn layout_max_chars_abstains_with_character_budget_exceeded() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .args(["--max-chars", "20", "--fail-on-abstain"])
@@ -406,7 +406,7 @@ fn layout_max_expansion_pct_abstains_when_expansion_exceeds_ceiling() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .args(["--max-expansion-pct", "8", "--fail-on-abstain"])
@@ -428,7 +428,7 @@ fn edit_level_argument_is_accepted_by_cli() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(source)
         .arg(candidate)
         .args(["--edit-level", "voice-pass"])
@@ -548,10 +548,10 @@ fn semantic_abstention_locates_the_changed_word_without_echoing_it() {
     let stdout = String::from_utf8(text.stdout).expect("stdout");
     let stderr = String::from_utf8(text.stderr).expect("stderr");
     assert!(text.status.success(), "abstention exits 0");
-    assert!(stdout.contains("status: abstained"));
+    assert!(stdout.contains("abstained   original kept unchanged"));
     assert!(stdout.contains("reason: semantic_uncertain"));
     assert!(stdout.contains("line 2 col 33: word_changed altered"));
-    assert!(stderr.contains("diff: unchanged"));
+    assert!(stderr.contains("no diff: the original was kept"));
     assert!(!stdout.contains("which"));
     assert!(!stdout.contains("better"));
     assert!(!stderr.contains("which"));
@@ -592,7 +592,14 @@ fn change_share_fixtures_honor_the_optional_budget_and_keep_style_out_of_accepta
 
     let accepted = Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check", "--max-change-pct", "2", "--style-sample"])
+        .args([
+            "--format",
+            "json",
+            "check",
+            "--max-change-pct",
+            "2",
+            "--style-sample",
+        ])
         .arg(&sample)
         .arg(&source)
         .arg(&small)
@@ -614,7 +621,14 @@ fn change_share_fixtures_honor_the_optional_budget_and_keep_style_out_of_accepta
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check", "--max-change-pct", "2", "--fail-on-abstain"])
+        .args([
+            "--format",
+            "json",
+            "check",
+            "--max-change-pct",
+            "2",
+            "--fail-on-abstain",
+        ])
         .arg(&source)
         .arg(&large)
         .assert()
@@ -628,7 +642,7 @@ fn change_share_fixtures_honor_the_optional_budget_and_keep_style_out_of_accepta
 
     let identical = Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check"])
+        .args(["--format", "json", "check"])
         .arg(&source)
         .arg(&source)
         .assert()
@@ -647,7 +661,7 @@ fn change_share_fixtures_honor_the_optional_budget_and_keep_style_out_of_accepta
     fs::write(&substituted, "word bird\n").expect("write lexical candidate");
     let lexical = Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["check", "--style-sample"])
+        .args(["--format", "json", "check", "--style-sample"])
         .arg(&substituted)
         .arg(&unchanged)
         .arg(&substituted)
@@ -682,6 +696,13 @@ fn abstention_reports_span_location_without_protected_text() {
     let stdout = String::from_utf8(text.stdout).expect("stdout");
     assert!(text.status.success());
     assert!(stdout.contains("line 1 col 6: declared_term"));
+    assert!(stdout.starts_with("abstained   original kept unchanged\n"));
+    let short = stdout
+        .split("sha256 ")
+        .nth(1)
+        .and_then(|rest| rest.split(')').next())
+        .expect("short digest");
+    assert_eq!(short.len(), 12);
     assert!(!stdout.contains(marker));
 
     let json = Command::cargo_bin("retonr")
@@ -694,5 +715,62 @@ fn abstention_reports_span_location_without_protected_text() {
     let body = String::from_utf8(json.stdout).expect("json stdout");
     assert!(json.status.success());
     assert!(body.contains("\"kind\": \"declared_term\""));
+    assert!(body.contains(&format!("\"source_digest\": \"{short}")));
+    assert!(!body.contains("changed_word_count"));
     assert!(!body.contains(marker));
+}
+
+#[test]
+fn text_is_the_default_and_no_color_wins_over_always() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    fs::write(&source, "Hello world\n").expect("source");
+    fs::write(&candidate, "Hello, world!\n").expect("candidate");
+
+    let implicit = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(&source)
+        .arg(&candidate)
+        .output()
+        .expect("default check");
+    let implicit_text = String::from_utf8(implicit.stdout).expect("text");
+    assert!(implicit.status.success());
+    assert!(implicit_text.starts_with("accepted    "));
+    assert!(implicit_text.contains("nothing written (use -o)"));
+    assert!(implicit_text.contains(
+        "passed    2 words changed; protected values intact: 0 numbers, 0 urls, 0 emails, 0 terms"
+    ));
+    assert!(!implicit_text.contains("schema_version"));
+
+    let painted = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .env_remove("NO_COLOR")
+        .env("TERM", "xterm-256color")
+        .args(["--color", "always", "--format", "text", "check"])
+        .arg(&source)
+        .arg(&candidate)
+        .output()
+        .expect("colored check");
+    let painted_text = String::from_utf8(painted.stdout).expect("text");
+    assert!(painted.status.success());
+    assert!(
+        painted_text.contains("\u{1b}[32maccepted\u{1b}[0m"),
+        "{painted_text}"
+    );
+
+    let plain = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .env("NO_COLOR", "1")
+        .env("TERM", "xterm-256color")
+        .args(["--color", "always", "--format", "text", "check"])
+        .arg(&source)
+        .arg(&candidate)
+        .output()
+        .expect("plain check");
+    let plain_text = String::from_utf8(plain.stdout).expect("text");
+    assert!(plain.status.success());
+    assert!(!plain_text.contains('\u{1b}'));
+    assert!(plain_text.contains("accepted"));
 }

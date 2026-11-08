@@ -98,6 +98,9 @@ claims that one exists.
 | 19. Reference 1.0 | Wave 18 | The 1.0 gates in this roadmap | Stable contracts, three surfaces, and two qualified runtime paths |
 | 20. After 1.0 | The stable core | Broaden one qualified capability at a time. Bounded PPTX waits until the DOCX package contract exists, and it is outside 1.0 | Each added capability has its own preservation evidence |
 
+Waves 0, 1, and 2 have landed on main. Later waves stay open until their
+acceptance evidence is on main.
+
 Waves 1 through 7 do not block the runtime evidence attempt inside wave 10. They
 are the model-free work that makes the current CLI honest and usable. Wave 10
 still requires its own retained runtime and qualification evidence.

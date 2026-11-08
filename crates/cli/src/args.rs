@@ -1,20 +1,24 @@
 //! Declarative command-line arguments shared by help, completion, and dispatch.
 
-use crate::{EditLevelArg, contract::ReportFormat, model::ModelCommand};
+use crate::{EditLevelArg, contract::ReportFormat, model::ModelCommand, presentation::ColorChoice};
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
 use std::path::PathBuf;
 
 const EXAMPLES: &str = "\
 Examples:
+  retonr check original.txt candidate.txt --diff
+  retonr check originals/ candidates/ -r --dry-run
+  retonr lint draft.txt
+  retonr tui draft.txt --candidate edited.txt
   retonr inspect draft.txt
   retonr rewrite draft.txt -o rewritten.txt
   retonr rewrite draft.txt -i
   retonr rewrite docs/ -r --output-dir rewritten --dry-run
-  retonr check original.txt candidate.txt --diff
-  retonr check originals/ candidates/ -r --dry-run
-  retonr tui draft.txt --candidate edited.txt
   retonr -D .retonr model list
+
+check, lint, tui, and inspect run in this build. rewrite needs a qualified
+local model and is not available in this build.
 
 Retonr makes small, checked copy edits toward your own style. It adds no watermark,
 tracking, or attribution. It does not test text against detectors and makes no claim
@@ -36,16 +40,28 @@ about detection results, authorship, or disclosure duties.
     after_help = EXAMPLES
 )]
 pub(crate) struct Cli {
-    /// json for machines, text for humans. A terminal defaults to text.
+    /// json for machines, text for humans. Text is the default.
+    ///
+    /// Set `RETONR_FORMAT=json` for scripts. A pipe stays text until one of
+    /// those is set.
     #[arg(
         short,
         long,
         value_enum,
         value_name = "json|text",
         global = true,
-        hide_possible_values = true
+        hide_possible_values = true,
+        env = "RETONR_FORMAT"
     )]
     pub(crate) format: Option<ReportFormat>,
+    /// Color for human reports: auto, always, or never.
+    ///
+    /// `auto` colors a terminal. `NO_COLOR` and `TERM=dumb` stay plain.
+    #[arg(long, value_enum, default_value = "auto", global = true)]
+    pub(crate) color: ColorChoice,
+    /// Show short digests in human reports.
+    #[arg(long, global = true)]
+    pub(crate) verbose: bool,
     /// Explicit repository root. Also read from `RETONR_DATA_DIR`.
     #[arg(
         short = 'D',
@@ -69,6 +85,7 @@ pub(crate) enum Command {
     Tui(crate::tui::TuiArgs),
     /// Rewrite one UTF-8 source after grounded generation and engine gates.
     ///
+    /// Needs a qualified local model; not available in this build.
     /// A recovered generation binding can attach in-process fake-backend
     /// conformance. The command does not start a runtime or access the network.
     Rewrite {

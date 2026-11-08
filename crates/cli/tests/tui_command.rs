@@ -17,7 +17,7 @@ fn fixture(name: &str) -> PathBuf {
 #[test]
 fn redirected_interactive_review_requires_explicit_linear_fallback() {
     retonr()
-        .args(["tui", "missing.txt"])
+        .args(["--format", "json", "tui", "missing.txt"])
         .assert()
         .code(2)
         .stderr(contains("\"command\": \"tui\"").and(contains("invalid_invocation")));
@@ -33,6 +33,7 @@ fn linear_candidate_review_uses_existing_checks_without_mutating_inputs() {
     fs::write(&source, &original).expect("source");
     fs::write(&candidate, &supplied).expect("candidate");
     let result = retonr()
+        .args(["--format", "json"])
         .arg("tui")
         .arg(&source)
         .arg("--candidate")
@@ -100,6 +101,7 @@ fn recursive_linear_review_selects_exact_nested_pair_and_preserves_files() {
     fs::write(candidate.path().join("nested/b.txt"), &supplied).expect("candidate");
     fs::write(candidate.path().join("unmatched.txt"), b"Extra draft.").expect("unmatched");
     let result = retonr()
+        .args(["--format", "json"])
         .arg("tui")
         .arg(source.path())
         .arg("--candidate")
@@ -141,6 +143,7 @@ fn recursive_unpaired_source_does_not_claim_candidate_validation() {
     let candidate = tempdir().expect("candidate");
     fs::write(source.path().join("draft.txt"), b"Moreover, hello.").expect("source");
     let result = retonr()
+        .args(["--format", "json"])
         .arg("tui")
         .arg(source.path())
         .arg("--candidate")

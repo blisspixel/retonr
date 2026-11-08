@@ -64,7 +64,7 @@ fn import(data: &Path, source: &Path, manifest: &Path) -> Value {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(data)
-        .args(["model", "import"])
+        .args(["--format", "json", "model", "import"])
         .arg(source)
         .arg("--manifest")
         .arg(manifest)
@@ -97,7 +97,7 @@ fn imports_inventories_and_removes_one_exact_generation() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inventory"])
+        .args(["--format", "json", "model", "inventory"])
         .output()
         .expect("run inventory");
     assert!(inventory.status.success());
@@ -126,7 +126,14 @@ fn imports_inventories_and_removes_one_exact_generation() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "remove", "--artifact-id", &artifact_id])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "remove",
+            "--artifact-id",
+            &artifact_id,
+        ])
         .args(["--installation-generation", "1", "--yes"])
         .output()
         .expect("run removal");
@@ -146,7 +153,14 @@ fn removal_confirmation_and_recovery_refusal_are_typed_and_non_destructive() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "remove", "--artifact-id", &artifact_id])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "remove",
+            "--artifact-id",
+            &artifact_id,
+        ])
         .args(["--installation-generation", "1"])
         .assert()
         .code(3)
@@ -159,7 +173,14 @@ fn removal_confirmation_and_recovery_refusal_are_typed_and_non_destructive() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "recover-removal", "--artifact-id", &artifact_id])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "recover-removal",
+            "--artifact-id",
+            &artifact_id,
+        ])
         .args(["--installation-generation", "1", "--yes"])
         .assert()
         .code(3)
@@ -172,7 +193,7 @@ fn removal_confirmation_and_recovery_refusal_are_typed_and_non_destructive() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inventory"])
+        .args(["--format", "json", "model", "inventory"])
         .output()
         .expect("run inventory");
     let inventory: Value = serde_json::from_slice(&inventory.stdout).expect("parse inventory");
@@ -189,7 +210,7 @@ fn missing_repository_and_invalid_invocation_use_stderr_only() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(directory.path().join("missing"))
-        .args(["model", "inventory"])
+        .args(["--format", "json", "model", "inventory"])
         .assert()
         .code(1)
         .stdout(predicate::str::is_empty())
@@ -198,7 +219,7 @@ fn missing_repository_and_invalid_invocation_use_stderr_only() {
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
         .env_remove("RETONR_DATA_DIR")
-        .args(["model", "inventory"])
+        .args(["--format", "json", "model", "inventory"])
         .assert()
         .code(2)
         .stdout(predicate::str::is_empty())
@@ -215,7 +236,7 @@ fn data_dir_env_and_short_selection_flags_are_accepted() {
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
         .env("RETONR_DATA_DIR", &data)
-        .args(["model", "pending"])
+        .args(["--format", "json", "model", "pending"])
         .assert()
         .success()
         .stdout(predicate::str::contains(
@@ -224,7 +245,7 @@ fn data_dir_env_and_short_selection_flags_are_accepted() {
 
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["-D"])
+        .args(["--format", "json", "-D"])
         .arg(&data)
         .args(["model", "list"])
         .assert()
@@ -236,6 +257,8 @@ fn data_dir_env_and_short_selection_flags_are_accepted() {
         .arg("-D")
         .arg(&data)
         .args([
+            "--format",
+            "json",
             "model",
             "remove",
             "--artifact",
@@ -253,7 +276,7 @@ fn data_dir_env_and_short_selection_flags_are_accepted() {
 fn help_lists_only_the_implemented_offline_model_surface() {
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["model", "--help"])
+        .args(["--format", "json", "model", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("import"))
@@ -311,7 +334,7 @@ fn device_evidence_is_optional_and_is_not_a_qualification() {
     let output = Command::cargo_bin("retonr")
         .expect("compiled CLI")
         .env_remove("RETONR_DATA_DIR")
-        .args(["model", "fitr"])
+        .args(["--format", "json", "model", "fitr"])
         .arg(&evidence)
         .output()
         .expect("run device evidence");
@@ -358,7 +381,7 @@ fn device_evidence_refuses_a_qualification_claim() {
     .expect("write");
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
-        .args(["model", "fitr"])
+        .args(["--format", "json", "model", "fitr"])
         .arg(&evidence)
         .assert()
         .code(4)
@@ -457,7 +480,7 @@ fn list_and_inspect_report_registered_artifacts_without_activation() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "list"])
+        .args(["--format", "json", "model", "list"])
         .output()
         .expect("run list");
     assert!(listed.status.success());
@@ -508,7 +531,7 @@ fn list_and_inspect_report_registered_artifacts_without_activation() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inspect", &artifact_id])
+        .args(["--format", "json", "model", "inspect", &artifact_id])
         .output()
         .expect("run inspect");
     assert!(inspected.status.success());
@@ -554,7 +577,7 @@ fn inspect_missing_artifact_is_a_policy_refusal() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inspect", &missing])
+        .args(["--format", "json", "model", "inspect", &missing])
         .assert()
         .code(3)
         .stdout(predicate::str::is_empty())
@@ -573,7 +596,7 @@ fn pending_operations_is_empty_and_read_only_for_a_healthy_repository() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "pending-operations"])
+        .args(["--format", "json", "model", "pending-operations"])
         .assert()
         .success()
         .stderr(predicate::str::is_empty())
@@ -628,7 +651,13 @@ fn reconcile_text_inventory_findings_and_completed_recovery_are_actionable() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inventory", "--fail-on-findings"])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "inventory",
+            "--fail-on-findings",
+        ])
         .assert()
         .code(3)
         .stderr(predicate::str::is_empty())
@@ -648,7 +677,14 @@ fn reconcile_text_inventory_findings_and_completed_recovery_are_actionable() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "recover-removal", "--artifact-id", &artifact_id])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "recover-removal",
+            "--artifact-id",
+            &artifact_id,
+        ])
         .args(["--installation-generation", "1", "--yes"])
         .assert()
         .success()
@@ -673,7 +709,7 @@ fn unsupported_manifest_and_generation_overflow_are_compatibility_and_usage_erro
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "import"])
+        .args(["--format", "json", "model", "import"])
         .arg(&source)
         .arg("--manifest")
         .arg(&manifest_path)
@@ -686,7 +722,14 @@ fn unsupported_manifest_and_generation_overflow_are_compatibility_and_usage_erro
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "remove", "--artifact-id", &artifact_id])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "remove",
+            "--artifact-id",
+            &artifact_id,
+        ])
         .args(["--installation-generation", "9223372036854775808", "--yes"])
         .assert()
         .code(2)
@@ -698,11 +741,12 @@ fn unsupported_manifest_and_generation_overflow_are_compatibility_and_usage_erro
 fn format_prescan_stops_at_the_option_terminator() {
     Command::cargo_bin("retonr")
         .expect("compiled CLI")
+        .env("RETONR_FORMAT", "json")
         .args(["check", "--", "--format=text"])
         .assert()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains("\"command\": \"cli\""));
+        .stderr(predicate::str::contains("\"command\": \"check\""));
 }
 
 #[test]
@@ -718,7 +762,7 @@ fn import_never_claims_or_mutates_a_nonempty_uninitialized_directory() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "import"])
+        .args(["--format", "json", "model", "import"])
         .arg(source)
         .arg("--manifest")
         .arg(manifest_path)
@@ -767,7 +811,7 @@ fn import_set(data: &Path, source: &Path, manifest: &Path) -> Value {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(data)
-        .args(["model", "import-set"])
+        .args(["--format", "json", "model", "import-set"])
         .arg(source)
         .arg("--manifest")
         .arg(manifest)
@@ -839,7 +883,7 @@ fn inventories_one_exact_artifact_set_without_disclosing_member_paths() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inventory-set"])
+        .args(["--format", "json", "model", "inventory-set"])
         .output()
         .expect("run set inventory");
     assert!(inventory.status.success());
@@ -884,7 +928,13 @@ fn inventories_one_exact_artifact_set_without_disclosing_member_paths() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inventory-set", "--fail-on-findings"])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "inventory-set",
+            "--fail-on-findings",
+        ])
         .assert()
         .code(3)
         .stderr(predicate::str::is_empty())
@@ -895,7 +945,7 @@ fn inventories_one_exact_artifact_set_without_disclosing_member_paths() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inventory"])
+        .args(["--format", "json", "model", "inventory"])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"health\": \"clean\""));
@@ -912,7 +962,7 @@ fn reconciles_one_exact_artifact_set_without_changing_bytes() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "reconcile-set", "--manifest"])
+        .args(["--format", "json", "model", "reconcile-set", "--manifest"])
         .arg(&manifest_path)
         .output()
         .expect("run set reconcile");
@@ -966,7 +1016,14 @@ fn removes_one_exact_artifact_set_generation() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "remove-set", "--artifact-set-id", &artifact_set_id])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "remove-set",
+            "--artifact-set-id",
+            &artifact_set_id,
+        ])
         .args(["--installation-generation", "1"])
         .assert()
         .code(3)
@@ -979,7 +1036,14 @@ fn removes_one_exact_artifact_set_generation() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "remove-set", "--artifact-set-id", &artifact_set_id])
+        .args([
+            "--format",
+            "json",
+            "model",
+            "remove-set",
+            "--artifact-set-id",
+            &artifact_set_id,
+        ])
         .args(["--installation-generation", "1", "--yes"])
         .output()
         .expect("run set removal");
@@ -1001,7 +1065,7 @@ fn removes_one_exact_artifact_set_generation() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inventory-set"])
+        .args(["--format", "json", "model", "inventory-set"])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"registered\": []"));
@@ -1018,7 +1082,7 @@ fn set_import_rejects_a_file_source_and_a_single_file_manifest() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "import-set"])
+        .args(["--format", "json", "model", "import-set"])
         .arg(&file_source)
         .arg("--manifest")
         .arg(&manifest_path)
@@ -1031,7 +1095,7 @@ fn set_import_rejects_a_file_source_and_a_single_file_manifest() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "import-set"])
+        .args(["--format", "json", "model", "import-set"])
         .arg(&source)
         .arg("--manifest")
         .arg(&file_manifest)

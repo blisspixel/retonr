@@ -102,21 +102,14 @@ fn migration_backup_key_is_present_only_when_attached() {
 }
 
 #[test]
-fn report_format_defaults_to_text_on_a_terminal_and_json_on_a_pipe() {
+fn report_format_defaults_to_text_unless_requested() {
+    assert_eq!(ReportFormat::from_invocation(None), ReportFormat::Text);
     assert_eq!(
-        ReportFormat::from_invocation(None, true),
-        ReportFormat::Text
-    );
-    assert_eq!(
-        ReportFormat::from_invocation(None, false),
+        ReportFormat::from_invocation(Some(ReportFormat::Json)),
         ReportFormat::Json
     );
     assert_eq!(
-        ReportFormat::from_invocation(Some(ReportFormat::Json), true),
-        ReportFormat::Json
-    );
-    assert_eq!(
-        ReportFormat::from_invocation(Some(ReportFormat::Text), false),
+        ReportFormat::from_invocation(Some(ReportFormat::Text)),
         ReportFormat::Text
     );
 }

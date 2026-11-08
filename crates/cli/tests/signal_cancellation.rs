@@ -91,7 +91,7 @@ fn manifest() -> ArtifactManifest {
 fn spawn_import(data: &Path, source: &Path, manifest: &Path) -> Child {
     let mut command = Command::new(env!("CARGO_BIN_EXE_retonr"));
     command
-        .arg("--data-dir")
+        .args(["--format", "json", "--data-dir"])
         .arg(data)
         .args(["model", "import"])
         .arg(source)

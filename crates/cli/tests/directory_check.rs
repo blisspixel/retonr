@@ -32,6 +32,7 @@ fn command(source: &Path, candidate: &Path) -> Command {
 
 fn result(source: &Path, candidate: &Path, recursive: bool) -> serde_json::Value {
     let mut command = command(source, candidate);
+    command.args(["--format", "json"]);
     if recursive {
         command.arg("-r");
     }
@@ -61,6 +62,7 @@ fn checked_in_pairs_are_sorted_read_only_and_report_acceptance_or_abstention() {
     assert_eq!(report["checked_count"], 3);
     assert_eq!(report["abstained_count"], 1);
     assert_eq!(report["mode"], "dry_run");
+    assert!(report["pairs"][0].get("changed_word_count").is_none());
     for (index, case) in fixture().as_array().expect("cases").iter().enumerate() {
         assert_eq!(report["pairs"][index]["relative_path"], case["path"]);
         assert_eq!(report["pairs"][index]["record"]["status"], case["status"]);
@@ -81,10 +83,17 @@ fn checked_in_pairs_are_sorted_read_only_and_report_acceptance_or_abstention() {
         .args(["-r", "-f", "text"])
         .assert()
         .success()
+        .stdout(predicate::str::starts_with(
+            "abstained   original kept where a pair abstained\n",
+        ))
         .stdout(predicate::str::contains(
             "pair nested/b.txt status=rewritten",
         ))
-        .stdout(predicate::str::contains("reason: protected_value_changed"));
+        .stdout(predicate::str::contains("reason: protected_value_changed"))
+        .stdout(predicate::str::contains(
+            "kept      original, byte-identical (sha256 ",
+        ))
+        .stdout(predicate::str::contains("passed    "));
 }
 
 #[test]

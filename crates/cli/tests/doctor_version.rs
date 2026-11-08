@@ -11,7 +11,7 @@ fn binary() -> Command {
 #[test]
 fn version_reports_local_identity_without_a_data_directory() {
     binary()
-        .args(["version"])
+        .args(["--format", "json", "version"])
         .assert()
         .success()
         .stderr(predicate::str::is_empty())
@@ -33,7 +33,7 @@ fn version_reports_local_identity_without_a_data_directory() {
 #[test]
 fn doctor_without_data_dir_is_local_and_does_not_request_a_repository() {
     binary()
-        .args(["doctor"])
+        .args(["--format", "json", "doctor"])
         .assert()
         .success()
         .stderr(predicate::str::is_empty())
@@ -56,6 +56,10 @@ fn help_lists_completions_and_man() {
         .stdout(predicate::str::contains("man"))
         .stdout(predicate::str::contains("inspect"))
         .stdout(predicate::str::contains("Examples:"))
+        .stdout(predicate::str::contains(
+            "retonr check original.txt candidate.txt --diff",
+        ))
+        .stdout(predicate::str::contains("not available in this build"))
         .stdout(predicate::str::contains("retonr rewrite draft.txt -i"))
         .stdout(predicate::str::contains(
             "retonr rewrite docs/ -r --output-dir rewritten --dry-run",
@@ -78,7 +82,7 @@ fn help_lists_completions_and_man() {
 #[test]
 fn completions_json_names_the_shell_and_script() {
     binary()
-        .args(["completions", "bash"])
+        .args(["--format", "json", "completions", "bash"])
         .assert()
         .success()
         .stderr(predicate::str::is_empty())
@@ -98,19 +102,19 @@ fn completions_json_names_the_shell_and_script() {
 #[test]
 fn completions_reject_an_unknown_shell() {
     binary()
-        .args(["completions", "cmd"])
+        .args(["--format", "json", "completions", "cmd"])
         .assert()
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains("\"command\": \"cli\""))
+        .stderr(predicate::str::contains("\"command\": \"completions\""))
         .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
 }
 
 #[test]
 fn man_writes_a_section_one_page() {
     binary()
-        .args(["man"])
+        .args(["--format", "json", "man"])
         .assert()
         .success()
         .stderr(predicate::str::is_empty())
@@ -136,7 +140,7 @@ fn doctor_reports_a_missing_repository_without_creating_one() {
     binary()
         .arg("--data-dir")
         .arg(&data)
-        .args(["doctor"])
+        .args(["--format", "json", "doctor"])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"status\": \"not_initialized\""))
@@ -205,7 +209,7 @@ fn doctor_reports_a_current_repository_without_claiming_activation() {
     let output = binary()
         .arg("--data-dir")
         .arg(&data)
-        .args(["doctor"])
+        .args(["--format", "json", "doctor"])
         .output()
         .expect("run doctor");
     assert!(output.status.success());
@@ -237,4 +241,135 @@ fn doctor_reports_a_current_repository_without_claiming_activation() {
         .stdout(predicate::str::contains("pending_artifact_removals: 0"))
         .stdout(predicate::str::contains("active_generation: absent"))
         .stdout(predicate::str::contains("recovery_actions: none"));
+}
+
+#[test]
+fn usage_errors_name_the_problem_and_exit_two() {
+    binary()
+        .args(["--bogus"])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("unexpected argument '--bogus'"))
+        .stderr(predicate::str::contains("usage:"))
+        .stderr(predicate::str::contains("retonr --help"));
+    binary()
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("a command is required"))
+        .stderr(predicate::str::contains("usage:"))
+        .stderr(predicate::str::contains("retonr --help"));
+    binary()
+        .args(["check", "only-one"])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("missing required argument"))
+        .stderr(predicate::str::contains("usage:"))
+        .stderr(predicate::str::contains("retonr check --help"));
+    binary()
+        .args(["--format", "json", "--bogus"])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""))
+        .stderr(predicate::str::contains("\"diagnostic\": \"--bogus\""))
+        .stderr(predicate::str::contains("\"command\": \"cli\""));
+    binary()
+        .args(["--format", "json", "--verbose", "check", "only-one"])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"command\": \"check\""))
+        .stderr(predicate::str::contains("\"code\": \"invalid_invocation\""));
+}
+
+#[cfg(unix)]
+#[test]
+fn help_and_check_reports_fit_a_sixty_column_terminal() {
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let candidate = directory.path().join("candidate.txt");
+    std::fs::write(&source, "Hello world\n").expect("source");
+    std::fs::write(&candidate, "Hello, world!\n").expect("candidate");
+    let lint_source = directory.path().join("lint.txt");
+    std::fs::write(
+        &lint_source,
+        "Certainly! This opening is conversational residue that runs past sixty columns easily.\n",
+    )
+    .expect("lint source");
+    let script = r#"
+import fcntl, os, pty, re, select, struct, subprocess, sys, termios
+binary, source, candidate, lint_source = sys.argv[1:]
+
+def run(args):
+    leader, follower = pty.openpty()
+    fcntl.ioctl(follower, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 60, 0, 0))
+    env = os.environ.copy()
+    env["COLUMNS"] = "60"
+    env.pop("NO_COLOR", None)
+    env["TERM"] = "xterm-256color"
+    proc = subprocess.Popen(
+        [binary, *args],
+        stdin=follower,
+        stdout=follower,
+        stderr=follower,
+        env=env,
+        close_fds=True,
+    )
+    os.close(follower)
+    chunks = []
+    while True:
+        ready, _, _ = select.select([leader], [], [], 5)
+        if not ready:
+            proc.kill()
+            sys.stderr.write("timed out\n")
+            return 1, ["timed out"], "", ""
+        try:
+            data = os.read(leader, 65536)
+        except OSError:
+            break
+        if not data:
+            break
+        chunks.append(data)
+    raw = b"".join(chunks).decode()
+    text = re.sub(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])", "", raw)
+    long = [line for line in text.splitlines() if len(line) > 60]
+    return proc.wait(), long, text, raw
+
+def fail(label, code, long, text):
+    sys.stderr.write(f"{label} code {code}\n")
+    sys.stderr.write("\n".join(repr(line) for line in long[:30]) + "\n")
+    sys.stderr.write(text[-2000:])
+    sys.exit(1)
+
+code, long, text, raw = run(["--help"])
+if code != 0 or long:
+    fail("help", code, long, text)
+code, long, text, raw = run(
+    ["--format", "text", "check", source, candidate, "--edit-level", "voice-pass"]
+)
+if code != 0 or long or "\x1b[32maccepted" not in raw:
+    fail("check", code, long, text + "\n" + raw[-500:])
+if not text.startswith("accepted"):
+    fail("check verdict", code, long, text)
+code, long, text, raw = run(["--format", "text", "lint", lint_source])
+if code != 0 or long or not text.startswith("1 finding"):
+    fail("lint", code, long, text)
+"#;
+    let output = std::process::Command::new("python3")
+        .arg("-c")
+        .arg(script)
+        .arg(assert_cmd::cargo::cargo_bin("retonr"))
+        .arg(&source)
+        .arg(&candidate)
+        .arg(&lint_source)
+        .output()
+        .expect("run terminal fixture");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }

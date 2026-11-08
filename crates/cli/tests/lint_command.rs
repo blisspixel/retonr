@@ -16,7 +16,7 @@ fn clean_document_reports_clean_status() {
 
     Command::cargo_bin("retonr")
         .expect("compiled retonr binary")
-        .args(["lint"])
+        .args(["--format", "json", "lint"])
         .arg(&file)
         .assert()
         .success()
@@ -29,8 +29,7 @@ fn clean_document_reports_clean_status() {
         .arg(&file)
         .assert()
         .success()
-        .stdout(predicate::str::contains("status: clean"))
-        .stdout(predicate::str::contains("findings: 0"));
+        .stdout(predicate::str::contains("clean       no findings"));
 }
 
 #[test]
@@ -45,7 +44,7 @@ fn document_with_findings_detects_patterns() {
 
     Command::cargo_bin("retonr")
         .expect("compiled retonr binary")
-        .args(["lint"])
+        .args(["--format", "json", "lint"])
         .arg(&file)
         .assert()
         .success()
@@ -64,14 +63,16 @@ fn document_with_findings_detects_patterns() {
         .arg(&file)
         .assert()
         .success()
+        .stdout(predicate::str::starts_with("2 findings\n"))
         .stdout(predicate::str::contains(
-            "line 1 col 1: [conversational_residue] 'Certainly!'",
+            "line 1 col 1  conversational_residue",
         ))
+        .stdout(predicate::str::contains("Certainly!"))
         .stdout(predicate::str::contains("prefabricated_scene_setting"));
 
     Command::cargo_bin("retonr")
         .expect("compiled retonr binary")
-        .args(["lint", "--fail-on-findings"])
+        .args(["--format", "json", "lint", "--fail-on-findings"])
         .arg(&file)
         .assert()
         .code(3)
@@ -99,7 +100,7 @@ fn comparative_lint_reports_resolution_and_improvement() {
 
     Command::cargo_bin("retonr")
         .expect("compiled retonr binary")
-        .args(["lint"])
+        .args(["--format", "json", "lint"])
         .arg(&source)
         .arg("--candidate")
         .arg(&candidate)
@@ -142,7 +143,7 @@ fn comparative_lint_fails_when_defects_are_introduced() {
 
     Command::cargo_bin("retonr")
         .expect("compiled retonr binary")
-        .args(["lint", "--fail-on-findings"])
+        .args(["--format", "json", "lint", "--fail-on-findings"])
         .arg(&source)
         .arg("--candidate")
         .arg(&candidate)
@@ -169,7 +170,7 @@ fn lint_reads_from_stdin() {
 fn rejects_duplicate_stdin_streams() {
     Command::cargo_bin("retonr")
         .expect("compiled retonr binary")
-        .args(["lint", "-", "--candidate", "-"])
+        .args(["--format", "json", "lint", "-", "--candidate", "-"])
         .assert()
         .code(2)
         .stderr(predicate::str::contains("invalid_invocation"));
@@ -184,7 +185,7 @@ fn rejects_duplicate_stdin_streams() {
 
 fn folder_result(path: &std::path::Path, recursive: bool) -> serde_json::Value {
     let mut command = Command::cargo_bin("retonr").expect("binary");
-    command.arg("lint").arg(path);
+    command.args(["--format", "json", "lint"]).arg(path);
     if recursive {
         command.arg("--recursive");
     }
@@ -260,7 +261,7 @@ fn folder_candidate_and_single_document_recursion_are_refused() {
         .code(2);
     Command::cargo_bin("retonr")
         .expect("binary")
-        .args(["lint", "--recursive"])
+        .args(["--format", "json", "lint", "--recursive"])
         .arg(&draft)
         .assert()
         .code(2);
@@ -344,7 +345,7 @@ fn folder_lint_refuses_oversized_files_without_partial_results() {
         .expect("set file size");
     Command::cargo_bin("retonr")
         .expect("binary")
-        .arg("lint")
+        .args(["--format", "json", "lint"])
         .arg(root.path())
         .assert()
         .code(4)
@@ -359,7 +360,7 @@ fn folder_lint_refuses_excessive_findings_without_a_partial_clean_report() {
         .expect("write repeated findings");
     Command::cargo_bin("retonr")
         .expect("binary")
-        .arg("lint")
+        .args(["--format", "json", "lint"])
         .arg(root.path())
         .assert()
         .code(4)
@@ -376,7 +377,7 @@ fn phrase_ordinals_agree_for_a_file_and_a_folder() {
 
     let single = Command::cargo_bin("retonr")
         .expect("binary")
-        .args(["lint"])
+        .args(["--format", "json", "lint"])
         .arg(&file)
         .assert()
         .success()
@@ -404,7 +405,7 @@ fn comparative_lint_counts_removed_and_introduced_repeated_findings() {
     fs::write(&candidate, "First!!! Second. Third.").expect("write candidate");
     Command::cargo_bin("retonr")
         .expect("binary")
-        .arg("lint")
+        .args(["--format", "json", "lint"])
         .arg(&source)
         .arg("--candidate")
         .arg(&candidate)
@@ -414,7 +415,7 @@ fn comparative_lint_counts_removed_and_introduced_repeated_findings() {
         .stdout(predicate::str::contains("\"retained_count\": 1"));
     Command::cargo_bin("retonr")
         .expect("binary")
-        .args(["lint", "--fail-on-findings"])
+        .args(["--format", "json", "lint", "--fail-on-findings"])
         .arg(&candidate)
         .arg("--candidate")
         .arg(&source)

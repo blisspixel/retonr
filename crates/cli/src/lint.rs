@@ -28,6 +28,8 @@ pub(crate) struct LintRequest {
     pub(crate) recursive: bool,
     pub(crate) candidate: Option<PathBuf>,
     pub(crate) fail_on_findings: bool,
+    /// Color choice for the human report.
+    pub(crate) color: crate::presentation::ColorChoice,
 }
 
 /// Report for single-document editorial lint inspection.
@@ -77,16 +79,23 @@ pub(crate) fn run(request: &LintRequest, format: ReportFormat) -> Result<ExitCod
             &request.source,
             candidate_path,
             request.fail_on_findings,
+            request.color,
             format,
         )
     } else {
-        run_single(&request.source, request.fail_on_findings, format)
+        run_single(
+            &request.source,
+            request.fail_on_findings,
+            request.color,
+            format,
+        )
     }
 }
 
 fn run_single(
     source_path: &Path,
     fail_on_findings: bool,
+    color: crate::presentation::ColorChoice,
     format: ReportFormat,
 ) -> Result<ExitCode, RunFailure> {
     let source_bytes = read_input_bounded(source_path, MAX_CANDIDATE_CHECK_BYTES)
@@ -108,7 +117,8 @@ fn run_single(
         findings,
     };
 
-    write_single_report(&report, format).map_err(|_| RunFailure::operational(CommandName::Lint))?;
+    write_single_report(&report, color, format)
+        .map_err(|_| RunFailure::operational(CommandName::Lint))?;
 
     if fail_on_findings && findings_count > 0 {
         Ok(ExitCode::from(EXIT_POLICY))
@@ -121,6 +131,7 @@ fn run_comparative(
     source_path: &Path,
     candidate_path: &Path,
     fail_on_findings: bool,
+    color: crate::presentation::ColorChoice,
     format: ReportFormat,
 ) -> Result<ExitCode, RunFailure> {
     if is_standard_stream(source_path) && is_standard_stream(candidate_path) {
@@ -159,7 +170,7 @@ fn run_comparative(
         comparison,
     };
 
-    write_comparative_report(&report, format)
+    write_comparative_report(&report, color, format)
         .map_err(|_| RunFailure::operational(CommandName::Lint))?;
 
     if fail_on_findings && has_introduced {
@@ -174,82 +185,136 @@ fn is_standard_stream(path: &Path) -> bool {
 }
 
 pub(super) fn format_finding_line(finding: &EditorialFinding) -> String {
-    let location = finding
-        .span
-        .map(|span| format!("line {} col {}: ", span.line, span.column))
-        .unwrap_or_default();
+    let location = finding.span.as_ref().map_or_else(
+        || "line ? col ?".to_owned(),
+        |span| format!("line {} col {}", span.line, span.column),
+    );
     format!(
-        "  - {location}[{}] '{}' (occurrence {}): {}",
+        "{location}  {}  {}\n  {}",
         finding.rule_id,
-        crate::render::escape_inline_for_display(&finding.evidence),
-        finding.occurrence,
-        finding.message
+        finding.message,
+        crate::render::escape_inline_for_display(&finding.evidence)
     )
 }
 
-fn write_single_report(report: &DocumentLintReport, format: ReportFormat) -> io::Result<()> {
+pub(super) fn findings_in_document_order(findings: &[EditorialFinding]) -> Vec<&EditorialFinding> {
+    let mut ordered: Vec<&EditorialFinding> = findings.iter().collect();
+    ordered.sort_by(|left, right| {
+        let left_at = left
+            .span
+            .map_or((u32::MAX, u32::MAX), |span| (span.line, span.column));
+        let right_at = right
+            .span
+            .map_or((u32::MAX, u32::MAX), |span| (span.line, span.column));
+        left_at
+            .cmp(&right_at)
+            .then(left.rule_id.cmp(&right.rule_id))
+            .then(left.occurrence.cmp(&right.occurrence))
+    });
+    ordered
+}
+
+fn write_single_report(
+    report: &DocumentLintReport,
+    color: crate::presentation::ColorChoice,
+    format: ReportFormat,
+) -> io::Result<()> {
     let bytes = match format {
-        ReportFormat::Json => {
-            let mut bytes = crate::render::to_safe_pretty_json(&SuccessEnvelope::new(
-                CommandName::Lint,
-                report,
-            ))
-            .map_err(io::Error::other)?;
-            bytes.push(b'\n');
-            bytes
-        }
+        ReportFormat::Json => json_report(report)?,
         ReportFormat::Text => {
-            let mut text = String::new();
-            let _ = writeln!(text, "status: {}", report.status);
-            let _ = writeln!(text, "findings: {}", report.findings_count);
-            for finding in &report.findings {
-                let _ = writeln!(text, "{}", format_finding_line(finding));
-            }
-            text.into_bytes()
+            render_lint_text(report.findings_count, &report.findings, color).into_bytes()
         }
     };
-    let mut stdout = io::stdout().lock();
-    stdout.write_all(&bytes)?;
-    stdout.flush()
+    write_stdout(&bytes)
 }
 
 fn write_comparative_report(
     report: &ComparativeLintReport,
+    color: crate::presentation::ColorChoice,
     format: ReportFormat,
 ) -> io::Result<()> {
     let bytes = match format {
-        ReportFormat::Json => {
-            let mut bytes = crate::render::to_safe_pretty_json(&SuccessEnvelope::new(
-                CommandName::Lint,
-                report,
-            ))
-            .map_err(io::Error::other)?;
-            bytes.push(b'\n');
-            bytes
-        }
-        ReportFormat::Text => {
-            let mut text = String::new();
-            let _ = writeln!(text, "status: {}", report.status);
-            let _ = writeln!(
-                text,
-                "comparison: {} resolved, {} introduced, {} retained (strict improvement: {})",
-                report.resolved_count,
-                report.introduced_count,
-                report.retained_count,
-                report.is_strict_improvement
-            );
-            if !report.comparison.introduced_findings.is_empty() {
-                let _ = writeln!(text, "introduced_findings:");
-                for finding in &report.comparison.introduced_findings {
-                    let _ = writeln!(text, "{}", format_finding_line(finding));
-                }
-            }
-            text.into_bytes()
-        }
+        ReportFormat::Json => json_report(report)?,
+        ReportFormat::Text => render_comparative_text(report, color).into_bytes(),
     };
+    write_stdout(&bytes)
+}
+
+fn json_report(report: &impl Serialize) -> io::Result<Vec<u8>> {
+    let mut bytes =
+        crate::render::to_safe_pretty_json(&SuccessEnvelope::new(CommandName::Lint, report))
+            .map_err(io::Error::other)?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
+fn write_stdout(bytes: &[u8]) -> io::Result<()> {
     let mut stdout = io::stdout().lock();
-    stdout.write_all(&bytes)?;
+    stdout.write_all(bytes)?;
     stdout.flush()
+}
+
+fn render_lint_text(
+    findings_count: usize,
+    findings: &[EditorialFinding],
+    color: crate::presentation::ColorChoice,
+) -> String {
+    let mut text = String::new();
+    if findings_count == 0 {
+        let _ = writeln!(text, "clean       no findings");
+    } else {
+        let noun = if findings_count == 1 {
+            "finding"
+        } else {
+            "findings"
+        };
+        let _ = writeln!(text, "{findings_count} {noun}");
+        for finding in findings_in_document_order(findings) {
+            let _ = writeln!(text, "{}", format_finding_line(finding));
+        }
+    }
+    finish_lint_text(&text, color)
+}
+
+fn render_comparative_text(
+    report: &ComparativeLintReport,
+    color: crate::presentation::ColorChoice,
+) -> String {
+    let mut text = String::new();
+    if report.candidate_findings_count == 0 {
+        let _ = writeln!(text, "clean       no findings");
+    } else {
+        let noun = if report.candidate_findings_count == 1 {
+            "finding"
+        } else {
+            "findings"
+        };
+        let _ = writeln!(text, "{} {noun}", report.candidate_findings_count);
+    }
+    let _ = writeln!(
+        text,
+        "comparison: {} resolved, {} introduced, {} retained (strict improvement: {})",
+        report.resolved_count,
+        report.introduced_count,
+        report.retained_count,
+        report.is_strict_improvement
+    );
+    if !report.comparison.introduced_findings.is_empty() {
+        let _ = writeln!(text, "introduced:");
+        for finding in findings_in_document_order(&report.comparison.introduced_findings) {
+            let _ = writeln!(text, "{}", format_finding_line(finding));
+        }
+    }
+    finish_lint_text(&text, color)
+}
+
+pub(super) fn finish_lint_text(text: &str, color: crate::presentation::ColorChoice) -> String {
+    let terminal = crate::presentation::stdout_is_terminal();
+    let wrapped = crate::presentation::wrap(text, crate::presentation::terminal_width(terminal));
+    crate::presentation::paint_report(
+        &wrapped,
+        crate::presentation::color_enabled(color, terminal),
+    )
 }
 
 #[cfg(test)]
@@ -275,8 +340,30 @@ mod tests {
         let line = format_finding_line(&finding);
         assert_eq!(
             line,
-            "  - line 2 col 4: [conversational_residue] 'Sure\\nthing' (occurrence 0): Conversational residue opening"
+            "line 2 col 4  conversational_residue  Conversational residue opening\n  Sure\\nthing"
         );
-        assert!(!line.contains('\n'));
+        assert_eq!(line.matches('\n').count(), 1);
+        assert!(!line.contains("Sure\nthing"));
+    }
+
+    #[test]
+    fn findings_are_ordered_by_line_then_column() {
+        let later = finding_at(3, 1, "later");
+        let earlier = finding_at(1, 4, "earlier");
+        let findings = [later, earlier];
+        let ordered = super::findings_in_document_order(&findings);
+        assert_eq!(ordered[0].evidence, "earlier");
+        assert_eq!(ordered[1].evidence, "later");
+    }
+
+    fn finding_at(line: u32, column: u32, evidence: &str) -> EditorialFinding {
+        let mut finding = EditorialFinding::new("rule", evidence, 0, "message");
+        finding.span = Some(FindingSpan {
+            start: 0,
+            end: 1,
+            line,
+            column,
+        });
+        finding
     }
 }

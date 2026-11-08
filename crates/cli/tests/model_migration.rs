@@ -252,7 +252,7 @@ fn migration_requires_confirmation_and_reports_current_state() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "migrate"])
+        .args(["--format", "json", "model", "migrate"])
         .assert()
         .code(3)
         .stdout(predicate::str::is_empty())
@@ -261,7 +261,7 @@ fn migration_requires_confirmation_and_reports_current_state() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "migrate", "--yes"])
+        .args(["--format", "json", "model", "migrate", "--yes"])
         .assert()
         .code(1)
         .stdout(predicate::str::is_empty())
@@ -293,7 +293,7 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["doctor"])
+        .args(["--format", "json", "doctor"])
         .assert()
         .code(4)
         .stderr(predicate::str::is_empty())
@@ -309,7 +309,7 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "migrate", "--yes"])
+        .args(["--format", "json", "model", "migrate", "--yes"])
         .output()
         .expect("migrate schema two");
     assert!(output.status.success());
@@ -330,7 +330,7 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "inventory"])
+        .args(["--format", "json", "model", "inventory"])
         .assert()
         .success()
         .stderr(predicate::str::is_empty())
@@ -348,7 +348,7 @@ fn migrates_schema_three_with_a_schema_three_backup() {
         .expect("compiled CLI")
         .arg("--data-dir")
         .arg(&data)
-        .args(["model", "migrate", "--yes"])
+        .args(["--format", "json", "model", "migrate", "--yes"])
         .output()
         .expect("migrate schema three");
     assert!(output.status.success());

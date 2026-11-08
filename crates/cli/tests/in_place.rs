@@ -74,7 +74,7 @@ fn check_in_place_implies_backup() {
     fs::write(&candidate, "Hello, world!\n").expect("write candidate");
 
     binary()
-        .args(["check", "-i"])
+        .args(["--format", "json", "check", "-i"])
         .arg(&source)
         .arg(&candidate)
         .assert()
@@ -101,7 +101,7 @@ fn check_backup_without_in_place_is_usage() {
     fs::write(&candidate, "Hello, world!\n").expect("write candidate");
 
     binary()
-        .args(["check", "--backup"])
+        .args(["--format", "json", "check", "--backup"])
         .arg(&source)
         .arg(&candidate)
         .assert()
@@ -120,7 +120,14 @@ fn check_in_place_with_output_is_usage() {
     fs::write(&candidate, "Hello, world!\n").expect("write candidate");
 
     binary()
-        .args(["check", "--in-place", "--backup", "--output"])
+        .args([
+            "--format",
+            "json",
+            "check",
+            "--in-place",
+            "--backup",
+            "--output",
+        ])
         .arg(&output)
         .arg(&source)
         .arg(&candidate)
@@ -139,6 +146,8 @@ fn check_in_place_on_standard_input_is_usage() {
 
     binary()
         .args([
+            "--format",
+            "json",
             "check",
             "--in-place",
             "--backup",
@@ -161,7 +170,7 @@ fn check_in_place_replaces_the_source_and_retains_a_sibling_backup() {
     fs::write(&candidate, "Hello, world!\n").expect("write candidate");
 
     let output = binary()
-        .args(["check", "--in-place", "--backup"])
+        .args(["--format", "json", "check", "--in-place", "--backup"])
         .arg(&source)
         .arg(&candidate)
         .output()
@@ -236,7 +245,7 @@ fn check_in_place_abstention_does_not_write_a_backup() {
     fs::write(&candidate, "Version 3\n").expect("write candidate");
 
     binary()
-        .args(["check", "--in-place", "--backup"])
+        .args(["--format", "json", "check", "--in-place", "--backup"])
         .arg(&source)
         .arg(&candidate)
         .assert()
@@ -257,7 +266,14 @@ fn check_in_place_dry_run_does_not_mutate() {
     fs::write(&candidate, "Hello, world!\n").expect("write candidate");
 
     binary()
-        .args(["check", "--in-place", "--backup", "--dry-run"])
+        .args([
+            "--format",
+            "json",
+            "check",
+            "--in-place",
+            "--backup",
+            "--dry-run",
+        ])
         .arg(&source)
         .arg(&candidate)
         .assert()
@@ -279,7 +295,7 @@ fn check_in_place_refuses_an_existing_backup() {
     fs::write(&backup, "keep\n").expect("write backup");
 
     binary()
-        .args(["check", "--in-place", "--backup"])
+        .args(["--format", "json", "check", "--in-place", "--backup"])
         .arg(&source)
         .arg(&candidate)
         .assert()
@@ -300,7 +316,7 @@ fn check_in_place_refuses_a_hard_linked_source_without_mutation() {
     fs::write(&candidate, "Hello, world!\n").expect("write candidate");
 
     binary()
-        .args(["check", "--in-place"])
+        .args(["--format", "json", "check", "--in-place"])
         .arg(&source)
         .arg(&candidate)
         .assert()
@@ -320,7 +336,7 @@ fn rewrite_in_place_fails_closed_without_mutation() {
     fs::write(&source, "Hello world\n").expect("write source");
 
     binary()
-        .args(["rewrite", "--in-place", "--backup"])
+        .args(["--format", "json", "rewrite", "--in-place", "--backup"])
         .arg(&source)
         .assert()
         .code(3)

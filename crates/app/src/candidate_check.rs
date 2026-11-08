@@ -270,6 +270,7 @@ pub(crate) fn run_plain_text_transaction(
         change: ChangeShare {
             changed_token_pct: 0,
             changed_char_pct: 0,
+            changed_word_count: 0,
         },
         style_distance: None,
     })

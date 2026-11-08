@@ -39,7 +39,7 @@ pub(super) fn run(
         .map_err(|_| RunFailure::operational(CommandName::Check))?;
     let report = build_report(request, &cancellation, style_samples)?;
     require_not_cancelled(&cancellation, CommandName::Check)?;
-    report.write(format)?;
+    report.write(format, &request.report)?;
     Ok(
         if request.fail_on_abstain
             && (report.abstained_count > 0
@@ -166,6 +166,7 @@ fn build_report(
             record: checked.record,
             changed_token_pct: checked.change.changed_token_pct,
             changed_char_pct: checked.change.changed_char_pct,
+            changed_word_count: checked.change.changed_word_count,
             style_distance: checked.style_distance,
         });
     }

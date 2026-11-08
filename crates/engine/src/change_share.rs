@@ -16,6 +16,10 @@ pub struct ChangeShare {
     pub changed_token_pct: u8,
     /// Rounded percentage of characters inside those words that differ.
     pub changed_char_pct: u8,
+    /// Word occurrences that differ, taking the larger of the two sides.
+    ///
+    /// A substitution counts once. A pure reordering counts as zero.
+    pub changed_word_count: u64,
 }
 
 /// Measures the word-occurrence share of `candidate` against `source`.
@@ -50,6 +54,7 @@ pub fn change_share(source: &str, candidate: &str) -> ChangeShare {
             removed_chars.saturating_add(added_chars),
             total_chars(&source_counts).saturating_add(total_chars(&candidate_counts)),
         ),
+        changed_word_count: removed_tokens.max(added_tokens),
     }
 }
 
@@ -144,6 +149,10 @@ mod tests {
             let share = change_share(&source, &candidate);
             assert_eq!(share.changed_token_pct, percent, "{changes} tokens");
             assert_eq!(share.changed_char_pct, percent, "{changes} chars");
+            assert_eq!(
+                share.changed_word_count,
+                u64::try_from(changes).unwrap_or(u64::MAX)
+            );
         }
     }
 

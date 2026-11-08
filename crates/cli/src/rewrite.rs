@@ -30,6 +30,7 @@ pub(crate) struct RewriteRequest {
     pub(crate) inspection: CheckInspection,
     pub(crate) directory: DirectoryFlags,
     pub(crate) format: ReportFormat,
+    pub(crate) report: crate::check::HumanReport,
 }
 
 /// Directory discovery and destination-root options.
@@ -120,31 +121,57 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
             CommandName::Rewrite,
         )?
     };
-    if request.inspection.diff {
-        inspect::write_diff(
-            &inspect::SafeDiff::compare(&source, &result.output),
-            crate::check::ReportTarget::Diagnostic,
-            CommandName::Rewrite,
-        )?;
-    }
     if let Some(trace) = request.inspection.trace.as_ref() {
         inspect::write_trace(trace, &result.record, CommandName::Rewrite)?;
     }
-    report::write(
-        CommandName::Rewrite,
-        &result.record,
-        request.format,
-        destination_report_target(&destination),
-        backup.as_deref(),
-        None,
-        None,
-    )
-    .map_err(|_| RunFailure::operational(CommandName::Rewrite))?;
+    publish_rewrite(request, &destination, backup.as_deref(), &source, &result)?;
     Ok(crate::check::exit_status(
         result.record.status,
         result.record.reason,
         request.fail_on_abstain,
     ))
+}
+
+fn publish_rewrite(
+    request: &RewriteRequest,
+    destination: &crate::check::replace::Destination,
+    backup: Option<&str>,
+    source: &[u8],
+    result: &rewrite_app::GroundedRewriteResult,
+) -> Result<(), RunFailure> {
+    let target = destination_report_target(destination);
+    let stream_is_terminal = match target {
+        crate::check::ReportTarget::Data => crate::presentation::stdout_is_terminal(),
+        crate::check::ReportTarget::Diagnostic => crate::presentation::stderr_is_terminal(),
+    };
+    let writes_document = !matches!(
+        destination,
+        crate::check::replace::Destination::Sink(crate::check::OutputSink::None)
+    );
+    report::write(
+        CommandName::Rewrite,
+        &result.record,
+        &report::ReportContext {
+            format: request.format,
+            target,
+            backup,
+            fidelity: None,
+            measurement: None,
+            verbose: request.report.verbose,
+            color: crate::presentation::color_enabled(request.report.color, stream_is_terminal),
+            width: crate::presentation::terminal_width(stream_is_terminal),
+            emission: report::emission(request.inspection.dry_run, writes_document),
+        },
+    )
+    .map_err(|_| RunFailure::operational(CommandName::Rewrite))?;
+    if request.inspection.diff {
+        inspect::write_diff(
+            &inspect::SafeDiff::compare(source, &result.output),
+            crate::check::ReportTarget::Diagnostic,
+            CommandName::Rewrite,
+        )?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

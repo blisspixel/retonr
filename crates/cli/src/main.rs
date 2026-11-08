@@ -5,7 +5,7 @@
 
 use std::{
     ffi::OsString,
-    io::{self, IsTerminal, Write},
+    io::{self, Write},
     process::ExitCode,
 };
 
@@ -31,9 +31,11 @@ mod inspect_source;
 mod lint;
 mod man;
 mod model;
+mod presentation;
 mod render;
 mod rewrite;
 mod tui;
+mod usage;
 mod version;
 
 fn main() -> ExitCode {
@@ -52,13 +54,13 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             };
         }
-        Err(_) => {
+        Err(error) => {
             let format = requested_format(&arguments);
-            let failure = RunFailure::usage();
-            if write_failure(&failure, format).is_err() {
+            let parsed = usage::from_clap(&arguments, &error);
+            if write_parse_failure(&parsed, format).is_err() {
                 return ExitCode::FAILURE;
             }
-            return failure.exit_code;
+            return parsed.failure.exit_code;
         }
     };
     match run(cli) {
@@ -77,7 +79,9 @@ fn main() -> ExitCode {
     reason = "each command arm owns its clap-derived request"
 )]
 fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
-    let format = ReportFormat::from_invocation(cli.format, io::stdout().is_terminal());
+    let format = ReportFormat::from_invocation(cli.format);
+    let color = cli.color;
+    let verbose = cli.verbose;
     match cli.command {
         Command::Tui(request) => tui::run(&request, cli.format).map_err(|error| (error, format)),
         Command::Rewrite {
@@ -118,6 +122,7 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 output_dir,
             },
             format,
+            report: check::HumanReport { verbose, color },
         })
         .map_err(|error| (error, format)),
         Command::Check {
@@ -196,6 +201,7 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                     edit_level: edit_level.map(Into::into),
                     max_change_percent: max_change_pct,
                     style_sample_paths: style_samples,
+                    report: check::HumanReport { verbose, color },
                 },
                 format,
             )
@@ -270,6 +276,7 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 recursive,
                 candidate,
                 fail_on_findings,
+                color,
             },
             format,
         )
@@ -334,5 +341,33 @@ fn requested_format(arguments: &[OsString]) -> ReportFormat {
             return ReportFormat::Json;
         }
     }
-    ReportFormat::from_invocation(None, io::stdout().is_terminal())
+    env_format().unwrap_or(ReportFormat::Text)
+}
+
+fn env_format() -> Option<ReportFormat> {
+    match std::env::var("RETONR_FORMAT").ok().as_deref() {
+        Some("json") => Some(ReportFormat::Json),
+        Some("text") => Some(ReportFormat::Text),
+        _ => None,
+    }
+}
+
+fn write_parse_failure(parsed: &usage::ParseFailure, format: ReportFormat) -> io::Result<()> {
+    if format == ReportFormat::Json {
+        return write_failure(&parsed.failure, format);
+    }
+    let mut line = format!(
+        "error: {}\nusage: {}\nmore: {}\n",
+        parsed.message, parsed.usage, parsed.more
+    );
+    if line_has_controls(&line) {
+        "error: command input is invalid\nusage: retonr --help\nmore: retonr --help\n"
+            .clone_into(&mut line);
+    }
+    io::stderr().lock().write_all(line.as_bytes())
+}
+
+fn line_has_controls(text: &str) -> bool {
+    text.chars()
+        .any(|character| character.is_control() && character != '\n')
 }

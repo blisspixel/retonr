@@ -37,7 +37,7 @@ pub(super) fn run(request: &LintRequest, format: ReportFormat) -> Result<ExitCod
             bytes.push(b'\n');
             bytes
         }
-        ReportFormat::Text => report.text().into_bytes(),
+        ReportFormat::Text => super::finish_lint_text(&report.text(), request.color).into_bytes(),
     };
     if cancellation.is_cancelled() {
         return Err(RunFailure::cancelled(CommandName::Lint));
@@ -197,8 +197,18 @@ struct DirectoryLintReport {
 
 impl DirectoryLintReport {
     fn text(&self) -> String {
+        let noun = if self.findings_count == 1 {
+            "finding"
+        } else {
+            "findings"
+        };
+        let verdict = if self.findings_count == 0 {
+            "clean       no findings".to_owned()
+        } else {
+            format!("{} {noun}", self.findings_count)
+        };
         let mut text = format!(
-            "scope: {}\nstatus: {}\nrecursion: {}\nlinks: {}\ndocuments: {}\nfindings: {}\nskipped: {}\n",
+            "{verdict}\nscope: {}\nstatus: {}\nrecursion: {}\nlinks: {}\ndocuments: {}\nfindings: {}\nskipped: {}\n",
             self.scope,
             self.status,
             self.recursion,
@@ -215,7 +225,7 @@ impl DirectoryLintReport {
                 document.report.status,
                 document.report.findings_count
             );
-            for finding in &document.report.findings {
+            for finding in super::findings_in_document_order(&document.report.findings) {
                 let _ = writeln!(text, "{}", super::format_finding_line(finding));
             }
         }
@@ -259,6 +269,7 @@ mod tests {
             recursive: true,
             candidate: None,
             fail_on_findings: false,
+            color: crate::presentation::ColorChoice::Never,
         };
         let report =
             build_report(&request, &CancellationToken::new()).expect("exact combined ceiling");
@@ -306,6 +317,7 @@ mod tests {
             recursive: true,
             candidate: None,
             fail_on_findings: false,
+            color: crate::presentation::ColorChoice::Never,
         };
         let Err(failure) = build_report(&request, &cancellation) else {
             panic!("cancelled lint must refuse")
