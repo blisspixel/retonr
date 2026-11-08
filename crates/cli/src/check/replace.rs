@@ -54,7 +54,7 @@ impl Destination {
     }
 }
 
-fn same_planned_path(left: &Path, right: &Path) -> bool {
+pub(super) fn same_planned_path(left: &Path, right: &Path) -> bool {
     if left == right {
         return true;
     }

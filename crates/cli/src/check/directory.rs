@@ -62,6 +62,9 @@ fn validate_request(request: &CheckRequest) -> Result<(), RunFailure> {
             message: "directory check requires --dry-run",
         });
     }
+    if request.receipt.is_some() {
+        return Err(super::receipt::directory_rejected());
+    }
     if !is_real_directory(&request.candidate)
         || request.output.is_some()
         || request.in_place.requested

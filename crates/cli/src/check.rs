@@ -21,6 +21,7 @@ use crate::{
 
 mod directory;
 pub(crate) mod inspect;
+pub(crate) mod receipt;
 pub(crate) mod replace;
 pub(crate) mod report;
 #[cfg(test)]
@@ -63,6 +64,8 @@ pub(crate) struct CheckRequest {
     pub(crate) max_change_percent: Option<u8>,
     /// Paths of authorized samples. Empty means no style-distance report.
     pub(crate) style_sample_paths: Vec<PathBuf>,
+    /// New file that receives the opt-in local receipt.
+    pub(crate) receipt: Option<PathBuf>,
     /// Human-report switches.
     pub(crate) report: HumanReport,
 }
@@ -122,6 +125,12 @@ pub(crate) fn run(request: &CheckRequest, format: ReportFormat) -> Result<ExitCo
         &destination,
         request.inspection.trace.as_deref(),
         request.inspection.dry_run,
+        CommandName::Check,
+    )?;
+    receipt::validate(
+        &destination,
+        request.receipt.as_deref(),
+        request.inspection.trace.as_deref(),
         CommandName::Check,
     )?;
 
@@ -190,6 +199,18 @@ fn publish_check(
     };
     if let Some(trace) = request.inspection.trace.as_ref() {
         inspect::write_trace(trace, &result.record, CommandName::Check)?;
+    }
+    if let Some(path) = request.receipt.as_ref() {
+        receipt::write(
+            path,
+            &result.record,
+            &receipt::ReceiptFacts {
+                fidelity: report::fidelity_for(request.edit_level),
+                changed_token_pct: result.change.changed_token_pct,
+                changed_char_pct: result.change.changed_char_pct,
+                created_at: std::time::SystemTime::now(),
+            },
+        )?;
     }
     let target = destination_report_target(destination);
     let stream_is_terminal = match target {

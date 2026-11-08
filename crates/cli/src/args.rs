@@ -8,6 +8,7 @@ use std::path::PathBuf;
 const EXAMPLES: &str = "\
 Examples:
   retonr check original.txt candidate.txt --diff
+  retonr check original.txt candidate.txt --receipt receipt.json
   retonr check originals/ candidates/ -r --dry-run
   retonr lint draft.txt
   retonr tui draft.txt --candidate edited.txt
@@ -195,6 +196,13 @@ pub(crate) enum Command {
         /// Write the redacted rewrite record to a new file.
         #[arg(long, value_name = "PATH")]
         trace: Option<PathBuf>,
+        /// Write a local JSON receipt for this one-document check.
+        ///
+        /// The file records digests, the edit level, and the change share.
+        /// It contains no source text. It is evidence of the check, not an
+        /// authorship certificate. An existing path is never replaced.
+        #[arg(long, value_name = "PATH")]
+        receipt: Option<PathBuf>,
         /// Requested editorial freedom. Check reports the effective level; only touch-up is enforced.
         #[arg(long = "edit-level", value_enum, value_name = "LEVEL")]
         edit_level: Option<EditLevelArg>,

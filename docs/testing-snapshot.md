@@ -110,7 +110,14 @@ not abstain. `--style-sample PATH` pools authorized samples in memory and report
 authorship verdict, and it does not accept or rank a candidate. Sample text is
 not copied into the report. The text report, including a directory check,
 leads with a verdict, wraps to the terminal, and ends a check with a fidelity
-receipt. The read-only TUI status uses that verdict word and the first located
+receipt. `retonr check --receipt PATH` also writes receipt schema 1, a separate
+file. It nests the rewrite record at schema 2 and adds the tool version, commit,
+UTC time, effective edit level, and `changed_token_pct` and `changed_char_pct`.
+The notice says the report is evidence of Retonr's process and is not an
+authorship certificate. The file contains no source text and is not written into
+the output document. Omitting the flag writes no receipt. `--dry-run` still
+writes the receipt and does not write the document. A directory check refuses
+the flag. The read-only TUI status uses that verdict word and the first located
 span from the same list. JSON keeps the versioned record. `retonr --version` and `retonr version` include the commit and, when
 the build is an exact tag, the snapshot tag.
 
