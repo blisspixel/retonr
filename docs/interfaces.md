@@ -77,7 +77,7 @@ flush, and verification, then replaces the source. It revalidates the exact sour
 bytes after candidate validation and checks the source identity again immediately
 before replacement. Source drift is a retryable `concurrent_modification` failure.
 Standard input, `--output`, symlinks, and multiply-linked files are refused.
-Unchanged accepted bytes leave the source untouched and create no backup. Reports default to text. `--format json` (`-f`) or `RETONR_FORMAT=json` selects JSON. A pipe does not change the default. Text check and lint reports, including directory reports, lead with a verdict and wrap to the terminal width. A check ends with a fidelity receipt.
+Unchanged accepted bytes leave the source untouched and create no backup. Reports default to text. `--format json` (`-f`) or `RETONR_FORMAT=json` selects JSON. A pipe does not change the default. Text check and lint reports, including directory reports, lead with a verdict and wrap to the terminal width. A check ends with a fidelity receipt. The experimental read-only TUI uses that verdict word and the first located span, wraps each pane, and closes help on Escape before quitting.
 `--data-dir` (`-D` or `RETONR_DATA_DIR`) is the explicit repository root.
 
 Every planned new output, backup, staging, or trace path treats a dangling link as

@@ -44,11 +44,9 @@ fn linear_candidate_review_uses_existing_checks_without_mutating_inputs() {
     assert!(result.status.success());
     let value: serde_json::Value = serde_json::from_slice(&result.stdout).expect("safe JSON");
     assert_eq!(value["command"], "tui");
-    assert!(
-        value["result"]["summary"]
-            .as_str()
-            .expect("summary")
-            .contains("Candidate check: rewritten;")
+    assert_eq!(
+        value["result"]["summary"].as_str().expect("summary"),
+        "accepted"
     );
     assert_eq!(fs::read(&source).expect("unchanged source"), original);
     assert_eq!(fs::read(&candidate).expect("unchanged candidate"), supplied);
@@ -118,11 +116,9 @@ fn recursive_linear_review_selects_exact_nested_pair_and_preserves_files() {
     assert_eq!(report["result"]["directory"]["selected"], 1);
     assert_eq!(report["result"]["directory"]["total"], 2);
     assert_eq!(report["result"]["directory"]["unmatched_candidates"], 1);
-    assert!(
-        report["result"]["summary"]
-            .as_str()
-            .expect("summary")
-            .contains("Candidate check: rewritten;")
+    assert_eq!(
+        report["result"]["summary"].as_str().expect("summary"),
+        "accepted"
     );
     assert_eq!(
         fs::read(candidate.path().join("nested/b.txt")).expect("unchanged"),
@@ -154,11 +150,9 @@ fn recursive_unpaired_source_does_not_claim_candidate_validation() {
     assert!(result.status.success());
     let report: serde_json::Value = serde_json::from_slice(&result.stdout).expect("report");
     assert!(report["result"]["candidate_preview"].is_null());
-    assert!(
-        !report["result"]["summary"]
-            .as_str()
-            .expect("summary")
-            .contains("Candidate check:")
+    assert_eq!(
+        report["result"]["summary"].as_str().expect("summary"),
+        "inspection"
     );
     assert!(
         report["result"]["findings"]

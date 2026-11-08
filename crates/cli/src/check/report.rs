@@ -348,8 +348,18 @@ pub(crate) fn append_style_lines(text: &mut String, style: &StyleDistance) {
     }
 }
 
-pub(crate) fn append_span_lines(text: &mut String, record: &RewriteRecord) {
-    use std::fmt::Write as _;
+/// First located span, using the source point when the record has one.
+pub(crate) struct LocatedSpan {
+    pub line: u32,
+    pub column: u32,
+    pub kind: String,
+    pub change: &'static str,
+}
+
+/// Spans in the same order as a text check report.
+#[must_use]
+pub(crate) fn located_spans(record: &RewriteRecord) -> Vec<LocatedSpan> {
+    let mut spans = Vec::new();
     for assessment in &record.assessments {
         for gate in &assessment.gates {
             for evidence in &gate.evidence {
@@ -360,17 +370,33 @@ pub(crate) fn append_span_lines(text: &mut String, record: &RewriteRecord) {
                     let Some(point) = failure.source.or(failure.candidate) else {
                         continue;
                     };
-                    let _ = writeln!(
-                        text,
-                        "line {} col {}: {} {}",
-                        point.line,
-                        point.column,
-                        failure.kind,
-                        span_change_name(failure.change)
-                    );
+                    spans.push(LocatedSpan {
+                        line: point.line,
+                        column: point.column,
+                        kind: failure.kind.clone(),
+                        change: span_change_name(failure.change),
+                    });
                 }
             }
         }
+    }
+    spans
+}
+
+/// The span a review status names. Later spans stay in the check report.
+#[must_use]
+pub(crate) fn first_located_span(record: &RewriteRecord) -> Option<LocatedSpan> {
+    located_spans(record).into_iter().next()
+}
+
+pub(crate) fn append_span_lines(text: &mut String, record: &RewriteRecord) {
+    use std::fmt::Write as _;
+    for span in located_spans(record) {
+        let _ = writeln!(
+            text,
+            "line {} col {}: {} {}",
+            span.line, span.column, span.kind, span.change
+        );
     }
 }
 

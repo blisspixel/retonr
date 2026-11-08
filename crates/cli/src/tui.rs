@@ -226,6 +226,7 @@ fn write_plain(
     }
     writeln!(output, "Retonr document review")?;
     writeln!(output, "{}", snapshot.status)?;
+    writeln!(output, "{}", ui::READ_ONLY_NOTICE)?;
     writeln!(
         output,
         "\nSource: {}\n{}",
