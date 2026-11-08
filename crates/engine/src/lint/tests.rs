@@ -32,6 +32,66 @@ fn bounded_dense_matching_refuses_without_collecting_the_whole_document() {
 }
 
 #[test]
+fn phrase_ordinal_notes_grow_linearly_and_a_cap_stops_them() {
+    fn notes_for(repetitions: usize) -> usize {
+        super::ordinal::reset_phrase_ordinal_notes();
+        let text = "truly groundbreaking ".repeat(repetitions);
+        let findings = lint_text_bounded(&text, repetitions + 8).expect("within cap");
+        let puffery = findings
+            .iter()
+            .filter(|finding| finding.rule_id == "promotional_puffery")
+            .count();
+        assert_eq!(puffery, repetitions);
+        super::ordinal::phrase_ordinal_notes()
+    }
+
+    let small = notes_for(1_000);
+    let large = notes_for(2_000);
+    assert!(large > small);
+    assert!(
+        large <= small.saturating_mul(3),
+        "ordinal notes grew faster than linear: {small} then {large}"
+    );
+
+    super::ordinal::reset_phrase_ordinal_notes();
+    let dense = "truly groundbreaking ".repeat(50_000);
+    assert_eq!(lint_text_bounded(&dense, 1), Err(FindingLimitExceeded));
+    let stopped = super::ordinal::phrase_ordinal_notes();
+    assert!(
+        stopped <= 8,
+        "finding cap did not stop ordinal work: {stopped} notes"
+    );
+
+    super::ordinal::reset_phrase_ordinal_notes();
+    let windows = "whether you're new or just curious ".repeat(2_000);
+    assert_eq!(lint_text_bounded(&windows, 1), Err(FindingLimitExceeded));
+    let window_notes = super::ordinal::phrase_ordinal_notes();
+    assert!(
+        window_notes <= 8,
+        "window cap did not stop ordinal work: {window_notes} notes"
+    );
+}
+
+#[test]
+fn phrase_ordinals_keep_case_quotes_spans_and_saturation() {
+    let text = "\"truly groundbreaking\" Truly groundbreaking truly groundbreaking";
+    let findings = lint_text(text)
+        .into_iter()
+        .filter(|finding| finding.rule_id == "promotional_puffery")
+        .collect::<Vec<_>>();
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].evidence, "Truly groundbreaking");
+    assert_eq!(findings[0].occurrence, 0);
+    assert_eq!(findings[1].evidence, "truly groundbreaking");
+    assert_eq!(findings[1].occurrence, 1);
+    let span = findings[1].span.expect("span");
+    let start = usize::try_from(span.start).expect("start");
+    let end = usize::try_from(span.end).expect("end");
+    assert_eq!(&text[start..end], "truly groundbreaking");
+    assert!(lint_text("truly  groundbreaking").is_empty());
+}
+
+#[test]
 fn marker_ordinals_count_quoted_matches_and_saturate_without_quadratic_rescanning() {
     let text = format!("\"Ultimately\" {}", "Ultimately ".repeat(65_537));
     let findings = lint_text(&text);

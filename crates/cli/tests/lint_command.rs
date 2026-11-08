@@ -368,6 +368,34 @@ fn folder_lint_refuses_excessive_findings_without_a_partial_clean_report() {
 }
 
 #[test]
+fn phrase_ordinals_agree_for_a_file_and_a_folder() {
+    let text = "\"truly groundbreaking\" truly groundbreaking truly groundbreaking";
+    let root = tempdir().expect("temporary directory");
+    let file = root.path().join("draft.txt");
+    fs::write(&file, text).expect("write draft");
+
+    let single = Command::cargo_bin("retonr")
+        .expect("binary")
+        .args(["lint"])
+        .arg(&file)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let single: serde_json::Value = serde_json::from_slice(&single).expect("JSON");
+    let findings = single["result"]["findings"].as_array().expect("findings");
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0]["occurrence"], 1);
+    assert_eq!(findings[1]["occurrence"], 2);
+    assert_eq!(findings[1]["evidence"], "truly groundbreaking");
+
+    let folder = folder_result(root.path(), false);
+    assert_eq!(folder["documents"][0]["findings"][0]["occurrence"], 1);
+    assert_eq!(folder["documents"][0]["findings"][1]["occurrence"], 2);
+}
+
+#[test]
 fn comparative_lint_counts_removed_and_introduced_repeated_findings() {
     let root = tempdir().expect("temporary directory");
     let source = root.path().join("source.txt");

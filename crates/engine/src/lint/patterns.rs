@@ -7,9 +7,9 @@
 use std::ops::Range;
 
 use super::collector::FindingCollector;
-use super::density::{count_words, rate_met};
+use super::ordinal::Rate;
 use super::residue::{char_limited_end, match_folded, next_char_len, word_bounded};
-use super::rules::{RuleCatalog, add_finding, is_inside_quotes};
+use super::rules::{RuleCatalog, is_inside_quotes};
 
 const SCENE_CUES: [&str; 3] = ["landscape", "era", "climate"];
 const CONTRASTIVE_OPENERS: [&str; 3] = ["not just", "not merely", "not only"];
@@ -26,7 +26,7 @@ const PUFFERY: [&str; 6] = [
 ];
 
 pub(crate) fn scene_variants(text: &str, quotes: &[Range<usize>], findings: &mut FindingCollector) {
-    emit_windows(
+    super::ordinal::emit_windows(
         text,
         quotes,
         findings,
@@ -41,7 +41,7 @@ pub(crate) fn contrastive_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_density_windows(
+    super::ordinal::emit_density_windows(
         text,
         quotes,
         findings,
@@ -60,7 +60,7 @@ pub(crate) fn tricolon_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_density_windows(
+    super::ordinal::emit_density_windows(
         text,
         quotes,
         findings,
@@ -79,7 +79,7 @@ pub(crate) fn puffery_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -94,7 +94,7 @@ pub(crate) fn ornamental_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -109,7 +109,7 @@ pub(crate) fn reader_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_windows(
+    super::ordinal::emit_windows(
         text,
         quotes,
         findings,
@@ -124,7 +124,7 @@ pub(crate) fn question_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_windows(
+    super::ordinal::emit_windows(
         text,
         quotes,
         findings,
@@ -139,7 +139,7 @@ pub(crate) fn significance_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -155,7 +155,7 @@ pub(crate) fn significance_variants(
 }
 
 pub(crate) fn close_variants(text: &str, quotes: &[Range<usize>], findings: &mut FindingCollector) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -174,7 +174,7 @@ pub(crate) fn collaboration_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -189,7 +189,7 @@ pub(crate) fn throat_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -208,7 +208,7 @@ pub(crate) fn canned_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -223,7 +223,7 @@ pub(crate) fn attribution_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -238,7 +238,7 @@ pub(crate) fn qualifier_variants(
     quotes: &[Range<usize>],
     findings: &mut FindingCollector,
 ) {
-    emit_phrases(
+    super::ordinal::emit_phrases(
         text,
         quotes,
         findings,
@@ -253,88 +253,6 @@ pub(crate) fn qualifier_variants(
             "basic fundamentals",
         ],
     );
-}
-
-fn emit_phrases(
-    text: &str,
-    quotes: &[Range<usize>],
-    findings: &mut FindingCollector,
-    rule: RuleCatalog,
-    message: &str,
-    phrases: &[&str],
-) {
-    for phrase in phrases {
-        let mut index = 0;
-        while index < text.len() {
-            if let Some(end) = match_folded(text, index, phrase)
-                && accept(text, quotes, findings, rule, index, end)
-            {
-                add_finding(findings, text, rule, &text[index..end], index, message);
-                index = end;
-                continue;
-            }
-            index += next_char_len(text, index);
-        }
-    }
-}
-
-fn emit_windows(
-    text: &str,
-    quotes: &[Range<usize>],
-    findings: &mut FindingCollector,
-    rule: RuleCatalog,
-    message: &str,
-    detect: fn(&str, usize) -> Option<(usize, usize)>,
-) {
-    let mut index = 0;
-    while index < text.len() {
-        if let Some((start, end)) = detect(text, index)
-            && accept(text, quotes, findings, rule, start, end)
-        {
-            add_finding(findings, text, rule, &text[start..end], start, message);
-            index = end;
-            continue;
-        }
-        index += next_char_len(text, index);
-    }
-}
-
-#[derive(Clone, Copy)]
-struct Rate {
-    floor: usize,
-    per_thousand: usize,
-}
-
-fn emit_density_windows(
-    text: &str,
-    quotes: &[Range<usize>],
-    findings: &mut FindingCollector,
-    rule: RuleCatalog,
-    message: &str,
-    rate: Rate,
-    detect: fn(&str, usize) -> Option<(usize, usize)>,
-) {
-    let mut hits = Vec::new();
-    let mut index = 0;
-    while index < text.len() {
-        if let Some((start, end)) = detect(text, index) {
-            if accept(text, quotes, findings, rule, start, end) {
-                hits.push((start, end));
-            }
-            index = end;
-            continue;
-        }
-        index += next_char_len(text, index);
-    }
-    if !rate_met(hits.len(), count_words(text), rate.floor, rate.per_thousand) {
-        return;
-    }
-    for (start, end) in hits {
-        add_finding(findings, text, rule, &text[start..end], start, message);
-        if findings.exceeded() {
-            return;
-        }
-    }
 }
 
 pub(super) fn accept(

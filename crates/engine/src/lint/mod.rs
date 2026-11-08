@@ -7,6 +7,7 @@ mod conclusion;
 mod density;
 #[cfg(test)]
 mod held_out;
+mod ordinal;
 mod patterns;
 mod residue;
 mod rules;
