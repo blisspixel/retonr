@@ -2,8 +2,11 @@
 
 ## Status and decision
 
-Status: policy research and implementation contract, verified against primary
-sources available on 2026-08-12.
+Status: policy research and implementation contract. The baseline was verified
+against primary sources available on 2026-08-12. The United States entries, the
+Article 50 quotation beside release gate 9, the image, audio, and video release
+gate, and the United States revalidation trigger were checked against the
+primary sources named with them on 2026-11-08.
 
 Retonr must treat provenance as evidence attached to, bound to, or held outside
 an artifact. It must not treat provenance as an authorship verdict. The core
@@ -18,8 +21,8 @@ legal duties that depend on Retonr's distribution, the user's role, the place of
 use, the publication, and other facts. A release that places Retonr on a regulated
 market requires a documented scope decision and qualified legal review.
 
-The research is current to the date above. It does not predict developments later
-in 2026.
+The August 12, 2026 review does not predict later developments. A statement
+added on 2026-11-08 is current only for the source and date named with it.
 
 ## Decision summary
 
@@ -401,7 +404,9 @@ formatting, and accessibility edits can qualify when they do not generate new
 content or materially change meaning, style, intent, substance, or messaging.
 Substantive or structural changes affecting meaning, style, or intent go beyond
 standard editing. Because Retonr intentionally refines style, it cannot assume the
-provider exception applies to every rewrite.
+provider exception applies to every rewrite. The English text of points 90 to
+92, from the guidelines file reviewed on 2026-11-08, is quoted beside release
+gate 9.
 
 The guidelines also interpret the Article 50(4) publication exception. Human
 review is a deliberate examination of substance by a person with relevant
@@ -491,6 +496,209 @@ sector-specific rules must not be presented as a general federal requirement.
 Education, employment, elections, consumer protection, professional practice,
 contracts, and platform rules can impose separate duties and need use-specific
 review.
+
+The entries below were reviewed on 2026-11-08. They name the actors and media
+in the cited text. They do not decide whether Retonr, a distributor, or a user
+is one of those actors. Retonr edits text. Where a definition of a generative
+system also names text, that definition is recorded as a definition. It is not
+recorded as a duty to mark ordinary edited text.
+
+#### California
+
+The California AI Transparency Act is Business and Professions Code sections
+22757 through 22757.6. Chapter 25 was added by Stats. 2024, chapter 291
+([SB 942](https://leginfo.legislature.ca.gov/faces/billTextClient.xhtml?bill_id=202320240SB942)),
+approved and filed on 2024-09-19. As enacted, a covered provider was a person
+that creates, codes, or otherwise produces a generative artificial intelligence
+system that has over 1,000,000 monthly visitors or users and is publicly
+accessible within the state. The enacted latent and manifest disclosure duties
+named image, video, and audio content, or any combination. The enacted chapter
+was operative on 2026-01-01.
+[Current section 22757.6](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.6),
+amended by Stats. 2025, chapter 674 (AB 853), says the chapter becomes
+operative on 2026-08-02.
+
+[SB 1000](https://leginfo.legislature.ca.gov/faces/billTextClient.xhtml?bill_id=202520260SB1000),
+Stats. 2026, chapter 861, was approved and filed on 2026-09-30. The bill
+declares urgency and takes effect immediately. Its legislative counsel digest
+says the bill deletes the user threshold from "covered provider," replaces "AI
+detection tool" with "disclosure verification tool," deletes the requirement
+that a covered provider offer the user an option to include a manifest
+disclosure, and requires the latent disclosure to say whether the system
+created or altered the content.
+
+[Current section 22757.1(e)](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.1),
+amended by that chapter and effective 2026-09-30, defines a covered provider as
+a person that creates, codes, or otherwise produces a generative artificial
+intelligence system that is publicly accessible within the geographic
+boundaries of the state. The displayed definition has no 1,000,000-visitor
+threshold. Section 22757.1(g) defines that system as an artificial intelligence
+that can generate derived synthetic content, including text, images, video, and
+audio.
+
+[Section 22757.2](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.2)
+requires a covered provider to make available a disclosure verification tool at
+no cost to the user. The tool lets a user assess whether image, video, or audio
+content, or any combination, was created or altered, except by minor
+modification, by the covered provider's system.
+[Section 22757.3(a)](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.3)
+requires, to the extent technically feasible, a latent disclosure in image,
+video, or audio content, or any combination, created or altered, except by
+minor modification, by that system. The disclosure must convey, among other
+items, whether the system created or altered the content. Section 22757.1(l)
+defines minor modification as a change to brightness, contrast, or color;
+sharpening; saturating; file resizing; scaling; cropping; file format
+conversions; and denoising and removal of background noise in audio.
+
+AB 853 added later duties.
+[Section 22757.3.1](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.3.1),
+operative 2027-01-01, applies to a large online platform. The platform must
+detect whether compliant provenance data is embedded or attached, provide a
+user interface, and allow inspection. To the extent technically feasible, it
+shall not knowingly strip system provenance data or a digital signature that is
+compliant with widely adopted specifications adopted by an established
+standards-setting body.
+[Section 22757.3.2](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.3.2),
+operative 2027-01-01, says a generative-system hosting platform shall not
+knowingly make available a system that does not place the disclosures required
+by section 22757.3.
+[Section 22757.3.3](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.3.3)
+applies to a capture device the manufacturer first produced for sale in the
+state on or after 2028-01-01, and it is operative on 2028-01-01. The
+manufacturer must offer a latent disclosure in captured content and embed those
+disclosures by default, only to the extent technically feasible and compliant
+with widely adopted specifications. The code credits all three sections to
+Stats. 2025, chapter 674 (AB 853), effective 2026-01-01, with the operative
+dates stated in the sections.
+
+#### Washington
+
+[Engrossed Second Substitute House Bill 1170](https://lawfilesext.leg.wa.gov/biennium/2025-26/Pdf/Bills/Session%20Laws/House/1170-S2.SL.pdf),
+chapter 167, Laws of 2026, was passed by the Senate on 2026-03-04 and by the
+House on 2026-03-11, approved on 2026-03-24, and filed on 2026-03-25. Section 9
+and the enrollment certificate state an effective date of 2027-02-01. The
+governor named on the certificate is Bob Ferguson.
+
+Section 1 defines a covered provider as a person or entity that creates, codes,
+or otherwise produces a generative artificial intelligence system that has over
+1,000,000 monthly users and is publicly accessible within the state to
+consumers for personal use. The definition excludes state, local, and tribal
+governments. The same section defines generative artificial intelligence as
+technology that generates images, audio, or video. That definition does not
+name text.
+
+Section 2 requires a covered provider, to the extent commercially and
+technically reasonable, to include provenance data in any video, image, or
+audio content, or any combination, created or materially altered by the
+provider's system. Provenance data is data embedded into digital content, or
+included in its metadata, to verify authenticity, origin, or history of
+modification. "Materially altered" means a significant change that substantially
+alters the data in the content. It excludes minor modifications that do not
+lead to significant changes to the perceived content or meaning. The listed
+minor modifications are changes to brightness, contrast, or color; sharpening;
+saturating; applying filters; resizing; scaling; cropping; format conversions;
+resampling; denoising; and removal of background noise in audio.
+
+Section 4 says the attorney general may bring an action to enforce the chapter,
+and that only the attorney general can bring an action under the Consumer
+Protection Act pursuant to that section. Section 3 says the chapter is not
+construed to apply to business-to-business uses, sales, licensing, or
+distribution of those systems. Section 5 says the chapter does not apply to a
+product, service, website, or application that provides exclusively video game
+or interactive experiences, or to systems used solely for upscaling, noise
+reduction, or compression. Section 6 is a separate duty: a government agency
+that makes an artificial intelligence system available to interact with
+consumers must disclose that interaction. It is not a content-provenance duty.
+
+#### Utah
+
+[Utah Code Title 13, Chapter 72c](https://le.utah.gov/xcode/Title13/Chapter72C/C13-72c_2026050620270101.pdf),
+the Digital Content Provenance Standards Act, was enacted by Chapter 352, 2026
+General Session. The official code PDF reviewed here is effective 2027-01-01.
+The official HTML section pages also display "Affected by 63I-2-213 on
+7/1/2027." This review did not read section 63I-2-213 and does not treat that
+marker as a statement that the chapter expires.
+[H.B. 276 (2026)](https://le.utah.gov/~2026/bills/static/HB0276.html),
+current version H.B. 276 Substitute 2, was signed by the governor on
+2026-03-24. This note records chapter 13-72c. It does not describe the other
+chapters in that bill.
+
+Section 13-72c-101 defines a covered provider as a person that creates, codes,
+or otherwise produces a generative artificial intelligence system that has over
+1,000,000 monthly visitors or users and is publicly accessible within the
+state. The definition excludes a system used only for the person's internal
+business operations and not made publicly accessible. The generative-system
+definition includes text, images, video, or audio. Section 13-72c-203 requires
+a covered provider to include a latent disclosure in image, video, or audio
+content, or any combination, created or substantially modified by that system.
+Section 101 does not define "substantially modified."
+
+Section 13-72c-201 applies to a large online platform: a public-facing social
+media platform, mass messaging platform, or stand-alone search engine that
+exceeded 2,000,000 unique monthly users during the preceding 12 months. The
+platform must detect compliant system provenance data, provide a user
+interface, and allow inspection. To the extent technically feasible, it may not
+knowingly strip system provenance data or a digital signature that is compliant
+with widely adopted specifications adopted by an established standards-setting
+body. Section 13-72c-202 applies to a capture device a manufacturer produces
+for sale in the state on or after 2028-01-01. Section 13-72c-301 says the
+Division of Consumer Protection administers and enforces Part 2. The attorney
+general may bring a civil action on behalf of the division to collect a civil
+penalty imposed under that section.
+
+#### Copyright management information
+
+[17 U.S.C. 1202](https://www.govinfo.gov/content/pkg/USCODE-2023-title17/html/USCODE-2023-title17-chap12-sec1202.htm),
+in the 2023 main edition on govinfo, current through 2024-01-03, is titled
+"Integrity of copyright management information." It addresses false copyright
+management information and removal or alteration of that information, with the
+knowledge and authority conditions stated in the section. This review does not
+apply those elements to a Retonr edit.
+
+[Doe v. GitHub, Inc., No. 24-7700 (9th Cir. Sept. 16, 2026)](https://storage.courtlistener.com/recap/gov.uscourts.cand.403220/gov.uscourts.cand.403220.296.0.pdf)
+(Miller, J.) was argued and submitted on 2026-02-11. It is an interlocutory
+appeal under 28 U.S.C. 1292(b). The slip opinion reviewed here was filed on
+2026-09-16. The court affirmed dismissal of the plaintiffs' Digital Millennium
+Copyright Act claims about GitHub Copilot and Codex. The opinion cites
+17 U.S.C. 1202(b). On the output theory, it holds that the allegations show
+those tools do not remove or alter copyright management information from a copy
+of an existing protected work, and instead create new works that never
+contained that information. The opinion says the statute does not require
+literal identicality between the works, and that minor cosmetic changes do not
+necessarily protect a defendant who substantially or entirely reproduces a
+protected work and removes the information. The court declined to consider the
+plaintiffs' input theory, about removal during training, because the plaintiffs
+forfeited it. The opinion is about those allegations and those tools. It is not
+a holding about a Retonr text edit.
+
+#### Proposed federal rules and a pending bill
+
+The Advisory Committee on Evidence Rules agenda book for the meeting of
+2026-10-15 says that, after public comment, the Committee at its previous
+meeting voted to withdraw proposed Rule 707 as issued for public comment and to
+submit a modified proposal for further study. The minutes of the Committee's
+meeting of 2026-05-07, included in that book, say the members unanimously
+agreed to continue the discussion at a Fall 2026 mini-conference focused on
+Version 2 of a revised Rule 707, and that considering Rules 707 and 901(c)
+together would be useful. Proposed Rule 707 is not a Federal Rule of Evidence.
+This review does not quote an unpublished working draft of Rule 901(c). The
+2026-10-15 agenda describes a panel. This review did not find published minutes
+or a transcript of that panel's testimony, so it records no witness statement.
+The book reviewed is the
+[2026-10-15 agenda book](https://www.uscourts.gov/sites/default/files/document/2026-10_evidence_rules_agenda_book_9-23_final.pdf).
+
+[S. 1396](https://www.congress.gov/bill/119th-congress/senate-bill/1396),
+119th Congress, the Content Origin Protection and Integrity from Edited and
+Deepfaked Media Act of 2025, was introduced by Senator Cantwell on 2025-04-09,
+read twice, and referred to the Senate Committee on Commerce, Science, and
+Transportation. The congress.gov bill page and the
+[govinfo record of the introduced text](https://www.govinfo.gov/app/details/BILLS-119s1396is),
+reviewed on 2026-11-08, show that referral as the latest listed action. The
+bill is not an enacted duty. The congress.gov summary describes the introduced
+bill as requiring certain tools used to create or modify digital content,
+including artificial intelligence, to let users embed information documenting
+origin and history. That summary is Congress.gov's description of the bill. It
+is not a duty.
 
 ## Responsibility matrix
 
@@ -755,13 +963,67 @@ The following are release requirements, not user choices:
    which functions qualify for the standard-editing or non-substantial-alteration
    exception, and what marking and detection implementation covers every other
    function. Unresolved scope blocks the affected release or narrows it.
+
+   The quotation reviewed for this gate is the English PDF
+   [C(2026) 7702 final](https://ec.europa.eu/newsroom/dae/redirection/document/131215),
+   Brussels, 5 November 2026, linked from the Commission library page for the
+   Article 50 guidelines. A secondary account uses C(2026) 5054 for these
+   guidelines. That number is not printed on this PDF. Point 5 says the
+   guidelines are non-binding, and that an authoritative interpretation of the
+   AI Act may ultimately be given only by the Court of Justice of the European
+   Union. Points 90 to 92 state:
+
+   > (90) The first exception concerns AI systems to the extent that they
+   > perform an assistive function for standard editing. Standard editing
+   > should be understood as the process of preparing existing content for
+   > publication or distribution (e.g., small edits to improve readability and
+   > grammar, quality and format) and does not involve generating new content.
+   > Standard editing aims at ensuring that content is, among others, free from
+   > obvious technical or grammatical linguistic errors, is aligned with
+   > applicable lay-out, presentation, formatting or accessibility
+   > requirements, or in conformity with sectoral practices. Editing goes
+   > beyond standard editing if the content is changed in a material way
+   > (substantive modifications, structural changes etc.) that affect its
+   > meaning, style or intent.
+   >
+   > (91) The second exception applies where an AI system does not substantially
+   > alter the input data provided by the deployer or the semantics thereof. An
+   > alteration should be considered substantial if the input data or its
+   > semantics have been manipulated significantly by the AI system during its
+   > output generation process. This must be based on an assessment of relevant
+   > factors, such as the format, media content type, style and changes in the
+   > content that affect its meaning, style or intent. Whether that is the case
+   > requires a case-specific assessment.
+   >
+   > (92) If an AI system can be used both for content generation or
+   > manipulation and for non-substantial minor alterations of input data, then
+   > the transparency obligation under Article 50(2) AI Act will not apply to
+   > the content altered in a minor non-substantial manner.
+
+   The same section, before point 93, prints unnumbered examples. It places
+   grammar correction, spellchecking, linguistic and minor stylistic polishing
+   that do not change the substance, meaning, style or messaging of text, and
+   AI-generated translations, with the exception. It places AI-generated
+   summaries, and paraphrasing or rewriting that changes style, structure, and
+   meaning beyond grammatical and minor stylistic correction, with content that
+   requires marking. The same lists include image, audio, and video examples on
+   both sides of that line, including minor cropping and noise reduction with
+   the exception, and face replacement, realistic voice synthesis, and
+   composites with marking. This quotation does not decide that any current
+   Retonr function is inside the exception.
 10. Signing the EU transparency code is an explicit governance decision. A signed
     commitment is implemented and audited in full for the selected section. The
     project does not imply adherence from partial technical alignment.
 11. A China-facing distribution or network service ships only after a documented
     review of the measures and GB 45438-2025. The affected build does not offer a
     conflicting sanitation or export path.
-12. All format, privacy, security, lint, test, coverage, supply-chain, and
+12. Retonr edits text. A feature that generates or alters images, audio, or video
+    ships only after a documented scope review against the statutes named in the
+    United States section, including each statute's minor-modification list or
+    material-alteration exclusion where that statute states one. The review is a
+    release condition for that feature. It does not find the feature lawful,
+    exempt, or outside every duty.
+13. All format, privacy, security, lint, test, coverage, supply-chain, and
     cross-platform CI gates pass before release.
 
 ## Revalidation triggers
@@ -776,6 +1038,9 @@ Re-run the policy and affected technical gates when any of these inputs changes:
 - EU Article 50 law, guidelines, code assessment, code adherence, harmonized
   standard, or enforcement guidance;
 - China labeling rules or GB 45438-2025;
+- a US state provenance law or amendment, including California Business and
+  Professions Code sections 22757 through 22757.6, Washington chapter 167,
+  Laws of 2026, and Utah Code Title 13, Chapter 72c;
 - a new jurisdiction, sector, customer contract, or publication workflow.
 
 ## Primary sources
@@ -798,6 +1063,24 @@ Re-run the policy and affected technical gates when any of these inputs changes:
 - [Regulation (EU) 2024/1689, including Article 50](https://eur-lex.europa.eu/eli/reg/2024/1689/oj)
 - [Regulation (EU) 2026/1744 transitional amendment](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32026R1744)
 - [European Commission Article 50 guidelines](https://digital-strategy.ec.europa.eu/en/library/guidelines-transparency-obligations-providers-and-deployers-ai-systems)
+- [European Commission Article 50 guidelines, English PDF, C(2026) 7702 final, 5 November 2026](https://ec.europa.eu/newsroom/dae/redirection/document/131215)
+- [California Business and Professions Code section 22757.1](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.1)
+- [California Business and Professions Code section 22757.2](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.2)
+- [California Business and Professions Code section 22757.3](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.3)
+- [California Business and Professions Code section 22757.3.1](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.3.1)
+- [California Business and Professions Code section 22757.3.2](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.3.2)
+- [California Business and Professions Code section 22757.3.3](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.3.3)
+- [California Business and Professions Code section 22757.6](https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=22757.6)
+- [California SB 942, chaptered](https://leginfo.legislature.ca.gov/faces/billTextClient.xhtml?bill_id=202320240SB942)
+- [California SB 1000](https://leginfo.legislature.ca.gov/faces/billTextClient.xhtml?bill_id=202520260SB1000)
+- [Washington Engrossed Second Substitute House Bill 1170, chapter 167, Laws of 2026](https://lawfilesext.leg.wa.gov/biennium/2025-26/Pdf/Bills/Session%20Laws/House/1170-S2.SL.pdf)
+- [Utah Code Title 13, Chapter 72c](https://le.utah.gov/xcode/Title13/Chapter72C/C13-72c_2026050620270101.pdf)
+- [Utah H.B. 276 (2026)](https://le.utah.gov/~2026/bills/static/HB0276.html)
+- [17 U.S.C. 1202, 2023 main edition](https://www.govinfo.gov/content/pkg/USCODE-2023-title17/html/USCODE-2023-title17-chap12-sec1202.htm)
+- [Doe v. GitHub, Inc., No. 24-7700, slip opinion filed 2026-09-16](https://storage.courtlistener.com/recap/gov.uscourts.cand.403220/gov.uscourts.cand.403220.296.0.pdf)
+- [Advisory Committee on Evidence Rules agenda book, 2026-10-15](https://www.uscourts.gov/sites/default/files/document/2026-10_evidence_rules_agenda_book_9-23_final.pdf)
+- [S. 1396, 119th Congress](https://www.congress.gov/bill/119th-congress/senate-bill/1396)
+- [S. 1396 introduced text](https://www.govinfo.gov/app/details/BILLS-119s1396is)
 - [European Commission transparency code page](https://digital-strategy.ec.europa.eu/en/policies/code-practice-ai-generated-content)
 - [Final Code of Practice on Transparency of AI-generated Content](https://ec.europa.eu/newsroom/dae/redirection/document/129555)
 - [European Commission text-marking technical study](https://doi.org/10.2759/7579127)
