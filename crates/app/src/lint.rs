@@ -76,6 +76,23 @@ mod tests {
     }
 
     #[test]
+    fn single_file_and_bounded_callers_share_phrase_ordinals() {
+        let text = "\"truly groundbreaking\" truly groundbreaking truly groundbreaking";
+        let unbounded = EditorialLintService::lint(text);
+        let bounded = EditorialLintService::lint_bounded(text, 8).expect("within cap");
+        assert_eq!(unbounded, bounded);
+        let puffery = unbounded
+            .iter()
+            .filter(|finding| finding.rule_id == "promotional_puffery")
+            .collect::<Vec<_>>();
+        assert_eq!(puffery.len(), 2);
+        assert_eq!(puffery[0].occurrence, 1);
+        assert_eq!(puffery[1].occurrence, 2);
+        let dense = "truly groundbreaking ".repeat(20_000);
+        assert!(EditorialLintService::lint_bounded(&dense, 1).is_err());
+    }
+
+    #[test]
     fn lint_service_detects_residue() {
         let text = "Certainly! This should be flagged.";
         let findings = EditorialLintService::lint(text);

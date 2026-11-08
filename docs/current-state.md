@@ -171,7 +171,8 @@ writes. Finding ceilings are enforced during matching; successful bounded result
 match the complete lint kernel and excessive results return errors rather than
 partial evidence. Marker occurrence ordinals are derived in one scan per marker,
 preserving quoted occurrence counts and saturated ordinals without quadratic
-rescanning. Eight focused application review regressions and ten engine lint
+rescanning. Phrase and window ordinals keep the same exact-evidence count in one
+forward pass, and a full finding cap stops later phrase emission. Eight focused application review regressions and ten engine lint
 regressions pass locally, with strict application and engine lint checks. This
 shared headless foundation prepares desktop integration but does not establish a
 native application, accessibility, or generation qualification.
