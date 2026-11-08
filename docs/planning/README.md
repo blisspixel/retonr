@@ -18,9 +18,10 @@ beta, a complete product beta, and production release qualification. The version
 plans below supply engineering dependencies and evidence for those outcomes.
 
 Version 1.0 is the first frozen contract, not the first useful build. The path is
-the versioned roadmap: finish 0.2, then 0.3 through 0.9, then 1.0. Work may run
-ahead when it is reversible, $0, and does not create unmigratable state or a
-public claim.
+the versioned roadmap: finish 0.2, then 0.3 through 0.9, then 1.0. The
+[execution waves](../roadmap.md#execution-waves) are the operating order for the
+remaining work. Work may run ahead when it is reversible, $0, and does not create
+unmigratable state or a public claim.
 
 `$0` here means no paid APIs, no paid downloads, no cloud services, and no new
 model acquisition. Valid evidence is local: fixtures, fake backends, process

@@ -284,6 +284,12 @@ fn inspect_separates_tags_and_keeps_decode_opt_in() {
             .expect("watermark notice")
             .contains("does not mean the text is unmarked")
     );
+    assert!(
+        value["result"]["statistical_watermark_notice"]
+            .as_str()
+            .expect("watermark notice")
+            .contains("does not test for one")
+    );
     assert!(!text.contains("zxq"));
     assert!(!text.contains('\u{E007A}'));
     assert!(!source_mutated(&source, bytes.as_bytes()));

@@ -196,9 +196,11 @@ The product distinguishes four signal locations:
 | Invisible Unicode, clipboard residue, and supported document metadata | Inspect, report, reject, preserve, or remove through an explicit format policy | Legitimate language and accessibility data must not be stripped blindly |
 | Upstream prompts, outputs, account records, and service logs | Keep the reconstruction path local and avoid creating new remote copies by default | The product cannot inspect or delete data retained by another service |
 
-A substantial rewrite naturally replaces upstream token choices. Source-form
-diagnostics remain isolated from candidate ranking so the live engine never trades
-meaning or style fidelity for a detector result.
+A substantial rewrite naturally replaces upstream token choices. That is a change
+to wording, not a provider-mark removal operation. A light-touch edit is not
+designed to, and is not claimed to, remove a provider mark, and Retonr does not
+test for one. Source-form diagnostics remain isolated from candidate ranking so
+the live engine never trades meaning or style fidelity for a detector result.
 
 Known provenance data should be detected where practical, represented in the rewrite
 record, and handled explicitly. Rewriting can invalidate an existing content binding.

@@ -17,7 +17,8 @@ JSON errors for an unreadable input include `input_role`, and selected policy
 refusals include a stable `reason`. `retonr inspect` counts tag characters on
 their own, and opt-in `--locate` and `--decode-tags` report positions and an
 escaped tag mapping without source text. A clean inspect result states that
-statistical watermarks in word choice can still exist. The deterministic evaluation suite
+statistical watermarks in word choice can still exist, and that a light-touch edit
+is not a provider-mark removal operation. The deterministic evaluation suite
 contains 74 cases. This does not admit a runtime or widen production approval.
 
 ## Implemented
