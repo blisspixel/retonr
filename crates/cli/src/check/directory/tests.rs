@@ -23,6 +23,7 @@ fn request(source: &Path, candidate: &Path) -> CheckRequest {
         edit_level: None,
         max_change_percent: None,
         style_sample_paths: Vec::new(),
+        receipt: None,
         report: crate::check::HumanReport {
             verbose: false,
             color: crate::presentation::ColorChoice::Never,

@@ -19,7 +19,9 @@ their own, and opt-in `--locate` and `--decode-tags` report positions and an
 escaped tag mapping without source text. Inspect also counts protected http(s)
 URLs and names listed query parameters without fetching or printing the URLs.
 `retonr links clean` is a separate offline copy and is not part of check or
-rewrite. A clean inspect result states that statistical watermarks in word choice
+rewrite. `retonr check --receipt` writes a separate JSON file for one document.
+It records digests, the edit level, and the change share, and it is not an
+authorship certificate. A clean inspect result states that statistical watermarks in word choice
 can still exist, and that a light-touch edit
 is not a provider-mark removal operation. The deterministic evaluation suite
 contains 74 cases. This does not admit a runtime or widen production approval.
