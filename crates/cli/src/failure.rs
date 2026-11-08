@@ -81,6 +81,7 @@ impl RunFailure {
             failure.message = match role {
                 InputRole::Source => "source could not be read",
                 InputRole::Candidate => "candidate could not be read",
+                InputRole::StyleSample => "writing sample could not be read",
             };
         }
         if failure.body.diagnostic().is_none()
@@ -215,6 +216,16 @@ impl RunFailure {
         }
     }
 
+    /// A writing sample that is not valid UTF-8 cannot be measured.
+    pub fn check_invalid_style_sample() -> Self {
+        Self {
+            command: CommandName::Check,
+            body: ErrorBody::new(ErrorCategory::Usage, ErrorCode::InputUnreadable, false),
+            exit_code: ExitCode::from(EXIT_USAGE),
+            message: "writing sample is not a supported UTF-8 document",
+        }
+    }
+
     /// Names which lint input could not be read, without echoing document bytes.
     pub fn lint_read_at(role: InputRole, path: &Path, error: &io::Error) -> Self {
         let mut failure = Self::check_read_at(role, path, error);
@@ -254,6 +265,7 @@ const fn role_name(role: InputRole) -> &'static str {
     match role {
         InputRole::Source => "source",
         InputRole::Candidate => "candidate",
+        InputRole::StyleSample => "style_sample",
     }
 }
 
@@ -282,6 +294,8 @@ pub(crate) enum InputRole {
     Source,
     /// The supplied candidate.
     Candidate,
+    /// An authorized writing sample for the style-distance report.
+    StyleSample,
 }
 
 #[cfg(test)]

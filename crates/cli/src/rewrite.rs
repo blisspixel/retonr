@@ -137,6 +137,7 @@ pub(crate) fn run(request: &RewriteRequest) -> Result<ExitCode, RunFailure> {
         destination_report_target(&destination),
         backup.as_deref(),
         None,
+        None,
     )
     .map_err(|_| RunFailure::operational(CommandName::Rewrite))?;
     Ok(crate::check::exit_status(

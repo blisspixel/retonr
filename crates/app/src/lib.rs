@@ -138,7 +138,10 @@ pub use reviewed_ollama_runtime_import::{
     OllamaRuntimeImportError, OllamaRuntimeImportEvidence, OllamaRuntimeImportLimits,
     OllamaRuntimeImportResult, ReviewedOllamaRuntimeSource,
 };
-pub use rewrite_engine::{ClaimShadowObserver, EngineError, ProtectionError};
+pub use rewrite_engine::{
+    ChangeShare, ClaimShadowObserver, EngineError, ProtectionError, STYLE_DISTANCE_NOTICE,
+    StyleDistance, StyleFeature, StyleSampleProfile,
+};
 pub use rewrite_text_adapter::{
     CarrierPresence, ControlCounts, DecodedTagMapping, InvisibleInventoryDetail, InvisibleLocation,
     LineEndingKind, PlainTextInventory, TextEncoding, locate_invisible,

@@ -49,8 +49,8 @@ pub use record::{
 };
 pub use rewrite::{
     AcceptedEdit, Atomicity, CandidateId, CandidateIdError, CandidateRank, CandidateTextKind,
-    CharacterBudget, EditLevel, GeneratedCandidate, LayoutConstraints, LineBudget, PlannedUnit,
-    ReasonCode, RewriteMode, RewriteOptions, RewriteStatus, TransformationPlan,
+    ChangeBudget, CharacterBudget, EditLevel, GeneratedCandidate, LayoutConstraints, LineBudget,
+    PlannedUnit, ReasonCode, RewriteMode, RewriteOptions, RewriteStatus, TransformationPlan,
 };
 pub use text_safety::{
     TextSafetyFault, first_text_safety_fault, is_bidi_mark, is_hard_unsafe_text_character,

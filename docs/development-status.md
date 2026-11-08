@@ -350,4 +350,6 @@ The evaluation tool validates synthetic editorial-quality groups with named find
 clean controls, including a balanced 24-case current-slop group, with 100 percent
 precision and recall. Deterministic editorial linting is exposed via the `lint` command
 and guides candidate ranking after hard fidelity gates. Layout constraint gates enforce
-character budgets, relative expansion ceilings, and line preservation.
+character budgets, relative expansion ceilings, and line preservation. An optional
+change-share budget can abstain. `check` reports that share. A style-sample distance is
+report-only and is not an authorship verdict.

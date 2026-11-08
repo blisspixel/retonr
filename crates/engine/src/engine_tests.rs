@@ -470,6 +470,7 @@ fn abstention_reason_priority_is_order_independent() {
         rewrite_types::ReasonCode::StructureChanged,
         rewrite_types::ReasonCode::CharacterBudgetExceeded,
         rewrite_types::ReasonCode::LineBudgetExceeded,
+        rewrite_types::ReasonCode::ChangeBudgetExceeded,
         rewrite_types::ReasonCode::SemanticMismatch,
         rewrite_types::ReasonCode::SemanticUncertain,
         rewrite_types::ReasonCode::InvalidCandidate,

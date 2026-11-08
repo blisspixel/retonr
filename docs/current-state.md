@@ -660,6 +660,17 @@ Pair reads reject indirect parents, nonregular files, and multiply linked files.
 including unmatched and skipped entries. Limits return exit 4 before report
 publication. Folder inputs remain unchanged.
 
+`check` reports `changed_token_pct` and `changed_char_pct` for the candidate
+against the source, including when the check abstains and returns the original
+bytes. The share compares word occurrences. A pure reordering of the same words
+measures as no change, and alphanumeric token gates still apply. Rounding is half
+up. `--max-change-pct` abstains with `change_budget_exceeded` when either
+percentage is greater than the requested value. The flag is off unless set.
+`--style-sample` pools up to 16 authorized samples, bounded by the same 16 MiB
+input ceiling, and reports a style-feature distance. The samples are not stored
+and their text is not copied into the report. The distance has no acceptance or
+ranking authority. No profile command name is assigned here.
+
 ### Retained CLI file input
 
 Bounded file reads now retain and validate the opened regular file around the

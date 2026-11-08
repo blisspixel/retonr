@@ -558,6 +558,111 @@ fn semantic_abstention_locates_the_changed_word_without_echoing_it() {
     assert!(!stderr.contains("better"));
 }
 
+fn case_edit(changes: usize) -> (String, String) {
+    let mut source = String::new();
+    let mut candidate = String::new();
+    for index in 0..100 {
+        if index > 0 {
+            source.push(' ');
+            candidate.push(' ');
+        }
+        source.push_str("word");
+        if index < changes {
+            candidate.push_str("Word");
+        } else {
+            candidate.push_str("word");
+        }
+    }
+    (source, candidate)
+}
+
+#[test]
+fn change_share_fixtures_honor_the_optional_budget_and_keep_style_out_of_acceptance() {
+    let (source_text, two) = case_edit(2);
+    let (_, ten) = case_edit(10);
+    let directory = tempdir().expect("temporary directory");
+    let source = directory.path().join("source.txt");
+    let small = directory.path().join("two.txt");
+    let large = directory.path().join("ten.txt");
+    let sample = directory.path().join("sample.txt");
+    fs::write(&source, &source_text).expect("write source");
+    fs::write(&small, &two).expect("write two percent candidate");
+    fs::write(&large, ten).expect("write ten percent candidate");
+    fs::write(&sample, "qxsampletokenqx truly groundbreaking").expect("write sample");
+
+    let accepted = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check", "--max-change-pct", "2", "--style-sample"])
+        .arg(&sample)
+        .arg(&source)
+        .arg(&small)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let accepted = String::from_utf8(accepted).expect("utf-8");
+    assert!(accepted.contains("\"status\": \"rewritten\""));
+    assert!(accepted.contains("\"changed_token_pct\": 2"));
+    assert!(accepted.contains("\"changed_char_pct\": 2"));
+    assert!(accepted.contains("style-feature-distance-v1"));
+    assert!(accepted.contains(
+        "This is a style-feature distance, not an authorship verdict. It has no acceptance or ranking authority."
+    ));
+    assert!(!accepted.contains("qxsampletokenqx"));
+    assert!(!accepted.contains("groundbreaking"));
+
+    Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check", "--max-change-pct", "2", "--fail-on-abstain"])
+        .arg(&source)
+        .arg(&large)
+        .assert()
+        .code(3)
+        .stdout(predicate::str::contains("\"status\": \"abstained\""))
+        .stdout(predicate::str::contains(
+            "\"reason\": \"change_budget_exceeded\"",
+        ))
+        .stdout(predicate::str::contains("\"changed_token_pct\": 10"))
+        .stdout(predicate::str::contains("\"changed_char_pct\": 10"));
+
+    let identical = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check"])
+        .arg(&source)
+        .arg(&source)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let identical = String::from_utf8(identical).expect("utf-8");
+    assert!(identical.contains("\"changed_token_pct\": 0"));
+    assert!(identical.contains("\"changed_char_pct\": 0"));
+    assert!(!identical.contains("style_distance"));
+
+    let unchanged = directory.path().join("same.txt");
+    let substituted = directory.path().join("substituted.txt");
+    fs::write(&unchanged, "word word\n").expect("write lexical source");
+    fs::write(&substituted, "word bird\n").expect("write lexical candidate");
+    let lexical = Command::cargo_bin("retonr")
+        .expect("compiled CLI")
+        .args(["check", "--style-sample"])
+        .arg(&substituted)
+        .arg(&unchanged)
+        .arg(&substituted)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let lexical = String::from_utf8(lexical).expect("utf-8");
+    assert!(lexical.contains("\"status\": \"abstained\""));
+    assert!(lexical.contains("\"reason\": \"semantic_uncertain\""));
+    assert!(lexical.contains("style-feature-distance-v1"));
+    assert!(!lexical.contains("bird"));
+}
+
 #[test]
 fn abstention_reports_span_location_without_protected_text() {
     let directory = tempdir().expect("temporary directory");

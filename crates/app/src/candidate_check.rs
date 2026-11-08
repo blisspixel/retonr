@@ -1,14 +1,14 @@
 //! Deterministic candidate check application service.
 
 use rewrite_engine::{
-    CancellationToken, CandidateGenerator, ClaimShadowObserver, EngineError,
+    CancellationToken, CandidateGenerator, ChangeShare, ClaimShadowObserver, EngineError,
     LiteralSemanticEvaluator, ProtectionError, ProvidedCandidateGenerator, RewriteEngine,
-    StructureAssessment, StructureValidator,
+    StructureAssessment, StructureValidator, StyleDistance, StyleSampleProfile, change_share,
 };
 use rewrite_text_adapter::{ParsedTextDocument, TextAdapter, TextAdapterError};
 use rewrite_types::{
-    Digest, EditLevel, LayoutConstraints, ReasonCode, RewriteMode, RewriteOptions, RewriteRecord,
-    RewriteStatus, RewriteUnit,
+    ChangeBudget, Digest, EditLevel, LayoutConstraints, ReasonCode, RewriteMode, RewriteOptions,
+    RewriteRecord, RewriteStatus, RewriteUnit,
 };
 
 use crate::{claim_extraction, source_inspection::MAX_CANDIDATE_CHECK_BYTES};
@@ -26,6 +26,10 @@ pub struct CandidateCheckRequest {
     pub layout: Option<LayoutConstraints>,
     /// Optional edit level.
     pub edit_level: Option<EditLevel>,
+    /// Inclusive change-share limit. Absent means the share is reported only.
+    pub max_change_percent: Option<u8>,
+    /// Authorized samples pooled for a report-only style distance.
+    pub style_samples: Option<StyleSampleProfile>,
 }
 
 impl CandidateCheckRequest {
@@ -38,6 +42,8 @@ impl CandidateCheckRequest {
             protected_terms,
             layout: None,
             edit_level: None,
+            max_change_percent: None,
+            style_samples: None,
         }
     }
 
@@ -54,6 +60,23 @@ impl CandidateCheckRequest {
         self.edit_level = edit_level;
         self
     }
+
+    /// Attaches an inclusive change-share budget.
+    #[must_use]
+    pub const fn with_change_budget(mut self, max_change_percent: u8) -> Self {
+        self.max_change_percent = Some(max_change_percent);
+        self
+    }
+
+    /// Attaches samples for a report-only style distance.
+    ///
+    /// The profile retains counts, not sample text. The distance cannot accept
+    /// or reject the candidate.
+    #[must_use]
+    pub fn with_style_samples(mut self, samples: StyleSampleProfile) -> Self {
+        self.style_samples = Some(samples);
+        self
+    }
 }
 
 /// Safe output and redacted audit record from candidate checking.
@@ -63,6 +86,10 @@ pub struct CandidateCheckResult {
     pub output: Vec<u8>,
     /// Versioned transaction record without raw document content.
     pub record: RewriteRecord,
+    /// Word and character change share of the candidate against the source.
+    pub change: ChangeShare,
+    /// Present only when the caller supplied authorized samples.
+    pub style_distance: Option<StyleDistance>,
 }
 
 /// Operational application-service failure.
@@ -159,15 +186,32 @@ impl CandidateCheckService {
             });
         }
         let parsed = TextAdapter::parse(&request.source)?;
+        let source_text = parsed
+            .document()
+            .rewrite_units
+            .first()
+            .map_or("", |unit| unit.text.as_str());
+        let change = change_share(source_text, &candidate);
+        let style_distance = request
+            .style_samples
+            .as_ref()
+            .map(|samples| samples.distance(source_text, &candidate));
         let generator = ProvidedCandidateGenerator::new(vec![candidate]);
-        let options = RewriteOptions {
+        let mut options = RewriteOptions {
             mode: RewriteMode::Literal,
             protected_terms: request.protected_terms,
             layout: request.layout,
             edit_level: request.edit_level,
             ..RewriteOptions::default()
         };
-        run_plain_text_transaction(&parsed, &generator, &options, claim_shadow, cancellation)
+        if let Some(max_change_percent) = request.max_change_percent {
+            options.change_budget = Some(ChangeBudget { max_change_percent });
+        }
+        let mut result =
+            run_plain_text_transaction(&parsed, &generator, &options, claim_shadow, cancellation)?;
+        result.change = change;
+        result.style_distance = style_distance;
+        Ok(result)
     }
 }
 
@@ -218,7 +262,17 @@ pub(crate) fn run_plain_text_transaction(
         selected_candidates,
         outcome.assessments,
     );
-    Ok(CandidateCheckResult { output, record })
+    // Candidate check overwrites the share with the reviewed candidate. Other
+    // transactions do not report a style distance.
+    Ok(CandidateCheckResult {
+        output,
+        record,
+        change: ChangeShare {
+            changed_token_pct: 0,
+            changed_char_pct: 0,
+        },
+        style_distance: None,
+    })
 }
 
 struct PlainTextStructure<'a> {
@@ -438,5 +492,68 @@ mod tests {
         assert_eq!(result.record.status, RewriteStatus::Abstained);
         assert_eq!(result.record.reason, Some(ReasonCode::LineBudgetExceeded));
         assert_eq!(result.output, source);
+    }
+
+    #[test]
+    fn change_budget_reports_share_and_style_distance_cannot_accept() {
+        use rewrite_engine::StyleSampleProfile;
+
+        let (source, small) = case_edit(2);
+        let (_, large) = case_edit(10);
+        let accepted = CandidateCheckService::check(
+            CandidateCheckRequest::new(source.as_bytes().to_vec(), small, Vec::new())
+                .with_change_budget(2)
+                .with_style_samples(StyleSampleProfile::from_samples(["qxsampletokenqx"])),
+        )
+        .expect("two percent case edit passes");
+        assert_eq!(accepted.record.status, RewriteStatus::Rewritten);
+        assert!(accepted.record.reason.is_none());
+        assert_eq!(accepted.change.changed_token_pct, 2);
+        assert_eq!(accepted.change.changed_char_pct, 2);
+        let style = accepted.style_distance.expect("samples were supplied");
+        assert!(style.source_distance > 0);
+        let encoded = format!("{style:?}");
+        assert!(!encoded.contains("qxsampletokenqx"));
+
+        let rejected = CandidateCheckService::check(
+            CandidateCheckRequest::new(source.as_bytes().to_vec(), large, Vec::new())
+                .with_change_budget(2)
+                .with_style_samples(StyleSampleProfile::from_samples([source.as_str()])),
+        )
+        .expect("ten percent case edit abstains");
+        assert_eq!(rejected.record.status, RewriteStatus::Abstained);
+        assert_eq!(
+            rejected.record.reason,
+            Some(ReasonCode::ChangeBudgetExceeded)
+        );
+        assert_eq!(rejected.output, source.as_bytes());
+        assert_eq!(rejected.change.changed_token_pct, 10);
+
+        let lexical = CandidateCheckService::check(
+            CandidateCheckRequest::new(b"word word".to_vec(), "word bird".to_owned(), Vec::new())
+                .with_style_samples(StyleSampleProfile::from_samples(["word bird"])),
+        )
+        .expect("lexical change still abstains");
+        assert_eq!(lexical.record.status, RewriteStatus::Abstained);
+        assert_eq!(lexical.record.reason, Some(ReasonCode::SemanticUncertain));
+        assert!(lexical.style_distance.is_some());
+    }
+
+    fn case_edit(changes: usize) -> (String, String) {
+        let mut source = String::new();
+        let mut candidate = String::new();
+        for index in 0..100 {
+            if index > 0 {
+                source.push(' ');
+                candidate.push(' ');
+            }
+            source.push_str("word");
+            if index < changes {
+                candidate.push_str("Word");
+            } else {
+                candidate.push_str("word");
+            }
+        }
+        (source, candidate)
     }
 }

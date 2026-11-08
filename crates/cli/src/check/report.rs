@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 
+use rewrite_app::StyleDistance;
 use rewrite_types::{
     EditLevel, GateEvidenceDetails, ReasonCode, RewriteRecord, RewriteStatus, SpanChange,
 };
@@ -44,6 +45,13 @@ pub(crate) fn fidelity_for(level: Option<EditLevel>) -> FidelityReport {
     }
 }
 
+/// Change share and optional style distance for one check report.
+pub(crate) struct CheckMeasurement<'a> {
+    pub(crate) changed_token_pct: u8,
+    pub(crate) changed_char_pct: u8,
+    pub(crate) style_distance: Option<&'a StyleDistance>,
+}
+
 const fn edit_level_name(level: EditLevel) -> &'static str {
     match level {
         EditLevel::TouchUp => "touch-up",
@@ -60,8 +68,9 @@ pub(crate) fn write(
     target: ReportTarget,
     backup: Option<&str>,
     fidelity: Option<FidelityReport>,
+    measurement: Option<&CheckMeasurement<'_>>,
 ) -> io::Result<()> {
-    let bytes = render(command, record, format, backup, fidelity)?;
+    let bytes = render(command, record, format, backup, fidelity, measurement)?;
     match target {
         ReportTarget::Data => {
             let mut stream = io::stdout().lock();
@@ -82,6 +91,7 @@ fn render(
     format: ReportFormat,
     backup: Option<&str>,
     fidelity: Option<FidelityReport>,
+    measurement: Option<&CheckMeasurement<'_>>,
 ) -> io::Result<Vec<u8>> {
     match format {
         ReportFormat::Json => {
@@ -94,13 +104,16 @@ fn render(
                     edit_level_effective: fidelity.map(|item| item.edit_level_effective),
                     edit_level_requested: fidelity.and_then(|item| item.edit_level_requested),
                     edit_level_note: fidelity.and_then(|item| item.note),
+                    changed_token_pct: measurement.map(|item| item.changed_token_pct),
+                    changed_char_pct: measurement.map(|item| item.changed_char_pct),
+                    style_distance: measurement.and_then(|item| item.style_distance),
                 },
             ))
             .map_err(io::Error::other)?;
             bytes.push(b'\n');
             Ok(bytes)
         }
-        ReportFormat::Text => Ok(render_text(record, backup, fidelity).into_bytes()),
+        ReportFormat::Text => Ok(render_text(record, backup, fidelity, measurement).into_bytes()),
     }
 }
 
@@ -118,12 +131,19 @@ struct DocumentReport<'a> {
     edit_level_requested: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     edit_level_note: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    changed_token_pct: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    changed_char_pct: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    style_distance: Option<&'a StyleDistance>,
 }
 
 fn render_text(
     record: &RewriteRecord,
     backup: Option<&str>,
     fidelity: Option<FidelityReport>,
+    measurement: Option<&CheckMeasurement<'_>>,
 ) -> String {
     use std::fmt::Write as _;
 
@@ -152,6 +172,13 @@ fn render_text(
             let _ = writeln!(text, "note: {note}");
         }
     }
+    if let Some(measurement) = measurement {
+        let _ = writeln!(text, "changed_token_pct: {}", measurement.changed_token_pct);
+        let _ = writeln!(text, "changed_char_pct: {}", measurement.changed_char_pct);
+        if let Some(style) = measurement.style_distance {
+            append_style_lines(&mut text, style);
+        }
+    }
     let _ = writeln!(text, "source_digest: {}", record.source_digest.as_str());
     let _ = writeln!(text, "output_digest: {}", record.output_digest.as_str());
     let _ = writeln!(text, "candidates: {}", record.assessments.len());
@@ -164,6 +191,25 @@ fn render_text(
         );
     }
     text
+}
+
+pub(crate) fn append_style_lines(text: &mut String, style: &StyleDistance) {
+    use std::fmt::Write as _;
+    let _ = writeln!(text, "style_distance: {}", style.kind);
+    let _ = writeln!(text, "style_notice: {}", style.notice);
+    let _ = writeln!(text, "style_source_distance: {}", style.source_distance);
+    let _ = writeln!(text, "style_output_distance: {}", style.output_distance);
+    for feature in &style.features {
+        let _ = writeln!(
+            text,
+            "style_feature {} sample={} source={} output={} delta={}",
+            feature.name,
+            feature.sample,
+            feature.source,
+            feature.output,
+            feature.output_minus_source
+        );
+    }
 }
 
 pub(crate) fn append_span_lines(text: &mut String, record: &RewriteRecord) {
@@ -222,6 +268,7 @@ pub(crate) const fn reason_name(reason: ReasonCode) -> &'static str {
         ReasonCode::UnsafeText => "unsafe_text",
         ReasonCode::CharacterBudgetExceeded => "character_budget_exceeded",
         ReasonCode::LineBudgetExceeded => "line_budget_exceeded",
+        ReasonCode::ChangeBudgetExceeded => "change_budget_exceeded",
         ReasonCode::SemanticMismatch => "semantic_mismatch",
         ReasonCode::SemanticUncertain => "semantic_uncertain",
         ReasonCode::ReassemblyVerification => "reassembly_verification",

@@ -194,6 +194,17 @@ pub(crate) enum Command {
         /// Enforce exact line count preservation.
         #[arg(long = "preserve-line-count")]
         preserve_line_count: bool,
+        /// Abstain when either reported change share is greater than PERCENT.
+        ///
+        /// The share is always reported. This limit is off unless the flag is set.
+        #[arg(long = "max-change-pct", value_name = "PERCENT")]
+        max_change_pct: Option<u8>,
+        /// Authorized writing sample for a report-only style-feature distance.
+        ///
+        /// The sample is measured in memory and is not stored. Repeat the flag to
+        /// pool samples. This does not select a profile command or accept a candidate.
+        #[arg(long = "style-sample", value_name = "PATH")]
+        style_samples: Vec<PathBuf>,
     },
     /// Inventory one source document or directory before rewrite without mutation.
     ///

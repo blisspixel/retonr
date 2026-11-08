@@ -140,6 +140,8 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
             max_expansion_pct,
             max_lines,
             preserve_line_count,
+            max_change_pct,
+            style_samples,
         } => {
             let character_budget =
                 if max_chars.is_some() || min_chars.is_some() || max_expansion_pct.is_some() {
@@ -168,7 +170,7 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                 None
             };
             check::run(
-                check::CheckRequest {
+                &check::CheckRequest {
                     source,
                     candidate,
                     traversal: if recursive {
@@ -192,6 +194,8 @@ fn run(cli: Cli) -> Result<ExitCode, (RunFailure, ReportFormat)> {
                     },
                     layout,
                     edit_level: edit_level.map(Into::into),
+                    max_change_percent: max_change_pct,
+                    style_sample_paths: style_samples,
                 },
                 format,
             )

@@ -63,6 +63,16 @@ pub struct CharacterBudget {
     pub max_expansion_percent: Option<u8>,
 }
 
+/// Optional limit on the reported share of text changed.
+///
+/// The check still reports the share when this budget is absent. A share above
+/// the percentage abstains. The budget does not rank candidates.
+#[derive(Clone, Copy, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+pub struct ChangeBudget {
+    /// Inclusive maximum reported change percentage, from 0 through 100.
+    pub max_change_percent: u8,
+}
+
 /// Line budget constraints for layout preservation.
 #[derive(Clone, Copy, Debug, Default, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 pub struct LineBudget {
@@ -102,6 +112,9 @@ pub struct RewriteOptions {
     /// Optional layout and budget constraints.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout: Option<LayoutConstraints>,
+    /// Optional limit on the share of text changed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change_budget: Option<ChangeBudget>,
 }
 
 impl Default for RewriteOptions {
@@ -113,6 +126,7 @@ impl Default for RewriteOptions {
             minimum_semantic_confidence: 0.95,
             edit_level: None,
             layout: None,
+            change_budget: None,
         }
     }
 }
@@ -297,6 +311,8 @@ pub enum ReasonCode {
     CharacterBudgetExceeded,
     /// The candidate exceeded the configured line budget.
     LineBudgetExceeded,
+    /// The candidate changed more of the text than the requested share.
+    ChangeBudgetExceeded,
     /// Semantic evidence failed the configured policy.
     SemanticMismatch,
     /// Semantic evidence was insufficient for acceptance.
@@ -378,6 +394,10 @@ mod tests {
                 "\"character_budget_exceeded\"",
             ),
             (ReasonCode::LineBudgetExceeded, "\"line_budget_exceeded\""),
+            (
+                ReasonCode::ChangeBudgetExceeded,
+                "\"change_budget_exceeded\"",
+            ),
         ];
         for (code, expected) in reasons {
             let encoded = serde_json::to_string(&code).expect("code serializes");
