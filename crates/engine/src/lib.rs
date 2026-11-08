@@ -20,6 +20,7 @@ mod engine_test_support;
 #[path = "engine_tests.rs"]
 mod engine_tests;
 mod generator;
+mod links;
 pub mod lint;
 mod policy;
 mod protection;
@@ -42,6 +43,10 @@ pub use engine::{
 pub use generator::{
     CandidateGenerator, GenerationError, GenerationRequest, PreparedCandidateGenerator,
     ProvidedCandidateGenerator,
+};
+pub use links::{
+    LINK_RULE_CATALOG_VERSION, LinkCleanGroup, LinkCleanReport, LinkCleanScope, LinkError,
+    LinkInventory, LinkParameter, LinkSkip, SIGNED_QUERY_REASON, clean_links, inventory_links,
 };
 pub use policy::validate_rewrite_options;
 pub use protection::{

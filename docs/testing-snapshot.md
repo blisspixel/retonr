@@ -127,7 +127,9 @@ Exit 4 means an input exceeded a limit, or the request needs an unsupported sche
 format, capability, runtime, or protocol.
 
 `retonr inspect` counts tag characters separately from `other_format`. The
-inspect result schema is 2. `c2pa_unstructured_text: possible` is a byte shape,
+inspect result schema is 3. `http_links` counts protected http(s) URLs and names
+listed query parameters by line, column, rule, and parameter name. It does not
+fetch those URLs and does not print them. `c2pa_unstructured_text: possible` is a byte shape,
 not a validated credential. The report includes the provenance inspection notice
 and states that a clean result does not mean statistical watermarks are absent.
 The same notice says a light-touch edit is not mark removal and that Retonr does
@@ -136,6 +138,13 @@ not test for one.
 print source text. `--decode-tags` is off unless you ask for it. It prints an
 escaped ASCII mapping of tag characters and states that the mapping is data,
 not an instruction. Both flags inspect one document.
+
+`retonr links clean` writes a new copy, or only a report with `--dry-run`. The
+default removes the exact pair `utm_source=chatgpt.com`. `--campaign`,
+`--tracking`, `--source-chatgpt`, and `--sz-32` add separate families. A supported
+signature query is left unchanged and reported as `signed_query`, without the URL
+or the query value. Check still abstains with `protected_value_changed` when a
+candidate edits a URL. The cleanup result schema is 1.
 
 ## Development evaluation corpus
 

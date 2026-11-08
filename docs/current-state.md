@@ -16,8 +16,11 @@ the first changed literal token as a line and column and does not echo the token
 JSON errors for an unreadable input include `input_role`, and selected policy
 refusals include a stable `reason`. `retonr inspect` counts tag characters on
 their own, and opt-in `--locate` and `--decode-tags` report positions and an
-escaped tag mapping without source text. A clean inspect result states that
-statistical watermarks in word choice can still exist, and that a light-touch edit
+escaped tag mapping without source text. Inspect also counts protected http(s)
+URLs and names listed query parameters without fetching or printing the URLs.
+`retonr links clean` is a separate offline copy and is not part of check or
+rewrite. A clean inspect result states that statistical watermarks in word choice
+can still exist, and that a light-touch edit
 is not a provider-mark removal operation. The deterministic evaluation suite
 contains 74 cases. This does not admit a runtime or widen production approval.
 

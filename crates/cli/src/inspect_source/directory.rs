@@ -4,7 +4,12 @@ use std::{path::Path, process::ExitCode};
 
 use serde::Serialize;
 
-use super::report::InspectReport;
+use rewrite_app::{
+    MAX_CANDIDATE_CHECK_BYTES, document_intake::DocumentIntakeService,
+    document_selection::DocumentSelection,
+};
+
+use super::report::{InspectReport, intake_failure};
 use crate::contract::{CommandName, EXIT_COMPATIBILITY, ErrorBody, ErrorCategory, ErrorCode};
 use crate::failure::RunFailure;
 use crate::model::ModelOutput;
@@ -164,20 +169,27 @@ fn walk_cancellable(
         cancellation,
     )
     .map_err(|error| catalog_failure(command, error))?;
-    let documents = catalog
-        .documents
-        .into_iter()
-        .map(|entry| {
-            let relative_path = entry.relative_path.as_str().to_owned();
-            DirectoryDocument {
-                report: InspectReport::from_observation(
-                    &directory.join(&relative_path),
-                    &entry.observation,
-                ),
-                relative_path,
-            }
-        })
-        .collect();
+    let mut documents = Vec::with_capacity(catalog.documents.len());
+    for entry in catalog.documents {
+        let relative_path = entry.relative_path.as_str().to_owned();
+        let selected = DocumentIntakeService::read(
+            &DocumentSelection::catalog(
+                directory,
+                entry.relative_path.clone(),
+                entry.observation.inventory.digest.clone(),
+            ),
+            MAX_CANDIDATE_CHECK_BYTES,
+            cancellation,
+        )
+        .map_err(|error| intake_failure(command, &error))?;
+        let mut report =
+            InspectReport::from_observation(&directory.join(&relative_path), &entry.observation);
+        report.attach_http_links(&selected.bytes)?;
+        documents.push(DirectoryDocument {
+            relative_path,
+            report,
+        });
+    }
     let skipped = catalog
         .skipped
         .into_iter()
@@ -278,11 +290,27 @@ impl DirectoryReport {
         lines.push(format!("skipped: {}", self.skipped_count));
         lines.push(format!("derivative: {}", self.derivative));
         for document in &self.documents {
+            let http_urls = document
+                .report
+                .http_links()
+                .map_or(0, super::report::HttpLinkReport::http_url_count);
             lines.push(format!(
-                "document {} derivative={}",
+                "document {} derivative={} http_urls={http_urls}",
                 escape_inline_for_display(&document.relative_path),
                 document.report.derivative()
             ));
+            if let Some(links) = document.report.http_links() {
+                for parameter in links.parameters() {
+                    lines.push(format!(
+                        "http_link {} line {} col {} rule {} name {}",
+                        escape_inline_for_display(&document.relative_path),
+                        parameter.line,
+                        parameter.column,
+                        parameter.rule_id,
+                        parameter.name
+                    ));
+                }
+            }
         }
         for skipped in &self.skipped {
             match &skipped.relative_path {

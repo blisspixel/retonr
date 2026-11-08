@@ -139,8 +139,10 @@ pub use reviewed_ollama_runtime_import::{
     OllamaRuntimeImportResult, ReviewedOllamaRuntimeSource,
 };
 pub use rewrite_engine::{
-    ChangeShare, ClaimShadowObserver, EngineError, ProtectionError, STYLE_DISTANCE_NOTICE,
-    StyleDistance, StyleFeature, StyleSampleProfile,
+    ChangeShare, ClaimShadowObserver, EngineError, LINK_RULE_CATALOG_VERSION, LinkCleanGroup,
+    LinkCleanReport, LinkCleanScope, LinkError, LinkInventory, LinkParameter, LinkSkip,
+    ProtectionError, SIGNED_QUERY_REASON, STYLE_DISTANCE_NOTICE, StyleDistance, StyleFeature,
+    StyleSampleProfile, clean_links, inventory_links,
 };
 pub use rewrite_text_adapter::{
     CarrierPresence, ControlCounts, DecodedTagMapping, InvisibleInventoryDetail, InvisibleLocation,

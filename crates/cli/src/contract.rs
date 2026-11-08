@@ -140,6 +140,9 @@ pub enum CommandName {
     /// Read-only interactive document review and linear fallback.
     #[serde(rename = "tui")]
     Tui,
+    /// Explicit offline removal of selected link parameters.
+    #[serde(rename = "links.clean")]
+    LinksClean,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
