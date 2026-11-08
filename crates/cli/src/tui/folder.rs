@@ -86,7 +86,7 @@ pub(super) fn load(
         );
     }
     let mut snapshot = if let Some(source) = eligible.get(selected) {
-        let mut snapshot = review_selected(
+        let snapshot = review_selected(
             request,
             source,
             candidates.as_ref(),
@@ -101,12 +101,6 @@ pub(super) fn load(
                 document.relative_path
             ));
         }
-        snapshot.status = format!(
-            "Document {}/{}. [ / ] select; r rediscovers. {}",
-            selected + 1,
-            eligible.len(),
-            snapshot.status
-        );
         snapshot
     } else {
         navigation.selected = 0;

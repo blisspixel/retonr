@@ -5,7 +5,9 @@ use crossterm::event::{KeyEvent, MouseEvent, MouseEventKind};
 fn key_press_navigation_quit_resize_and_non_key_events_have_stable_actions() {
     for (code, expected) in [
         (KeyCode::Char('q'), Action::Quit),
-        (KeyCode::Esc, Action::Quit),
+        (KeyCode::Esc, Action::Dismiss),
+        (KeyCode::Char('s'), Action::ToggleSync),
+        (KeyCode::Char('w'), Action::ToggleWrap),
         (KeyCode::Char('?'), Action::Help),
         (KeyCode::F(1), Action::Help),
         (KeyCode::Tab, Action::Next),

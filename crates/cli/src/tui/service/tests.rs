@@ -63,7 +63,8 @@ fn review_keeps_exact_app_check_record_and_editorial_comparison_without_mutation
         )
     );
     let presentation = snapshot.into_presentation();
-    assert!(presentation.status.contains("generation unavailable"));
+    assert_eq!(presentation.status, "accepted");
+    assert_eq!(presentation.highlight_line, None);
     assert_eq!(fs::read(&fixture.source).expect("retained source"), source);
     assert_eq!(
         fs::read(&fixture.candidate).expect("retained candidate"),
@@ -99,7 +100,26 @@ fn protected_value_rejection_remains_the_same_app_abstention_and_proposed_previe
         snapshot.candidate.as_deref(),
         Some("Keep Elsewhere 43 exactly.\n")
     );
-    assert!(snapshot.into_presentation().status.contains("abstained"));
+    let mut cli_spans = String::new();
+    crate::check::report::append_span_lines(
+        &mut cli_spans,
+        snapshot.check.as_ref().expect("record"),
+    );
+    let location = cli_spans
+        .lines()
+        .next()
+        .expect("check span")
+        .replacen(": ", "  ", 1);
+    let presentation = snapshot.into_presentation();
+    assert!(presentation.status.starts_with("abstained  "));
+    assert!(presentation.status.ends_with(&location));
+    let line = location
+        .split_whitespace()
+        .nth(1)
+        .expect("line number")
+        .parse()
+        .expect("numeric line");
+    assert_eq!(presentation.highlight_line, Some(line));
     assert_eq!(
         fs::read(&fixture.source).expect("source untouched"),
         b"Keep Acme 42 exactly.\n"
@@ -118,6 +138,8 @@ fn source_only_lint_is_exact_and_hostile_text_never_becomes_terminal_control() {
     assert_eq!(findings, &EditorialLintService::lint(text));
     assert!(snapshot.check.is_none());
     let presentation = snapshot.into_presentation();
+    assert_eq!(presentation.status, "inspection");
+    assert_eq!(presentation.highlight_line, None);
     assert!(presentation.source.contains("\\e[2J"));
     for control in ['\u{1b}', '\u{85}', '\u{202e}', '\u{200b}', '\r', '\t'] {
         assert!(!presentation.source.contains(control));

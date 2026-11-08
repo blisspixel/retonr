@@ -13,7 +13,26 @@ pub(super) struct Snapshot {
     pub candidate: Option<String>,
     pub findings: Vec<String>,
     pub status: String,
+    /// 1-based source line named by the status, when the check located a span.
+    pub highlight_line: Option<u32>,
     pub directory: Option<DirectoryNavigation>,
+}
+
+/// Pane presentation that survives a reload.
+pub(super) struct View {
+    /// Wrap pane text at the pane width. Horizontal scrolling is unused.
+    pub wrap: bool,
+    /// Source and candidate share vertical and horizontal scroll.
+    pub scroll_locked: bool,
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            wrap: true,
+            scroll_locked: true,
+        }
+    }
 }
 
 #[derive(serde::Serialize)]
@@ -41,6 +60,7 @@ pub(super) struct State {
     pub horizontal: [u16; 3],
     pub help: bool,
     pub quit: bool,
+    pub view: View,
     pub pending: Option<u64>,
     next_operation: u64,
     loaded: bool,
@@ -55,6 +75,7 @@ impl Default for State {
             horizontal: [0; 3],
             help: false,
             quit: false,
+            view: View::default(),
             pending: None,
             next_operation: 0,
             loaded: false,
@@ -91,6 +112,7 @@ impl State {
                     "Read failed: "
                 };
                 self.snapshot.status = safe_text(&format!("{prefix}{message}"), 1024, false);
+                self.snapshot.highlight_line = None;
             }
         }
         true
@@ -99,7 +121,16 @@ impl State {
     pub fn apply(&mut self, action: Action) -> bool {
         match action {
             Action::Quit | Action::Interrupt => self.quit = true,
+            Action::Dismiss => {
+                if self.help {
+                    self.help = false;
+                } else {
+                    self.quit = true;
+                }
+            }
             Action::Help => self.help = !self.help,
+            Action::ToggleWrap => self.view.wrap = !self.view.wrap,
+            Action::ToggleSync => self.view.scroll_locked = !self.view.scroll_locked,
             Action::Next => {
                 self.pane = match self.pane {
                     Pane::Findings => Pane::Source,
@@ -114,22 +145,60 @@ impl State {
                     Pane::Candidate => Pane::Source,
                 }
             }
-            Action::Scroll(amount) => {
-                let index = self.pane.index();
-                self.scroll[index] = self.scroll[index].saturating_add_signed(amount);
-            }
-            Action::Horizontal(amount) => {
-                let index = self.pane.index();
-                self.horizontal[index] = self.horizontal[index].saturating_add_signed(amount);
-            }
-            Action::Home => {
-                self.scroll[self.pane.index()] = 0;
-                self.horizontal[self.pane.index()] = 0;
-            }
+            Action::Scroll(amount) => self.add_scroll(amount),
+            Action::Horizontal(amount) if !self.view.wrap => self.add_horizontal(amount),
+            Action::Home => self.home(),
             Action::Reload => return !self.help && self.pending.is_none(),
-            Action::Document(_) | Action::Resize | Action::None => {}
+            Action::Horizontal(_) | Action::Document(_) | Action::Resize | Action::None => {}
         }
         false
+    }
+
+    fn coupled(&self) -> bool {
+        self.view.scroll_locked && self.pane != Pane::Findings
+    }
+
+    fn add_scroll(&mut self, amount: i16) {
+        if self.coupled() {
+            self.bump_scroll(Pane::Source.index(), amount);
+            self.bump_scroll(Pane::Candidate.index(), amount);
+        } else {
+            self.bump_scroll(self.pane.index(), amount);
+        }
+    }
+
+    fn bump_scroll(&mut self, index: usize, amount: i16) {
+        self.scroll[index] = self.scroll[index].saturating_add_signed(amount);
+    }
+
+    fn add_horizontal(&mut self, amount: i16) {
+        if self.coupled() {
+            self.bump_horizontal(Pane::Source.index(), amount);
+            self.bump_horizontal(Pane::Candidate.index(), amount);
+        } else {
+            self.bump_horizontal(self.pane.index(), amount);
+        }
+    }
+
+    fn bump_horizontal(&mut self, index: usize, amount: i16) {
+        self.horizontal[index] = self.horizontal[index].saturating_add_signed(amount);
+    }
+
+    fn home(&mut self) {
+        let reset = |scroll: &mut [u16; 3], horizontal: &mut [u16; 3], index: usize| {
+            scroll[index] = 0;
+            horizontal[index] = 0;
+        };
+        if self.coupled() {
+            reset(&mut self.scroll, &mut self.horizontal, Pane::Source.index());
+            reset(
+                &mut self.scroll,
+                &mut self.horizontal,
+                Pane::Candidate.index(),
+            );
+        } else {
+            reset(&mut self.scroll, &mut self.horizontal, self.pane.index());
+        }
     }
 }
 
@@ -166,6 +235,7 @@ impl Snapshot {
                 .map(|text| safe_text(&text, TEXT_LIMIT, true)),
             findings,
             status: safe_text(&self.status, 1024, false),
+            highlight_line: self.highlight_line,
             directory: self.directory,
         }
     }

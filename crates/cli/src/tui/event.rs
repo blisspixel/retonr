@@ -6,7 +6,11 @@ use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 pub(super) enum Action {
     Quit,
     Interrupt,
+    /// Close help when it is open. Quit when it is not.
+    Dismiss,
     Help,
+    ToggleWrap,
+    ToggleSync,
     Next,
     Previous,
     Scroll(i16),
@@ -26,8 +30,11 @@ pub(super) fn action(event: &Event) -> Action {
                 return Action::Interrupt;
             }
             match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => Action::Quit,
+                KeyCode::Char('q') => Action::Quit,
+                KeyCode::Esc => Action::Dismiss,
                 KeyCode::Char('?') | KeyCode::F(1) => Action::Help,
+                KeyCode::Char('w') => Action::ToggleWrap,
+                KeyCode::Char('s') => Action::ToggleSync,
                 KeyCode::Tab => Action::Next,
                 KeyCode::BackTab => Action::Previous,
                 KeyCode::Down | KeyCode::Char('j') => Action::Scroll(1),

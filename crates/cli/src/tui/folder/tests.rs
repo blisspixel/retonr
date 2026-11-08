@@ -44,7 +44,9 @@ fn nested_catalog_is_sorted_exactly_paired_and_navigation_reloads_current_bytes(
     );
     request.index = Some(1);
     let second = load(&request, &CancellationToken::new()).expect("next");
-    assert!(second.status.contains("Candidate check:"));
+    assert!(second.status.starts_with("abstained"));
+    assert!(!second.status.contains("Candidate check:"));
+    assert!(!second.status.starts_with("Document "));
     assert_eq!(second.candidate.as_deref(), Some("Hello world."));
     fs::write(source.path().join("nested/b.txt"), b"Reloaded source.").expect("change");
     let reloaded = load(&request, &CancellationToken::new()).expect("fresh discovery");

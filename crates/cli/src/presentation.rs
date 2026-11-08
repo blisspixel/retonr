@@ -103,6 +103,9 @@ pub(crate) fn stderr_is_terminal() -> bool {
 }
 
 /// Wraps each line so no visible line exceeds `width`.
+///
+/// Widths below 8 stay unchanged. Report lines use that floor; a pane uses
+/// [`wrap_line`] because its inner width can be narrower.
 #[must_use]
 pub(crate) fn wrap(text: &str, width: Option<usize>) -> String {
     let Some(width) = width.filter(|width| *width >= 8) else {
@@ -114,12 +117,29 @@ pub(crate) fn wrap(text: &str, width: Option<usize>) -> String {
             Some(body) => (body, true),
             None => (line, false),
         };
-        push_wrapped(body, width, &mut wrapped);
+        if body.chars().count() > width {
+            push_wrapped(body, width, &mut wrapped);
+        } else {
+            wrapped.push_str(body);
+        }
         if newline {
             wrapped.push('\n');
         }
     }
     wrapped
+}
+
+/// Wraps one line to `width` columns, breaking at spaces and hard-breaking a longer word.
+///
+/// A width of 0 returns the line unchanged. The caller does not draw that width.
+#[must_use]
+pub(crate) fn wrap_line(line: &str, width: usize) -> Vec<String> {
+    if width == 0 || line.chars().count() <= width {
+        return vec![line.to_owned()];
+    }
+    let mut wrapped = String::new();
+    push_wrapped(line, width, &mut wrapped);
+    wrapped.split('\n').map(ToOwned::to_owned).collect()
 }
 
 fn push_wrapped(line: &str, width: usize, out: &mut String) {
@@ -284,7 +304,7 @@ fn dim_after_marker(line: &str, marker: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{ColorChoice, Role, color_choice_enabled, paint, paint_report, wrap};
+    use super::{ColorChoice, Role, color_choice_enabled, paint, paint_report, wrap, wrap_line};
 
     #[test]
     fn color_obeys_no_color_term_and_the_flag() {
@@ -303,6 +323,19 @@ mod tests {
         assert!(wrapped.lines().all(|line| line.chars().count() <= 40));
         assert!(wrapped.contains("accepted"));
         assert_eq!(wrap("short\n", Some(40)), "short\n");
+        assert_eq!(wrap("circumstances", Some(4)), "circumstances");
+    }
+
+    #[test]
+    fn wrap_line_keeps_a_word_intact_inside_a_narrow_pane() {
+        let lines = wrap_line("You should not, under any circumstances, replace it.", 16);
+        assert!(lines.iter().all(|line| line.chars().count() <= 16));
+        assert!(lines.iter().any(|line| line.contains("circumstances,")));
+        assert_eq!(
+            wrap_line("abcdefghij", 4),
+            vec!["abcd".to_owned(), "efgh".to_owned(), "ij".to_owned()]
+        );
+        assert_eq!(wrap_line("short", 0), vec!["short".to_owned()]);
     }
 
     #[test]

@@ -82,6 +82,7 @@ fn plain_review_preserves_safe_preview_and_explicit_candidate_summary_in_both_fo
             candidate: Some("hello, world!".into()),
             findings: vec!["hostile\u{1b}]52;clipboard".into()],
             status: "Candidate accepted".into(),
+            highlight_line: None,
             directory: None,
         }),
     );
@@ -93,6 +94,11 @@ fn plain_review_preserves_safe_preview_and_explicit_candidate_summary_in_both_fo
         assert!(!text.contains('\u{202e}'));
         assert!(text.contains("Candidate accepted"));
         assert!(text.contains("candidate.txt"));
+        if format == ReportFormat::Text {
+            let status_at = text.find("Candidate accepted").expect("status");
+            let notice_at = text.find(ui::READ_ONLY_NOTICE).expect("notice");
+            assert!(status_at < notice_at);
+        }
         assert!(text.contains("hello, world!"));
         if format == ReportFormat::Json {
             let value: serde_json::Value = serde_json::from_str(&text).expect("JSON envelope");

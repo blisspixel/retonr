@@ -92,10 +92,7 @@ impl Snapshot {
                     )
                 }),
         );
-        let status = self.check.as_ref().map_or_else(
-            || "Read-only inspection; local generation unavailable in this view.".to_owned(),
-            |record| format!("Candidate check: {}; reason: {}. Read-only; local generation unavailable in this view.", crate::check::report::status_name(record.status), record.reason.map_or("none", crate::check::report::reason_name)),
-        );
+        let (status, highlight_line) = presented_status(self.check.as_ref());
         state::Snapshot {
             source_label: self.source_label,
             candidate_label: self.candidate_label,
@@ -103,9 +100,33 @@ impl Snapshot {
             candidate: self.candidate,
             findings,
             status,
+            highlight_line,
             directory: None,
         }
         .bounded()
+    }
+}
+
+fn presented_status(check: Option<&RewriteRecord>) -> (String, Option<u32>) {
+    let Some(record) = check else {
+        return ("inspection".to_owned(), None);
+    };
+    let verdict = match record.status {
+        rewrite_types::RewriteStatus::Rewritten => "accepted",
+        rewrite_types::RewriteStatus::Abstained => "abstained",
+        rewrite_types::RewriteStatus::UnchangedIdentical
+        | rewrite_types::RewriteStatus::UnchangedNoEligibleContent => "unchanged",
+        rewrite_types::RewriteStatus::Failed => "failed",
+    };
+    match crate::check::report::first_located_span(record) {
+        Some(span) => (
+            format!(
+                "{verdict}  line {} col {}  {} {}",
+                span.line, span.column, span.kind, span.change
+            ),
+            Some(span.line),
+        ),
+        None => (verdict.to_owned(), None),
     }
 }
 

@@ -148,8 +148,15 @@ worker supports reload, cancellation, and stale-result rejection; safe previews
 escape terminal controls. Interactive mode requires terminal input and output.
 `--plain` supports bounded text or JSON output for accessible terminals and pipes.
 Complete UTF-8 regular files up to 16 MiB each are validated before previews are
-clipped. The workbench does not generate or write documents. Full profiles,
-generation workflows, and the native desktop application remain pending.
+clipped. The workbench does not generate or write documents. Its status
+line leads with the same verdict word as a text check. When the record locates
+a span, the line and column follow, and that source line is shown in reverse
+video in both the source and candidate panes. Pane text wraps at the pane
+width. Source and candidate scrolling stays locked until `s` unlocks it.
+Escape closes help, then quits. Borders use the terminal foreground, dim or
+bold, so a theme that maps bright black to the background still shows them.
+Full profiles, generation workflows, and the native desktop application remain
+pending.
 
 The workbench also supports explicit `--recursive` folder review, with exact
 relative-path candidate pairing and `--document` selection. Bracket keys navigate

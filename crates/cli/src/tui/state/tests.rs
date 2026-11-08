@@ -17,6 +17,9 @@ fn reducer_navigation_help_reload_and_scroll_are_bounded() {
     state.apply(Action::Scroll(10));
     assert_eq!(state.scroll[0], u16::MAX);
     state.apply(Action::Horizontal(i16::MAX));
+    assert_eq!(state.horizontal[0], 0);
+    state.apply(Action::ToggleWrap);
+    state.apply(Action::Horizontal(i16::MAX));
     assert_eq!(state.horizontal[0], 32_767);
     state.apply(Action::Home);
     assert_eq!(state.scroll[0], 0);
@@ -64,6 +67,7 @@ fn every_untrusted_preview_is_escaped_and_boundaries_are_utf8_safe() {
         candidate: Some("界".repeat(TEXT_LIMIT)),
         findings: vec![hostile.repeat(1000); FINDING_LIMIT + 1],
         status: hostile.into(),
+        highlight_line: Some(4),
         directory: None,
     }
     .bounded();
@@ -87,4 +91,40 @@ fn every_untrusted_preview_is_escaped_and_boundaries_are_utf8_safe() {
     );
     assert_eq!(safe_text("line\nnext", 100, true), "line\nnext");
     assert_eq!(safe_text("界", 2, false), " [");
+    assert_eq!(snapshot.highlight_line, Some(4));
+}
+
+#[test]
+fn escape_closes_help_before_quit_and_source_stays_locked_to_candidate() {
+    let mut state = State::default();
+    assert!(state.view.wrap);
+    assert!(state.view.scroll_locked);
+    state.apply(Action::Help);
+    state.apply(Action::Dismiss);
+    assert!(!state.help);
+    assert!(!state.quit);
+    state.apply(Action::Help);
+    state.apply(Action::Quit);
+    assert!(state.quit);
+
+    let mut state = State {
+        pane: Pane::Source,
+        ..State::default()
+    };
+    state.apply(Action::Scroll(4));
+    state.apply(Action::Home);
+    assert_eq!(state.scroll, [0, 0, 0]);
+    state.apply(Action::Scroll(2));
+    assert_eq!(state.scroll, [0, 2, 2]);
+    state.apply(Action::ToggleWrap);
+    state.apply(Action::Horizontal(3));
+    assert_eq!(state.horizontal, [0, 3, 3]);
+    state.apply(Action::ToggleSync);
+    state.apply(Action::Scroll(1));
+    assert_eq!(state.scroll, [0, 3, 2]);
+    state.pane = Pane::Findings;
+    state.apply(Action::Scroll(5));
+    assert_eq!(state.scroll, [5, 3, 2]);
+    state.apply(Action::Dismiss);
+    assert!(state.quit);
 }
