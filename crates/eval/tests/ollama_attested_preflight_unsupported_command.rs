@@ -43,7 +43,7 @@ fn attached_preflight_fails_closed_on_macos() {
         .expect("run evaluation process");
 
     assert!(!output.status.success());
-    assert!(output.stdout.is_empty());
+    assert_eq!(output.stdout, [] as [u8; 0]);
     assert_eq!(
         String::from_utf8(output.stderr).expect("utf-8 error"),
         "error: attached Ollama process witness failed: attached process witness is unsupported on this platform\n"
