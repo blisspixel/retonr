@@ -188,6 +188,13 @@ fn render_text(record: &RewriteRecord, context: &ReportContext<'_>) -> String {
     if let Some(reason) = record.reason {
         let _ = writeln!(text, "reason: {}", reason_name(reason));
     }
+    if let Some(generation) = &record.generation {
+        let _ = writeln!(
+            text,
+            "marking_assurance: {}",
+            generation.disclosed_marking_assurance()
+        );
+    }
     append_span_lines(&mut text, record);
     if let Some(measurement) = context.measurement {
         let _ = writeln!(text, "changed_token_pct: {}", measurement.changed_token_pct);

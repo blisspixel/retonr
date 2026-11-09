@@ -477,6 +477,82 @@ fn rewrite_attaches_fake_conformance_to_a_recovered_binding() {
 }
 
 #[test]
+fn bound_artifact_keeps_marking_assurance_unresolved() {
+    let directory = tempdir().expect("temporary directory");
+    let source_doc = directory.path().join("source.txt");
+    let output = directory.path().join("out.txt");
+    fs::write(&source_doc, "Hello world\n").expect("write source");
+    let data = activate_imported_fake(directory.path());
+
+    let doctor = binary()
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["--format", "json", "doctor"])
+        .output()
+        .expect("run doctor");
+    assert!(doctor.status.success());
+    let doctor_text = String::from_utf8(doctor.stdout).expect("utf-8 doctor output");
+    let doctor_json: serde_json::Value = serde_json::from_str(&doctor_text).expect("doctor json");
+    let doctor_result = &doctor_json["result"];
+    assert_eq!(doctor_result["marking_assurance"], "unresolved");
+    assert_eq!(
+        doctor_result["repository"]["active_generation"]["status"],
+        "present"
+    );
+    let artifact_id = doctor_result["repository"]["active_generation"]["artifact_id"]
+        .as_str()
+        .expect("artifact id");
+    assert_ne!(artifact_id, "unresolved");
+    assert!(!doctor_text.contains("No known intentional marker"));
+    assert!(!doctor_text.contains("absent_by_direct_inspection"));
+
+    binary()
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["--format", "text", "doctor"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("marking_assurance: unresolved"))
+        .stdout(predicate::str::contains("active_generation: present"));
+
+    let rewritten = binary()
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["--format", "json", "rewrite"])
+        .arg(&source_doc)
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .expect("run rewrite");
+    assert!(
+        rewritten.status.success(),
+        "stderr={}",
+        String::from_utf8_lossy(&rewritten.stderr)
+    );
+    let report = String::from_utf8(rewritten.stdout).expect("utf-8 rewrite report");
+    let report_json: serde_json::Value = serde_json::from_str(&report).expect("rewrite json");
+    let generation = &report_json["result"]["generation"];
+    assert_eq!(generation["schema_version"], 2);
+    assert_eq!(generation["marking_assurance"], "unresolved");
+    assert!(generation["artifact_id"].is_string());
+    assert!(!report.contains("Hello world"));
+    assert!(!report.contains("No known intentional marker"));
+    assert!(!report.contains("absent_by_direct_inspection"));
+
+    binary()
+        .arg("--data-dir")
+        .arg(&data)
+        .args(["--format", "text", "rewrite", "--dry-run"])
+        .arg(&source_doc)
+        .arg("--output")
+        .arg(directory.path().join("dry.txt"))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("marking_assurance: unresolved"))
+        .stdout(predicate::str::contains("Hello world").not());
+}
+
+#[test]
 fn rewrite_dry_run_diff_and_trace_are_safe_and_non_replacing() {
     let directory = tempdir().expect("temporary directory");
     let source_doc = directory.path().join("source.txt");

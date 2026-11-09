@@ -641,7 +641,9 @@ outside application-controlled storage.
 Default rewrite records avoid raw text. Plain hashes of short content can be guessed,
 so equality identifiers should use a local keyed construction or remain disabled.
 Completed grounded calls attach a redacted generation record containing identifiers,
-digests, counts, and optional resource observations. It excludes raw prompts and
+digests, counts, optional resource observations, and marking assurance. The
+recorded assurance is `unresolved` until a reviewed assurance record exists.
+A missing assurance field is missing evidence. The record excludes raw prompts and
 content, but its unkeyed digests can still permit dictionary attacks on predictable
 inputs and must not be described as anonymized.
 

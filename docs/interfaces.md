@@ -30,7 +30,8 @@ implements `check` with file or standard-input documents, `--output` (`-o`),
 `--diff`, `--dry-run`, `--trace`, fail-closed `rewrite` with the same
 inspection flags, directory rewrite dry-run with `--output-dir`, pre-model `inspect`
 of a file or directory, `version`, `doctor`
-with recovery follow-up, `completions`, `man`, `model list`,
+with recovery follow-up and `marking_assurance: unresolved` on every report,
+`completions`, `man`, `model list`,
 `model inspect`, and optional `model device-evidence` (`fitr`). See
 [current state](current-state.md). Optional [fitr](fitr.md) evidence is
 device measurement, not qualification.

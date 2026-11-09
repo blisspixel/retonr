@@ -1214,9 +1214,14 @@ A rewrite record includes:
 The implemented rewrite-record v2 slice now nests one optional versioned generation
 record containing stable strategy ID, exact runtime backend and version, optional
 runtime digest, content-derived artifact ID, artifact digest, prompt-template digest,
-complete backend-input digest, output-schema digest, candidate count, and optional
-runtime-reported token and duration observations. Model-free transactions omit the
-field. A v1 record without the field remains deserializable. Qualification identity,
+complete backend-input digest, output-schema digest, candidate count, optional
+runtime-reported token and duration observations, and marking assurance.
+Generation provenance schema 2 records `marking_assurance` as `unresolved`,
+which means reviewed assurance evidence is missing. A schema 1 generation record
+without the field
+remains readable and is shown as `unresolved`. An artifact identifier is not
+assurance evidence. Model-free transactions omit `generation`. A v1 rewrite
+record without the field remains deserializable. Qualification identity,
 installed generation, sampling parameters, seed, adapter versions, profile version,
 validator versions, and binary or configuration digests remain planned rather than
 inferred.

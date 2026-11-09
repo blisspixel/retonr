@@ -45,7 +45,8 @@ pub use profile::{
 };
 pub use record::{
     GENERATION_PROVENANCE_SCHEMA_VERSION, GenerationProvenance, GenerationRuntimeProvenance,
-    GenerationUsageProvenance, REWRITE_RECORD_SCHEMA_VERSION, RewriteRecord,
+    GenerationUsageProvenance, MARKING_ASSURANCE_UNRESOLVED, REWRITE_RECORD_SCHEMA_VERSION,
+    RewriteRecord,
 };
 pub use rewrite::{
     AcceptedEdit, Atomicity, CandidateId, CandidateIdError, CandidateRank, CandidateTextKind,
