@@ -108,6 +108,8 @@ fn receipt_records_digests_level_and_change_share_without_source_text() {
         Some(output_digest.as_str())
     );
     assert_eq!(value["record"]["schema_version"], 2);
+    assert!(value["record"].get("generation").is_none());
+    assert!(!text.contains("marking_assurance"));
     assert_eq!(value["edit_level_effective"], "touch-up");
     assert_eq!(value["edit_level_requested"], "rewrite");
     assert!(

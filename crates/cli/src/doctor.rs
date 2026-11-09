@@ -6,7 +6,7 @@ use rewrite_app::{
     ArtifactRepository, ArtifactRepositoryError, ArtifactRepositoryPendingOperations,
     ArtifactRepositorySchemaInspection, ArtifactRepositorySchemaStatus,
 };
-use rewrite_types::CancellationToken;
+use rewrite_types::{CancellationToken, MARKING_ASSURANCE_UNRESOLVED};
 use serde::Serialize;
 
 use crate::contract::{CommandName, EXIT_COMPATIBILITY, EXIT_OPERATIONAL, EXIT_RECOVERY_REQUIRED};
@@ -28,6 +28,7 @@ pub(crate) fn run(
     let report = DoctorReport {
         identity,
         network: "denied",
+        marking_assurance: MARKING_ASSURANCE_UNRESOLVED,
         repository,
     };
     let exit_code = doctor_exit(
@@ -138,15 +139,21 @@ struct DoctorReport {
     #[serde(flatten)]
     identity: ProductIdentity,
     network: &'static str,
+    /// Marking disposition for every current generation path.
+    ///
+    /// The report always carries [`MARKING_ASSURANCE_UNRESOLVED`]. An installed
+    /// or active artifact does not change it.
+    marking_assurance: &'static str,
     repository: RepositoryReport,
 }
 
 impl DoctorReport {
     fn text(&self) -> String {
         let mut text = format!(
-            "{}network: {}\nrepository: {}\nfound_schema: {}\nrequired_schema: {}\n",
+            "{}network: {}\nmarking_assurance: {}\nrepository: {}\nfound_schema: {}\nrequired_schema: {}\n",
             self.identity.text(),
             self.network,
+            self.marking_assurance,
             self.repository.status.name(),
             self.repository
                 .found_schema

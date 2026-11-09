@@ -7,7 +7,17 @@ use crate::{CandidateAssessment, CandidateId, Digest, DocumentId, ReasonCode, Re
 pub const REWRITE_RECORD_SCHEMA_VERSION: u32 = 2;
 
 /// Current redacted generation-provenance contract version.
-pub const GENERATION_PROVENANCE_SCHEMA_VERSION: u32 = 1;
+///
+/// Version 2 records `marking_assurance`. Version 1 records omit that field
+/// and remain readable.
+pub const GENERATION_PROVENANCE_SCHEMA_VERSION: u32 = 2;
+
+/// Marking disposition used when no reviewed assurance record exists.
+///
+/// This is the assurance document's word for missing evidence. It is a
+/// contract string, not a closed set of Rust variants. Other assurance words
+/// stay out of this contract until a reviewed record uses them.
+pub const MARKING_ASSURANCE_UNRESOLVED: &str = "unresolved";
 
 /// Persistence-neutral identity of the runtime used for one generation call.
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
@@ -57,6 +67,45 @@ pub struct GenerationProvenance {
     pub candidate_count: u8,
     /// Optional bounded resource observations reported by the runtime.
     pub usage: GenerationUsageProvenance,
+    /// Marking disposition for this completed call.
+    ///
+    /// Schema 1 records omit this field. Absence is missing evidence and is
+    /// disclosed as [`MARKING_ASSURANCE_UNRESOLVED`]. Schema 2 records written
+    /// by Retonr use that same word. An artifact identifier does not supply it.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_marking_assurance"
+    )]
+    pub marking_assurance: Option<String>,
+}
+
+impl GenerationProvenance {
+    /// Disclosed marking word for this completed call.
+    ///
+    /// The disclosed word is [`MARKING_ASSURANCE_UNRESOLVED`] until a reviewed
+    /// assurance record exists. A missing field uses that same word.
+    #[must_use]
+    pub fn disclosed_marking_assurance(&self) -> &str {
+        self.marking_assurance
+            .as_deref()
+            .filter(|word| *word == MARKING_ASSURANCE_UNRESOLVED)
+            .unwrap_or(MARKING_ASSURANCE_UNRESOLVED)
+    }
+}
+
+fn deserialize_marking_assurance<'de, D>(value: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let word = Option::<String>::deserialize(value)?;
+    match word.as_deref() {
+        None => Ok(None),
+        Some(MARKING_ASSURANCE_UNRESOLVED) => Ok(Some(MARKING_ASSURANCE_UNRESOLVED.to_owned())),
+        Some(_) => Err(serde::de::Error::custom(
+            "marking assurance other than unresolved is not a reviewed record",
+        )),
+    }
 }
 
 /// Redacted audit record for one completed rewrite transaction.
@@ -122,7 +171,8 @@ mod tests {
 
     use super::{
         GENERATION_PROVENANCE_SCHEMA_VERSION, GenerationProvenance, GenerationRuntimeProvenance,
-        GenerationUsageProvenance, REWRITE_RECORD_SCHEMA_VERSION, RewriteRecord,
+        GenerationUsageProvenance, MARKING_ASSURANCE_UNRESOLVED, REWRITE_RECORD_SCHEMA_VERSION,
+        RewriteRecord,
     };
     use crate::{Digest, DocumentId, RewriteStatus};
 
@@ -159,6 +209,7 @@ mod tests {
                 output_tokens: Some(8),
                 generation_micros: Some(100),
             },
+            marking_assurance: Some(MARKING_ASSURANCE_UNRESOLVED.to_owned()),
         }
     }
 
@@ -175,7 +226,59 @@ mod tests {
         let encoded = serde_json::to_string(&record().with_generation(generation()))
             .expect("record serializes");
         assert!(encoded.contains("grounded-structured-v1"));
+        assert!(encoded.contains("\"marking_assurance\":\"unresolved\""));
         assert!(!encoded.contains("private input"));
+        assert!(!encoded.contains("No known intentional marker"));
+    }
+
+    #[test]
+    fn completed_generation_records_unresolved_marking_assurance() {
+        let encoded = serde_json::to_value(generation()).expect("generation serializes");
+        assert_eq!(encoded["schema_version"], 2);
+        assert_eq!(
+            encoded["schema_version"],
+            GENERATION_PROVENANCE_SCHEMA_VERSION
+        );
+        assert_eq!(encoded["marking_assurance"], MARKING_ASSURANCE_UNRESOLVED);
+        assert_eq!(
+            generation().disclosed_marking_assurance(),
+            MARKING_ASSURANCE_UNRESOLVED
+        );
+    }
+
+    #[test]
+    fn schema_1_generation_without_assurance_reads_as_unresolved() {
+        let mut encoded = serde_json::to_value(generation()).expect("generation serializes");
+        let object = encoded.as_object_mut().expect("generation is an object");
+        object.insert("schema_version".to_owned(), Value::from(1));
+        object.remove("marking_assurance");
+        let decoded: GenerationProvenance =
+            serde_json::from_value(encoded).expect("schema 1 generation decodes");
+        assert_eq!(decoded.schema_version, 1);
+        assert!(decoded.marking_assurance.is_none());
+        assert_eq!(
+            decoded.disclosed_marking_assurance(),
+            MARKING_ASSURANCE_UNRESOLVED
+        );
+        let round_trip = serde_json::to_value(&decoded).expect("schema 1 round trip");
+        assert_eq!(round_trip["schema_version"], 1);
+        assert!(round_trip.get("marking_assurance").is_none());
+    }
+
+    #[test]
+    fn unreviewed_assurance_word_is_rejected() {
+        let mut encoded = serde_json::to_value(generation()).expect("generation serializes");
+        encoded["marking_assurance"] = Value::from("absent_by_direct_inspection");
+        let error = serde_json::from_value::<GenerationProvenance>(encoded)
+            .expect_err("unreviewed disposition");
+        assert!(error.to_string().contains("unresolved"));
+
+        let mut hand_built = generation();
+        hand_built.marking_assurance = Some("absent_by_direct_inspection".to_owned());
+        assert_eq!(
+            hand_built.disclosed_marking_assurance(),
+            MARKING_ASSURANCE_UNRESOLVED
+        );
     }
 
     #[test]

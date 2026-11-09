@@ -24,7 +24,8 @@ use rewrite_text_adapter::{ParsedTextDocument, TextAdapter};
 use rewrite_types::{
     CancellationToken, EditLevel, GENERATION_PROVENANCE_SCHEMA_VERSION, GeneratedCandidate,
     GenerationProvenance, GenerationRuntimeProvenance, GenerationUsageProvenance,
-    LayoutConstraints, RewriteMode, RewriteOptions, RewriteRecord, RewriteUnitId,
+    LayoutConstraints, MARKING_ASSURANCE_UNRESOLVED, RewriteMode, RewriteOptions, RewriteRecord,
+    RewriteUnitId,
 };
 
 use crate::{
@@ -523,6 +524,7 @@ fn map_trace(trace: GroundedTrace) -> GenerationProvenance {
             output_tokens: trace.usage.output_tokens,
             generation_micros: trace.usage.generation_micros,
         },
+        marking_assurance: Some(MARKING_ASSURANCE_UNRESOLVED.to_owned()),
     }
 }
 

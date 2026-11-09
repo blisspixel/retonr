@@ -39,11 +39,22 @@ fn doctor_without_data_dir_is_local_and_does_not_request_a_repository() {
         .stderr(predicate::str::is_empty())
         .stdout(predicate::str::contains("\"command\": \"doctor\""))
         .stdout(predicate::str::contains("\"network\": \"denied\""))
+        .stdout(predicate::str::contains(
+            "\"marking_assurance\": \"unresolved\"",
+        ))
         .stdout(predicate::str::contains("\"local_only\": true"))
         .stdout(predicate::str::contains("\"status\": \"not_requested\""))
         .stdout(predicate::str::contains("\"recovery_actions\": []"))
         .stdout(predicate::str::contains("pending_operations").not())
-        .stdout(predicate::str::contains("active_generation").not());
+        .stdout(predicate::str::contains("active_generation").not())
+        .stdout(predicate::str::contains("No known intentional marker").not());
+
+    binary()
+        .args(["--format", "text", "doctor"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("marking_assurance: unresolved"))
+        .stdout(predicate::str::contains("network: denied"));
 }
 
 #[test]
@@ -144,6 +155,9 @@ fn doctor_reports_a_missing_repository_without_creating_one() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"status\": \"not_initialized\""))
+        .stdout(predicate::str::contains(
+            "\"marking_assurance\": \"unresolved\"",
+        ))
         .stdout(predicate::str::contains("\"recovery_actions\": []"))
         .stdout(predicate::str::contains("pending_operations").not());
     assert!(!data.exists(), "doctor must not create a data directory");
@@ -226,6 +240,7 @@ fn doctor_reports_a_current_repository_without_claiming_activation() {
         assert!(!text.contains(private), "doctor leaked {private}: {text}");
     }
     assert!(text.contains("\"status\": \"current\""));
+    assert!(text.contains("\"marking_assurance\": \"unresolved\""));
     assert!(text.contains("\"recovery_actions\": []"));
     assert!(text.contains("\"status\": \"absent\""));
     assert!(text.contains("\"artifact_removals\": \"0\""));
@@ -238,6 +253,7 @@ fn doctor_reports_a_current_repository_without_claiming_activation() {
         .assert()
         .success()
         .stdout(predicate::str::contains("repository: current"))
+        .stdout(predicate::str::contains("marking_assurance: unresolved"))
         .stdout(predicate::str::contains("pending_artifact_removals: 0"))
         .stdout(predicate::str::contains("active_generation: absent"))
         .stdout(predicate::str::contains("recovery_actions: none"));
