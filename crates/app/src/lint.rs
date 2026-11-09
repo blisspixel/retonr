@@ -67,11 +67,11 @@ mod tests {
         assert!(EditorialLintService::compare_bounded(source, candidate, 1).is_err());
         assert!(EditorialLintService::compare_bounded(source, candidate, 0).is_err());
         assert!(EditorialLintService::lint_bounded(source, 0).is_err());
-        assert!(
+        assert_eq!(
             EditorialLintService::compare_bounded("Clean source.", "Clean candidate.", 0)
                 .expect("zero findings")
-                .source_findings
-                .is_empty()
+                .source_findings,
+            []
         );
     }
 

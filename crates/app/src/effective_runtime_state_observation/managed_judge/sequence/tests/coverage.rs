@@ -162,6 +162,6 @@ fn every_closed_error_kind_has_redacted_debug_and_display() {
     ];
     for error in cases {
         assert!(format!("{error:?}").starts_with("ManagedJudgeObservationError::"));
-        assert!(!error.to_string().is_empty());
+        assert_ne!(error.to_string(), "");
     }
 }

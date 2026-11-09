@@ -232,7 +232,7 @@ fn prepared_recovery_ignores_cancellation_and_emits_no_progress() {
         .remove(&request, &cancellation, |value| progress.push(value))
         .expect("recover despite stale cancellation");
     assert_eq!(result.disposition, ArtifactRemovalDisposition::Recovered);
-    assert!(progress.is_empty());
+    assert_eq!(progress, []);
 }
 
 #[test]

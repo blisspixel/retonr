@@ -187,11 +187,9 @@ fn persists_and_recovers_the_complete_inert_evidence_chain() {
                 .expect("repeat qualification"),
             WriteDisposition::AlreadyPresent
         );
-        assert!(
-            store
-                .recover_active_bindings(|_| true)
-                .expect("bindings")
-                .is_empty()
+        assert_eq!(
+            store.recover_active_bindings(|_| true).expect("bindings"),
+            []
         );
     }
 

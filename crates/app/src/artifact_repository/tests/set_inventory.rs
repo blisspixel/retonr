@@ -87,7 +87,7 @@ fn repository_inventories_an_imported_set_without_touching_single_files() {
         RegisteredArtifactSetBytes::Verified
     );
     assert_eq!(report.storage_entry_count, 1);
-    assert!(
+    assert_eq!(
         repository
             .inventory(
                 crate::ArtifactInventoryLimits {
@@ -99,8 +99,8 @@ fn repository_inventories_an_imported_set_without_touching_single_files() {
                 &CancellationToken::new(),
             )
             .expect("single-file inventory remains empty")
-            .registered
-            .is_empty()
+            .registered,
+        []
     );
 }
 

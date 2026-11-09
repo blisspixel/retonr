@@ -179,12 +179,12 @@ fn assert_report_compiles_and_reverifies(
     )
     .expect("compile controlled source-build report");
     assert!(compilation.compiled().is_byte_identical());
-    assert!(!compilation.canonical_report_bytes().is_empty());
-    assert!(
-        !compilation
+    assert_ne!(compilation.canonical_report_bytes(), [] as [u8; 0]);
+    assert_ne!(
+        compilation
             .managed_evidence(RuntimeSourceBuildAttempt::Primary)
-            .execution_receipt_bytes()
-            .is_empty()
+            .execution_receipt_bytes(),
+        [] as [u8; 0]
     );
 
     let inputs = CompilationInputs {

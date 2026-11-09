@@ -99,7 +99,7 @@ async fn observes_then_verifies_frozen_details_without_qualification() {
         .expect("observe preflight");
     assert!(!observed.qualified);
     assert!(!observed.is_verified());
-    assert!(observed.observed.running.is_empty());
+    assert_eq!(observed.observed.running, []);
     assert_eq!(observed.observed.bindings[0].details.family, "fixture");
 
     let verify_server = MockServer::start().await;

@@ -110,7 +110,7 @@ mod tests {
         let mut verified =
             verify_passed_repeatability_joins(&target, &[], Vec::new(), &CancellationToken::new())
                 .expect("empty passed-join closure");
-        assert!(
+        assert_eq!(
             verified
                 .collect_target_resource_results(
                     &target,
@@ -118,8 +118,7 @@ mod tests {
                     &[],
                     &CancellationToken::new(),
                 )
-                .expect("empty resource collection")
-                .is_empty()
+                .expect("empty resource collection"), []
         );
 
         let cancellation = CancellationToken::new();

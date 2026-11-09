@@ -71,7 +71,7 @@ mod tests {
             .expect("typed incomplete observation");
             assert_eq!(calls, 2);
             assert_eq!(result.completeness, SidecarScanCompleteness::Incomplete);
-            assert!(result.present.is_empty());
+            assert_eq!(result.present, []);
         }
     }
 

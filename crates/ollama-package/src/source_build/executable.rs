@@ -96,7 +96,7 @@ impl SelfContainedLinuxExecutable {
         let mut load_segments = Vec::new();
         let mut dynamic_segment = None;
         let mut stack_segment = None;
-        for header in bytes[offset..end].chunks_exact(ELF_PROGRAM_HEADER_BYTES) {
+        for header in bytes[offset..end].as_chunks::<ELF_PROGRAM_HEADER_BYTES>().0 {
             let segment = ProgramSegment::parse(header, bytes.len())?;
             match segment.kind {
                 PT_INTERP => return invalid(),
@@ -257,7 +257,7 @@ fn validate_dynamic_table(
         return invalid();
     }
     let mut terminated = false;
-    for entry in bytes[range].chunks_exact(DYNAMIC_ENTRY_BYTES) {
+    for entry in bytes[range].as_chunks::<DYNAMIC_ENTRY_BYTES>().0 {
         let tag =
             read_u64(entry, 0).ok_or(RuntimeSourceBuildInputError::NonSelfContainedExecutable)?;
         if terminated {

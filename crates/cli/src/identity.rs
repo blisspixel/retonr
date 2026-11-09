@@ -59,15 +59,15 @@ mod tests {
         let identity = ProductIdentity::current();
         assert_eq!(identity.product, "retonr");
         assert_eq!(identity.product_version, "0.1.0");
-        assert_eq!(identity.rust_version, "1.97.1");
+        assert_eq!(identity.rust_version, "1.99.1");
         assert_eq!(identity.cli_schema_version, 1);
         assert_eq!(
             identity.store_schema_version,
             ArtifactRepository::required_schema_version()
         );
         assert!(identity.local_only);
-        assert!(!identity.commit.is_empty());
-        assert!(!identity.snapshot.is_empty());
+        assert_ne!(identity.commit, "");
+        assert_ne!(identity.snapshot, "");
         assert!(identity.text().contains("local_only: true"));
         assert!(identity.text().contains("commit:"));
         assert!(identity.text().contains(identity.commit));

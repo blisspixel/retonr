@@ -330,7 +330,7 @@ mod tests {
         let error = poll_ready(fake.generate(request, OperationContext::new(&token, None)))
             .expect_err("cancelled operation fails");
         assert_eq!(error.kind, crate::InferenceErrorKind::Cancelled);
-        assert!(fake.requests().expect("request observations").is_empty());
+        assert_eq!(fake.requests().expect("request observations"), []);
     }
 
     #[test]

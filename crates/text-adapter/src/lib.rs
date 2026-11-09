@@ -472,7 +472,7 @@ mod tests {
     #[test]
     fn empty_document_has_no_units() {
         let parsed = TextAdapter::parse(b"").expect("empty UTF-8 is valid");
-        assert!(parsed.document().rewrite_units.is_empty());
+        assert_eq!(parsed.document().rewrite_units, []);
         assert_eq!(TextAdapter::apply(&parsed, &[]).expect("no edit"), b"");
     }
 

@@ -55,8 +55,9 @@ defect. Phase exit language about critical defects refers to this policy.
 
 ### Language and toolchain
 
-- Rust 1.97.1 is the exact repository and release pin at this review. Toolchain
-  updates target the newest patched stable release through a focused reviewed change.
+- Rust 1.99.1 is the exact repository and release pin, reviewed on 2026-11-09
+  against the official release blog. Toolchain updates target the newest patched
+  stable release through a focused reviewed change.
 - Edition 2024 and Cargo resolver 3 are used.
 - The lockfile is committed.
 - Warnings are denied in continuous integration.

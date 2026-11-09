@@ -248,7 +248,7 @@ async fn callback_failures_stop_before_any_additional_protocol_work() {
         OllamaObservedRuntimeProbeError::Observation("before request")
     ));
     let before_result = before_server.finish().await;
-    assert!(before_result.requests.is_empty());
+    assert_eq!(before_result.requests, [] as [String; 0]);
     assert_eq!(before_result.accepts, 1);
 
     let after_server = FixtureServer::start(FirstResponseMode::Normal).await;
@@ -341,7 +341,7 @@ async fn callback_context_change_prevents_the_version_request() {
     assert_probe_error(error, InferenceErrorKind::Cancelled, "cancelled");
     let result = server.finish().await;
     assert_eq!(result.accepts, 1);
-    assert!(result.requests.is_empty());
+    assert_eq!(result.requests, [] as [String; 0]);
 }
 
 fn probe(server: &FixtureServer, limits: OllamaLimits) -> OllamaSingleConnectionRuntimeProbe {

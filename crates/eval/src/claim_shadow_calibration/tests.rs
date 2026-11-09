@@ -22,7 +22,7 @@ fn checked_in_corpus_matches_and_never_changes_acceptance() {
     assert_eq!(report.total, 12);
     assert_eq!(report.passed, 12);
     assert_eq!(report.authority_violations, 0);
-    assert!(report.failures.is_empty());
+    assert_eq!(report.failures, []);
     assert_eq!(
         corpus
             .cases

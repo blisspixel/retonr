@@ -110,7 +110,7 @@ pub(super) fn output(case_id: &str, choice: &str) -> String {
 }
 
 pub(super) fn assert_judge_wire_policy(requests: &[Value]) {
-    assert!(!requests.is_empty());
+    assert_ne!(requests, [] as [Value; 0]);
     let contract = local_judge_attempt_output_contract();
     for request in requests {
         assert_eq!(

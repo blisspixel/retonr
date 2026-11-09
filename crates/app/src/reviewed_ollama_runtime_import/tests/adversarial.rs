@@ -29,12 +29,7 @@ fn extra_tree_file_fails_closed_before_package_persistence() {
             &data.join("artifact-state.sqlite3"),
         )
         .expect("read repository state");
-        assert!(
-            store
-                .artifact_inventory(1)
-                .expect("legacy inventory")
-                .is_empty()
-        );
+        assert_eq!(store.artifact_inventory(1).expect("legacy inventory"), []);
     }
 }
 

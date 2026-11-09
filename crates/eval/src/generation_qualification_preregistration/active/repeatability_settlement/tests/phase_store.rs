@@ -33,7 +33,7 @@ pub(super) fn exercise(
             let index = managed.iter().position(|(id, _)| id == planned.planned_attempt_id()).expect("exact target order");
             managed.remove(index).1
         }).collect::<Vec<_>>();
-        assert!(managed.is_empty());
+        assert_eq!(managed, []);
         let input = GenerationRepeatabilityPhaseV1Input {
             ledger: &GenerationAttemptLedgerV1Input {
                 preregistration: active.prepared.preregistration_read_input(),

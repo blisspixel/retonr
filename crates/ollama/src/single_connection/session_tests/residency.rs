@@ -209,7 +209,7 @@ async fn resident_profile_rejects_unreviewed_or_nonidle_preflight_before_generat
         let (error, result) = resident_error(mode, OllamaLimits::default()).await;
         assert_session_error(error, kind, code);
         assert_eq!(result.requests.len(), 7);
-        assert!(result.generate_requests.is_empty());
+        assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
         assert_eq!(result.accepts, 1);
     }
 }
@@ -258,7 +258,7 @@ async fn resident_profile_rejects_closed_unpreflighted_and_unbound_use_without_t
             result.requests.len(),
             if failure == "unbound" { 7 } else { 0 }
         );
-        assert!(result.generate_requests.is_empty());
+        assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
         assert_eq!(result.accepts, 1);
     }
 }
@@ -299,7 +299,7 @@ async fn oversized_judge_input_rejects_residency_before_completion_traffic() {
     let result = server.finish().await;
     assert_eq!(result.accepts, 1);
     assert_eq!(result.requests.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }
 
 #[tokio::test]

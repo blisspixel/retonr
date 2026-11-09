@@ -102,7 +102,7 @@ fn read_row(row: &Row<'_>) -> StoreResult<EvaluationRow> {
 }
 
 fn blob(kind: &str, length: i64, bytes: Vec<u8>) -> StoreResult<Vec<u8>> {
-    let bounded = usize::try_from(length).ok().is_some_and(|value| {
+    let bounded = usize::try_from(length).is_ok_and(|value| {
         (1..=MAX_CANDIDATE_DETERMINISTIC_EVALUATION_JSON_BYTES).contains(&value)
     });
     if kind == "blob" && bounded && i64::try_from(bytes.len()).ok() == Some(length) {

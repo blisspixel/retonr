@@ -81,8 +81,8 @@ fn default_removes_only_the_exact_chatgpt_pair() {
     for (input, expected) in cases {
         let report = entire(input, &[]);
         assert_eq!(report.text, expected, "{input}");
-        assert!(!report.removals.is_empty());
-        assert!(report.skips.is_empty());
+        assert_ne!(report.removals, []);
+        assert_eq!(report.skips, []);
         assert_eq!(
             text_of(&report.text, &[]),
             report.text,
@@ -214,7 +214,7 @@ fn signed_urls_are_skipped_without_copying_the_token() {
     for input in cases {
         let report = entire(&input, &[]);
         assert_eq!(report.text, input);
-        assert!(report.removals.is_empty());
+        assert_eq!(report.removals, []);
         assert_eq!(report.skips.len(), 1);
         assert_eq!(report.skips[0].reason, SIGNED_QUERY_REASON);
         assert!(!format!("{:?}", report.skips).contains(secret));
@@ -295,11 +295,9 @@ fn locations_name_the_source_key_and_inspect_lists_only_catalogued_names() {
             .http_url_count,
         0
     );
-    assert!(
-        inventory_links("No links here.")
-            .expect("none")
-            .parameters
-            .is_empty()
+    assert_eq!(
+        inventory_links("No links here.").expect("none").parameters,
+        []
     );
 }
 

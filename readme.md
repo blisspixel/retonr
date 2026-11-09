@@ -92,7 +92,7 @@ crate inventory, CLI contract, evidence limits, and platform matrix are in
 
 ## Run from source
 
-The workspace pins Rust 1.97.1. From the repository root:
+The workspace pins Rust 1.99.1. From the repository root:
 
 ```console
 cargo run --locked -p retonr-cli -- check fixtures/cli/source.txt fixtures/cli/candidate.txt

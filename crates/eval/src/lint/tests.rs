@@ -12,7 +12,7 @@ fn linter_passes_all_cases_in_editorial_quality_corpus() {
     assert_eq!(report.total_cases, 20);
     assert_eq!(report.passed_cases, 20);
     assert_eq!(report.failed_cases, 0);
-    assert!(report.failures.is_empty());
+    assert_eq!(report.failures, []);
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn linter_passes_all_cases_in_editorial_slop_corpus() {
     assert_eq!(report.total_cases, 24);
     assert_eq!(report.passed_cases, 24);
     assert_eq!(report.failed_cases, 0);
-    assert!(report.failures.is_empty());
+    assert_eq!(report.failures, []);
 }
 
 #[test]
@@ -101,5 +101,5 @@ fn forward_corpora_only_overlap_the_shipped_phrase() {
 fn clean_text_produces_no_findings() {
     let text = "The compiler verifies memory safety and reports typed errors.";
     let findings = lint_text(text);
-    assert!(findings.is_empty());
+    assert_eq!(findings, []);
 }

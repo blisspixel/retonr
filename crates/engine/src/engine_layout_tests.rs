@@ -138,7 +138,7 @@ fn change_budget_accepts_two_percent_and_abstains_at_ten() {
     .expect("deterministic ports succeed");
     assert_eq!(rejected.status, RewriteStatus::Abstained);
     assert_eq!(rejected.reason, Some(ReasonCode::ChangeBudgetExceeded));
-    assert!(rejected.edits.is_empty());
+    assert_eq!(rejected.edits, []);
 }
 
 fn case_edit(changes: usize) -> (String, String) {

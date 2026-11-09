@@ -397,7 +397,7 @@ fn report_parent_failure(
 
 #[cfg(test)]
 mod tests {
-    use std::{os::fd::AsFd as _, time::Duration};
+    use std::time::Duration;
 
     use super::*;
     use crate::{

@@ -153,11 +153,11 @@ fn qualification_schema_one_cannot_persist_claim_extraction_authority() {
             rewrite_model::QualificationRecordError::UnsupportedRole
         ))
     ));
-    assert!(
+    assert_eq!(
         store
             .artifact_inventory(1)
-            .expect("inventory remains readable")
-            .is_empty()
+            .expect("inventory remains readable"),
+        []
     );
 }
 

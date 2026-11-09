@@ -303,11 +303,11 @@ fn assert_public_projections(
         assert_eq!(manifest.0, ledger.generation_system_id());
         assert_eq!(manifest.1, ledger.generation_qualification_plan_id());
         assert_eq!(manifest.2, ledger.suite_manifest_id());
-        assert!(!manifest.3.as_str().is_empty());
+        assert_ne!(manifest.3.as_str(), "");
         assert!(manifest.4 > 0);
         assert_ne!(manifest.5, GenerationQualificationPhaseStatusV1::Skipped);
     }
-    assert!(!format!("{result:?}{repeat:?}{resource:?}{human:?}").is_empty());
+    assert_ne!(format!("{result:?}{repeat:?}{resource:?}{human:?}"), "");
 }
 
 fn assert_manifest_round_trips(

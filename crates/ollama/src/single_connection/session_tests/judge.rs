@@ -104,7 +104,7 @@ async fn judge_request_validation_sends_no_network_request() {
     let result = server.finish().await;
     assert_eq!(result.accepts, 1);
     assert_eq!(result.requests.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }
 
 #[tokio::test]
@@ -134,7 +134,7 @@ async fn explicit_invalidation_is_idempotent_and_sends_no_later_request() {
     let result = server.finish().await;
     assert_eq!(result.accepts, 1);
     assert_eq!(result.requests.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }
 
 #[tokio::test]
@@ -164,5 +164,5 @@ async fn retained_session_rejects_every_third_output_contract_before_generation(
     let result = server.finish().await;
     assert_eq!(result.accepts, 1);
     assert_eq!(result.requests.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }

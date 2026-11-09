@@ -20,7 +20,7 @@ path. A popular package or compatible API shape is not enough.
 
 | Layer | Choice | Status |
 | --- | --- | --- |
-| Language | Rust 1.97.1, edition 2024, resolver 3 | Exact current pin |
+| Language | Rust 1.99.1, edition 2024, resolver 3 | Exact current pin |
 | Async runtime | Tokio 1.53.x current-thread for retained loopback sessions | Chosen |
 | CPU worker pool | None in shipping product paths | Later bounded envelope for independent hashing and deterministic-suite cases |
 | Serialization | Serde, serde_json, schemars | Chosen by contract need |
@@ -50,7 +50,7 @@ in [Rust engineering and release research](research/2026-08-12-rust-engineering.
 
 The workspace uses a committed `rust-toolchain.toml`, `Cargo.lock`, edition 2024,
 resolver 3, shared dependency declarations, warnings denied, and strict workspace
-lints. Rust 1.97.1 is both the repository pin and current support floor until an
+lints. Rust 1.99.1 is both the repository pin and current support floor until an
 explicit older minimum is adopted and tested separately.
 
 All-features validation and shipping builds are different jobs. A shipping feature

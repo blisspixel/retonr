@@ -175,7 +175,7 @@ fn empty_inventory_is_read_only_and_does_not_clean_staging() {
 
     let report = inventory(&directory, &store, limits()).expect("inventory empty storage");
 
-    assert!(report.registered.is_empty());
+    assert_eq!(report.registered, []);
     assert_eq!(report.storage_entry_count, 0);
     assert_eq!(report.verified_bytes, 0);
     assert!(stale.is_file());
@@ -198,8 +198,8 @@ fn pending_removal_is_disjoint_from_registered_and_orphan_state() {
     .expect("prepare removal");
 
     let report = inventory(&directory, &store, limits()).expect("inventory pending removal");
-    assert!(report.registered.is_empty());
-    assert!(report.verified_orphans.is_empty());
+    assert_eq!(report.registered, []);
+    assert_eq!(report.verified_orphans, []);
     assert_eq!(report.pending_removals.len(), 1);
     assert_eq!(
         report.pending_removals[0].selection.artifact_id(),
@@ -291,7 +291,7 @@ fn rejects_external_hard_link_aliases_for_registered_and_orphan_bytes() {
         status(&report, &registered.artifact_id),
         &RegisteredArtifactBytes::AliasedEntry
     );
-    assert!(report.verified_orphans.is_empty());
+    assert_eq!(report.verified_orphans, []);
     assert_eq!(report.unexpected_entries.aliased_files, 1);
     assert_eq!(report.verified_bytes, 0);
 }
@@ -337,7 +337,7 @@ fn classifies_uninstalled_entries_without_disclosing_malformed_names() {
     assert_eq!(report.unexpected_entries.non_regular_entries, 1);
     assert_eq!(report.content_address_conflicts.len(), 1);
     assert_eq!(report.oversized_files.len(), 1);
-    assert!(report.verified_orphans.is_empty());
+    assert_eq!(report.verified_orphans, []);
 }
 
 #[test]

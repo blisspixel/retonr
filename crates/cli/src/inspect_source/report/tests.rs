@@ -95,7 +95,7 @@ fn incomplete_sidecar_scan_is_visible_and_requires_a_derivative_decision() {
         report.sidecars.status,
         fixture["expected_scan"].as_str().expect("status")
     );
-    assert!(report.sidecars.present.is_empty());
+    assert_eq!(report.sidecars.present, [] as [String; 0]);
     assert_eq!(
         report.derivative(),
         fixture["expected_derivative"]

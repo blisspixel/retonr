@@ -43,10 +43,9 @@ fn retained_reads_preserve_bytes_and_enforce_exact_and_zero_limits() {
         io::ErrorKind::InvalidInput
     );
     fs::write(&path, []).expect("empty source");
-    assert!(
-        read_regular_bounded(&path, 0)
-            .expect("zero limit empty")
-            .is_empty()
+    assert_eq!(
+        read_regular_bounded(&path, 0).expect("zero limit empty"),
+        [] as [u8; 0]
     );
     assert_eq!(
         read_regular_bounded(root.path(), 100)

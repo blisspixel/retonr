@@ -293,5 +293,5 @@ fn crate_tar_rejects_hidden_data_after_its_terminal_blocks() {
 #[test]
 fn helper_gzip_remains_a_real_multistream_decoder_fixture() {
     let compressed = gzip(b"not a tar");
-    assert!(!compressed.is_empty());
+    assert_ne!(compressed, [] as [u8; 0]);
 }

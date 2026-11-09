@@ -192,7 +192,7 @@ fn every_selected_truncation_is_rejected_without_panicking() {
 fn package_fixture_keeps_all_exact_blob_bytes_available() {
     let fixture = package_fixture();
     assert_eq!(fixture.blobs.len(), 5);
-    assert!(!fixture.manifest.is_empty());
+    assert_ne!(fixture.manifest, [] as [u8; 0]);
 }
 
 #[test]

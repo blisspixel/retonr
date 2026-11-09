@@ -17,7 +17,7 @@ provisional until their roadmap gates pass.
 
 ## Development requirements
 
-- Rust 1.97.1, as pinned in `rust-toolchain.toml`
+- Rust 1.99.1, as pinned in `rust-toolchain.toml`
 - Node.js 24 or later for documentation tooling
 - Python 3 for legal-notice and native terminal fixtures (`python.exe` on Windows,
   `python3` on macOS and Linux)

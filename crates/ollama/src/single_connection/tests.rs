@@ -118,7 +118,7 @@ async fn caller_supplied_connection_must_match_the_configured_endpoint() {
     assert_eq!(error.code, "connection_endpoint_mismatch");
     let result = server.finish().await;
     assert_eq!(result.accepts, 1);
-    assert!(result.requests.is_empty());
+    assert_eq!(result.requests, [] as [String; 0]);
 }
 
 #[tokio::test]

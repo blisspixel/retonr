@@ -283,11 +283,12 @@ fn template_and_inventory_publish_without_replacement() {
             .len(),
         fixture.expected_subjects
     );
-    assert!(
+    assert_eq!(
         template_value["subjects"][0]["materials"]
             .as_array()
             .expect("materials")
-            .is_empty()
+            .as_slice(),
+        [] as [Value; 0]
     );
 
     write(fixture.components.path(), fixture.review.path()).expect("inventory publish");

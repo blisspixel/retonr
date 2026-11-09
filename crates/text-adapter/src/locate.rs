@@ -200,7 +200,7 @@ mod tests {
             "A\u{1b}B\u{9b}C\u{202e}D\u{fe0f}E\u{200b}F\u{E0067}\u{E0062}\u{E007F}G\u{00ad}H";
         let located = locate_invisible(text, false);
         assert!(!located.locations_truncated);
-        assert!(located.decoded_tags.is_empty());
+        assert_eq!(located.decoded_tags, []);
         let classes: Vec<&str> = located.locations.iter().map(|item| item.class).collect();
         assert_eq!(
             classes,

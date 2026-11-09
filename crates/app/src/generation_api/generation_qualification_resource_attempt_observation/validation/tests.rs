@@ -30,7 +30,7 @@ fn limits(value: u64) -> GenerationQualificationResourcePolicyLimitsV1 {
 
 #[test]
 fn equality_is_within_every_limit_and_strict_exceedance_is_semantically_ordered() {
-    assert!(exceeded_limits(values_at(10), limits(10)).is_empty());
+    assert_eq!(exceeded_limits(values_at(10), limits(10)), []);
     assert_eq!(
         exceeded_limits(values_at(11), limits(10)),
         vec![

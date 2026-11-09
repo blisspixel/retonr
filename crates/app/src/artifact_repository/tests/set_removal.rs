@@ -80,8 +80,8 @@ fn repository_removes_an_imported_set_without_touching_single_file_state() {
     let pending = repository
         .pending_operations(8, &CancellationToken::new())
         .expect("inspect pending operations");
-    assert!(pending.artifact_removals.is_empty());
-    assert!(pending.artifact_set_removals.is_empty());
+    assert_eq!(pending.artifact_removals, []);
+    assert_eq!(pending.artifact_set_removals, []);
 
     let already = repository
         .remove_set(&imported.key, removal_limits(), &CancellationToken::new())

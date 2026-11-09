@@ -102,7 +102,7 @@ fn decode_base64(encoded: &[u8], maximum_decoded: usize) -> Result<Vec<u8>, ()> 
         return Err(());
     }
     let mut decoded = Vec::with_capacity(encoded.len() / 4 * 3);
-    for (index, chunk) in encoded.chunks_exact(4).enumerate() {
+    for (index, chunk) in encoded.as_chunks::<4>().0.iter().enumerate() {
         let final_chunk = index + 1 == encoded.len() / 4;
         let a = base64_value(chunk[0]).ok_or(())?;
         let b = base64_value(chunk[1]).ok_or(())?;

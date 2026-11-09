@@ -119,7 +119,7 @@ fn initial_validation_preserves_each_independent_authority_failure() {
             app_failed,
             false,
         );
-        assert!(subject.relationships.is_empty());
+        assert_eq!(subject.relationships, []);
         assert_eq!((subject.eval_calls, subject.app_calls), (1, 1));
     }
 }

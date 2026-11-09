@@ -291,22 +291,31 @@ mod tests {
 
     #[test]
     fn recovery_actions_name_exact_follow_up_commands() {
-        assert!(recovery_actions(RepositoryStatus::NotRequested, None).is_empty());
-        assert!(recovery_actions(RepositoryStatus::NotInitialized, None).is_empty());
-        assert!(recovery_actions(RepositoryStatus::Incompatible, None).is_empty());
+        assert_eq!(
+            recovery_actions(RepositoryStatus::NotRequested, None),
+            [] as [&str; 0]
+        );
+        assert_eq!(
+            recovery_actions(RepositoryStatus::NotInitialized, None),
+            [] as [&str; 0]
+        );
+        assert_eq!(
+            recovery_actions(RepositoryStatus::Incompatible, None),
+            [] as [&str; 0]
+        );
         assert_eq!(
             recovery_actions(RepositoryStatus::MigrationRequired, None),
             ["model.migrate"]
         );
-        assert!(
+        assert_eq!(
             recovery_actions(
                 RepositoryStatus::Current,
                 Some(&PendingOperationsSummary {
                     artifact_removals: "0".to_owned(),
                     artifact_set_removals: "0".to_owned(),
                 })
-            )
-            .is_empty()
+            ),
+            [] as [&str; 0]
         );
         assert_eq!(
             recovery_actions(

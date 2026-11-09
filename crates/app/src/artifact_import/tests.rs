@@ -183,7 +183,7 @@ fn pending_removal_is_rejected_before_source_copy_or_canonical_recreation() {
         error,
         ArtifactImportError::RemovalPending { selection: Some(_) }
     ));
-    assert!(progress.is_empty());
+    assert_eq!(progress, []);
     assert!(
         !storage
             .join("artifacts")

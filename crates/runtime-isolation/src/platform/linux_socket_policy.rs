@@ -324,11 +324,11 @@ mod tests {
 
     #[test]
     fn target_filter_compiles_for_the_current_architecture() {
-        assert!(!managed_target_filter().expect("compile filter").is_empty());
-        assert!(
-            !clone3_compatibility_filter(HelperFailure::ManagedContainmentPolicyCompile)
-                .expect("compile clone3 compatibility filter")
-                .is_empty()
+        assert_ne!(managed_target_filter().expect("compile filter"), []);
+        assert_ne!(
+            clone3_compatibility_filter(HelperFailure::ManagedContainmentPolicyCompile)
+                .expect("compile clone3 compatibility filter"),
+            []
         );
         assert_eq!(namespace_clone_rules().expect("clone rules").len(), 8);
         assert_eq!(
@@ -337,7 +337,7 @@ mod tests {
                 .len(),
             3
         );
-        assert!(!build_network_filter().expect("compile filter").is_empty());
+        assert_ne!(build_network_filter().expect("compile filter"), []);
     }
 
     #[test]

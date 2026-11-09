@@ -88,7 +88,7 @@ fn phrase_ordinals_keep_case_quotes_spans_and_saturation() {
     let start = usize::try_from(span.start).expect("start");
     let end = usize::try_from(span.end).expect("end");
     assert_eq!(&text[start..end], "truly groundbreaking");
-    assert!(lint_text("truly  groundbreaking").is_empty());
+    assert_eq!(lint_text("truly  groundbreaking"), []);
 }
 
 #[test]
@@ -120,7 +120,7 @@ fn finding_span_follows_the_line_that_contains_the_evidence() {
 #[test]
 fn clean_text_produces_no_findings() {
     let clean = "Retonr verifies each rewrite unit against structural and layout constraints.";
-    assert!(lint_text(clean).is_empty());
+    assert_eq!(lint_text(clean), []);
 }
 
 #[test]
@@ -139,9 +139,9 @@ fn compares_source_and_candidate_defects() {
     let comparison = compare_editorial_findings(source, candidate);
 
     assert_eq!(comparison.source_findings.len(), 2);
-    assert!(comparison.candidate_findings.is_empty());
+    assert_eq!(comparison.candidate_findings, []);
     assert_eq!(comparison.resolved_findings.len(), 2);
-    assert!(comparison.introduced_findings.is_empty());
+    assert_eq!(comparison.introduced_findings, []);
     assert!(comparison.is_strict_improvement());
 }
 
@@ -165,7 +165,7 @@ fn repeated_findings_above_u16_limit_do_not_panic_or_lose_multiplicity() {
     assert_eq!(comparison.candidate_findings.len(), repetitions - 1);
     assert_eq!(comparison.retained_findings.len(), repetitions - 1);
     assert_eq!(comparison.resolved_findings.len(), 1);
-    assert!(comparison.introduced_findings.is_empty());
+    assert_eq!(comparison.introduced_findings, []);
     assert_eq!(comparison.source_findings[65535].occurrence, u16::MAX);
     assert_eq!(comparison.source_findings[65536].occurrence, u16::MAX);
     assert!(comparison.is_strict_improvement());
@@ -202,7 +202,7 @@ fn quoted_matches_still_count_toward_occurrence_but_are_not_findings() {
 fn density_thresholds_preserve_every_unquoted_match_and_its_ordinal() {
     for pattern in ["\u{2014}", "\u{2705}"] {
         let quoted = format!("\"{pattern}\" ");
-        assert!(lint_text(&format!("{quoted}{}", pattern.repeat(2))).is_empty());
+        assert_eq!(lint_text(&format!("{quoted}{}", pattern.repeat(2))), []);
         let findings = lint_text(&format!("{quoted}{}", pattern.repeat(3)));
         assert_eq!(findings.len(), 3);
         assert_eq!(

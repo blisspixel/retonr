@@ -45,7 +45,7 @@ fn interrupt_requests_typed_import_cancellation_before_registration() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(output.stdout.is_empty());
+    assert_eq!(output.stdout, [] as [u8; 0]);
     let stderr = String::from_utf8(output.stderr).expect("UTF-8 error envelope");
     assert!(predicate::str::contains("\"command\": \"model.import\"").eval(&stderr));
     assert!(predicate::str::contains("\"code\": \"operation_cancelled\"").eval(&stderr));

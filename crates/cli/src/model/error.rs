@@ -315,7 +315,7 @@ mod tests {
         ] {
             let (category, code, exit, _, message) = repository_error_details(kind);
             assert_eq!(exit, expected_exit);
-            assert!(!message.is_empty());
+            assert_ne!(message, "");
             let encoded = serde_json::to_string(&ErrorBody::new(category, code, false))
                 .expect("serialize mapped error");
             assert!(encoded.contains("category"));

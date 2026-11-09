@@ -79,8 +79,7 @@ pub(crate) fn run(
 fn is_real_directory(source: &Path) -> bool {
     source.as_os_str() != STANDARD_STREAM_PATH
         && fs::symlink_metadata(source)
-            .ok()
-            .is_some_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
+            .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
 }
 
 fn detail_requires_one_document() -> RunFailure {

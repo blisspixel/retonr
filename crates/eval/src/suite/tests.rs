@@ -60,10 +60,10 @@ fn empty_suite_produces_empty_report() {
     let report = run_suite_with_concurrency(&empty_suite, 4);
     assert_eq!(report.total, 0);
     assert_eq!(report.passed, 0);
-    assert!(report.categories.is_empty());
+    assert_eq!(report.categories, []);
     assert_eq!(report.transformation_coverage.acceptable, 0);
     assert_eq!(report.transformation_coverage.rewritten, 0);
-    assert!(report.failures.is_empty());
+    assert_eq!(report.failures, []);
 }
 
 #[test]

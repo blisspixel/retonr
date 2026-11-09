@@ -121,11 +121,11 @@ fn assert_imported_runtime(data: &std::path::Path, result: &crate::OllamaRuntime
             .expect("read runtime package"),
         Some(result.evidence.runtime_package().clone())
     );
-    assert!(
+    assert_eq!(
         store
             .artifact_inventory(1)
-            .expect("legacy artifact inventory")
-            .is_empty()
+            .expect("legacy artifact inventory"),
+        []
     );
 }
 

@@ -45,7 +45,7 @@ struct Positive {
 #[test]
 fn held_out_recall_is_one_and_control_false_positive_rate_is_zero() {
     let held_out = held_out();
-    assert!(held_out.intentionally_exact.is_empty());
+    assert_eq!(held_out.intentionally_exact, [] as [String; 0]);
     let mut seen = BTreeSet::new();
     let mut hits = 0;
     let mut controls = 0;
@@ -153,7 +153,7 @@ fn development_sentences_keep_one_finding_and_their_original_evidence() {
 
 #[test]
 fn density_uses_a_short_document_floor_and_a_per_thousand_word_rate() {
-    assert!(lint_text("The draft is clear, short, and specific.").is_empty());
+    assert_eq!(lint_text("The draft is clear, short, and specific."), []);
     let en_dash = lint_text("North \u{2013} south \u{2013} east \u{2013} west.");
     assert_eq!(en_dash.len(), 3);
     assert!(en_dash.iter().all(|finding| finding.evidence == "\u{2013}"));
@@ -161,7 +161,7 @@ fn density_uses_a_short_document_floor_and_a_per_thousand_word_rate() {
     assert_eq!(mixed.len(), 3);
 
     let quiet_dashes = format!("{}{}", "alpha ".repeat(1_001), "\u{2014}".repeat(3));
-    assert!(lint_text(&quiet_dashes).is_empty());
+    assert_eq!(lint_text(&quiet_dashes), []);
     let loud_dashes = format!("{}{}", "alpha ".repeat(1_001), "\u{2014}".repeat(6));
     assert_eq!(
         lint_text(&loud_dashes)

@@ -178,7 +178,7 @@ fn reports_stable_error_codes() {
             "candidate_aggregate_too_large",
         ),
     ] {
-        assert!(!error.to_string().is_empty());
+        assert_ne!(error.to_string(), "");
         assert_eq!(error.code(), code);
     }
 }

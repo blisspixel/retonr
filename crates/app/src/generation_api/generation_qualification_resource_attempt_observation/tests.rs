@@ -263,7 +263,7 @@ fn exact_finish_returns_a_self_contained_revalidatable_snapshot() {
             observed.installed_footprint_bytes(),
             observed.runtime_installed_payload_bytes() + observed.model_installed_payload_bytes()
         );
-        assert!(observed.exceeded_limits().is_empty());
+        assert_eq!(observed.exceeded_limits(), []);
         assert_eq!(observed.revalidate(), Ok(()));
         let debug = format!("{observed:?}");
         assert_eq!(
