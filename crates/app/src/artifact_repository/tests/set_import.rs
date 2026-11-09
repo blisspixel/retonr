@@ -109,11 +109,11 @@ fn repository_imports_set_and_creates_no_legacy_member_authority() {
             .expect("set installation")
             .is_some()
     );
-    assert!(
+    assert_eq!(
         store
             .artifact_inventory(manifest.members().len())
-            .expect("legacy artifact inventory")
-            .is_empty()
+            .expect("legacy artifact inventory"),
+        []
     );
 }
 
@@ -348,7 +348,7 @@ fn set_import_coexists_with_single_file_import_and_inventory() {
         inventory.registered[0].installation.artifact_id().digest(),
         &file_digest
     );
-    assert!(inventory.verified_orphans.is_empty());
+    assert_eq!(inventory.verified_orphans, []);
     assert_eq!(
         fs::read(
             data.join("artifact-storage/artifacts")

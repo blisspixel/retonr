@@ -239,5 +239,5 @@ async fn proxy_environment_child() {
         .await
         .expect("discover directly despite poisoned proxy environment");
     assert_eq!(discovery.runtime.version, "0.13.0");
-    assert!(discovery.inventory.is_empty());
+    assert_eq!(discovery.inventory, []);
 }

@@ -78,11 +78,11 @@ fn prepares_completes_and_increments_generation_on_reinstall() {
             .expect("repeat complete"),
         RemovalCompletionDisposition::AlreadyCompleted
     );
-    assert!(
+    assert_eq!(
         store
             .pending_artifact_set_removals(8)
-            .expect("completed journals are omitted")
-            .is_empty()
+            .expect("completed journals are omitted"),
+        []
     );
 
     let second = store

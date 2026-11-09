@@ -344,7 +344,7 @@ fn rejects_lexical_change_and_returns_exact_original() {
 fn backend_cancellation_becomes_safe_cancelled_abstention() {
     let (strategy, fake) = fixtures("unused");
     let observed = fake.requests().expect("initial request state");
-    assert!(observed.is_empty());
+    assert_eq!(observed, []);
     let token = CancellationToken::new();
     token.cancel();
     let service = GroundedRewriteService::new(strategy, &fake);
@@ -372,7 +372,7 @@ fn ambiguous_source_mapping_abstains_without_backend_work() {
     assert_eq!(result.record.reason, Some(ReasonCode::SentinelIntegrity));
     assert_eq!(result.output, b"ada@example.com $12.ada@example.com $150");
     assert!(result.record.generation.is_none());
-    assert!(fake.requests().expect("request log").is_empty());
+    assert_eq!(fake.requests().expect("request log"), []);
 }
 
 mod shadow;

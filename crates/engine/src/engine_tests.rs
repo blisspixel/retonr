@@ -40,7 +40,7 @@ fn rejects_changed_protected_number() {
         )
         .expect("policy rejection is an outcome");
     assert_eq!(outcome.status, RewriteStatus::Abstained);
-    assert!(outcome.edits.is_empty());
+    assert_eq!(outcome.edits, []);
     assert_eq!(
         outcome.reason,
         Some(rewrite_types::ReasonCode::ProtectedValueChanged)
@@ -63,8 +63,8 @@ fn ambiguous_source_mapping_is_a_safe_abstention() {
         outcome.reason,
         Some(rewrite_types::ReasonCode::SentinelIntegrity)
     );
-    assert!(outcome.edits.is_empty());
-    assert!(outcome.assessments.is_empty());
+    assert_eq!(outcome.edits, []);
+    assert_eq!(outcome.assessments, []);
 }
 
 #[test]
@@ -208,7 +208,7 @@ fn excessive_candidate_count_abstains() {
         outcome.reason,
         Some(rewrite_types::ReasonCode::InvalidCandidate)
     );
-    assert!(outcome.assessments.is_empty());
+    assert_eq!(outcome.assessments, []);
 }
 
 #[test]
@@ -228,7 +228,7 @@ fn validates_units_and_masked_candidates() {
         mismatched.reason,
         Some(rewrite_types::ReasonCode::InvalidCandidate)
     );
-    assert!(mismatched.assessments.is_empty());
+    assert_eq!(mismatched.assessments, []);
 
     let masked = RewriteEngine::new(
         &MaskedEchoGenerator,
@@ -262,8 +262,8 @@ fn invalid_candidate_identity_scope_is_a_validated_ineligible_record() {
         outcome.reason,
         Some(rewrite_types::ReasonCode::InvalidCandidate)
     );
-    assert!(outcome.assessments.is_empty());
-    assert!(outcome.selected_candidates.is_empty());
+    assert_eq!(outcome.assessments, []);
+    assert_eq!(outcome.selected_candidates, []);
 
     let duplicate = RewriteEngine::new(
         &DuplicateCandidateIdGenerator,
@@ -280,8 +280,8 @@ fn invalid_candidate_identity_scope_is_a_validated_ineligible_record() {
         duplicate.reason,
         Some(rewrite_types::ReasonCode::InvalidCandidate)
     );
-    assert!(duplicate.assessments.is_empty());
-    assert!(duplicate.selected_candidates.is_empty());
+    assert_eq!(duplicate.assessments, []);
+    assert_eq!(duplicate.selected_candidates, []);
 }
 
 #[test]
@@ -330,7 +330,7 @@ fn reserved_source_token_abstains_without_generation() {
         outcome.reason,
         Some(rewrite_types::ReasonCode::SentinelIntegrity)
     );
-    assert!(outcome.edits.is_empty());
+    assert_eq!(outcome.edits, []);
 }
 
 #[test]
@@ -454,7 +454,7 @@ fn unchanged_candidate_has_no_edit() {
         )
         .expect("deterministic ports succeed");
     assert_eq!(outcome.status, RewriteStatus::UnchangedIdentical);
-    assert!(outcome.edits.is_empty());
+    assert_eq!(outcome.edits, []);
     assert_eq!(
         outcome.assessments[0].gates.last().map(|gate| gate.status),
         Some(GateStatus::Pass)

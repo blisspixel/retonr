@@ -145,7 +145,7 @@ async fn use_before_preflight_poisons_the_only_transport() {
     drop(session);
     let result = server.finish().await;
     assert_eq!(result.accepts, 1);
-    assert!(result.requests.is_empty());
+    assert_eq!(result.requests, [] as [String; 0]);
 }
 
 #[tokio::test]
@@ -184,7 +184,7 @@ async fn oversized_candidate_input_rejects_relaxed_self_limit_without_completion
     let result = server.finish().await;
     assert_eq!(result.accepts, 1);
     assert_eq!(result.requests.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }
 
 #[tokio::test]
@@ -259,7 +259,7 @@ async fn wrong_artifact_and_digest_never_send_generation() {
         drop(session);
         let result = server.finish().await;
         assert_eq!(result.requests.len(), 7);
-        assert!(result.generate_requests.is_empty());
+        assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
     }
 }
 

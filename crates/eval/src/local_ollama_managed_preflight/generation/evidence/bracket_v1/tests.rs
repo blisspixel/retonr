@@ -123,7 +123,7 @@ fn redacted_contract_binds_positive_and_negative_claims() {
         &evidence.response_binding_digest
     );
     assert_eq!(evidence.effective_context_tokens(), 2048);
-    assert!(evidence.missing_effective_state_relationships().is_empty());
+    assert_eq!(evidence.missing_effective_state_relationships(), []);
     assert!(evidence.process_retained_through_generation());
     assert!(evidence.runtime_package_lease_retained_through_generation());
     assert!(evidence.model_package_lease_retained_through_generation());

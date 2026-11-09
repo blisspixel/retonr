@@ -234,5 +234,5 @@ fn includes_manifest_only_state_without_claiming_installation() {
     assert_eq!(inventory.len(), 1);
     assert_eq!(inventory[0].manifest, value.manifest);
     assert_eq!(inventory[0].installed, None);
-    assert!(inventory[0].active_bindings.is_empty());
+    assert_eq!(inventory[0].active_bindings, []);
 }

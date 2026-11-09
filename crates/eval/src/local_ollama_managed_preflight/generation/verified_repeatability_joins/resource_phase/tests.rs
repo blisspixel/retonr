@@ -43,7 +43,7 @@ fn exact_boundaries_pass_and_exceedances_keep_closed_order() {
         worker_high_water_resident_bytes: 40,
         installed_footprint_bytes: 50,
     };
-    assert!(exceeded_limits(exact, limits()).is_empty());
+    assert_eq!(exceeded_limits(exact, limits()), []);
     assert_eq!(
         phase_status(false),
         GenerationQualificationPhaseStatusV1::Passed

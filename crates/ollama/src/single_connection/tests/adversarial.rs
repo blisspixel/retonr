@@ -233,7 +233,7 @@ async fn callback_context_changes_never_admit_another_request() {
         .expect_err("initial callback cancellation fails closed");
     assert_preflight_error(initial_error, InferenceErrorKind::Cancelled, "cancelled");
     let initial_result = initial_server.finish().await;
-    assert!(initial_result.requests.is_empty());
+    assert_eq!(initial_result.requests, [] as [String; 0]);
     assert!(initial_result.client_closed);
 
     let post_server = FixtureServer::start(FirstResponseMode::Normal).await;

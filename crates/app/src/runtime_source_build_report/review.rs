@@ -16,7 +16,7 @@ pub(super) fn assert_blocked_build_stage_review(
         cancellation,
     )
     .expect("compile and independently verify blocked build-stage review");
-    assert!(!review.canonical_review_bytes().is_empty());
+    assert_ne!(review.canonical_review_bytes(), [] as [u8; 0]);
     assert!(review.verified().reconstructed_runtime().is_none());
     assert_eq!(
         review

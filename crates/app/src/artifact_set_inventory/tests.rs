@@ -161,7 +161,7 @@ fn empty_set_inventory_after_single_file_init_is_read_only() {
 
     let report = inventory(&directory, &store, inventory_limits()).expect("empty set inventory");
 
-    assert!(report.registered.is_empty());
+    assert_eq!(report.registered, []);
     assert_eq!(report.storage_entry_count, 0);
     assert_eq!(report.verified_bytes, 0);
     assert!(stale.is_file());
@@ -192,8 +192,8 @@ fn reports_a_verified_imported_set_without_granting_authority() {
         RegisteredArtifactSetBytes::Verified
     );
     assert_eq!(report.verified_bytes, value.total_byte_size());
-    assert!(report.manifest_only.is_empty());
-    assert!(report.verified_orphans.is_empty());
+    assert_eq!(report.manifest_only, []);
+    assert_eq!(report.verified_orphans, []);
 }
 
 #[test]
@@ -289,7 +289,7 @@ fn reports_manifest_only_verified_orphan_and_unregistered_root() {
     );
     assert_eq!(report.unexpected_entries.unregistered_roots, 1);
     assert_eq!(report.unexpected_entries.malformed_names, 1);
-    assert!(report.registered.is_empty());
+    assert_eq!(report.registered, []);
 }
 
 #[test]

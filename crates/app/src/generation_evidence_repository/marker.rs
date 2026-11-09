@@ -154,7 +154,7 @@ fn decode_lower_hex<const N: usize>(value: &str) -> Option<[u8; N]> {
         return None;
     }
     let mut decoded = [0_u8; N];
-    for (index, pair) in value.as_bytes().chunks_exact(2).enumerate() {
+    for (index, pair) in value.as_bytes().as_chunks::<2>().0.iter().enumerate() {
         decoded[index] = decode_lower_nibble(pair[0])?
             .checked_mul(16)?
             .checked_add(decode_lower_nibble(pair[1])?)?;

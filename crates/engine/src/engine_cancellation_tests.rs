@@ -21,7 +21,7 @@ fn cancellation_after_partial_work_discards_all_edits() {
     )
     .expect("cooperative cancellation is an outcome");
     assert_eq!(outcome.reason, Some(rewrite_types::ReasonCode::Cancelled));
-    assert!(outcome.edits.is_empty());
+    assert_eq!(outcome.edits, []);
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn cancellation_during_single_unit_generation_does_not_rewrite() {
     .expect("cooperative cancellation is an outcome");
     assert_eq!(outcome.status, RewriteStatus::Abstained);
     assert_eq!(outcome.reason, Some(rewrite_types::ReasonCode::Cancelled));
-    assert!(outcome.edits.is_empty());
+    assert_eq!(outcome.edits, []);
 }
 
 #[test]
@@ -54,5 +54,5 @@ fn cancellation_during_assessment_does_not_rewrite() {
         .expect("cooperative cancellation is an outcome");
     assert_eq!(outcome.status, RewriteStatus::Abstained);
     assert_eq!(outcome.reason, Some(rewrite_types::ReasonCode::Cancelled));
-    assert!(outcome.edits.is_empty());
+    assert_eq!(outcome.edits, []);
 }

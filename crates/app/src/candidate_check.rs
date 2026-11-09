@@ -331,7 +331,7 @@ mod tests {
             Some(ReasonCode::ProtectedValueChanged)
         );
         assert_eq!(result.output, source);
-        assert!(result.record.selected_candidates.is_empty());
+        assert_eq!(result.record.selected_candidates, []);
     }
 
     #[test]
@@ -351,7 +351,7 @@ mod tests {
             result.record.status,
             RewriteStatus::UnchangedNoEligibleContent
         );
-        assert!(result.output.is_empty());
+        assert_eq!(result.output, [] as [u8; 0]);
     }
 
     #[test]

@@ -76,11 +76,11 @@ fn imports_exact_six_member_package_and_reads_it_back() {
             .expect("read package manifest"),
         Some(result.evidence.model_package().clone())
     );
-    assert!(
+    assert_eq!(
         store
             .artifact_inventory(1)
-            .expect("legacy artifact inventory")
-            .is_empty()
+            .expect("legacy artifact inventory"),
+        []
     );
 
     let second = repository

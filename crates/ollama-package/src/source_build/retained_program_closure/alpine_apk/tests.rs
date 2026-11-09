@@ -114,7 +114,7 @@ fn decode_fixture_base64(text: &str) -> Vec<u8> {
         .filter(|byte| !byte.is_ascii_whitespace())
         .collect::<Vec<_>>();
     let mut result = Vec::with_capacity(encoded.len() / 4 * 3);
-    for chunk in encoded.chunks_exact(4) {
+    for chunk in encoded.as_chunks::<4>().0 {
         let value = |byte| match byte {
             b'A'..=b'Z' => byte - b'A',
             b'a'..=b'z' => byte - b'a' + 26,

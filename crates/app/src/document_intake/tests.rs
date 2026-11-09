@@ -75,11 +75,11 @@ fn source_budget_is_enforced_before_inventory_and_original_cancel_wins_over_erro
         Err(DocumentIntakeError::Cancelled)
     ));
     fs::write(&path, []).expect("empty");
-    assert!(
+    assert_eq!(
         DocumentIntakeService::read(&selection, 0, &CancellationToken::new())
             .expect("zero empty")
-            .bytes
-            .is_empty()
+            .bytes,
+        [] as [u8; 0]
     );
 }
 
@@ -154,7 +154,7 @@ fn existing_sidecar_directory_is_excluded_without_following_or_decoding_it() {
     let observation =
         DocumentIntakeService::inspect_bytes(Some(&source), b"Hello", &CancellationToken::new())
             .expect("inventory");
-    assert!(observation.sidecars.present.is_empty());
+    assert_eq!(observation.sidecars.present, []);
     assert_eq!(
         observation.sidecars.completeness,
         SidecarScanCompleteness::Complete
@@ -186,7 +186,7 @@ fn real_overlong_sidecar_lookup_cannot_look_like_complete_absence() {
         result.observation.sidecars.completeness,
         SidecarScanCompleteness::Incomplete
     );
-    assert!(result.observation.sidecars.present.is_empty());
+    assert_eq!(result.observation.sidecars.present, []);
     assert_eq!(
         result.observation.derivative,
         DerivativeDisposition::ExplicitDecisionRequired

@@ -11,8 +11,7 @@ struct BlobParts {
 
 fn require_blob(parts: BlobParts) -> StoreResult<Vec<u8>> {
     let bounded = usize::try_from(parts.length)
-        .ok()
-        .is_some_and(|value| (1..=super::MAX_JSON_BYTES).contains(&value));
+        .is_ok_and(|value| (1..=super::MAX_JSON_BYTES).contains(&value));
     if parts.kind == "blob"
         && bounded
         && i64::try_from(parts.bytes.len()).ok() == Some(parts.length)

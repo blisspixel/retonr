@@ -104,7 +104,7 @@ mod tests {
             validate_relationships(&mut untouched, &RELATIONSHIPS, &cancelled),
             Err(ManagedJudgeRunnerConfigurationError::Cancelled)
         ));
-        assert!(untouched.observed.is_empty());
+        assert_eq!(untouched.observed, []);
 
         for (index, relationship) in RELATIONSHIPS.into_iter().enumerate() {
             let cancellation = CancellationToken::new();
@@ -125,7 +125,7 @@ mod tests {
         let mut subject = FakeSubject::default();
         validate_relationships(&mut subject, &[], &CancellationToken::new())
             .expect("empty active set");
-        assert!(subject.observed.is_empty());
+        assert_eq!(subject.observed, []);
 
         let cancellation = CancellationToken::new();
         cancellation.cancel();

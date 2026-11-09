@@ -212,9 +212,7 @@ typeof(canonical_json), length(canonical_json), canonical_json FROM candidate_ju
 WHERE candidate_judge_plan_id = ?1";
 
 pub(crate) fn owned_blob(kind: &str, length: i64, bytes: Vec<u8>) -> StoreResult<Vec<u8>> {
-    let bounded = usize::try_from(length)
-        .ok()
-        .is_some_and(|value| (1..=MAX_JSON_BYTES).contains(&value));
+    let bounded = usize::try_from(length).is_ok_and(|value| (1..=MAX_JSON_BYTES).contains(&value));
     if kind == "blob" && bounded && i64::try_from(bytes.len()).ok() == Some(length) {
         Ok(bytes)
     } else {

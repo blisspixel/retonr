@@ -21,7 +21,7 @@ fn inspect_reports_utf8_facts_without_source_text() {
         .output()
         .expect("run inspect");
     assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stderr, [] as [u8; 0]);
     let text = String::from_utf8(output.stdout.clone()).expect("UTF-8");
     assert!(!text.contains("Hello"));
     assert!(text.contains("\"command\": \"inspect\""));

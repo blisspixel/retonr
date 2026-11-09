@@ -101,7 +101,7 @@ fn imports_inventories_and_removes_one_exact_generation() {
         .output()
         .expect("run inventory");
     assert!(inventory.status.success());
-    assert!(inventory.stderr.is_empty());
+    assert_eq!(inventory.stderr, [] as [u8; 0]);
     let inventory_text = String::from_utf8(inventory.stdout.clone()).expect("UTF-8 output");
     for private in [
         "private-source",
@@ -339,7 +339,7 @@ fn device_evidence_is_optional_and_is_not_a_qualification() {
         .output()
         .expect("run device evidence");
     assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stderr, [] as [u8; 0]);
     let text = String::from_utf8(output.stdout.clone()).expect("UTF-8");
     assert!(text.contains("\"command\": \"model.device_evidence\""));
     assert!(text.contains("\"kind\": \"device_measurement\""));
@@ -484,7 +484,7 @@ fn list_and_inspect_report_registered_artifacts_without_activation() {
         .output()
         .expect("run list");
     assert!(listed.status.success());
-    assert!(listed.stderr.is_empty());
+    assert_eq!(listed.stderr, [] as [u8; 0]);
     let listed_text = String::from_utf8(listed.stdout.clone()).expect("UTF-8 list");
     for private in [
         "private-source",
@@ -535,7 +535,7 @@ fn list_and_inspect_report_registered_artifacts_without_activation() {
         .output()
         .expect("run inspect");
     assert!(inspected.status.success());
-    assert!(inspected.stderr.is_empty());
+    assert_eq!(inspected.stderr, [] as [u8; 0]);
     let inspected_text = String::from_utf8(inspected.stdout.clone()).expect("UTF-8 inspect");
     for private in [
         "private-source",
@@ -887,7 +887,7 @@ fn inventories_one_exact_artifact_set_without_disclosing_member_paths() {
         .output()
         .expect("run set inventory");
     assert!(inventory.status.success());
-    assert!(inventory.stderr.is_empty());
+    assert_eq!(inventory.stderr, [] as [u8; 0]);
     let inventory_text = String::from_utf8(inventory.stdout.clone()).expect("UTF-8 output");
     for private in [
         "private-set-source",
@@ -967,7 +967,7 @@ fn reconciles_one_exact_artifact_set_without_changing_bytes() {
         .output()
         .expect("run set reconcile");
     assert!(reconciled.status.success());
-    assert!(reconciled.stderr.is_empty());
+    assert_eq!(reconciled.stderr, [] as [u8; 0]);
     let reconciled_text = String::from_utf8(reconciled.stdout.clone()).expect("UTF-8 output");
     for private in [
         "private-set-source",

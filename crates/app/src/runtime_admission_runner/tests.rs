@@ -122,7 +122,7 @@ fn discovery_cancellation_happens_before_observer_work() {
     .expect_err("cancelled discovery");
 
     assert!(matches!(error, RuntimeAdmissionRunnerError::Cancelled));
-    assert!(process.events.is_empty());
+    assert_eq!(process.events, [] as [&str; 0]);
 }
 
 #[test]
@@ -183,7 +183,7 @@ async fn exact_probe_preserves_access_denied_before_request() {
         RuntimeAdmissionRunnerError::Witness(AttachedProcessWitnessError::ProcessAccessDenied)
     ));
     assert_eq!(process.events, ["connection_before"]);
-    assert!(request.is_empty());
+    assert_eq!(request, "");
 }
 
 struct FakeProcessLease {

@@ -208,7 +208,7 @@ fn extracts_source_and_candidate_independently_without_generation() {
         &Digest::sha256(candidate.as_bytes())
     );
     assert!(result.comparison.is_some());
-    assert!(backend.requests().expect("generation requests").is_empty());
+    assert_eq!(backend.requests().expect("generation requests"), []);
     let structured = backend.structured_requests().expect("structured requests");
     assert_eq!(structured.len(), 2);
     assert!(structured[0].input.contains(source));
@@ -239,12 +239,7 @@ fn rejects_manifest_that_does_not_bind_the_pair_operation() {
         extract(&backend, request, &CancellationToken::new()),
         Err(ClaimExtractionError::ManifestMismatch)
     );
-    assert!(
-        backend
-            .structured_requests()
-            .expect("no backend work")
-            .is_empty()
-    );
+    assert_eq!(backend.structured_requests().expect("no backend work"), []);
 }
 
 #[test]
@@ -297,12 +292,7 @@ fn cancellation_before_start_returns_no_backend_work() {
         ),
         Err(ClaimExtractionError::Cancelled)
     );
-    assert!(
-        backend
-            .structured_requests()
-            .expect("no backend work")
-            .is_empty()
-    );
+    assert_eq!(backend.structured_requests().expect("no backend work"), []);
 }
 
 #[test]

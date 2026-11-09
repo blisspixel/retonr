@@ -213,7 +213,7 @@ fn doctor_reports_a_current_repository_without_claiming_activation() {
         .output()
         .expect("run doctor");
     assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stderr, [] as [u8; 0]);
     let text = String::from_utf8(output.stdout.clone()).expect("UTF-8 doctor output");
     for private in [
         "private-source",

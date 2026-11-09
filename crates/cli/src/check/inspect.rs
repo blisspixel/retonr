@@ -246,7 +246,7 @@ mod tests {
     fn equal_documents_are_unchanged() {
         let diff = SafeDiff::compare(b"Hello world\n", b"Hello world\n");
         assert!(!diff.changed);
-        assert!(diff.hunks.is_empty());
+        assert_eq!(diff.hunks, []);
         assert!(
             diff.render_text()
                 .contains("no diff: the original was kept")

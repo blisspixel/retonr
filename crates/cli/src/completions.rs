@@ -52,7 +52,7 @@ mod tests {
         let mut command = fixture_command();
         let script = script_for(Shell::Bash, &mut command);
         assert!(script.contains("retonr"));
-        assert!(!script.is_empty());
+        assert_ne!(script, "");
     }
 
     #[test]
@@ -60,6 +60,6 @@ mod tests {
         let mut command = fixture_command();
         let script = script_for(Shell::PowerShell, &mut command);
         assert!(script.contains("retonr"));
-        assert!(!script.is_empty());
+        assert_ne!(script, "");
     }
 }

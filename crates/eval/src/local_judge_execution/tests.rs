@@ -213,7 +213,7 @@ async fn deterministic_failure_makes_no_judge_call() {
     session.invalidate();
     let result = server.finish().await;
     assert_eq!(result.paths.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }
 
 #[tokio::test]
@@ -305,7 +305,7 @@ async fn input_limit_failure_precedes_judge_traffic() {
     session.invalidate();
     let result = server.finish().await;
     assert_eq!(result.paths.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }
 
 #[tokio::test]
@@ -397,7 +397,7 @@ async fn rubric_model_and_contract_drift_fail_before_judge_traffic() {
     session.invalidate();
     let result = server.finish().await;
     assert_eq!(result.paths.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }
 
 #[tokio::test]
@@ -455,7 +455,7 @@ async fn cancellation_and_deadline_fail_before_judge_traffic() {
     session.invalidate();
     let result = server.finish().await;
     assert_eq!(result.paths.len(), 7);
-    assert!(result.generate_requests.is_empty());
+    assert_eq!(result.generate_requests, [] as [serde_json::Value; 0]);
 }
 
 #[tokio::test]

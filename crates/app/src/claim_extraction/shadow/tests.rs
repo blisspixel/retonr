@@ -240,7 +240,7 @@ fn records_complete_comparison_without_generation() {
         panic!("expected recorded comparison");
     };
     assert!(!shadow.comparison().counts().has_difference());
-    assert!(backend.requests().expect("generation requests").is_empty());
+    assert_eq!(backend.requests().expect("generation requests"), []);
 }
 
 #[test]
@@ -379,12 +379,7 @@ fn invalid_binding_fails_before_backend_work() {
         },
     ));
     assert_eq!(error, Err(ClaimExtractionError::InvalidRequest));
-    assert!(
-        backend
-            .structured_requests()
-            .expect("no backend work")
-            .is_empty()
-    );
+    assert_eq!(backend.structured_requests().expect("no backend work"), []);
 }
 
 #[test]

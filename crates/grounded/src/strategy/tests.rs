@@ -144,7 +144,7 @@ fn rejects_missing_exact_artifact_without_generation() {
         block_ready(strategy.generate(&request, &fake, OperationContext::new(&token, None)))
             .expect_err("missing artifact is rejected");
     assert_eq!(error, GroundedError::Unavailable);
-    assert!(fake.requests().expect("request observations").is_empty());
+    assert_eq!(fake.requests().expect("request observations"), []);
 }
 
 #[test]
@@ -158,5 +158,5 @@ fn rejects_unqualified_output_contract_without_generation() {
         block_ready(strategy.generate(&request, &fake, OperationContext::new(&token, None)))
             .expect_err("unqualified output contract is rejected");
     assert_eq!(error, GroundedError::Unavailable);
-    assert!(fake.requests().expect("request observations").is_empty());
+    assert_eq!(fake.requests().expect("request observations"), []);
 }

@@ -92,12 +92,7 @@ fn cancellation_during_hashing_registers_no_state() {
         Err(ArtifactReconciliationError::Cancelled)
     ));
     drop(service);
-    assert!(
-        store
-            .artifact_inventory(8)
-            .expect("inspect state")
-            .is_empty()
-    );
+    assert_eq!(store.artifact_inventory(8).expect("inspect state"), []);
 }
 
 #[test]
@@ -147,10 +142,5 @@ fn last_byte_callback_hard_link_alias_fails_before_state() {
         Err(ArtifactReconciliationError::StorageChanged)
     ));
     drop(service);
-    assert!(
-        store
-            .artifact_inventory(8)
-            .expect("inspect state")
-            .is_empty()
-    );
+    assert_eq!(store.artifact_inventory(8).expect("inspect state"), []);
 }

@@ -120,7 +120,7 @@ fn cleanup_round_trips_exposes_statuses_and_has_stable_identity() {
         record.model_package_revalidation_status(),
         CandidateGenerationPackageRevalidationStatusV1::Verified
     );
-    assert!(record.failure_categories().is_empty());
+    assert_eq!(record.failure_categories(), []);
     assert_eq!(
         record.cleanup_id().digest().as_str(),
         "8886c5360014fa052f40dbb4897447fdac0dc9a026613f051afc635d068845b0"

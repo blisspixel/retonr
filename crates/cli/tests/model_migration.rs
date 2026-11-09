@@ -313,7 +313,7 @@ fn migrates_schema_two_with_backup_then_inventory_opens_exact_state() {
         .output()
         .expect("migrate schema two");
     assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stderr, [] as [u8; 0]);
     let text = String::from_utf8(output.stdout.clone()).expect("UTF-8 migration output");
     assert!(!text.contains(&data.display().to_string()));
     let output: Value = serde_json::from_slice(&output.stdout).expect("parse migration JSON");
@@ -352,7 +352,7 @@ fn migrates_schema_three_with_a_schema_three_backup() {
         .output()
         .expect("migrate schema three");
     assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stderr, [] as [u8; 0]);
     let output: Value = serde_json::from_slice(&output.stdout).expect("parse migration JSON");
     assert_eq!(output["result"]["from_schema"], 3);
     assert_eq!(output["result"]["to_schema"], 19);

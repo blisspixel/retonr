@@ -145,7 +145,7 @@ async fn borrowed_validation_and_cancellation_fail_before_traffic_and_poison() {
     drop(invalid_session);
     let invalid_result = invalid_server.finish().await;
     assert_eq!(invalid_result.requests.len(), 7);
-    assert!(invalid_result.generate_request_bodies.is_empty());
+    assert_eq!(invalid_result.generate_request_bodies, [] as [Vec<u8>; 0]);
 
     let cancelled_server =
         SessionServer::start(SessionMode::ResidentJudgeOutput { completions: 0 }).await;
@@ -191,7 +191,7 @@ async fn borrowed_validation_and_cancellation_fail_before_traffic_and_poison() {
     drop(cancelled_session);
     let cancelled_result = cancelled_server.finish().await;
     assert_eq!(cancelled_result.requests.len(), 7);
-    assert!(cancelled_result.generate_request_bodies.is_empty());
+    assert_eq!(cancelled_result.generate_request_bodies, [] as [Vec<u8>; 0]);
 }
 
 #[tokio::test]

@@ -239,7 +239,7 @@ mod display_tests {
             },
         ];
         for error in errors {
-            assert!(!error.to_string().is_empty());
+            assert_ne!(error.to_string(), "");
         }
         let kinds = [
             IoErrorKind::NotFound,
@@ -250,7 +250,7 @@ mod display_tests {
             IoErrorKind::Other,
         ];
         for kind in kinds {
-            assert!(!kind.to_string().is_empty());
+            assert_ne!(kind.to_string(), "");
         }
     }
 }

@@ -149,7 +149,7 @@ fn registers_no_manifest_orphan_and_retries_idempotently() {
         states[0].installed.as_ref().map(|value| &value.installed),
         Some(&first.installed)
     );
-    assert!(states[0].active_bindings.is_empty());
+    assert_eq!(states[0].active_bindings, []);
 }
 
 #[test]
@@ -328,12 +328,7 @@ fn rejects_missing_size_digest_and_nonregular_targets_without_state() {
         Err(ArtifactReconciliationError::StorageChanged)
     ));
     drop(service);
-    assert!(
-        store
-            .artifact_inventory(8)
-            .expect("inspect state")
-            .is_empty()
-    );
+    assert_eq!(store.artifact_inventory(8).expect("inspect state"), []);
 }
 
 #[test]
@@ -420,12 +415,7 @@ fn cancellation_and_last_byte_mutation_fail_or_are_blocked() {
         Err(ArtifactReconciliationError::Cancelled)
     ));
     drop(service);
-    assert!(
-        store
-            .artifact_inventory(8)
-            .expect("inspect state")
-            .is_empty()
-    );
+    assert_eq!(store.artifact_inventory(8).expect("inspect state"), []);
 
     let cancellation = CancellationToken::new();
     let mut service = ArtifactOrphanReconciliationService::open_existing(
@@ -511,11 +501,6 @@ fn synchronization_failures_leave_orphan_and_state_unchanged() {
         ));
         drop(service);
         assert_eq!(fs::read(target).expect("read unchanged orphan"), original);
-        assert!(
-            store
-                .artifact_inventory(8)
-                .expect("inspect state")
-                .is_empty()
-        );
+        assert_eq!(store.artifact_inventory(8).expect("inspect state"), []);
     }
 }

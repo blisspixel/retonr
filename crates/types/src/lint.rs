@@ -223,7 +223,7 @@ mod tests {
 
         let comparison = EditorialComparison::compute(source, candidate);
         assert_eq!(comparison.resolved_findings.len(), 1);
-        assert!(comparison.introduced_findings.is_empty());
+        assert_eq!(comparison.introduced_findings, []);
         assert!(!comparison.has_introduced_defects());
         assert!(comparison.is_strict_improvement());
     }
@@ -246,7 +246,7 @@ mod tests {
             vec![second, saturated.clone()]
         );
         assert_eq!(comparison.resolved_findings, vec![first, saturated]);
-        assert!(comparison.introduced_findings.is_empty());
+        assert_eq!(comparison.introduced_findings, []);
         assert!(comparison.is_strict_improvement());
     }
 }

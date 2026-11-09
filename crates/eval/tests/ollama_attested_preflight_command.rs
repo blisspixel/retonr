@@ -107,7 +107,7 @@ async fn attached_preflight_process_respects_native_visibility_without_overstati
     .expect("join evaluation process");
     #[cfg(target_os = "linux")]
     if !output.status.success() {
-        assert!(output.stdout.is_empty());
+        assert_eq!(output.stdout, [] as [u8; 0]);
         let stderr = String::from_utf8(output.stderr).expect("utf-8 error");
         assert!(
             stderr

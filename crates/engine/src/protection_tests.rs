@@ -94,7 +94,7 @@ fn sign_fraction_and_comparison_surfaces_are_distinct_quantities() {
 #[test]
 fn unrelated_punctuation_is_not_a_protected_quantity() {
     let plan = ProtectionPlan::build("Hello world", &[]).expect("valid fixture");
-    assert!(plan.values().is_empty());
+    assert_eq!(plan.values(), []);
     let masked = plan
         .mask_raw_candidate("Hello, world!")
         .expect("comma and exclamation are not protected quantities");

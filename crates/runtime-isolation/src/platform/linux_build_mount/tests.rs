@@ -1,6 +1,5 @@
 use std::{
     fs::{self, File, OpenOptions},
-    os::unix::fs::FileExt as _,
     path::Path,
     time::{Duration, Instant},
 };
